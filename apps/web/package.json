@@ -25,7 +25,6 @@
     "@fontsource/ibm-plex-mono": "5.2.7",
     "@fontsource/material-symbols-rounded": "5.2.30",
     "@headlessui/react": "^1.7.19",
-    "@intercom/messenger-js-sdk": "^0.0.12",
     "@plane/constants": "workspace:*",
     "@plane/editor": "workspace:*",
     "@plane/hooks": "workspace:*",
