@@ -18,7 +18,7 @@ from rest_framework.permissions import AllowAny
 
 # Module imports
 from ..base import BaseAPIView
-from plane.db.models import FileAsset, Workspace, Project, User
+from plane.db.models import FileAsset, Workspace, Project, User, WorkspaceMember
 from plane.settings.storage import S3Storage
 from plane.app.permissions import allow_permission, ROLE
 from plane.utils.cache import invalidate_cache_directly
@@ -311,6 +311,7 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
         else:
             return
 
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="WORKSPACE")
     def post(self, request, slug):
         name = request.data.get("name")
         type = request.data.get("type", "image/jpeg")
@@ -376,6 +377,7 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
             status=status.HTTP_200_OK,
         )
 
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="WORKSPACE")
     def patch(self, request, slug, asset_id):
         # get the asset id
         asset = FileAsset.objects.get(id=asset_id, workspace__slug=slug)
@@ -397,6 +399,7 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
         asset.save(update_fields=["is_uploaded", "attributes"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="WORKSPACE")
     def delete(self, request, slug, asset_id):
         asset = FileAsset.objects.get(id=asset_id, workspace__slug=slug)
         asset.is_deleted = True
@@ -406,6 +409,7 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
         asset.save(update_fields=["is_deleted", "deleted_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="WORKSPACE")
     def get(self, request, slug, asset_id):
         # get the asset id
         asset = FileAsset.objects.get(id=asset_id, workspace__slug=slug)
@@ -752,7 +756,16 @@ class DuplicateAssetEndpoint(BaseAPIView):
                 return Response({"error": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
 
         storage = S3Storage(request=request)
-        original_asset = FileAsset.objects.filter(id=asset_id, is_uploaded=True).first()
+        # Scope the source asset lookup to workspaces the caller is a member of
+        user_workspace_ids = WorkspaceMember.objects.filter(
+            member=request.user,
+            is_active=True,
+        ).values_list("workspace_id", flat=True)
+        original_asset = FileAsset.objects.filter(
+            id=asset_id,
+            is_uploaded=True,
+            workspace_id__in=user_workspace_ids,
+        ).first()
 
         if not original_asset:
             return Response({"error": "Asset not found"}, status=status.HTTP_404_NOT_FOUND)
