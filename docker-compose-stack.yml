@@ -141,8 +141,8 @@ services:
 
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile.web.local
+      context: .
+      dockerfile: ./apps/web/Dockerfile.web
     restart: unless-stopped
     networks: [plane_net]
     depends_on:
@@ -151,8 +151,8 @@ services:
 
   admin:
     build:
-      context: ./apps/admin
-      dockerfile: Dockerfile.admin.local
+      context: .
+      dockerfile: ./apps/admin/Dockerfile.admin
     restart: unless-stopped
     networks: [plane_net]
     depends_on:
@@ -161,8 +161,8 @@ services:
 
   space:
     build:
-      context: ./.deploy/space
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./apps/space/Dockerfile.space
     restart: unless-stopped
     networks: [plane_net]
     depends_on:
@@ -171,8 +171,8 @@ services:
 
   live:
     build:
-      context: ./.deploy/live
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./apps/live/Dockerfile.live
     restart: unless-stopped
     networks: [plane_net]
     environment:
@@ -220,6 +220,7 @@ services:
       WORKSPACE_SLUG: ${WORKSPACE_SLUG:-main}
       DRY_RUN: ${DRY_RUN:-false}
       BATCH_SIZE: ${BATCH_SIZE:-100}
+      LIMIT_RECORDS: ${LIMIT_RECORDS:-1000}
     command: bun run scripts/migrate-sac.ts
     depends_on:
       plane-db:

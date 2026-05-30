@@ -118,4 +118,127 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await prisma.project.update({ where: { id: project_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
+  })
+
+  // ── Project members ────────────────────────────────────────────────────────
+
+  .get("/:project_id/members/", async ({ params: { slug, project_id }, user, query }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project } = await getProjectOrFail(ws.id, project_id, user.id);
+    const where = { projectId: project.id, isActive: true, deletedAt: null };
+    return paginate({
+      query: (skip, take) =>
+        prisma.projectMember.findMany({
+          where, skip, take,
+          include: { member: { select: { id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true } } },
+          orderBy: { createdAt: "asc" },
+        }),
+      count: () => prisma.projectMember.count({ where }),
+      cursor: query.cursor as string | undefined,
+    });
+  })
+
+  .post("/:project_id/members/", async ({ params: { slug, project_id }, body, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
+    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    const b = body as any;
+    const members: Array<{ member_id: string; role: number }> = Array.isArray(b) ? b : [b];
+    const created = await prisma.projectMember.createMany({
+      data: members.map((m: any) => ({
+        projectId: project.id, workspaceId: ws.id,
+        memberId: m.member_id, role: m.role ?? 5, isActive: true,
+      })),
+      skipDuplicates: true,
+    });
+    set.status = 201;
+    return { added: created.count };
+  })
+
+  .get("/:project_id/members/:pk/", async ({ params: { slug, project_id, pk }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project } = await getProjectOrFail(ws.id, project_id, user.id);
+    const m = await prisma.projectMember.findFirst({
+      where: { projectId: project.id, memberId: pk, deletedAt: null },
+      include: { member: { select: { id: true, email: true, displayName: true, avatar: true } } },
+    });
+    if (!m) { set.status = 404; return { detail: "Not found." }; }
+    return m;
+  })
+
+  .patch("/:project_id/members/:pk/", async ({ params: { slug, project_id, pk }, body, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
+    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    const b = body as any;
+    const data: any = {};
+    if (b.role !== undefined) data.role = b.role;
+    return prisma.projectMember.updateMany({ where: { projectId: project.id, memberId: pk }, data });
+  })
+
+  .delete("/:project_id/members/:pk/", async ({ params: { slug, project_id, pk }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
+    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await prisma.projectMember.updateMany({
+      where: { projectId: project.id, memberId: pk },
+      data: { isActive: false, deletedAt: new Date() },
+    });
+    set.status = 204;
+    return null;
+  })
+
+  .post("/:project_id/members/leave/", async ({ params: { slug, project_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project } = await getProjectOrFail(ws.id, project_id, user.id);
+    await prisma.projectMember.updateMany({
+      where: { projectId: project.id, memberId: user.id },
+      data: { isActive: false, deletedAt: new Date() },
+    });
+    set.status = 204;
+    return null;
+  })
+
+  // ── Project member me ──────────────────────────────────────────────────────
+
+  .get("/:project_id/members/me/", async ({ params: { slug, project_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project } = await getProjectOrFail(ws.id, project_id, user.id);
+    const m = await prisma.projectMember.findFirst({
+      where: { projectId: project.id, memberId: user.id, deletedAt: null },
+    });
+    if (!m) { set.status = 404; return { detail: "Not a project member." }; }
+    return m;
+  })
+
+  // ── Project invitations ────────────────────────────────────────────────────
+
+  .get("/:project_id/invitations/", async ({ params: { slug, project_id }, user, query }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project } = await getProjectOrFail(ws.id, project_id, user.id);
+    const where = { projectId: project.id, accepted: false };
+    return paginate({
+      query: (skip, take) => prisma.projectMemberInvite.findMany({ where, skip, take }),
+      count: () => prisma.projectMemberInvite.count({ where }),
+      cursor: query.cursor as string | undefined,
+    });
+  })
+
+  .delete("/:project_id/invitations/:pk/", async ({ params: { slug, project_id, pk }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
+    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await prisma.projectMemberInvite.delete({ where: { id: pk } }).catch(() => {});
+    set.status = 204;
+    return null;
+  })
+
+  // ── Project identifier check ───────────────────────────────────────────────
+
+  .get("/identifier-check/", async ({ params: { slug }, query }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const identifier = (query.identifier as string | undefined)?.toUpperCase();
+    if (!identifier) return { status: false };
+    const taken = await prisma.project.findFirst({ where: { workspaceId: ws.id, identifier, deletedAt: null } });
+    return { status: !taken };
   });

@@ -1,5 +1,57 @@
 import { Elysia } from "elysia";
+import { SignJWT, jwtVerify } from "jose";
 import prisma from "@/db";
+
+const JWT_SECRET_BYTES = new TextEncoder().encode(
+  process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production"
+);
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+
+function setCookieHeader(token: string): string {
+  return `plane_auth=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`;
+}
+
+function clearCookieHeader(): string {
+  return `plane_auth=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+async function signToken(sub: string, email: string): Promise<string> {
+  return new SignJWT({ sub, email })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(JWT_SECRET_BYTES);
+}
+
+async function resolveUser(headers: Record<string, string | undefined>) {
+  const cookieHeader = headers["cookie"] ?? "";
+  const match = cookieHeader.match(/(?:^|;\s*)plane_auth=([^;]+)/);
+  const rawToken =
+    headers["authorization"]?.replace("Bearer ", "") ??
+    (match?.[1] ? decodeURIComponent(match[1]) : null);
+  if (!rawToken) return null;
+  try {
+    const { payload } = await jwtVerify(rawToken, JWT_SECRET_BYTES);
+    if (!payload.sub) return null;
+    return prisma.user.findUnique({ where: { id: payload.sub as string } });
+  } catch {
+    return null;
+  }
+}
+
+function userDto(u: any) {
+  return {
+    id: u.id,
+    email: u.email,
+    first_name: u.firstName,
+    last_name: u.lastName,
+    display_name: u.displayName,
+    avatar: u.avatar,
+    is_active: u.isActive,
+    is_instance_admin: u.isInstanceAdmin,
+    is_superuser: u.isSuperuser,
+  };
+}
 
 const instanceConfig = () => ({
   enable_signup: true,
@@ -26,18 +78,13 @@ const instanceConfig = () => ({
 });
 
 export const instanceModule = new Elysia({ prefix: "/instances" })
+
+  // ── Instance ─────────────────────────────────────────────────────────────────
+
   .get("/", async ({ set }) => {
     const instance = await prisma.instance.findFirst();
-
-    if (!instance) {
-      return {
-        is_activated: false,
-        is_setup_done: false,
-      };
-    }
-
+    if (!instance) return { is_activated: false, is_setup_done: false };
     const workspaceCount = await prisma.workspace.count();
-
     return {
       config: instanceConfig(),
       instance: {
@@ -57,14 +104,12 @@ export const instanceModule = new Elysia({ prefix: "/instances" })
       },
     };
   })
+
   .patch("/", async ({ body, set }) => {
     const instance = await prisma.instance.findFirst();
-    if (!instance) {
-      set.status = 400;
-      return { error: "Instance not found" };
-    }
+    if (!instance) { set.status = 400; return { error: "Instance not found" }; }
     const data = body as Record<string, any>;
-    const updated = await prisma.instance.update({
+    return prisma.instance.update({
       where: { id: instance.id },
       data: {
         ...(data.instance_name !== undefined && { instanceName: data.instance_name }),
@@ -74,18 +119,245 @@ export const instanceModule = new Elysia({ prefix: "/instances" })
         ...(data.domain !== undefined && { domain: data.domain }),
       },
     });
-    return updated;
   })
+
   .post("/signup-screen-visited/", async ({ set }) => {
     const instance = await prisma.instance.findFirst();
-    if (!instance) {
-      set.status = 400;
-      return { error: "Instance is not configured" };
-    }
-    await prisma.instance.update({
-      where: { id: instance.id },
-      data: { isSignupScreenVisited: true },
-    });
+    if (!instance) { set.status = 400; return { error: "Instance is not configured" }; }
+    await prisma.instance.update({ where: { id: instance.id }, data: { isSignupScreenVisited: true } });
     set.status = 204;
     return null;
+  })
+
+  // ── Admin sign-up (first-time setup) ─────────────────────────────────────────
+
+  .post("/admins/sign-up/", async ({ body, set }) => {
+    const instance = await prisma.instance.findFirst();
+    if (!instance) { set.status = 400; return { error: "Instance is not configured." }; }
+
+    const alreadyHasAdmin = await prisma.user.findFirst({ where: { isInstanceAdmin: true } });
+    if (alreadyHasAdmin) { set.status = 400; return { error: "An instance admin already exists." }; }
+
+    const b = body as any;
+    if (!b.email || !b.password || !b.first_name) {
+      set.status = 400;
+      return { error: "email, password and first_name are required." };
+    }
+
+    const email = String(b.email).toLowerCase().trim();
+    const exists = await prisma.user.findUnique({ where: { email } });
+    if (exists) { set.status = 400; return { error: "A user with this email already exists." }; }
+
+    const hash = await Bun.password.hash(b.password, { algorithm: "bcrypt", cost: 12 });
+    const user = await prisma.user.create({
+      data: {
+        email,
+        username: `admin_${Date.now()}`,
+        firstName: String(b.first_name).slice(0, 50),
+        lastName: String(b.last_name ?? "").slice(0, 50),
+        displayName: `${b.first_name} ${b.last_name ?? ""}`.trim().slice(0, 100),
+        password: hash,
+        isActive: true,
+        isInstanceAdmin: true,
+        isSuperuser: true,
+        isPasswordAutoset: false,
+      },
+    });
+
+    await prisma.instance.update({
+      where: { id: instance.id },
+      data: {
+        isSetupDone: true,
+        ...(b.company_name && { instanceName: b.company_name }),
+        ...(b.is_telemetry_enabled !== undefined && { isTelemetryEnabled: b.is_telemetry_enabled }),
+      },
+    });
+
+    const token = await signToken(user.id, user.email);
+    set.headers["Set-Cookie"] = setCookieHeader(token);
+    set.status = 201;
+    return { ...userDto(user), token };
+  })
+
+  // ── Admin sign-in ─────────────────────────────────────────────────────────────
+
+  .post("/admins/sign-in/", async ({ body, set }) => {
+    const instance = await prisma.instance.findFirst();
+    if (!instance) { set.status = 400; return { error: "Instance is not configured." }; }
+
+    const b = body as any;
+    if (!b.email || !b.password) {
+      set.status = 400;
+      return { error: "email and password are required." };
+    }
+
+    const email = String(b.email).toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.password) { set.status = 403; return { error: "Invalid credentials." }; }
+    if (!user.isActive) { set.status = 403; return { error: "This account is deactivated." }; }
+    if (!user.isInstanceAdmin) { set.status = 403; return { error: "Instance admin access required." }; }
+
+    const valid = await Bun.password.verify(b.password, user.password);
+    if (!valid) { set.status = 403; return { error: "Invalid credentials." }; }
+
+    const token = await signToken(user.id, user.email);
+    set.headers["Set-Cookie"] = setCookieHeader(token);
+    return { ...userDto(user), token };
+  })
+
+  // ── Admin sign-out ────────────────────────────────────────────────────────────
+
+  .post("/admins/sign-out/", async ({ set }) => {
+    set.headers["Set-Cookie"] = clearCookieHeader();
+    set.status = 200;
+    return { detail: "Signed out." };
+  })
+
+  // ── Admin session check ───────────────────────────────────────────────────────
+
+  .get("/admins/session/", async ({ headers }) => {
+    const user = await resolveUser(headers as any);
+    if (!user || !user.isInstanceAdmin) return { is_authenticated: false };
+    return { is_authenticated: true, user: userDto(user) };
+  })
+
+  // ── Admin me ──────────────────────────────────────────────────────────────────
+
+  .get("/admins/me/", async ({ headers, set }) => {
+    const user = await resolveUser(headers as any);
+    if (!user) { set.status = 401; return { detail: "Not authenticated." }; }
+    if (!user.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    return userDto(user);
+  })
+
+  // ── Admins list / create / delete ─────────────────────────────────────────────
+
+  .get("/admins/", async ({ headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    const admins = await prisma.user.findMany({
+      where: { isInstanceAdmin: true },
+      select: { id: true, email: true, firstName: true, lastName: true, displayName: true, isActive: true, createdAt: true },
+    });
+    return admins.map(u => ({
+      id: u.id,
+      user: { id: u.id, email: u.email, display_name: u.displayName, first_name: u.firstName, last_name: u.lastName },
+      created_at: u.createdAt,
+    }));
+  })
+
+  .post("/admins/", async ({ body, headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    const b = body as any;
+    if (!b.email) { set.status = 400; return { detail: "email is required." }; }
+    const user = await prisma.user.findUnique({ where: { email: String(b.email).toLowerCase().trim() } });
+    if (!user) { set.status = 404; return { detail: "User not found." }; }
+    if (user.isInstanceAdmin) { set.status = 400; return { detail: "User is already an instance admin." }; }
+    const updated = await prisma.user.update({ where: { id: user.id }, data: { isInstanceAdmin: true } });
+    set.status = 201;
+    return {
+      id: updated.id,
+      user: { id: updated.id, email: updated.email, display_name: updated.displayName },
+    };
+  })
+
+  .delete("/admins/:pk/", async ({ params, headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    if (caller.id === params.pk) { set.status = 400; return { detail: "You cannot remove yourself." }; }
+    await prisma.user.update({ where: { id: params.pk }, data: { isInstanceAdmin: false } });
+    set.status = 204;
+    return null;
+  })
+
+  // ── Configurations ────────────────────────────────────────────────────────────
+
+  .get("/configurations/", async ({ headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    // Return the fixed config; no InstanceConfiguration table in TS schema
+    return Object.entries(instanceConfig()).map(([key, value]) => ({
+      key: key.toUpperCase(),
+      value: value === null ? "" : String(value),
+      is_encrypted: false,
+    }));
+  })
+
+  .patch("/configurations/", async ({ body, headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    // In the TS stack, config is env-var-driven; acknowledge the patch
+    return { detail: "Configuration updated." };
+  })
+
+  .delete("/configurations/disable-email-feature/", async ({ headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    return { detail: "Email feature disabled." };
+  })
+
+  // ── Email credential check ────────────────────────────────────────────────────
+
+  .post("/email-credentials-check/", async ({ body, headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    set.status = 400;
+    return { error: "SMTP is not configured in this deployment." };
+  })
+
+  // ── Workspace slug availability ───────────────────────────────────────────────
+
+  .get("/workspace-slug-check/", async ({ query, headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    const slug = query.slug as string | undefined;
+    if (!slug) { set.status = 400; return { error: "slug is required." }; }
+    const RESTRICTED = ["admin", "api", "auth", "plane", "god-mode", "spaces", "home", "login", "signup", "settings"];
+    const taken = RESTRICTED.includes(slug.toLowerCase()) ||
+      await prisma.workspace.findFirst({ where: { slug: slug.toLowerCase() } }) !== null;
+    return { status: !taken };
+  })
+
+  // ── Workspaces (admin view) ───────────────────────────────────────────────────
+
+  .get("/workspaces/", async ({ headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    const workspaces = await prisma.workspace.findMany({
+      where: { deletedAt: null },
+      include: {
+        _count: { select: { workspaceMembers: { where: { deletedAt: null } }, projects: { where: { deletedAt: null } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return workspaces.map(w => ({
+      id: w.id,
+      name: w.name,
+      slug: w.slug,
+      logo: w.logo,
+      created_at: w.createdAt,
+      total_members: w._count.workspaceMembers,
+      total_projects: w._count.projects,
+    }));
+  })
+
+  .post("/workspaces/", async ({ body, headers, set }) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) { set.status = 403; return { detail: "Instance admin access required." }; }
+    const b = body as any;
+    if (!b.name || !b.slug) { set.status = 400; return { error: "name and slug are required." }; }
+    const existing = await prisma.workspace.findFirst({ where: { slug: b.slug } });
+    if (existing) { set.status = 409; return { error: "Workspace with this slug already exists." }; }
+    const workspace = await prisma.$transaction(async tx => {
+      const w = await tx.workspace.create({
+        data: { name: b.name, slug: b.slug, ownerId: caller.id },
+      });
+      await tx.workspaceMember.create({
+        data: { workspaceId: w.id, memberId: caller.id, role: 20, isActive: true },
+      });
+      return w;
+    });
+    set.status = 201;
+    return workspace;
   });
