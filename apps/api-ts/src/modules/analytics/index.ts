@@ -111,25 +111,37 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
     return null;
   })
 
-  // ── Project stats ──────────────────────────────────────────────────────────
+  // ── Project stats (plain array — frontend expects TProjectAnalyticsCount[]) ─
 
-  .get("/project-stats/", async ({ params: { slug }, user }) => {
+  .get("/project-stats/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
+    const projectIdFilter = query.project_ids
+      ? (query.project_ids as string).split(",").filter(Boolean)
+      : undefined;
+
     const projects = await prisma.project.findMany({
-      where: { workspaceId: ws.id, deletedAt: null, archivedAt: null, members: { some: { memberId: user.id, isActive: true, deletedAt: null } } },
+      where: {
+        workspaceId: ws.id,
+        deletedAt: null,
+        archivedAt: null,
+        members: { some: { memberId: user.id, isActive: true, deletedAt: null } },
+        ...(projectIdFilter ? { id: { in: projectIdFilter } } : {}),
+      },
       select: { id: true, name: true, identifier: true },
     });
 
     const stats = await Promise.all(projects.map(async p => {
-      const [total, completed, open] = await Promise.all([
+      const [total_issues, completed_issues, total_cycles, total_members, total_modules] = await Promise.all([
         prisma.issue.count({ where: { projectId: p.id, deletedAt: null, isDraft: false } }),
         prisma.issue.count({ where: { projectId: p.id, deletedAt: null, isDraft: false, state: { group: "completed" } } }),
-        prisma.issue.count({ where: { projectId: p.id, deletedAt: null, isDraft: false, state: { group: { notIn: ["completed", "cancelled"] } } } }),
+        prisma.cycle.count({ where: { projectId: p.id, deletedAt: null } }),
+        prisma.projectMember.count({ where: { projectId: p.id, isActive: true, deletedAt: null } }),
+        prisma.module.count({ where: { projectId: p.id, deletedAt: null } }),
       ]);
-      return { project: p, total, completed, open };
+      return { id: p.id, total_issues, completed_issues, total_cycles, total_members, total_modules };
     }));
 
-    return { results: stats };
+    return stats;
   });

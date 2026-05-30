@@ -23,6 +23,7 @@ model Instance {
   isTelemetryEnabled    Boolean   @default(true) @map("is_telemetry_enabled")
   isSupportRequired     Boolean   @default(true) @map("is_support_required")
   lastCheckedAt         DateTime  @default(now()) @map("last_checked_at")
+  configurations        Json?     @map("configurations")
   @@map("instances")
 }
 

@@ -9,45 +9,6 @@ services:
     ports:
       - "6379:6379"
 
-  plane-mq:
-    image: rabbitmq:3.13.6-management-alpine
-    restart: unless-stopped
-    networks:
-      - dev_env
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    env_file:
-      - .env
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
-
-  plane-minio:
-    image: minio/minio
-    restart: unless-stopped
-    networks:
-      - dev_env
-    entrypoint: >
-      /bin/sh -c "
-      mkdir -p /export/${AWS_S3_BUCKET_NAME} &&
-      minio server /export --console-address ':9090' &
-      sleep 5 &&
-      mc alias set myminio http://localhost:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} &&
-      mc mb myminio/${AWS_S3_BUCKET_NAME} -p || true
-      && tail -f /dev/null
-      "
-    volumes:
-      - uploads:/export
-    env_file:
-      - .env
-    environment:
-      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
-      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
-    ports:
-      - "9000:9000"
-      - "9090:9090"
-
   plane-db:
     image: postgres:15.7-alpine
     restart: unless-stopped
@@ -56,95 +17,147 @@ services:
     command: postgres -c 'max_connections=1000'
     volumes:
       - pgdata:/var/lib/postgresql/data
-    env_file:
-      - .env
     environment:
+      POSTGRES_USER: ${POSTGRES_USER:-plane}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plane}
+      POSTGRES_DB: ${POSTGRES_DB:-plane}
       PGDATA: /var/lib/postgresql/data
     ports:
       - "5432:5432"
 
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile.dev
-      args:
-        DOCKER_BUILDKIT: 1
+  plane-minio:
+    image: minio/minio
     restart: unless-stopped
     networks:
       - dev_env
+    entrypoint: >
+      /bin/sh -c "
+      mkdir -p /export/${AWS_S3_BUCKET_NAME:-uploads} &&
+      minio server /export --console-address ':9090' &
+      sleep 5 &&
+      mc alias set myminio http://localhost:9000 ${AWS_ACCESS_KEY_ID:-access-key} ${AWS_SECRET_ACCESS_KEY:-secret-key} &&
+      mc mb myminio/${AWS_S3_BUCKET_NAME:-uploads} -p || true
+      && tail -f /dev/null
+      "
     volumes:
-      - ./apps/api:/code
-    command: ./bin/docker-entrypoint-api-local.sh
-    env_file:
-      - ./apps/api/.env
-    depends_on:
-      - plane-db
-      - plane-redis
-      - plane-mq
+      - uploads:/export
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-access-key}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-secret-key}
     ports:
-      - "8000:8000"
+      - "9000:9000"
+      - "9090:9090"
 
-  worker:
+  db-migrate:
     build:
-      context: ./apps/api
+      context: ./apps/api-ts
       dockerfile: Dockerfile.dev
-      args:
-        DOCKER_BUILDKIT: 1
-    restart: unless-stopped
-    networks:
-      - dev_env
-    volumes:
-      - ./apps/api:/code
-    command: ./bin/docker-entrypoint-worker.sh
-    env_file:
-      - ./apps/api/.env
-    depends_on:
-      - api
-      - plane-db
-      - plane-redis
-
-  beat-worker:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile.dev
-      args:
-        DOCKER_BUILDKIT: 1
-    restart: unless-stopped
-    networks:
-      - dev_env
-    volumes:
-      - ./apps/api:/code
-    command: ./bin/docker-entrypoint-beat.sh
-    env_file:
-      - ./apps/api/.env
-    depends_on:
-      - api
-      - plane-db
-      - plane-redis
-
-  migrator:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile.dev
-      args:
-        DOCKER_BUILDKIT: 1
     restart: "no"
     networks:
       - dev_env
-    volumes:
-      - ./apps/api:/code
-    command: ./bin/docker-entrypoint-migrator.sh --settings=plane.settings.local
-    env_file:
-      - ./apps/api/.env
+    command: ["bunx", "prisma", "db", "push"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
+    depends_on:
+      - plane-db
+
+  seeder:
+    build:
+      context: ./apps/api-ts
+      dockerfile: Dockerfile
+    restart: "no"
+    networks:
+      - dev_env
+    command: ["bun", "run", "scripts/seed.ts"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@plane.so}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      WORKSPACE_SLUG: ${WORKSPACE_SLUG:-quality}
+      WORKSPACE_NAME: ${WORKSPACE_NAME:-Quality}
+    depends_on:
+      - plane-db
+
+  api-ts:
+    build:
+      context: ./apps/api-ts
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    networks:
+      - dev_env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
+      PORT: 8001
+      NODE_ENV: development
+      CORS_ALLOWED_ORIGINS: http://localhost,http://localhost:80,http://localhost:3000
+      JWT_SECRET: ${SECRET_KEY:-plane-jwt-secret}
     depends_on:
       - plane-db
       - plane-redis
+    ports:
+      - "8001:8001"
+
+  proxy:
+    build:
+      context: ./apps/proxy-ts
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - dev_env
+    depends_on:
+      - api-ts
+      - web
+    ports:
+      - "80:80"
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.web.local
+    restart: unless-stopped
+    networks:
+      - dev_env
+    ports:
+      - "3000:3000"
+
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile.admin.local
+    restart: unless-stopped
+    networks:
+      - dev_env
+    ports:
+      - "3001:3000"
+
+  sac-migrator:
+    build:
+      context: ./apps/api-ts
+      dockerfile: Dockerfile
+    restart: "no"
+    networks:
+      - dev_env
+    command: ["bun", "run", "scripts/migrate-sac.ts"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
+      MYSQL_HOST: ${MYSQL_HOST:-localhost}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-developer}
+      MYSQL_PASS: ${MYSQL_PASS:-local}
+      MYSQL_DB: ${MYSQL_DB:-local}
+      WORKSPACE_SLUG: ${WORKSPACE_SLUG}
+      DRY_RUN: ${DRY_RUN:-false}
+      BATCH_SIZE: ${BATCH_SIZE:-100}
+      LIMIT_RECORDS: ${LIMIT_RECORDS:-0}
+      SKIP_COMMENTS: ${SKIP_COMMENTS:-false}
+      SKIP_VISITS: ${SKIP_VISITS:-false}
+    depends_on:
+      - plane-db
 
 volumes:
   redisdata:
   uploads:
   pgdata:
-  rabbitmq_data:
 
 networks:
   dev_env:

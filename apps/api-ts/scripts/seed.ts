@@ -117,49 +117,9 @@ async function main() {
     log(`✅  Admin added as workspace owner`);
   }
 
-  // 4. Create a default project "SAC" in the workspace
-  let project = await prisma.project.findFirst({
-    where: { workspaceId: workspace.id, identifier: "SAC", deletedAt: null },
-  });
-  if (!project) {
-    project = await prisma.$transaction(async (tx) => {
-      const p = await tx.project.create({
-        data: {
-          workspaceId: workspace!.id,
-          name: "SAC - Suporte ao Cliente",
-          identifier: "SAC",
-          description: "Chamados migrados do sistema SAC legado",
-          network: 2,
-          cycleView: true,
-          moduleView: true,
-          pageView: true,
-          createdById: admin!.id,
-        },
-      });
-
-      // Default states
-      await tx.state.createMany({
-        data: [
-          { projectId: p.id, workspaceId: workspace!.id, name: "Aguardando Resposta", color: "#f59e0b", group: "started",   sequence: 10000, slug: "aguardando-resposta" },
-          { projectId: p.id, workspaceId: workspace!.id, name: "Em Andamento",        color: "#3b82f6", group: "started",   sequence: 20000, slug: "em-andamento" },
-          { projectId: p.id, workspaceId: workspace!.id, name: "Respondido",          color: "#8b5cf6", group: "started",   sequence: 30000, slug: "respondido" },
-          { projectId: p.id, workspaceId: workspace!.id, name: "Encerrado",           color: "#16a34a", group: "completed", sequence: 40000, slug: "encerrado",  default: true },
-          { projectId: p.id, workspaceId: workspace!.id, name: "Encerrado Parcialmente", color: "#65a30d", group: "completed", sequence: 50000, slug: "encerrado-parcialmente" },
-          { projectId: p.id, workspaceId: workspace!.id, name: "Visita Técnica",      color: "#f97316", group: "started",   sequence: 60000, slug: "visita-tecnica" },
-          { projectId: p.id, workspaceId: workspace!.id, name: "Backlog",             color: "#94a3b8", group: "backlog",   sequence: 70000, slug: "backlog" },
-        ],
-      });
-
-      await tx.projectMember.create({
-        data: { projectId: p.id, workspaceId: workspace!.id, memberId: admin!.id, role: 20, isActive: true },
-      });
-
-      return p;
-    });
-    log(`✅  Project "SAC" created`);
-  } else {
-    log(`ℹ️   Project SAC already exists`);
-  }
+  // Projects are created by the SAC migration script (one per sistema).
+  // Seed does not create projects — run scripts/migrate-sac.ts after seeding.
+  log(`ℹ️   Projects are created by migrate-sac.ts (one per sistema).`);
 
   await prisma.$disconnect();
   await pool.end();

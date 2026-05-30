@@ -63,6 +63,14 @@ async function emailCheck(email: string, set: any) {
     return { error_code: 4035, error_message: "INSTANCE_NOT_CONFIGURED" };
   }
 
+  // Check if email/password auth is enabled (stored as ENABLE_EMAIL_PASSWORD in configs)
+  const saved = (instance.configurations as Record<string, string>) ?? {};
+  const emailEnabled = saved["ENABLE_EMAIL_PASSWORD"];
+  if (emailEnabled !== undefined && emailEnabled !== "1" && emailEnabled !== "true") {
+    set.status = 400;
+    return { error_code: 4036, error_message: "EMAIL_PASSWORD_DISABLED" };
+  }
+
   const existingUser = await prisma.user.findUnique({ where: { email: normalized } });
   if (existingUser) {
     return { existing: true, status: "CREDENTIAL" };

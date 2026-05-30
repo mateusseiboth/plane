@@ -81,14 +81,15 @@ export const issueModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
         include: ISSUE_INCLUDE,
       });
 
-      if (b.assignees?.length) {
-        await tx.issueAssignee.createMany({
-          data: b.assignees.map((uid: string) => ({
-            issueId: created.id, assigneeId: uid, workspaceId: ws.id, projectId: project_id,
-          })),
-          skipDuplicates: true,
-        });
-      }
+      // Auto-assign creator (premium feature recreation)
+      // Merge creator into assignees list automatically
+      const assigneeSet = new Set<string>([user.id, ...(b.assignees ?? [])]);
+      await tx.issueAssignee.createMany({
+        data: Array.from(assigneeSet).map((uid: string) => ({
+          issueId: created.id, assigneeId: uid, workspaceId: ws.id, projectId: project_id,
+        })),
+        skipDuplicates: true,
+      });
       if (b.labels?.length) {
         await tx.issueLabel.createMany({
           data: b.labels.map((lid: string) => ({

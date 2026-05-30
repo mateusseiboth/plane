@@ -10,16 +10,21 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
 
   // ── Workspace member invites ───────────────────────────────────────────────
 
+  // Returns IWorkspaceMemberInvitation[] — frontend expects plain array
   .get("/invitations/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const where: any = {workspaceId: ws.id};
     if (query.accepted !== undefined) where.accepted = query.accepted === "true";
-    return paginate({
-      query: (skip, take) => prisma.workspaceMemberInvite.findMany({where, skip, take, orderBy: {createdAt: "desc"}}),
-      count: () => prisma.workspaceMemberInvite.count({where}),
-      cursor: query.cursor as string | undefined,
-    });
+    else where.accepted = false; // default: only pending
+    const invites = await prisma.workspaceMemberInvite.findMany({where, orderBy: {createdAt: "desc"}});
+    return invites.map(i => ({
+      id: i.id, email: i.email, role: i.role, token: i.token, accepted: i.accepted,
+      message: "", responded_at: null,
+      invite_link: `${process.env.APP_BASE_URL ?? "http://localhost"}/invitations/${i.token}/`,
+      workspace: {id: ws.id, name: ws.name, slug: ws.slug, logo_url: (ws as any).logoUrl ?? null},
+      created_at: i.createdAt.toISOString(), updated_at: i.updatedAt.toISOString(),
+    }));
   })
 
   .post("/invitations/", async ({params: {slug}, body, user, set}) => {

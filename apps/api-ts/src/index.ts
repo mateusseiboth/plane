@@ -2,9 +2,10 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 
+
 import { projectModule } from "@modules/project";
 import { stateModule } from "@modules/state";
-import { labelModule } from "@modules/label";
+import { labelModule, issueLabelModule } from "@modules/label";
 import { cycleModule } from "@modules/cycle";
 import { issueModule } from "@modules/issue";
 import { memberModule } from "@modules/member";
@@ -68,6 +69,38 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   }))
   .onError(errorHandler)
   .get("/health/", () => ({ status: "ok", version: "1.0.0" }))
+
+  // ── Timezones ─────────────────────────────────────────────────────────────────
+  .get("/timezones/", () => {
+    const TIMEZONES = [
+      "America/Sao_Paulo", "America/Manaus", "America/Belem", "America/Fortaleza",
+      "America/Recife", "America/Maceio", "America/Bahia", "America/Cuiaba",
+      "America/Porto_Velho", "America/Boa_Vista", "America/Rio_Branco",
+      "America/Noronha", "UTC",
+      "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+      "America/Toronto", "America/Mexico_City", "America/Buenos_Aires",
+      "America/Lima", "America/Bogota", "America/Santiago",
+      "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Madrid",
+      "Europe/Rome", "Europe/Moscow", "Europe/Istanbul",
+      "Asia/Tokyo", "Asia/Shanghai", "Asia/Kolkata", "Asia/Dubai",
+      "Asia/Singapore", "Asia/Seoul", "Asia/Bangkok",
+      "Africa/Cairo", "Africa/Johannesburg",
+      "Australia/Sydney", "Pacific/Auckland",
+    ];
+    return TIMEZONES.map(tz => ({ timezone: tz, label: tz.replace(/_/g, " ") }));
+  })
+
+  // ── Unsplash stub (not configured) ────────────────────────────────────────────
+  .get("/unsplash/", () => ({ results: [], total: 0, total_pages: 0 }))
+
+  // ── Workspace slug availability (called at /api/workspace-slug-check/) ────────
+  .get("/workspace-slug-check/", async ({ query }) => {
+    const slug = (query.slug as string | undefined)?.toLowerCase();
+    if (!slug) return { status: false };
+    const RESTRICTED = ["admin", "api", "auth", "plane", "god-mode", "spaces", "home", "login", "signup", "settings"];
+    const taken = RESTRICTED.includes(slug) || (await (await import("@db")).default.workspace.findFirst({ where: { slug } })) !== null;
+    return { status: !taken };
+  })
   .use(instanceModule)
   .use(workspaceModule)
   .use(userModule)
@@ -75,6 +108,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(projectModule)
   .use(stateModule)
   .use(labelModule)
+  .use(issueLabelModule)
   .use(cycleModule)
   .use(moduleModule)
   .use(issueModule)

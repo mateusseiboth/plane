@@ -1,86 +1,98 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
-import {paginate} from "@utils/pagination";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 
 export const memberModule = new Elysia({prefix: "/workspaces/:slug"})
   .use(authPlugin)
 
-  .get("/members/", async ({params: {slug}, user, query}) => {
+  .get("/members/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const where = {workspaceId: ws.id, isActive: true, deletedAt: null};
-    return paginate({
-      query: (skip, take) =>
-        prisma.workspaceMember.findMany({
-          where,
-          skip,
-          take,
-          include: {member: {select: {id: true, email: true, displayName: true, avatar: true}}},
-        }),
-      count: () => prisma.workspaceMember.count({where}),
-      cursor: query.cursor as string | undefined,
+    // Return only non-guest members (role > 5) or all active members
+    // Excludes entity contacts migrated from SAC (role=5, externalSource=sac_migration)
+    const members = await prisma.workspaceMember.findMany({
+      where: {workspaceId: ws.id, isActive: true, deletedAt: null},
+      include: {member: {select: {id: true, email: true, displayName: true, avatar: true, avatarUrl: true, firstName: true, lastName: true}}},
+      orderBy: {createdAt: "asc"},
     });
+    return members.map((m) => ({
+      id: m.id,
+      member: {
+        id: m.member.id,
+        email: m.member.email,
+        display_name: m.member.displayName,
+        avatar: m.member.avatar,
+        avatar_url: m.member.avatarUrl,
+        first_name: m.member.firstName,
+        last_name: m.member.lastName,
+        is_bot: false,
+      },
+      role: m.role,
+      is_active: m.isActive,
+      created_at: m.createdAt.toISOString(),
+    }));
   })
 
   .get("/members/me/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
-    return prisma.workspaceMember.findFirstOrThrow({
+    const m = await prisma.workspaceMember.findFirstOrThrow({
       where: {workspaceId: ws.id, memberId: user.id, deletedAt: null},
-      include: {member: {select: {id: true, email: true, displayName: true, avatar: true}}},
     });
+    return {
+      id: m.id,
+      member: user.id,
+      role: m.role,
+      is_active: m.isActive,
+      workspace: ws.id,
+      created_at: m.createdAt.toISOString(),
+      updated_at: m.updatedAt.toISOString(),
+    };
   })
 
-  .get("/projects/:project_id/members/", async ({params: {slug, project_id}, user, query}) => {
+  // Plain array — frontend store expects TProjectMembership[] with member.member access
+  .get("/projects/:project_id/members/", async ({params: {slug, project_id}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const where = {projectId: project_id, isActive: true, deletedAt: null};
-    return paginate({
-      query: (skip, take) =>
-        prisma.projectMember.findMany({
-          where,
-          skip,
-          take,
-          include: {member: {select: {id: true, email: true, displayName: true, avatar: true}}},
-        }),
-      count: () => prisma.projectMember.count({where}),
-      cursor: query.cursor as string | undefined,
+    const members = await prisma.projectMember.findMany({
+      where: {projectId: project_id, isActive: true, deletedAt: null},
+      include: {member: {select: {id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true}}},
+      orderBy: {createdAt: "asc"},
     });
+    return members.map((m) => ({
+      id: m.id,
+      member: m.member.id,
+      member__display_name: m.member.displayName,
+      member__avatar_url: m.member.avatarUrl ?? m.member.avatar,
+      role: m.role,
+      original_role: m.role,
+      created_at: m.createdAt.toISOString(),
+    }));
   })
 
   .post("/projects/:project_id/members/", async ({params: {slug, project_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) {
-      set.status = 403;
-      return {detail: "Only admins can add members."};
-    }
-
+    if (member.role < 20) { set.status = 403; return {detail: "Only admins can add members."}; }
     const b = body as any;
     const m = await prisma.projectMember.create({
       data: {projectId: project_id, workspaceId: ws.id, memberId: b.member_id, role: b.role ?? 5, isActive: true},
     });
     set.status = 201;
-    return m;
+    return {id: m.id, member: m.memberId, role: m.role, original_role: m.role};
   })
 
   .patch("/projects/:project_id/members/:pk/", async ({params: {slug, project_id, pk}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) {
-      set.status = 403;
-      return {detail: "Only admins can update member roles."};
-    }
-    return prisma.projectMember.update({where: {id: pk}, data: {role: (body as any).role}});
+    if (member.role < 20) { set.status = 403; return {detail: "Only admins can update member roles."}; }
+    const m = await prisma.projectMember.update({where: {id: pk}, data: {role: (body as any).role}});
+    return {id: m.id, member: m.memberId, role: m.role, original_role: m.role};
   })
 
   .delete("/projects/:project_id/members/:pk/", async ({params: {slug, project_id, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) {
-      set.status = 403;
-      return {detail: "Only admins can remove members."};
-    }
+    if (member.role < 20) { set.status = 403; return {detail: "Only admins can remove members."}; }
     await prisma.projectMember.update({where: {id: pk}, data: {deletedAt: new Date(), isActive: false}});
     set.status = 204;
     return null;

@@ -46,41 +46,72 @@ function userDto(u: any) {
   };
 }
 
-const instanceConfig = () => ({
-  enable_signup: true,
-  is_workspace_creation_disabled: false,
-  is_google_enabled: false,
-  is_github_enabled: false,
-  is_gitlab_enabled: false,
-  is_gitea_enabled: false,
-  is_magic_login_enabled: false,
-  is_email_password_enabled: true,
-  github_app_name: "",
-  slack_client_id: null,
-  posthog_api_key: null,
-  posthog_host: null,
-  has_unsplash_configured: false,
-  has_llm_configured: false,
-  file_size_limit: 5242880,
-  is_smtp_configured: false,
-  admin_base_url: process.env.APP_BASE_URL ?? "http://localhost:8080/god-mode",
-  space_base_url: process.env.APP_BASE_URL ?? "http://localhost:8080/spaces",
-  app_base_url: process.env.APP_BASE_URL ?? "http://localhost:8080",
-  instance_changelog_url: "",
-  is_self_managed: true,
-});
+// ── Admin-facing config keys (what the admin app reads/writes) ──────────────
+// These are the canonical keys stored in DB and returned from /configurations/
+const ADMIN_CONFIG_DEFAULTS: Record<string, string> = {
+  ENABLE_SIGNUP:            "1",
+  ENABLE_EMAIL_PASSWORD:    "1",   // "1" = enabled, "0" = disabled
+  ENABLE_MAGIC_LINK_LOGIN:  "0",
+  IS_GOOGLE_ENABLED:        "0",
+  IS_GITHUB_ENABLED:        "0",
+  IS_GITLAB_ENABLED:        "0",
+  IS_GITEA_ENABLED:         "0",
+  IS_WORKSPACE_CREATION_DISABLED: "0",
+  GITHUB_APP_NAME:          "",
+  SLACK_CLIENT_ID:          "",
+  POSTHOG_API_KEY:          "",
+  POSTHOG_HOST:             "",
+  HAS_UNSPLASH_CONFIGURED:  "0",
+  HAS_LLM_CONFIGURED:       "0",
+  FILE_SIZE_LIMIT:          "5242880",
+  IS_SMTP_CONFIGURED:       "0",
+  ADMIN_BASE_URL:           process.env.APP_BASE_URL ?? "http://localhost:8080/god-mode",
+  SPACE_BASE_URL:           process.env.APP_BASE_URL ?? "http://localhost:8080/spaces",
+  APP_BASE_URL:             process.env.APP_BASE_URL ?? "http://localhost:8080",
+  INSTANCE_CHANGELOG_URL:   "",
+  IS_SELF_MANAGED:          "1",
+};
 
-function instanceConfigurationsDto(overrides: Record<string, unknown> = {}) {
-  return Object.entries(instanceConfig()).map(([key, value]) => {
-    const configKey = key.toUpperCase();
-    const configValue = overrides[configKey] ?? value;
+// truthy: "1", "true", "yes" → anything else is falsy
+function isTruthy(v: string | undefined): boolean {
+  return v === "1" || v === "true" || v === "yes";
+}
 
-    return {
-      key: configKey,
-      value: configValue === null ? "" : String(configValue),
-      is_encrypted: false,
-    };
-  });
+// Derive the IInstanceConfig object (used by the main web app) from stored admin configs
+function buildInstanceConfig(saved: Record<string, string> = {}) {
+  const g = (k: string) => saved[k] ?? ADMIN_CONFIG_DEFAULTS[k] ?? "";
+  return {
+    enable_signup:                  isTruthy(g("ENABLE_SIGNUP")),
+    is_workspace_creation_disabled: isTruthy(g("IS_WORKSPACE_CREATION_DISABLED")),
+    is_google_enabled:              isTruthy(g("IS_GOOGLE_ENABLED")),
+    is_github_enabled:              isTruthy(g("IS_GITHUB_ENABLED")),
+    is_gitlab_enabled:              isTruthy(g("IS_GITLAB_ENABLED")),
+    is_gitea_enabled:               isTruthy(g("IS_GITEA_ENABLED")),
+    is_magic_login_enabled:         isTruthy(g("ENABLE_MAGIC_LINK_LOGIN")),
+    is_email_password_enabled:      isTruthy(g("ENABLE_EMAIL_PASSWORD")),
+    github_app_name:                g("GITHUB_APP_NAME"),
+    slack_client_id:                g("SLACK_CLIENT_ID") || null,
+    posthog_api_key:                g("POSTHOG_API_KEY") || null,
+    posthog_host:                   g("POSTHOG_HOST") || null,
+    has_unsplash_configured:        isTruthy(g("HAS_UNSPLASH_CONFIGURED")),
+    has_llm_configured:             isTruthy(g("HAS_LLM_CONFIGURED")),
+    file_size_limit:                Number(g("FILE_SIZE_LIMIT")) || 5242880,
+    is_smtp_configured:             isTruthy(g("IS_SMTP_CONFIGURED")),
+    admin_base_url:                 g("ADMIN_BASE_URL"),
+    space_base_url:                 g("SPACE_BASE_URL"),
+    app_base_url:                   g("APP_BASE_URL"),
+    instance_changelog_url:         g("INSTANCE_CHANGELOG_URL"),
+    is_self_managed:                true,
+  };
+}
+
+// Build the configurations array returned to the admin app
+function instanceConfigurationsDto(saved: Record<string, string> = {}) {
+  return Object.entries(ADMIN_CONFIG_DEFAULTS).map(([key, defaultValue]) => ({
+    key,
+    value: saved[key] ?? defaultValue,
+    is_encrypted: false,
+  }));
 }
 
 export const instanceModule = new Elysia({prefix: "/instances"})
@@ -91,8 +122,9 @@ export const instanceModule = new Elysia({prefix: "/instances"})
     const instance = await prisma.instance.findFirst();
     if (!instance) return {is_activated: false, is_setup_done: false};
     const workspaceCount = await prisma.workspace.count();
+    const saved = (instance.configurations as Record<string, string>) ?? {};
     return {
-      config: instanceConfig(),
+      config: buildInstanceConfig(saved),
       instance: {
         id: instance.id,
         instance_name: instance.instanceName,
@@ -342,7 +374,9 @@ export const instanceModule = new Elysia({prefix: "/instances"})
       set.status = 403;
       return {detail: "Instance admin access required."};
     }
-    return instanceConfigurationsDto();
+    const instance = await prisma.instance.findFirst();
+    const saved = (instance?.configurations as Record<string, string>) ?? {};
+    return instanceConfigurationsDto(saved);
   })
 
   .patch("/configurations/", async ({body, headers, set}) => {
@@ -351,7 +385,24 @@ export const instanceModule = new Elysia({prefix: "/instances"})
       set.status = 403;
       return {detail: "Instance admin access required."};
     }
-    return instanceConfigurationsDto(body as Record<string, unknown>);
+    const instance = await prisma.instance.findFirst();
+    if (!instance) { set.status = 400; return {detail: "Instance not found."}; }
+
+    const incoming = body as Record<string, unknown>;
+    const existing = (instance.configurations as Record<string, string>) ?? {};
+    const merged: Record<string, string> = {
+      ...existing,
+      ...Object.fromEntries(
+        Object.entries(incoming).map(([k, v]) => [k.toUpperCase(), v === null ? "" : String(v)])
+      ),
+    };
+
+    await prisma.instance.update({
+      where: {id: instance.id},
+      data: {configurations: merged},
+    });
+
+    return instanceConfigurationsDto(merged);
   })
 
   .delete("/configurations/disable-email-feature/", async ({headers, set}) => {
