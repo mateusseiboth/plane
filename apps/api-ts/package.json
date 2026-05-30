@@ -1,0 +1,36 @@
+{
+  "name": "@plane/api-ts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "test:contract": "bun test tests/contract",
+    "test:unit": "bun test tests/unit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:pull": "prisma db pull",
+    "db:migrate": "prisma migrate deploy",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@elysiajs/bearer": "^1.2.0",
+    "@elysiajs/cors": "^1.2.0",
+    "@elysiajs/jwt": "^1.2.0",
+    "jose": "^5.10.0",
+    "@elysiajs/swagger": "^1.2.2",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "7",
+    "elysia": "^1.2.25",
+    "mysql2": "^3.14.0",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.20.0",
+    "prisma": "7",
+    "typescript": "^5.8.3"
+  },
+  "trustedDependencies": ["@prisma/client", "prisma"]
+}

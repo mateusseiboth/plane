@@ -1,0 +1,215 @@
+name: plane-stack
+
+# Full Plane stack — TypeScript API only (no Django).
+# Acesso: http://localhost:8080/
+# God-mode: http://localhost:8080/god-mode/
+# API:      http://localhost:8080/api/v1/
+
+volumes:
+  pgdata_stack:
+  redisdata_stack:
+  uploads_stack:
+  rabbitmq_stack:
+
+networks:
+  plane_net:
+    driver: bridge
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  plane-db:
+    image: postgres:15.7-alpine
+    restart: unless-stopped
+    networks: [plane_net]
+    volumes:
+      - pgdata_stack:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: plane
+      POSTGRES_PASSWORD: plane
+      POSTGRES_DB: plane
+      PGDATA: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plane -d plane"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  plane-redis:
+    image: valkey/valkey:7.2.11-alpine
+    restart: unless-stopped
+    networks: [plane_net]
+    volumes:
+      - redisdata_stack:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  plane-minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    networks: [plane_net]
+    command: server /export --console-address ":9090"
+    volumes:
+      - uploads_stack:/export
+    environment:
+      MINIO_ROOT_USER: planeaccess
+      MINIO_ROOT_PASSWORD: planesecret
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    networks: [plane_net]
+    depends_on:
+      plane-minio:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set myminio http://plane-minio:9000 planeaccess planesecret &&
+        mc mb myminio/uploads --ignore-existing &&
+        mc anonymous set public myminio/uploads
+      "
+
+  # ── TypeScript API ──────────────────────────────────────────────────────────
+
+  api-ts:
+    build:
+      context: ./apps/api-ts
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    networks: [plane_net]
+    volumes:
+      - ./apps/api-ts:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgresql://plane:plane@plane-db:5432/plane
+      PORT: 8001
+      NODE_ENV: production
+      JWT_SECRET: plane-jwt-secret-change-in-production-please
+      CORS_ALLOWED_ORIGINS: http://localhost:8080
+      AWS_S3_ENDPOINT_URL: http://plane-minio:9000
+      AWS_ACCESS_KEY_ID: planeaccess
+      AWS_SECRET_ACCESS_KEY: planesecret
+      AWS_S3_BUCKET_NAME: uploads
+    command: >
+      sh -c "
+        bunx prisma db push --url $$DATABASE_URL --accept-data-loss &&
+        bun run src/index.ts
+      "
+    depends_on:
+      plane-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8001/api/v1/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  # ── Seed: creates admin user + default workspace ────────────────────────────
+
+  seed:
+    build:
+      context: ./apps/api-ts
+      dockerfile: Dockerfile.dev
+    restart: "no"
+    networks: [plane_net]
+    volumes:
+      - ./apps/api-ts:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgresql://plane:plane@plane-db:5432/plane
+      JWT_SECRET: plane-jwt-secret-change-in-production-please
+    command: bun run scripts/seed.ts
+    depends_on:
+      api-ts:
+        condition: service_healthy
+
+  # ── Frontend apps ───────────────────────────────────────────────────────────
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.web.local
+    restart: unless-stopped
+    networks: [plane_net]
+    depends_on:
+      api-ts:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile.admin.local
+    restart: unless-stopped
+    networks: [plane_net]
+    depends_on:
+      api-ts:
+        condition: service_healthy
+
+  space:
+    build:
+      context: ./apps/space
+      dockerfile: Dockerfile.space.local
+    restart: unless-stopped
+    networks: [plane_net]
+    depends_on:
+      api-ts:
+        condition: service_healthy
+
+  live:
+    build:
+      context: ./apps/live
+      dockerfile: Dockerfile.live.local
+    restart: unless-stopped
+    networks: [plane_net]
+    depends_on:
+      api-ts:
+        condition: service_healthy
+
+  # ── Reverse proxy (nginx) ───────────────────────────────────────────────────
+
+  proxy:
+    build:
+      context: ./apps/proxy-ts
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks: [plane_net]
+    ports:
+      - "8080:80"
+    depends_on:
+      - api-ts
+      - web
+      - admin
+      - space
+      - live
+
+  sac-migrate:
+    build:
+      context: ./apps/api-ts
+      dockerfile: Dockerfile.dev
+    restart: "no"
+    networks: [plane_net]
+    volumes:
+      - ./apps/api-ts:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgresql://plane:plane@plane-db:5432/plane
+      MYSQL_HOST: ${MYSQL_HOST:-localhost}
+      MYSQL_USER: ${MYSQL_USER:-developer}
+      MYSQL_PASS: ${MYSQL_PASS:-local}
+      MYSQL_DB: ${MYSQL_DB:-local}
+      WORKSPACE_SLUG: ${WORKSPACE_SLUG:-main}
+      DRY_RUN: ${DRY_RUN:-false}
+      BATCH_SIZE: ${BATCH_SIZE:-100}
+    command: bun run scripts/migrate-sac.ts
+    depends_on:
+      plane-db:
+        condition: service_healthy

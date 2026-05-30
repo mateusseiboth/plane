@@ -1,0 +1,18 @@
+[install]
+production = false
+
+[test]
+preload = ["./tests/helpers/setup.ts"]
+timeout = 30_000
+
+[bundle]
+target = "bun"
+
+# Path aliases — mirrors tsconfig paths so Bun resolves them natively
+[alias]
+"@" = "./src"
+"@db" = "./src/db.ts"
+"@middleware" = "./src/middleware"
+"@modules" = "./src/modules"
+"@utils" = "./src/utils"
+"@tests" = "./tests"

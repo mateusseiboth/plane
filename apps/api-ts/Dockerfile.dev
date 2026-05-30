@@ -1,0 +1,11 @@
+FROM oven/bun:1.3.8-alpine
+WORKDIR /app
+
+COPY package.json bun.lockb* ./
+RUN bun install
+
+COPY . .
+RUN bunx prisma generate
+
+EXPOSE 8001
+CMD ["bun", "run", "--hot", "src/index.ts"]

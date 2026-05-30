@@ -1,0 +1,48 @@
+version: "3.9"
+
+# Isolated test stack for the TypeScript API.
+# Run from the repo root:
+#   docker compose -f docker-compose-test-ts.yml up --build --abort-on-container-exit --exit-code-from api-ts-tests
+
+name: plane-test-ts
+
+volumes:
+  pgdata_ts_test: { driver: local, driver_opts: { type: tmpfs, device: tmpfs, o: "" } }
+
+networks:
+  test_ts_env: { driver: bridge }
+
+services:
+  test-db:
+    image: postgres:15.7-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: plane
+      POSTGRES_PASSWORD: plane
+      POSTGRES_DB: plane_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plane -d plane_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [test_ts_env]
+
+  api-ts-tests:
+    build:
+      context: apps/api-ts
+      dockerfile: Dockerfile.dev
+    command: >
+      sh -c "
+        bunx prisma db push --skip-generate --accept-data-loss &&
+        bun test
+      "
+    environment:
+      DATABASE_URL: postgresql://plane:plane@test-db:5432/plane_test
+      NODE_ENV: test
+      PORT: 8001
+    depends_on:
+      test-db:
+        condition: service_healthy
+    networks: [test_ts_env]

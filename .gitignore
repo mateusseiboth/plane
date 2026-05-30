@@ -117,3 +117,4 @@ packages/i18n/src/types/keys.generated.ts
 
 # Local security advisory notes (not for version control)
 /advisories.md
+old_intranet/

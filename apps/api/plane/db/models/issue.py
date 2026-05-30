@@ -168,6 +168,15 @@ class Issue(ChangeTrackerMixin, ProjectBaseModel):
         null=True,
         blank=True,
     )
+    # Custom fields for SAC migration
+    entity = models.ForeignKey(
+        "db.Entity",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="issues",
+    )
+    legacy_ticket_number = models.CharField(max_length=50, null=True, blank=True, db_index=True)
 
     issue_objects = IssueManager()
 

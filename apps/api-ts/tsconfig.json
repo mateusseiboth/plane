@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@db": [
+        "./src/db.ts"
+      ],
+      "@middleware/*": [
+        "./src/middleware/*"
+      ],
+      "@modules/*": [
+        "./src/modules/*"
+      ],
+      "@utils/*": [
+        "./src/utils/*"
+      ],
+      "@tests/*": [
+        "./tests/*"
+      ]
+    }
+  },
+  "include": [
+    "./src/**/*",
+    "./tests/**/*",
+    "./prisma.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

@@ -1,0 +1,11 @@
+FROM node:22-alpine
+RUN apk add --no-cache curl
+WORKDIR /app
+# Install react-router runtime and its peer deps that are dynamically required
+RUN npm install @react-router/serve@7 @react-router/node@7 react-router@7 isbot@5
+COPY build ./build
+EXPOSE 3000
+ENV PORT=3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:3000/spaces/ >/dev/null || exit 1
+CMD ["node_modules/.bin/react-router-serve", "./build/server/index.js"]

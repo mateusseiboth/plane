@@ -87,3 +87,5 @@ allowBuilds:
   msgpackr-extract: true
   turbo: true
   sharp: false
+  '@prisma/engines': set this to true or false
+  prisma: set this to true or false

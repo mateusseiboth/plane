@@ -64,3 +64,10 @@ from .asset import (
 from .invite import WorkspaceInviteSerializer
 from .member import ProjectMemberSerializer
 from .sticky import StickySerializer
+from .entity import (
+    EntitySerializer,
+    EntityLiteSerializer,
+    TechnicalVisitSerializer,
+    TechnicalVisitCreateSerializer,
+    TechnicalVisitReportSerializer,
+)
