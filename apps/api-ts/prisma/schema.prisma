@@ -8,6 +8,24 @@ datasource db {
   provider = "postgresql"
 }
 
+model Instance {
+  id                    String    @id @default(uuid()) @db.Uuid
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  instanceName          String    @default("Plane") @map("instance_name")
+  instanceId            String    @unique @map("instance_id")
+  currentVersion        String    @default("0.23-dev") @map("current_version")
+  latestVersion         String?   @map("latest_version")
+  edition               String    @default("PLANE_COMMUNITY")
+  domain                String    @default("")
+  isSetupDone           Boolean   @default(false) @map("is_setup_done")
+  isSignupScreenVisited Boolean   @default(false) @map("is_signup_screen_visited")
+  isTelemetryEnabled    Boolean   @default(true) @map("is_telemetry_enabled")
+  isSupportRequired     Boolean   @default(true) @map("is_support_required")
+  lastCheckedAt         DateTime  @default(now()) @map("last_checked_at")
+  @@map("instances")
+}
+
 model User {
   id                String    @id @default(uuid()) @db.Uuid
   createdAt         DateTime  @default(now()) @map("created_at")

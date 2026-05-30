@@ -23,6 +23,7 @@ import { gitIntegrationModule } from "@modules/integration/git";
 import { slackIntegrationModule } from "@modules/integration/slack";
 import { aiModule } from "@modules/ai";
 import { premiumModule } from "@modules/premium";
+import { instanceModule } from "@modules/instance";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -38,6 +39,11 @@ function errorHandler({ code, error, set }: any) {
   }
   if (code === "NOT_FOUND") { set.status = 404; return { detail: "Not found." }; }
   if (code === "VALIDATION") { set.status = 400; return { detail: "Invalid request data.", errors: (error as any)?.message }; }
+  const msg = error?.message ?? "";
+  if (msg.includes("Authentication credentials") || msg.includes("Not authenticated")) {
+    set.status = 401;
+    return { detail: msg };
+  }
   set.status = 500;
   console.error("[error]", error);
   return { detail: "Internal server error." };
@@ -62,6 +68,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   }))
   .onError(errorHandler)
   .get("/health/", () => ({ status: "ok", version: "1.0.0" }))
+  .use(instanceModule)
   .use(workspaceModule)
   .use(userModule)
   .use(authModule)      // API token management (/users/api-tokens/)

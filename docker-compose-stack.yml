@@ -127,7 +127,12 @@ services:
     environment:
       DATABASE_URL: postgresql://plane:plane@plane-db:5432/plane
       JWT_SECRET: plane-jwt-secret-change-in-production-please
-    command: bun run scripts/seed.ts
+    command: >
+      sh -c "
+        bunx prisma db push --url $$DATABASE_URL --accept-data-loss &&
+        bunx prisma generate &&
+        bun run scripts/seed.ts
+      "
     depends_on:
       api-ts:
         condition: service_healthy
@@ -156,8 +161,8 @@ services:
 
   space:
     build:
-      context: ./apps/space
-      dockerfile: Dockerfile.space.local
+      context: ./.deploy/space
+      dockerfile: Dockerfile
     restart: unless-stopped
     networks: [plane_net]
     depends_on:
@@ -166,10 +171,16 @@ services:
 
   live:
     build:
-      context: ./apps/live
-      dockerfile: Dockerfile.live.local
+      context: ./.deploy/live
+      dockerfile: Dockerfile
     restart: unless-stopped
     networks: [plane_net]
+    environment:
+      API_BASE_URL: http://api-ts:8001
+      LIVE_SERVER_SECRET_KEY: live-secret-key-change-in-production
+      CORS_ALLOWED_ORIGINS: http://localhost:8080
+      REDIS_URL: redis://plane-redis:6379
+      NODE_ENV: production
     depends_on:
       api-ts:
         condition: service_healthy
