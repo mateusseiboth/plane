@@ -4,35 +4,28 @@
  * See the LICENSE file for details.
  */
 
-import React, { useEffect, useState } from "react";
-import { observer } from "mobx-react";
-import type {
-  Control,
-  FieldArrayWithId,
-  UseFieldArrayRemove,
-  UseFormGetValues,
-  UseFormSetValue,
-  UseFormWatch,
-} from "react-hook-form";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { usePopper } from "react-popper";
-import { XCircle } from "lucide-react";
-import { Listbox } from "@headlessui/react";
+import {Listbox} from "@headlessui/react";
+import {XCircle} from "lucide-react";
+import {observer} from "mobx-react";
+import React, {useEffect, useState} from "react";
+import type {Control, FieldArrayWithId, UseFieldArrayRemove, UseFormGetValues, UseFormSetValue, UseFormWatch} from "react-hook-form";
+import {Controller, useFieldArray, useForm} from "react-hook-form";
+import {usePopper} from "react-popper";
 // plane imports
-import type { EUserPermissions } from "@plane/constants";
-import { ROLE, ROLE_DETAILS } from "@plane/constants";
-import { useTranslation } from "@plane/i18n";
-import { Button } from "@plane/propel/button";
-import { PlusIcon, CheckIcon, ChevronDownIcon } from "@plane/propel/icons";
-import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import { EOnboardingSteps } from "@plane/types";
-import { Input, Spinner } from "@plane/ui";
+import type {EUserPermissions} from "@plane/constants";
+import {ROLE, ROLE_DETAILS} from "@plane/constants";
+import {useTranslation} from "@plane/i18n";
+import {Button} from "@plane/propel/button";
+import {CheckIcon, ChevronDownIcon, PlusIcon} from "@plane/propel/icons";
+import {TOAST_TYPE, setToast} from "@plane/propel/toast";
+import {EOnboardingSteps} from "@plane/types";
+import {Input, Spinner} from "@plane/ui";
 // hooks
-import { useWorkspace } from "@/hooks/store/use-workspace";
+import {useWorkspace} from "@/hooks/store/use-workspace";
 // services
-import { WorkspaceService } from "@/services/workspace.service";
+import {WorkspaceService} from "@/services/workspace.service";
 // components
-import { CommonOnboardingHeader } from "../common";
+import {CommonOnboardingHeader} from "../common";
 
 type Props = {
   handleStepChange: (step: EOnboardingSteps, skipInvites?: boolean) => void;
@@ -79,23 +72,12 @@ const placeholderEmails = [
   "albert.zahm@frstflt.com",
 ];
 const InviteMemberInput = observer(function InviteMemberInput(props: InviteMemberFormProps) {
-  const {
-    control,
-    index,
-    fields,
-    remove,
-    errors,
-    isInvitationDisabled,
-    setIsInvitationDisabled,
-    setValue,
-    getValues,
-    watch,
-  } = props;
+  const {control, index, fields, remove, errors, isInvitationDisabled, setIsInvitationDisabled, setValue, getValues, watch} = props;
 
   const [referenceElement, setReferenceElement] = useState<HTMLButtonElement | null>(null);
   const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
 
-  const { t } = useTranslation();
+  const {t} = useTranslation();
 
   const email = watch(`emails.${index}.email`);
 
@@ -123,7 +105,7 @@ const InviteMemberInput = observer(function InviteMemberInput(props: InviteMembe
     }
   };
 
-  const { styles, attributes } = usePopper(referenceElement, popperElement, {
+  const {styles, attributes} = usePopper(referenceElement, popperElement, {
     placement: "bottom-end",
     modifiers: [
       {
@@ -148,7 +130,7 @@ const InviteMemberInput = observer(function InviteMemberInput(props: InviteMembe
                 message: "Invalid Email ID",
               },
             }}
-            render={({ field: { value, onChange, ref } }) => (
+            render={({field: {value, onChange, ref}}) => (
               <Input
                 id={`emails.${index}.email`}
                 name={`emails.${index}.email`}
@@ -171,8 +153,8 @@ const InviteMemberInput = observer(function InviteMemberInput(props: InviteMembe
           <Controller
             control={control}
             name={`emails.${index}.role`}
-            rules={{ required: true }}
-            render={({ field: { value, onChange } }) => (
+            rules={{required: true}}
+            render={({field: {value, onChange}}) => (
               <Listbox
                 as="div"
                 value={value}
@@ -187,18 +169,12 @@ const InviteMemberInput = observer(function InviteMemberInput(props: InviteMembe
                   ref={setReferenceElement}
                   className="flex w-full items-center justify-between gap-1 rounded-md border-[0.5px] border-strong px-2.5 py-2 text-13"
                 >
-                  <span
-                    className={`text-13 ${
-                      !getValues(`emails.${index}.role_active`) ? "text-placeholder" : "text-primary"
-                    } sm:text-13`}
-                  >
+                  <span className={`text-13 ${!getValues(`emails.${index}.role_active`) ? "text-placeholder" : "text-primary"} sm:text-13`}>
                     {ROLE[value]}
                   </span>
 
                   <ChevronDownIcon
-                    className={`size-3 ${
-                      !getValues(`emails.${index}.role_active`) ? "stroke-placeholder" : "stroke-primary"
-                    }`}
+                    className={`size-3 ${!getValues(`emails.${index}.role_active`) ? "stroke-placeholder" : "stroke-primary"}`}
                   />
                 </Listbox.Button>
 
@@ -214,13 +190,13 @@ const InviteMemberInput = observer(function InviteMemberInput(props: InviteMembe
                         as="div"
                         key={key}
                         value={parseInt(key)}
-                        className={({ active, selected }) =>
+                        className={({active, selected}) =>
                           `cursor-pointer truncate rounded-sm px-1 py-1.5 select-none ${
                             active || selected ? "bg-onboarding-background-400/40" : ""
                           } ${selected ? "text-primary" : "text-secondary"}`
                         }
                       >
-                        {({ selected }) => (
+                        {({selected}) => (
                           <div className="flex items-center gap-2 p-1 text-wrap">
                             <div className="flex flex-col">
                               <div className="text-13 font-medium">{t(value.i18n_title)}</div>
@@ -258,13 +234,13 @@ const InviteMemberInput = observer(function InviteMemberInput(props: InviteMembe
 });
 
 export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
-  const { handleStepChange } = props;
+  const {handleStepChange} = props;
 
   const [isInvitationDisabled, setIsInvitationDisabled] = useState(true);
 
-  const { workspaces } = useWorkspace();
+  const {workspaces} = useWorkspace();
   const workspacesList = Object.values(workspaces ?? {});
-  const workspace = workspacesList[0];
+  const workspace = workspacesList?.[0];
 
   const {
     control,
@@ -272,10 +248,10 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
     getValues,
     setValue,
     handleSubmit,
-    formState: { isSubmitting, errors, isValid },
+    formState: {isSubmitting, errors, isValid},
   } = useForm<FormValues>();
 
-  const { fields, append, remove } = useFieldArray({
+  const {fields, append, remove} = useFieldArray({
     control,
     name: "emails",
   });
@@ -287,8 +263,8 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
   const onSubmit = async (formData: FormValues) => {
     if (!workspace) return;
 
-    let payload = { ...formData };
-    payload = { emails: payload.emails.filter((email) => email.email !== "") };
+    let payload = {...formData};
+    payload = {emails: payload.emails.filter((email) => email.email !== "")};
 
     await workspaceService
       .inviteWorkspace(workspace.slug, {
@@ -315,20 +291,20 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
   };
 
   const appendField = () => {
-    append({ email: "", role: 15, role_active: false });
+    append({email: "", role: 15, role_active: false});
   };
 
   useEffect(() => {
     if (fields.length === 0) {
       append(
         [
-          { email: "", role: 15, role_active: false },
-          { email: "", role: 15, role_active: false },
-          { email: "", role: 15, role_active: false },
+          {email: "", role: 15, role_active: false},
+          {email: "", role: 15, role_active: false},
+          {email: "", role: 15, role_active: false},
         ],
         {
           focusIndex: 0,
-        }
+        },
       );
     }
   }, [fields, append]);
@@ -373,7 +349,10 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
           className="mx-8 flex items-center gap-1.5 bg-transparent text-13 font-medium text-accent-primary outline-accent-strong"
           onClick={appendField}
         >
-          <PlusIcon className="h-4 w-4" strokeWidth={2} />
+          <PlusIcon
+            className="h-4 w-4"
+            strokeWidth={2}
+          />
           Add another
         </button>
       </div>
@@ -385,9 +364,21 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
           className="w-full"
           disabled={isInvitationDisabled || !isValid || isSubmitting}
         >
-          {isSubmitting ? <Spinner height="20px" width="20px" /> : "Continue"}
+          {isSubmitting ? (
+            <Spinner
+              height="20px"
+              width="20px"
+            />
+          ) : (
+            "Continue"
+          )}
         </Button>
-        <Button variant="ghost" size="xl" className="w-full" onClick={nextStep}>
+        <Button
+          variant="ghost"
+          size="xl"
+          className="w-full"
+          onClick={nextStep}
+        >
           I’ll do it later
         </Button>
       </div>

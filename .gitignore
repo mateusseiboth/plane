@@ -34,12 +34,7 @@ yarn-error.log*
 pnpm-debug.log*
 .pnpm-debug.log*
 
-# Local env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+
 
 # Vercel
 .vercel
@@ -100,8 +95,6 @@ dev-editor
 *.rdb.gz
 
 storybook-static
-
-CLAUDE.md
 
 build/
 .react-router/

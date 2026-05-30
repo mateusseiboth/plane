@@ -4,22 +4,22 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
+import {useState} from "react";
 // plane imports
-import { ROLE } from "@plane/constants";
-import { Button } from "@plane/propel/button";
-import type { IWorkspaceMemberInvitation } from "@plane/types";
-import { Checkbox, Spinner } from "@plane/ui";
-import { truncateText } from "@plane/utils";
+import {ROLE} from "@plane/constants";
+import {Button} from "@plane/propel/button";
+import type {IWorkspaceMemberInvitation} from "@plane/types";
+import {Checkbox, Spinner} from "@plane/ui";
+import {truncateText} from "@plane/utils";
 // constants
-import { WorkspaceLogo } from "@/components/workspace/logo";
+import {WorkspaceLogo} from "@/components/workspace/logo";
 // hooks
-import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUserSettings } from "@/hooks/store/user";
+import {useWorkspace} from "@/hooks/store/use-workspace";
+import {useUserSettings} from "@/hooks/store/user";
 // services
-import { WorkspaceService } from "@/services/workspace.service";
+import {WorkspaceService} from "@/services/workspace.service";
 // local components
-import { CommonOnboardingHeader } from "../common";
+import {CommonOnboardingHeader} from "../common";
 
 type Props = {
   invitations: IWorkspaceMemberInvitation[];
@@ -29,13 +29,13 @@ type Props = {
 const workspaceService = new WorkspaceService();
 
 export function WorkspaceJoinInvitesStep(props: Props) {
-  const { invitations, handleNextStep, handleCurrentViewChange } = props;
+  const {invitations, handleNextStep, handleCurrentViewChange} = props;
   // states
   const [isJoiningWorkspaces, setIsJoiningWorkspaces] = useState(false);
   const [invitationsRespond, setInvitationsRespond] = useState<string[]>([]);
   // store hooks
-  const { fetchWorkspaces } = useWorkspace();
-  const { fetchCurrentUserSettings } = useUserSettings();
+  const {fetchWorkspaces} = useWorkspace();
+  const {fetchCurrentUserSettings} = useUserSettings();
 
   // handle invitation
   const handleInvitation = (workspace_invitation: IWorkspaceMemberInvitation, action: "accepted" | "withdraw") => {
@@ -48,14 +48,14 @@ export function WorkspaceJoinInvitesStep(props: Props) {
 
   // submit invitations
   const submitInvitations = async () => {
-    const invitation = invitations?.find((invitation) => invitation.id === invitationsRespond[0]);
+    const invitation = invitations?.find((invitation) => invitation.id === invitationsRespond?.[0]);
 
     if (invitationsRespond.length <= 0 && !invitation?.role) return;
 
     setIsJoiningWorkspaces(true);
 
     try {
-      await workspaceService.joinWorkspaces({ invitations: invitationsRespond });
+      await workspaceService.joinWorkspaces({invitations: invitationsRespond});
       await fetchWorkspaces();
       await fetchCurrentUserSettings();
       await handleNextStep();
@@ -67,7 +67,10 @@ export function WorkspaceJoinInvitesStep(props: Props) {
 
   return invitations && invitations.length > 0 ? (
     <div className="flex flex-col gap-10">
-      <CommonOnboardingHeader title="Join invites or create a workspace" description="All your work — unified." />
+      <CommonOnboardingHeader
+        title="Join invites or create a workspace"
+        description="All your work — unified."
+      />
       <div className="flex flex-col gap-3">
         {invitations &&
           invitations.length > 0 &&
@@ -106,7 +109,14 @@ export function WorkspaceJoinInvitesStep(props: Props) {
           onClick={submitInvitations}
           disabled={isJoiningWorkspaces || !invitationsRespond.length}
         >
-          {isJoiningWorkspaces ? <Spinner height="20px" width="20px" /> : "Continue"}
+          {isJoiningWorkspaces ? (
+            <Spinner
+              height="20px"
+              width="20px"
+            />
+          ) : (
+            "Continue"
+          )}
         </Button>
         <Button
           variant="ghost"
