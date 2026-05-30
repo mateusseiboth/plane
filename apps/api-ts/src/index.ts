@@ -72,22 +72,51 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
 
   // ── Timezones ─────────────────────────────────────────────────────────────────
   .get("/timezones/", () => {
-    const TIMEZONES = [
-      "America/Sao_Paulo", "America/Manaus", "America/Belem", "America/Fortaleza",
-      "America/Recife", "America/Maceio", "America/Bahia", "America/Cuiaba",
-      "America/Porto_Velho", "America/Boa_Vista", "America/Rio_Branco",
-      "America/Noronha", "UTC",
-      "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
-      "America/Toronto", "America/Mexico_City", "America/Buenos_Aires",
-      "America/Lima", "America/Bogota", "America/Santiago",
-      "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Madrid",
-      "Europe/Rome", "Europe/Moscow", "Europe/Istanbul",
-      "Asia/Tokyo", "Asia/Shanghai", "Asia/Kolkata", "Asia/Dubai",
-      "Asia/Singapore", "Asia/Seoul", "Asia/Bangkok",
-      "Africa/Cairo", "Africa/Johannesburg",
-      "Australia/Sydney", "Pacific/Auckland",
+    // Returns { timezones: TTimezoneObject[] } as expected by the frontend
+    const TZ_DATA: Array<{ value: string; label: string; utc_offset: string; gmt_offset: string }> = [
+      { value: "America/Noronha",     label: "Noronha",         utc_offset: "UTC-02:00", gmt_offset: "GMT-2" },
+      { value: "America/Sao_Paulo",   label: "São Paulo",       utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Bahia",       label: "Bahia",           utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Fortaleza",   label: "Fortaleza",       utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Recife",      label: "Recife",          utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Maceio",      label: "Maceió",          utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Belem",       label: "Belém",           utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Cuiaba",      label: "Cuiabá",          utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Porto_Velho", label: "Porto Velho",     utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Manaus",      label: "Manaus",          utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Boa_Vista",   label: "Boa Vista",       utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Rio_Branco",  label: "Rio Branco",      utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "UTC",                 label: "UTC",             utc_offset: "UTC+00:00", gmt_offset: "GMT+0" },
+      { value: "America/New_York",    label: "New York",        utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Chicago",     label: "Chicago",         utc_offset: "UTC-06:00", gmt_offset: "GMT-6" },
+      { value: "America/Denver",      label: "Denver",          utc_offset: "UTC-07:00", gmt_offset: "GMT-7" },
+      { value: "America/Los_Angeles", label: "Los Angeles",     utc_offset: "UTC-08:00", gmt_offset: "GMT-8" },
+      { value: "America/Toronto",     label: "Toronto",         utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Mexico_City", label: "Mexico City",     utc_offset: "UTC-06:00", gmt_offset: "GMT-6" },
+      { value: "America/Buenos_Aires",label: "Buenos Aires",    utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Lima",        label: "Lima",            utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Bogota",      label: "Bogotá",          utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Santiago",    label: "Santiago",        utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "Europe/London",       label: "London",          utc_offset: "UTC+00:00", gmt_offset: "GMT+0" },
+      { value: "Europe/Paris",        label: "Paris",           utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Berlin",       label: "Berlin",          utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Madrid",       label: "Madrid",          utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Rome",         label: "Rome",            utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Moscow",       label: "Moscow",          utc_offset: "UTC+03:00", gmt_offset: "GMT+3" },
+      { value: "Europe/Istanbul",     label: "Istanbul",        utc_offset: "UTC+03:00", gmt_offset: "GMT+3" },
+      { value: "Asia/Dubai",          label: "Dubai",           utc_offset: "UTC+04:00", gmt_offset: "GMT+4" },
+      { value: "Asia/Kolkata",        label: "Kolkata",         utc_offset: "UTC+05:30", gmt_offset: "GMT+5:30" },
+      { value: "Asia/Bangkok",        label: "Bangkok",         utc_offset: "UTC+07:00", gmt_offset: "GMT+7" },
+      { value: "Asia/Singapore",      label: "Singapore",       utc_offset: "UTC+08:00", gmt_offset: "GMT+8" },
+      { value: "Asia/Shanghai",       label: "Shanghai",        utc_offset: "UTC+08:00", gmt_offset: "GMT+8" },
+      { value: "Asia/Seoul",          label: "Seoul",           utc_offset: "UTC+09:00", gmt_offset: "GMT+9" },
+      { value: "Asia/Tokyo",          label: "Tokyo",           utc_offset: "UTC+09:00", gmt_offset: "GMT+9" },
+      { value: "Africa/Cairo",        label: "Cairo",           utc_offset: "UTC+02:00", gmt_offset: "GMT+2" },
+      { value: "Africa/Johannesburg", label: "Johannesburg",    utc_offset: "UTC+02:00", gmt_offset: "GMT+2" },
+      { value: "Australia/Sydney",    label: "Sydney",          utc_offset: "UTC+10:00", gmt_offset: "GMT+10" },
+      { value: "Pacific/Auckland",    label: "Auckland",        utc_offset: "UTC+12:00", gmt_offset: "GMT+12" },
     ];
-    return TIMEZONES.map(tz => ({ timezone: tz, label: tz.replace(/_/g, " ") }));
+    return { timezones: TZ_DATA };
   })
 
   // ── Unsplash stub (not configured) ────────────────────────────────────────────
