@@ -3,27 +3,9 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
+import { serializeIssue, ISSUE_INCLUDE, isoDate, dateOnly } from "@utils/serialize";
 
-const ISSUE_INCLUDE = {
-  state: { select: { id: true, name: true, color: true, group: true } },
-  assignees: {
-    where: { deletedAt: null },
-    include: { assignee: { select: { id: true, displayName: true, email: true } } },
-  },
-  labels: {
-    where: { deletedAt: null },
-    include: { label: { select: { id: true, name: true, color: true } } },
-  },
-  entity: { select: { id: true, name: true } },
-} as const;
-
-function serializeIssue(issue: any) {
-  return {
-    ...issue,
-    assignees: issue.assignees?.map((a: any) => a.assigneeId) ?? [],
-    label_ids: issue.labels?.map((l: any) => l.labelId) ?? [],
-  };
-}
+// serializeIssue, ISSUE_INCLUDE, isoDate, dateOnly imported from @utils/serialize
 
 export const issueModule = new Elysia({ prefix: "/workspaces/:slug/projects/:project_id/issues" })
   .use(authPlugin)

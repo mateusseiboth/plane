@@ -46,6 +46,9 @@ model User {
   isInstanceAdmin   Boolean   @default(false) @map("is_instance_admin")
   isBotUser         Boolean   @default(false) @map("is_bot_user")
   userTimezone      String    @default("UTC") @map("user_timezone")
+  language          String    @default("en") @db.VarChar(20)
+  weekStartDay      Int       @default(0) @map("week_start_day")
+  metadata          Json      @default("{}")
   lastLoginMedium   String    @default("email") @map("last_login_medium")
   isPasswordAutoset Boolean   @default(false) @map("is_password_autoset")
   isEmailVerified   Boolean   @default(false) @map("is_email_verified")
@@ -144,6 +147,7 @@ model Workspace {
   issueViews            IssueView[]
   gitConfigs            GitIntegrationConfig[]
   slackConfig           SlackIntegrationConfig?
+  settings              WorkspaceSetting[]
   estimates             Estimate[]
   aiProviders           AiProvider[]
   importJobs            ImportJob[]
@@ -1467,4 +1471,16 @@ model FileAsset {
   isDeleted   Boolean   @default(false) @map("is_deleted")
   attributes  Json      @default("{}")
   @@map("file_assets")
+}
+
+model WorkspaceSetting {
+  id          String    @id @default(uuid()) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String    @map("workspace_id") @db.Uuid
+  key         String    @db.VarChar(255)
+  value       Json      @default("{}")
+  @@unique([workspaceId, key])
+  @@map("workspace_settings")
 }

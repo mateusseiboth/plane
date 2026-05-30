@@ -484,6 +484,9 @@
         "heading": "Scripts",
         "new_script": "New Script",
         "description": "Automate your workflows with custom scripts and automation rules."
+      },
+      "entities": {
+        "title": "Entities"
       }
     },
     "empty_state": {

@@ -105,6 +105,7 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
   // states
   const [gptAssistantModal, setGptAssistantModal] = useState(false);
   const [isMoving, setIsMoving] = useState<boolean>(false);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>((data as any)?.entity_id ?? null);
 
   // refs
   const editorRef = useRef<EditorRefApi>(null);
@@ -238,7 +239,7 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
     )
       return;
 
-    const submitData = !data?.id
+    const submitData: any = !data?.id
       ? formData
       : {
           ...getChangedIssuefields(formData, dirtyFields as { [key: string]: boolean | undefined }),
@@ -247,6 +248,9 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
           description_html: formData.description_html ?? "<p></p>",
           type_id: getValues<"type_id">("type_id"),
         };
+
+    // Include entity_id from local state (not tracked by RHF)
+    submitData.entity_id = selectedEntityId ?? undefined;
 
     // this condition helps to move the issues from draft to project issues
     if (formData.hasOwnProperty("is_draft")) submitData.is_draft = formData.is_draft;
@@ -505,6 +509,8 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
                   isDraft={isDraft}
                   handleFormChange={handleFormChange}
                   setSelectedParentIssue={setSelectedParentIssue}
+                  entityId={selectedEntityId}
+                  onEntityChange={setSelectedEntityId}
                 />
               </div>
               {showActionButtons && (

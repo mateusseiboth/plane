@@ -484,6 +484,9 @@
         "heading": "Skripty",
         "new_script": "Nový skript",
         "description": "Automatizujte svoje pracovné postupy pomocou vlastných skriptov a automatizačných pravidiel."
+      },
+      "entities": {
+        "title": "Entities"
       }
     },
     "empty_state": {

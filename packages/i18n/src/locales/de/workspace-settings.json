@@ -484,6 +484,9 @@
         "heading": "Skripte",
         "new_script": "Neues Skript",
         "description": "Automatisieren Sie Ihre Workflows mit benutzerdefinierten Skripten und Automatisierungsregeln."
+      },
+      "entities": {
+        "title": "Entitäten"
       }
     },
     "empty_state": {

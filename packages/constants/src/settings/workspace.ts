@@ -5,8 +5,8 @@
  */
 
 // plane imports
-import type { TWorkspaceSettingsItem, TWorkspaceSettingsTabs } from "@plane/types";
-import { EUserWorkspaceRoles } from "@plane/types";
+import type {TWorkspaceSettingsItem, TWorkspaceSettingsTabs} from "@plane/types";
+import {EUserWorkspaceRoles} from "@plane/types";
 
 export enum WORKSPACE_SETTINGS_CATEGORY {
   ADMINISTRATION = "administration",
@@ -41,13 +41,13 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/members/`,
   },
-  "billing-and-plans": {
-    key: "billing-and-plans",
-    i18n_label: "workspace_settings.settings.billing_and_plans.title",
-    href: `/settings/billing`,
-    access: [EUserWorkspaceRoles.ADMIN],
-    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/billing/`,
-  },
+  // "billing-and-plans": {
+  //   key: "billing-and-plans",
+  //   i18n_label: "workspace_settings.settings.billing_and_plans.title",
+  //   href: `/settings/billing`,
+  //   access: [EUserWorkspaceRoles.ADMIN],
+  //   highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/billing/`,
+  // },
   export: {
     key: "export",
     i18n_label: "workspace_settings.settings.exports.title",
@@ -62,16 +62,24 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/webhooks/`,
   },
+  entities: {
+    key: "entities",
+    i18n_label: "workspace_settings.settings.entities.title",
+    href: `/settings/entities`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/entities/`,
+  },
 };
 
 export const WORKSPACE_SETTINGS_ACCESS = Object.fromEntries(
-  Object.entries(WORKSPACE_SETTINGS).map(([_, { href, access }]) => [href, access])
+  Object.entries(WORKSPACE_SETTINGS).map(([_, {href, access}]) => [href, access]),
 );
 
 export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWorkspaceSettingsItem[]> = {
   [WORKSPACE_SETTINGS_CATEGORY.ADMINISTRATION]: [
     WORKSPACE_SETTINGS["general"],
     WORKSPACE_SETTINGS["members"],
+    WORKSPACE_SETTINGS["entities"],
     WORKSPACE_SETTINGS["billing-and-plans"],
     WORKSPACE_SETTINGS["export"],
   ],

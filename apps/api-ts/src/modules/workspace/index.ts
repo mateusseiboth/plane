@@ -2,6 +2,7 @@ import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {paginate} from "@utils/pagination";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
+import {serializeIssue, ISSUE_INCLUDE} from "@utils/serialize";
 import {randomBytes} from "crypto";
 import Elysia from "elysia";
 
@@ -747,6 +748,153 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return issue;
   })
 
+  // ── Dashboard (home widgets) ──────────────────────────────────────────────────
+
+  .get("/:slug/dashboard/", async ({params: {slug}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+
+    const dashboardId = `${ws.id}-home`;
+    const DEFAULT_WIDGETS = [
+      { id: `${dashboardId}-overview`, key: "overview_stats", is_visible: true, widget_filters: {}, filters: {} },
+      { id: `${dashboardId}-assigned`, key: "assigned_issues", is_visible: true, widget_filters: { duration: "this_week" }, filters: {} },
+      { id: `${dashboardId}-created`, key: "created_issues", is_visible: true, widget_filters: { duration: "this_week" }, filters: {} },
+      { id: `${dashboardId}-state`, key: "issues_by_state_groups", is_visible: true, widget_filters: { duration: "this_week" }, filters: {} },
+      { id: `${dashboardId}-priority`, key: "issues_by_priority", is_visible: true, widget_filters: { duration: "this_week" }, filters: {} },
+      { id: `${dashboardId}-activity`, key: "recent_activity", is_visible: true, widget_filters: {}, filters: {} },
+      { id: `${dashboardId}-projects`, key: "recent_projects", is_visible: true, widget_filters: {}, filters: {} },
+      { id: `${dashboardId}-collab`, key: "recent_collaborators", is_visible: true, widget_filters: {}, filters: {} },
+    ];
+    return { id: dashboardId, name: "Home", widgets: DEFAULT_WIDGETS };
+  })
+
+  .get("/:slug/dashboard/:dashboard_id/", async ({params: {slug, dashboard_id}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+
+    const widgetKey = (query.widget_key as string) ?? "";
+    const now = new Date();
+    const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
+
+    // Overview stats
+    if (widgetKey === "overview_stats") {
+      const userProjectIds = (await prisma.projectMember.findMany({
+        where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+        select: { projectId: true },
+      })).map(m => m.projectId);
+      const [total, completed, pending, overdue] = await Promise.all([
+        prisma.issue.count({ where: { workspaceId: ws.id, projectId: { in: userProjectIds }, deletedAt: null, isDraft: false } }),
+        prisma.issue.count({ where: { workspaceId: ws.id, projectId: { in: userProjectIds }, deletedAt: null, isDraft: false, state: { group: "completed" } } }),
+        prisma.issue.count({ where: { workspaceId: ws.id, projectId: { in: userProjectIds }, deletedAt: null, isDraft: false, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
+        prisma.issue.count({ where: { workspaceId: ws.id, projectId: { in: userProjectIds }, deletedAt: null, isDraft: false, targetDate: { lt: now }, completedAt: null, state: { group: { notIn: ["completed", "cancelled"] } } } }),
+      ]);
+      return { total_issues: total, completed_issues: completed, pending_issues: pending, overdue_issues: overdue };
+    }
+
+    // Assigned issues
+    if (widgetKey === "assigned_issues") {
+      const issues = await prisma.issue.findMany({
+        where: { workspaceId: ws.id, deletedAt: null, isDraft: false, completedAt: null, assignees: { some: { assigneeId: user.id, deletedAt: null } } },
+        include: { state: { select: { name: true, group: true, color: true } }, assignees: { select: { assigneeId: true } }, labels: { select: { labelId: true } } },
+        orderBy: { updatedAt: "desc" },
+        take: 10,
+      });
+      return { issues: issues.map(serializeIssue), total_count: issues.length, next_page_results: false };
+    }
+
+    // Created issues
+    if (widgetKey === "created_issues") {
+      const issues = await prisma.issue.findMany({
+        where: { workspaceId: ws.id, deletedAt: null, isDraft: false, createdById: user.id },
+        include: { state: { select: { name: true, group: true, color: true } }, assignees: { select: { assigneeId: true } }, labels: { select: { labelId: true } } },
+        orderBy: { updatedAt: "desc" },
+        take: 10,
+      });
+      return { issues: issues.map(serializeIssue), total_count: issues.length, next_page_results: false };
+    }
+
+    // Issues by state groups
+    if (widgetKey === "issues_by_state_groups") {
+      const groups = await prisma.issue.groupBy({
+        by: ["stateId"],
+        where: { workspaceId: ws.id, deletedAt: null, isDraft: false, assignees: { some: { assigneeId: user.id, deletedAt: null } } },
+        _count: true,
+      });
+      const stateIds = groups.map(g => g.stateId).filter(Boolean) as string[];
+      const states = await prisma.state.findMany({ where: { id: { in: stateIds } }, select: { id: true, group: true } });
+      const stateGroupMap = Object.fromEntries(states.map(s => [s.id, s.group]));
+      const groupCounts: Record<string, number> = { backlog: 0, unstarted: 0, started: 0, completed: 0, cancelled: 0 };
+      for (const g of groups) {
+        const grp = g.stateId ? stateGroupMap[g.stateId] ?? "backlog" : "backlog";
+        groupCounts[grp] = (groupCounts[grp] ?? 0) + g._count;
+      }
+      return { data: Object.entries(groupCounts).map(([state, count]) => ({ state, count })) };
+    }
+
+    // Issues by priority
+    if (widgetKey === "issues_by_priority") {
+      const groups = await prisma.issue.groupBy({
+        by: ["priority"],
+        where: { workspaceId: ws.id, deletedAt: null, isDraft: false, assignees: { some: { assigneeId: user.id, deletedAt: null } } },
+        _count: true,
+      });
+      return { data: groups.map(g => ({ priority: g.priority, count: g._count })) };
+    }
+
+    // Recent activity
+    if (widgetKey === "recent_activity") {
+      const activities = await prisma.issueActivity.findMany({
+        where: { workspaceId: ws.id, actorId: user.id },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      });
+      return {
+        results: activities.map(a => ({
+          id: a.id, actor: a.actorId, issue: a.issueId, project: a.projectId, workspace: a.workspaceId,
+          verb: a.verb, field: a.field, old_value: a.oldValue, new_value: a.newValue,
+          created_at: a.createdAt?.toISOString(),
+        })),
+      };
+    }
+
+    // Recent projects
+    if (widgetKey === "recent_projects") {
+      const members = await prisma.projectMember.findMany({
+        where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+        include: { project: { select: { id: true, name: true, identifier: true, iconProp: true } } },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+      });
+      return {
+        results: members.map(m => ({
+          id: m.project.id, name: m.project.name, identifier: m.project.identifier, icon_prop: m.project.iconProp,
+        })),
+      };
+    }
+
+    // Recent collaborators
+    if (widgetKey === "recent_collaborators") {
+      const userProjectIds = (await prisma.projectMember.findMany({
+        where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+        select: { projectId: true },
+      })).map(m => m.projectId);
+      const coworkers = await prisma.projectMember.findMany({
+        where: { workspaceId: ws.id, projectId: { in: userProjectIds }, isActive: true, deletedAt: null, memberId: { not: user.id } },
+        include: { member: { select: { id: true, displayName: true, avatar: true, avatarUrl: true } } },
+        distinct: ["memberId"],
+        take: 8,
+      });
+      return {
+        collaborators: coworkers.map(m => ({
+          id: m.member.id, display_name: m.member.displayName, avatar: m.member.avatar, avatar_url: m.member.avatarUrl,
+          issues_count: 0,
+        })),
+      };
+    }
+
+    return { data: [] };
+  })
+
   // ── Home preferences ──────────────────────────────────────────────────────────
 
   .get("/:slug/home-preferences/", async ({params: {slug}, user}) => {
@@ -1007,46 +1155,109 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
   })
 
-  // ── Workspace-level issue view ─────────────────────────────────────────────
+  // ── Workspace-level issue view (global all-issues, my-issues, etc.) ──────────
+  // The frontend calls /issues/ or /issues-detail/ depending on expand params.
+  // Scope is limited to projects where the current user is an active member.
 
   .get("/:slug/issues/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
-    const where: any = {workspaceId: ws.id, deletedAt: null, isDraft: false};
+    // Limit to projects where user is an active member
+    const userProjectIds = (await prisma.projectMember.findMany({
+      where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
+      select: {projectId: true},
+    })).map(m => m.projectId);
+
+    const where: any = {
+      workspaceId: ws.id,
+      deletedAt: null,
+      isDraft: false,
+      projectId: {in: userProjectIds},
+    };
+
+    // Apply filters forwarded by the frontend
     if (query.project_id) where.projectId = query.project_id;
-    if (query.priority) where.priority = query.priority;
+    if (query.priority) where.priority = {in: (query.priority as string).split(",")};
     if (query.state_group) {
       const states = await prisma.state.findMany({
-        where: {workspaceId: ws.id, group: query.state_group as string, deletedAt: null},
+        where: {workspaceId: ws.id, group: {in: (query.state_group as string).split(",")}, deletedAt: null},
         select: {id: true},
       });
-      where.stateId = {in: states.map((s) => s.id)};
+      where.stateId = {in: states.map((s: any) => s.id)};
     }
+    if (query.state) where.stateId = {in: (query.state as string).split(",")};
     if (query.entity_id) where.entityId = query.entity_id;
-    if (query.legacy_ticket_number) where.legacyTicketNumber = {contains: query.legacy_ticket_number as string};
-    if (query.assignee_id) where.assignees = {some: {assigneeId: query.assignee_id, deletedAt: null}};
+    if (query.assignees) where.assignees = {some: {assigneeId: {in: (query.assignees as string).split(",")}, deletedAt: null}};
+    if (query.created_by) where.createdById = {in: (query.created_by as string).split(",")};
+    if (query.label) where.labels = {some: {labelId: {in: (query.label as string).split(",")}, deletedAt: null}};
+    if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+
+    const orderBy: any = {};
+    const order = (query.order_by as string) ?? "-updated_at";
+    const dir = order.startsWith("-") ? "desc" : "asc";
+    const field = order.replace(/^-/, "");
+    const fieldMap: Record<string, string> = {
+      updated_at: "updatedAt", created_at: "createdAt",
+      priority: "priority", state__name: "stateId", sort_order: "sortOrder",
+    };
+    orderBy[fieldMap[field] ?? "updatedAt"] = dir;
 
     return paginate({
       query: (skip, take) =>
-        prisma.issue.findMany({
-          where,
-          skip,
-          take,
-          include: {
-            state: {select: {id: true, name: true, color: true, group: true}},
-            entity: {select: {id: true, name: true}},
-            project: {select: {id: true, name: true, identifier: true}},
-            assignees: {where: {deletedAt: null}, select: {assigneeId: true}},
-          },
-          orderBy: {updatedAt: "desc"},
-        }),
+        prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
       count: () => prisma.issue.count({where}),
       cursor: query.cursor as string | undefined,
-      transform: (items) =>
-        items.map((i: any) => ({
-          ...i,
-          assignees: i.assignees?.map((a: any) => a.assigneeId) ?? [],
-        })),
+      transform: (items) => items.map(serializeIssue),
+    });
+  })
+
+  // Alias: frontend requests /issues-detail/ when it needs relation expansion
+  .get("/:slug/issues-detail/", async ({params: {slug}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+
+    const userProjectIds = (await prisma.projectMember.findMany({
+      where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
+      select: {projectId: true},
+    })).map(m => m.projectId);
+
+    const where: any = {
+      workspaceId: ws.id,
+      deletedAt: null,
+      isDraft: false,
+      projectId: {in: userProjectIds},
+    };
+
+    if (query.project_id) where.projectId = query.project_id;
+    if (query.priority) where.priority = {in: (query.priority as string).split(",")};
+    if (query.state_group) {
+      const states = await prisma.state.findMany({
+        where: {workspaceId: ws.id, group: {in: (query.state_group as string).split(",")}, deletedAt: null},
+        select: {id: true},
+      });
+      where.stateId = {in: states.map((s: any) => s.id)};
+    }
+    if (query.state) where.stateId = {in: (query.state as string).split(",")};
+    if (query.assignees) where.assignees = {some: {assigneeId: {in: (query.assignees as string).split(",")}, deletedAt: null}};
+    if (query.created_by) where.createdById = {in: (query.created_by as string).split(",")};
+    if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+
+    const orderBy: any = {};
+    const order = (query.order_by as string) ?? "-updated_at";
+    const dir = order.startsWith("-") ? "desc" : "asc";
+    const field = order.replace(/^-/, "");
+    const fieldMap: Record<string, string> = {
+      updated_at: "updatedAt", created_at: "createdAt",
+      priority: "priority", state__name: "stateId", sort_order: "sortOrder",
+    };
+    orderBy[fieldMap[field] ?? "updatedAt"] = dir;
+
+    return paginate({
+      query: (skip, take) =>
+        prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
+      count: () => prisma.issue.count({where}),
+      cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializeIssue),
     });
   });

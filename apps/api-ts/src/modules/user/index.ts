@@ -166,17 +166,21 @@ export const userModule = new Elysia({ prefix: "/users" })
   // ── Profile (TUserProfile contract) ──────────────────────────────────────────
 
   .get("/me/profile/", async ({ user }) => {
+    const fresh = await prisma.user.findUnique({ where: { id: user.id } });
     const lastMembership = await prisma.workspaceMember.findFirst({
       where: { memberId: user.id, isActive: true, deletedAt: null },
       orderBy: { createdAt: "desc" },
       select: { workspaceId: true },
     });
+    const meta = (fresh as any)?.metadata ?? {} as any;
     return {
       id: user.id,
       user: user.id,
       role: null,
       last_workspace_id: lastMembership?.workspaceId ?? null,
-      theme: {
+      language: (fresh as any)?.language ?? meta.language ?? "en",
+      week_start_day: (fresh as any)?.weekStartDay ?? meta.week_start_day ?? 0,
+      theme: meta.theme ?? {
         theme: "system",
         primary: "#3F76FF",
         background: "#FAFAFA",
@@ -207,6 +211,13 @@ export const userModule = new Elysia({ prefix: "/users" })
     if (b.last_name !== undefined) data.lastName = b.last_name;
     if (b.display_name !== undefined) data.displayName = b.display_name;
     if (b.user_timezone !== undefined) data.userTimezone = b.user_timezone;
+    if (b.language !== undefined) data.language = b.language;
+    if (b.week_start_day !== undefined) data.weekStartDay = b.week_start_day;
+    // Store theme in metadata JSON
+    if (b.theme !== undefined) {
+      const cur = await prisma.user.findUnique({ where: { id: user.id }, select: { metadata: true } });
+      data.metadata = { ...((cur?.metadata ?? {}) as any), theme: b.theme };
+    }
     await prisma.user.update({ where: { id: user.id }, data });
     const lastMembership = await prisma.workspaceMember.findFirst({
       where: { memberId: user.id, isActive: true, deletedAt: null },
@@ -226,6 +237,33 @@ export const userModule = new Elysia({ prefix: "/users" })
       is_onboarded: true,
       is_tour_completed: true,
     };
+  })
+
+  // ── Notification preferences (user-scoped, stored in metadata) ──────────────
+
+  .get("/me/notification-preferences/", async ({ user }) => {
+    const fresh = await prisma.user.findUnique({ where: { id: user.id }, select: { metadata: true } });
+    const prefs = (fresh?.metadata as any)?.notification_prefs ?? {};
+    return {
+      property_change: prefs.property_change ?? true,
+      state_change: prefs.state_change ?? true,
+      comment: prefs.comment ?? true,
+      mention: prefs.mention ?? true,
+      issue_completed: prefs.issue_completed ?? true,
+    };
+  })
+
+  .patch("/me/notification-preferences/", async ({ user, body }) => {
+    const b = body as any;
+    const fresh = await prisma.user.findUnique({ where: { id: user.id }, select: { metadata: true } });
+    const meta = (fresh?.metadata ?? {}) as any;
+    const existingPrefs = meta.notification_prefs ?? {};
+    const updated = { ...existingPrefs, ...b };
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { metadata: { ...meta, notification_prefs: updated } },
+    });
+    return updated;
   })
 
   // ── Accounts (OAuth stubs) ────────────────────────────────────────────────────

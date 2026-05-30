@@ -114,6 +114,9 @@ export const coreRoutes: RouteConfigEntry[] = [
           ),
         ]),
 
+        // Plugin Store
+        route(":workspaceSlug/plugins", "./(all)/[workspaceSlug]/(projects)/plugins/page.tsx"),
+
         // Archived Projects
         layout("./(all)/[workspaceSlug]/(projects)/projects/(detail)/archives/layout.tsx", [
           route(
@@ -281,6 +284,10 @@ export const coreRoutes: RouteConfigEntry[] = [
           route(
             ":workspaceSlug/settings/webhooks/:webhookId",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/webhooks/[webhookId]/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/settings/entities",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/entities/page.tsx"
           ),
         ]),
 

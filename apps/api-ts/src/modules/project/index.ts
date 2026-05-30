@@ -558,4 +558,52 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     if (!identifier) return { status: false };
     const taken = await prisma.project.findFirst({ where: { workspaceId: ws.id, identifier, deletedAt: null } });
     return { status: !taken };
+  })
+
+  // ── Backfill: add all workspace members to all workspace projects ─────────────
+  // Fixes projects created via migration that have no projectMember records.
+  // Only workspace admins can trigger this.
+
+  .post("/sync-members/", async ({ params: { slug }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const requester = await prisma.workspaceMember.findFirst({
+      where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+    });
+    if (!requester || requester.role < 20) {
+      set.status = 403;
+      return { detail: "Only workspace admins can sync project members." };
+    }
+
+    const [wsMembers, projects] = await Promise.all([
+      prisma.workspaceMember.findMany({
+        where: { workspaceId: ws.id, isActive: true, deletedAt: null, role: { gte: 10 } },
+        select: { memberId: true, role: true },
+      }),
+      prisma.project.findMany({
+        where: { workspaceId: ws.id, deletedAt: null },
+        select: { id: true },
+      }),
+    ]);
+
+    let added = 0;
+    for (const project of projects) {
+      for (const wsMember of wsMembers) {
+        try {
+          await prisma.projectMember.upsert({
+            where: { projectId_memberId: { projectId: project.id, memberId: wsMember.memberId } },
+            create: {
+              projectId: project.id,
+              workspaceId: ws.id,
+              memberId: wsMember.memberId,
+              role: Math.min(wsMember.role, 15),
+              isActive: true,
+            },
+            update: { isActive: true, deletedAt: null },
+          });
+          added++;
+        } catch {}
+      }
+    }
+
+    return { synced_projects: projects.length, synced_members: wsMembers.length, records_upserted: added };
   });

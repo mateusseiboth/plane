@@ -484,6 +484,9 @@
         "heading": "Scripts",
         "new_script": "Nuevo script",
         "description": "Automatiza tus flujos de trabajo con scripts personalizados y reglas de automatización."
+      },
+      "entities": {
+        "title": "Entidades"
       }
     },
     "empty_state": {

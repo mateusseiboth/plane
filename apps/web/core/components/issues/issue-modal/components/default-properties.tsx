@@ -34,6 +34,7 @@ import { useUserPermissions } from "@/hooks/store/user";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // plane web components
 import { IssueIdentifier } from "@/plane-web/components/issues/issue-details/issue-identifier";
+import { EntityDropdown } from "@/components/dropdowns/entity";
 
 type TIssueDefaultPropertiesProps = {
   control: Control<TIssue>;
@@ -47,6 +48,8 @@ type TIssueDefaultPropertiesProps = {
   isDraft: boolean;
   handleFormChange: () => void;
   setSelectedParentIssue: (issue: ISearchIssueResponse) => void;
+  entityId?: string | null;
+  onEntityChange?: (id: string | null) => void;
 };
 
 export const IssueDefaultProperties = observer(function IssueDefaultProperties(props: TIssueDefaultPropertiesProps) {
@@ -62,6 +65,8 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
     isDraft,
     handleFormChange,
     setSelectedParentIssue,
+    entityId,
+    onEntityChange,
   } = props;
   // states
   const [parentIssueListModalOpen, setParentIssueListModalOpen] = useState(false);
@@ -338,6 +343,17 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
           />
         )}
       />
+      {onEntityChange !== undefined && (
+        <div className="h-7">
+          <EntityDropdown
+            value={entityId ?? null}
+            onChange={onEntityChange}
+            workspaceSlug={workspaceSlug}
+            buttonVariant="border-with-text"
+            placeholder="Entidade"
+          />
+        </div>
+      )}
     </div>
   );
 });
