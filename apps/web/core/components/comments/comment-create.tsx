@@ -14,6 +14,7 @@ import type { TIssueComment, TCommentsOperations } from "@plane/types";
 import { cn, isCommentEmpty } from "@plane/utils";
 // components
 import { LiteTextEditor } from "@/components/editor/lite-text";
+import { AiImproveButton } from "@/components/editor/ai-improve-button";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
 // services
@@ -153,6 +154,9 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
           />
         )}
       />
+      <div className="flex justify-end px-2 pb-2">
+        <AiImproveButton editorRef={editorRef as React.RefObject<any>} workspaceSlug={workspaceSlug} />
+      </div>
     </div>
   );
 });

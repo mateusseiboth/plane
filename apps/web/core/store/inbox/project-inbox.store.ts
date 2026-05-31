@@ -442,11 +442,14 @@ export class ProjectInboxStore implements IProjectInboxStore {
           // fetching attachments
           this.store.issue.issueDetail.fetchAttachments(workspaceSlug, projectId, issueId),
         ]);
+      } else {
+        // Response received but missing issue.id — always clear loader to prevent stuck state
+        runInAction(() => set(this, "loader", undefined));
       }
       return inboxIssue;
     } catch (error) {
       console.error("Error fetching the intake issue with intake issue id");
-      this.loader = undefined;
+      runInAction(() => set(this, "loader", undefined));
       throw error;
     }
   };

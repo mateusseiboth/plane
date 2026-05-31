@@ -47,4 +47,20 @@ export class AIService extends APIService {
         throw error?.response?.data;
       });
   }
+
+  async improveText(
+    workspaceSlug: string,
+    content: string,
+    context?: {
+      issue_title?: string;
+      project_name?: string;
+      previous_comments?: string[];
+    }
+  ): Promise<{ response: string; original: string }> {
+    return this.post(`/api/workspaces/${workspaceSlug}/ai-assistant/improve-text/`, { content, context })
+      .then((res) => res?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
 }

@@ -7,7 +7,7 @@
 import { useState, useRef, forwardRef } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Building2 } from "lucide-react";
 // plane imports
 import { useOutsideClickDetector } from "@plane/hooks";
 import { Popover } from "@plane/propel/popover";
@@ -134,7 +134,18 @@ export const CalendarIssueBlock = observer(
                         displayProperties={issuesFilter?.issueFilters?.displayProperties}
                       />
                     )}
+                    {issue.legacy_ticket_number && (
+                      <span className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
+                        #{issue.legacy_ticket_number}
+                      </span>
+                    )}
                     <div className="truncate text-13 font-medium md:text-11 md:font-regular">{issue.name}</div>
+                    {(issue as any).entity?.name && (
+                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-subtle px-1 py-0.5 text-10 text-secondary">
+                        <Building2 className="h-2.5 w-2.5 shrink-0" />
+                        <span className="max-w-[80px] truncate">{(issue as any).entity.name}</span>
+                      </span>
+                    )}
                   </div>
                   <div
                     className={cn("size-5 flex-shrink-0", {

@@ -137,6 +137,7 @@ model Workspace {
   entities              Entity[]
   technicalVisits       TechnicalVisit[]
   webhooks              Webhook[]
+  customWebhooks        CustomWebhook[]
   analyticViews         AnalyticView[]
   deployBoards          DeployBoard[]
   notifications         Notification[]
@@ -456,7 +457,18 @@ model IssueComment {
   externalSource String?   @map("external_source")
   externalId     String?   @map("external_id")
   reactions      CommentReaction[]
+  versions       IssueCommentVersion[]
   @@map("issue_comments")
+}
+
+model IssueCommentVersion {
+  id          String       @id @default(uuid()) @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  comment     IssueComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId   String       @map("comment_id") @db.Uuid
+  commentHtml String       @map("comment_html")
+  editedById  String?      @map("edited_by_id") @db.Uuid
+  @@map("issue_comment_versions")
 }
 
 model IssueReaction {
@@ -1045,6 +1057,40 @@ model WebhookLog {
   responseBody String?  @map("response_body")
   retriedAt   DateTime? @map("retried_at")
   @@map("webhook_logs")
+}
+
+// ── Custom Integrations (webhook + JS logic) ──────────────────────────────────
+
+model CustomWebhook {
+  id          String    @id @default(uuid()) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  createdById String?   @map("created_by_id") @db.Uuid
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String    @map("workspace_id") @db.Uuid
+  name        String
+  description String    @default("")
+  isActive    Boolean   @default(true) @map("is_active")
+  jsCode      String    @map("js_code") @db.Text
+  secret      String    @default("")
+  auditLogs   CustomWebhookAuditLog[]
+  @@map("custom_webhooks")
+}
+
+model CustomWebhookAuditLog {
+  id          String        @id @default(uuid()) @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at")
+  webhook     CustomWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  webhookId   String        @map("webhook_id") @db.Uuid
+  workspaceId String        @map("workspace_id") @db.Uuid
+  sourceIp    String?       @map("source_ip")
+  body        String?       @db.Text
+  headers     String?       @db.Text
+  status      String        @default("success")
+  error       String?
+  executionMs Int?          @map("execution_ms")
+  @@map("custom_webhook_audit_logs")
 }
 
 model IssueView {

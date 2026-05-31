@@ -359,7 +359,12 @@ const IssueRowDetails = observer(function IssueRowDetails(props: IssueRowDetails
 
               <div className="my-auto flex h-full w-full items-center justify-between gap-2 truncate">
                 <div className="line-clamp-1 w-full text-14 text-primary">
-                  <div className="w-full overflow-hidden">
+                  <div className="flex w-full items-center gap-2 overflow-hidden">
+                    {issueDetail.legacy_ticket_number && (
+                      <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
+                        #{issueDetail.legacy_ticket_number}
+                      </span>
+                    )}
                     <Tooltip tooltipContent={issueDetail.name} isMobile={isMobile}>
                       <div
                         className="h-full w-full cursor-pointer truncate pr-4 text-left text-13 text-primary focus:outline-none"

@@ -139,6 +139,14 @@ const KanbanIssueDetailsBlock = observer(function KanbanIssueDetailsBlock(props:
           </div>
         </div>
       )}
+      {/* Legacy chamado number */}
+      {issue.legacy_ticket_number && (
+        <div className="mt-1 flex items-center">
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
+            #{issue.legacy_ticket_number}
+          </span>
+        </div>
+      )}
 
       <IssueProperties
         className="flex flex-wrap items-center gap-2 pt-1.5 whitespace-nowrap text-tertiary"

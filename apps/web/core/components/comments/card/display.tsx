@@ -20,6 +20,7 @@ import { LiteTextEditor } from "@/components/editor/lite-text";
 // local imports
 import { CommentReactions } from "../comment-reaction";
 import { CommentCardEditForm } from "./edit-form";
+import { CommentHistoryModal } from "../comment-history-modal";
 import { EmojiReactionButton, EmojiReactionPicker } from "@plane/propel/emoji-reaction";
 import { Avatar, Tooltip } from "@plane/ui";
 import { useMember } from "@/hooks/store/use-member";
@@ -57,8 +58,8 @@ export const CommentCardDisplay = observer(function CommentCardDisplay(props: TC
   } = props;
   // states
   const [highlightClassName, setHighlightClassName] = useState("");
-  // state
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   // store hooks
   const { getUserDetails } = useMember();
   // derived values
@@ -106,6 +107,7 @@ export const CommentCardDisplay = observer(function CommentCardDisplay(props: TC
   const shouldRenderReactions = hasReactions && !disabled;
 
   return (
+    <>
     <div id={commentBlockId} className="relative flex flex-col gap-2">
       {showAccessSpecifier && (
         <div className="absolute top-2.5 right-2.5 z-[1] text-tertiary">
@@ -128,7 +130,16 @@ export const CommentCardDisplay = observer(function CommentCardDisplay(props: TC
             >
               <span className="text-tertiary">
                 {calculateTimeAgo(comment.created_at)}
-                {comment.edited_at && " (edited)"}
+                {comment.edited_at && (
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(true)}
+                    className="ml-1 underline hover:text-primary transition-colors"
+                    title="Ver histórico de edições"
+                  >
+                    (editado)
+                  </button>
+                )}
               </span>
             </Tooltip>
           </div>
@@ -185,5 +196,16 @@ export const CommentCardDisplay = observer(function CommentCardDisplay(props: TC
         </>
       )}
     </div>
+    {showHistory && comment.edited_at && (
+      <CommentHistoryModal
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        workspaceSlug={workspaceSlug}
+        projectId={comment.project ?? projectId ?? ""}
+        issueId={comment.issue ?? ""}
+        commentId={comment.id}
+      />
+    )}
+    </>
   );
 });

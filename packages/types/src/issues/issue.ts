@@ -45,6 +45,8 @@ export enum EIssuesStoreType {
 export type TBaseIssue = {
   id: string;
   sequence_id: number;
+  /** Legacy SAC ticket number (e.g. "1234-2026"). Used for migration identification. */
+  legacy_ticket_number?: string | null;
   name: string;
   sort_order: number;
 

@@ -305,20 +305,105 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return visit;
   })
 
-  // ── Global search ──────────────────────────────────────────────────────────
+  // ── Legacy PowerK search (backward compat) ──────────────────────────────
 
   .get("/:slug/search/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const q = (query.query as string) ?? "";
-    if (!q.trim()) return {results: []};
-
-    const [issues, projects, pages, cycles, modules] = await Promise.all([
+    const q = ((query as any).search ?? (query as any).query ?? "") as string;
+    if (!q.trim()) return {results: {issue: [], project: [], page: [], cycle: [], module: [], workspace: [], issue_view: []}};
+    const [issues, projects] = await Promise.all([
       prisma.issue.findMany({
         where: {workspaceId: ws.id, deletedAt: null, OR: [{name: {contains: q, mode: "insensitive"}}, {legacyTicketNumber: {contains: q}}]},
-        select: {id: true, name: true, sequenceId: true, priority: true, project: {select: {id: true, identifier: true}}},
+        select: {id: true, name: true, sequenceId: true, priority: true, legacyTicketNumber: true, project: {select: {id: true, identifier: true}}, workspace: {select: {slug: true}}},
         take: 10,
       }),
+      prisma.project.findMany({
+        where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
+        select: {id: true, name: true, identifier: true, workspace: {select: {slug: true}}},
+        take: 5,
+      }),
+    ]);
+    return {
+      results: {
+        issue: issues.map((i: any) => ({id: i.id, name: i.name, sequence_id: i.sequenceId, project_id: i.project?.id, project__identifier: i.project?.identifier, workspace__slug: i.workspace?.slug, legacy_ticket_number: i.legacyTicketNumber ?? null, type_id: null})),
+        project: projects.map((p: any) => ({id: p.id, name: p.name, identifier: p.identifier, workspace__slug: p.workspace?.slug})),
+        page: [], cycle: [], module: [], workspace: [], issue_view: [],
+      },
+    };
+  })
+
+  // ── Global search (full-text, fuzzy, error-tolerant) ──────────────────────
+
+  .get("/:slug/global-search/", async ({params: {slug}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const q = ((query.query as string) ?? "").trim();
+    if (!q) return {results: {issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []}};
+
+    // Build fuzzy patterns: original query + each word token + one-char-dropped variations
+    function buildFuzzyTerms(input: string): string[] {
+      const terms = new Set<string>([input]);
+      // Add each word as individual search term
+      input.split(/\s+/).forEach(w => w.length >= 2 && terms.add(w));
+      // For short words/numbers, also try without last char (handles truncated numbers)
+      if (input.length >= 4 && input.length <= 12) {
+        terms.add(input.slice(0, -1));
+      }
+      // Swap adjacent chars (handle transpositions like "1324" for "1234")
+      for (let i = 0; i < Math.min(input.length - 1, 8); i++) {
+        const swapped = input.slice(0, i) + input[i + 1] + input[i] + input.slice(i + 2);
+        terms.add(swapped);
+      }
+      return [...terms];
+    }
+
+    const fuzzyTerms = buildFuzzyTerms(q);
+
+    // Build Prisma OR conditions for fuzzy text matching
+    function issueSearchWhere(terms: string[]) {
+      return terms.flatMap(t => [
+        {name: {contains: t, mode: "insensitive" as const}},
+        {descriptionStripped: {contains: t, mode: "insensitive" as const}},
+        {legacyTicketNumber: {contains: t, mode: "insensitive" as const}},
+      ]);
+    }
+
+    const [rawIssues, intakeIssues, commentIssueIds, projects, pages, cycles, modules] = await Promise.all([
+      // Work items — search title, description, legacy number
+      prisma.issue.findMany({
+        where: {workspaceId: ws.id, deletedAt: null, isDraft: false, OR: issueSearchWhere(fuzzyTerms)},
+        select: {
+          id: true, name: true, sequenceId: true, priority: true, stateId: true, legacyTicketNumber: true,
+          project: {select: {id: true, identifier: true, name: true}},
+          state: {select: {name: true, group: true}},
+        },
+        orderBy: {updatedAt: "desc"},
+        take: 20,
+      }),
+      // Intake issues (triage state) — search separately
+      prisma.issue.findMany({
+        where: {
+          workspaceId: ws.id, deletedAt: null, isDraft: false,
+          state: {group: "triage"},
+          OR: issueSearchWhere(fuzzyTerms),
+        },
+        select: {
+          id: true, name: true, sequenceId: true, priority: true, legacyTicketNumber: true,
+          project: {select: {id: true, identifier: true, name: true}},
+        },
+        take: 10,
+      }),
+      // Comments — find issue IDs where comment text matches
+      (async () => {
+        const comments = await prisma.issueComment.findMany({
+          where: {workspaceId: ws.id, deletedAt: null, OR: fuzzyTerms.map(t => ({commentStripped: {contains: t, mode: "insensitive" as const}}))},
+          select: {issueId: true},
+          distinct: ["issueId"],
+          take: 10,
+        });
+        return comments.map((c: any) => c.issueId);
+      })(),
       prisma.project.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
         select: {id: true, name: true, identifier: true},
@@ -341,13 +426,54 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       }),
     ]);
 
+    // Fetch additional issues matched by comments
+    const commentMatchedIssues = commentIssueIds.length
+      ? await prisma.issue.findMany({
+          where: {id: {in: commentIssueIds}, deletedAt: null},
+          select: {
+            id: true, name: true, sequenceId: true, priority: true, stateId: true, legacyTicketNumber: true,
+            project: {select: {id: true, identifier: true, name: true}},
+            state: {select: {name: true, group: true}},
+          },
+        })
+      : [];
+
+    // Merge and deduplicate issues (work items)
+    const intakeIds = new Set(intakeIssues.map((i: any) => i.id));
+    const allIssues = [...rawIssues, ...commentMatchedIssues].filter((i: any) => !intakeIds.has(i.id));
+    const issueMap = new Map(allIssues.map((i: any) => [i.id, i]));
+
+    // Score results: exact match in name > legacy number > description
+    function scoreIssue(issue: any): number {
+      const lq = q.toLowerCase();
+      let score = 0;
+      if (issue.name?.toLowerCase().includes(lq)) score += 10;
+      if (issue.legacyTicketNumber?.toLowerCase().includes(lq)) score += 15;
+      if (fuzzyTerms.some(t => issue.name?.toLowerCase().includes(t.toLowerCase()))) score += 5;
+      return score;
+    }
+
+    const sortedIssues = [...issueMap.values()].sort((a, b) => scoreIssue(b) - scoreIssue(a)).slice(0, 15);
+
     return {
       results: {
-        issues: issues.map((i) => ({...i, type: "issue"})),
-        projects: projects.map((p) => ({...p, type: "project"})),
-        pages: pages.map((p) => ({...p, type: "page"})),
-        cycles: cycles.map((c) => ({...c, type: "cycle"})),
-        modules: modules.map((m) => ({...m, type: "module"})),
+        issues: sortedIssues.map((i: any) => ({
+          id: i.id, name: i.name, type: "issue",
+          sequence_id: i.sequenceId,
+          legacy_ticket_number: i.legacyTicketNumber ?? null,
+          priority: i.priority,
+          state: i.state ? {name: i.state.name, group: i.state.group} : null,
+          project: i.project ? {id: i.project.id, identifier: i.project.identifier, name: i.project.name} : null,
+        })),
+        intakes: intakeIssues.slice(0, 8).map((i: any) => ({
+          id: i.id, name: i.name, type: "intake",
+          legacy_ticket_number: i.legacyTicketNumber ?? null,
+          project: i.project ? {id: i.project.id, identifier: i.project.identifier, name: i.project.name} : null,
+        })),
+        projects: projects.map((p: any) => ({...p, type: "project"})),
+        pages: pages.map((p: any) => ({...p, type: "page"})),
+        cycles: cycles.map((c: any) => ({...c, type: "cycle"})),
+        modules: modules.map((m: any) => ({...m, type: "module"})),
       },
     };
   })
@@ -1260,4 +1386,32 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       cursor: query.cursor as string | undefined,
       transform: (items) => items.map(serializeIssue),
     });
+  })
+
+  // ── Critical (urgent) issues — unresolved across all workspace projects ──────
+  .get("/:slug/urgent-issues/", async ({params: {slug}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const issues = await prisma.issue.findMany({
+      where: {
+        workspaceId: ws.id, priority: "urgent", deletedAt: null, isDraft: false,
+        state: {group: {notIn: ["completed", "cancelled"]}},
+      },
+      include: {
+        state: {select: {name: true, group: true, color: true}},
+        project: {select: {id: true, identifier: true, name: true}},
+        assignees: {where: {deletedAt: null}, select: {assigneeId: true}},
+      },
+      orderBy: {updatedAt: "desc"},
+      take: 50,
+    });
+    return issues.map((i: any) => ({
+      id: i.id, name: i.name, priority: i.priority,
+      sequence_id: i.sequenceId,
+      legacy_ticket_number: i.legacyTicketNumber ?? null,
+      state: i.state ? {name: i.state.name, group: i.state.group, color: i.state.color} : null,
+      project: i.project ? {id: i.project.id, identifier: i.project.identifier, name: i.project.name} : null,
+      assignee_ids: i.assignees.map((a: any) => a.assigneeId),
+      updated_at: i.updatedAt?.toISOString(),
+    }));
   });

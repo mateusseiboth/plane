@@ -221,6 +221,12 @@ export class WorkspaceService extends APIService {
         throw error?.response?.data;
       });
   }
+  async globalSearch(workspaceSlug: string, q: string): Promise<any> {
+    return this.get(`/api/workspaces/${workspaceSlug}/global-search/`, { params: { q } })
+      .then((res) => res?.data?.results ?? {issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []})
+      .catch(() => ({issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []}));
+  }
+
   async getProductUpdates(): Promise<IProductUpdateResponse[]> {
     return this.get("/api/release-notes/")
       .then((response) => response?.data)

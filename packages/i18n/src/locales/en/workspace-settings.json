@@ -487,6 +487,25 @@
       },
       "entities": {
         "title": "Entities"
+      },
+      "ai": {
+        "title": "AI Providers",
+        "heading": "AI Providers",
+        "description": "Configure AI providers (Ollama, OpenAI, etc.) for text improvement and other AI features.",
+        "add_provider": "Add Provider",
+        "no_providers": "No AI providers configured",
+        "provider_type": "Provider Type",
+        "base_url": "Base URL",
+        "api_key": "API Key (optional for Ollama)",
+        "default_model": "Default Model",
+        "timeout": "Timeout (seconds)",
+        "set_default": "Set as Default",
+        "is_default": "Default Provider"
+      },
+      "integrations_custom": {
+        "title": "Custom Integrations",
+        "heading": "Custom Integrations",
+        "description": "Create custom webhook integrations with JavaScript logic for advanced automation."
       }
     },
     "empty_state": {

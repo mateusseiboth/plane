@@ -61,6 +61,7 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
   const { getUserDetails } = useMember();
   const {
     issue: { getIssueById },
+    comment: { getCommentsByIssueId, getCommentById },
     peekIssue,
   } = useIssueDetail();
   const { getProjectById } = useProject();
@@ -90,6 +91,18 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
   if (!issue || !issue.project_id) return <></>;
 
   const isPeekModeActive = Boolean(peekIssue);
+
+  // Build AI context: title + project + up to 10 recent comment snippets
+  const commentIds = getCommentsByIssueId(issueId) ?? [];
+  const recentComments = [...commentIds].reverse().slice(0, 10).map((id: string) => {
+    const c = getCommentById(id);
+    return c?.comment_stripped?.slice(0, 300) ?? "";
+  }).filter(Boolean);
+  const aiContext = {
+    issue_title: issue.name,
+    project_name: projectDetails?.name,
+    previous_comments: recentComments,
+  };
 
   return (
     <>
@@ -152,6 +165,7 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
           projectId={issue.project_id}
           setIsSubmitting={(value) => setIsSubmitting(value)}
           workspaceSlug={workspaceSlug}
+          aiContext={aiContext}
         />
 
         <div className="flex items-center justify-between gap-2">

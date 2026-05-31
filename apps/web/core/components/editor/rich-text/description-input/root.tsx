@@ -15,6 +15,7 @@ import type { EFileAssetType, TNameDescriptionLoader } from "@plane/types";
 import { getDescriptionPlaceholderI18n } from "@plane/utils";
 // components
 import { RichTextEditor } from "@/components/editor/rich-text";
+import { AiImproveButton, type AiContext } from "@/components/editor/ai-improve-button";
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
 import { useWorkspace } from "@/hooks/store/use-workspace";
@@ -99,6 +100,11 @@ type Props = {
    * @description Issue sequence id, this will be used to get the issue sequence id
    */
   issueSequenceId?: number;
+  /**
+   * @description Optional context for the AI "Melhorar com IA" button.
+   * Pass issue title, project name and recent comments for better results.
+   */
+  aiContext?: AiContext;
 };
 
 /**
@@ -121,6 +127,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
     setIsSubmitting,
     swrDescription,
     workspaceSlug,
+    aiContext,
   } = props;
   // states
   const [localDescription, setLocalDescription] = useState<TFormData>({
@@ -225,6 +232,17 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
   if (!localDescription.description_html) return <DescriptionInputLoader />;
 
   return (
+    <div className="relative">
+      {!disabled && editorRef && (
+        <div className="absolute right-0 -top-7 z-10">
+          <AiImproveButton
+            editorRef={editorRef as React.RefObject<any>}
+            workspaceSlug={workspaceSlug}
+            disabled={disabled}
+            context={aiContext}
+          />
+        </div>
+      )}
     <Controller
       name="description_html"
       control={control}
@@ -293,5 +311,6 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
         />
       )}
     />
+    </div>
   );
 });

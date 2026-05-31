@@ -96,7 +96,7 @@ export const aiModule = new Elysia({ prefix: "/workspaces/:slug" })
     const provider = await prisma.aiProvider.findFirst({
       where: { workspaceId: ws.id, isDefault: true, isActive: true, deletedAt: null },
     });
-    if (!provider || !provider.apiKey) { set.status = 400; return { detail: "No active AI provider configured." }; }
+    if (!provider) { set.status = 400; return { detail: "No active AI provider configured." }; }
 
     const b = body as any;
     const task = b.task ?? "summarize"; // summarize | suggest_description | suggest_label | suggest_assignee
@@ -108,6 +108,96 @@ export const aiModule = new Elysia({ prefix: "/workspaces/:slug" })
     } catch (e: any) {
       set.status = 502;
       return { detail: `AI provider error: ${e.message}` };
+    }
+  })
+
+  // ── Text improvement (Melhorar com IA) ──────────────────────────────────────
+
+  .post("/ai-assistant/improve-text/", async ({ params: { slug }, body, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+
+    const provider = await prisma.aiProvider.findFirst({
+      where: { workspaceId: ws.id, isDefault: true, isActive: true, deletedAt: null },
+    });
+    if (!provider) { set.status = 400; return { detail: "Nenhum provedor de IA configurado. Acesse Configurações → Provedores de IA." }; }
+
+    const b = body as any;
+    const inputHtml: string = b.content ?? "";
+    if (!inputHtml || inputHtml === "<p></p>") {
+      set.status = 400;
+      return { detail: "Nenhum texto para melhorar." };
+    }
+
+    // ── Context from the caller ───────────────────────────────────────────────
+    const ctx = b.context ?? {};
+    const issueTitle: string = ctx.issue_title ?? "";
+    const projectName: string = ctx.project_name ?? "";
+    const prevComments: string[] = ctx.previous_comments ?? [];   // already stripped HTML
+
+    // ── Strip HTML from input ─────────────────────────────────────────────────
+    function stripHtml(html: string): string {
+      return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+    }
+    const plainText = stripHtml(inputHtml);
+
+    // ── Build context-aware prompt with 4 k-token budget ─────────────────────
+    // Rough estimate: 1 token ≈ 4 chars for Portuguese text.
+    const CHARS_PER_TOKEN = 4;
+    const TOKEN_BUDGET = 3800; // leave ~200 tokens for response overhead
+    let usedChars = 0;
+
+    let prompt = `Você é um assistente de escrita técnica em português brasileiro.\n`;
+    usedChars += prompt.length;
+
+    if (projectName) {
+      const line = `Sistema/Projeto: "${projectName}".\n`;
+      prompt += line; usedChars += line.length;
+    }
+    if (issueTitle) {
+      const line = `Título do work item: "${issueTitle}".\n`;
+      prompt += line; usedChars += line.length;
+    }
+
+    const formattingHint = `O editor suporta formatação HTML (negrito <strong>, listas <ul>/<ol>, parágrafos <p>, etc.).\n`
+      + `Use formatação quando melhorar a clareza, mas não exagere.\n`;
+    prompt += formattingHint; usedChars += formattingHint.length;
+
+    // Attach previous comments (most recent first), respecting token budget
+    if (prevComments.length > 0) {
+      const header = `\nContexto — comentários anteriores (do mais recente ao mais antigo):\n`;
+      prompt += header; usedChars += header.length;
+      const budgetForComments = Math.floor((TOKEN_BUDGET * CHARS_PER_TOKEN - usedChars) * 0.3); // 30% of remaining
+      let commentChars = 0;
+      for (const comment of prevComments) {
+        const line = `- ${comment}\n`;
+        if (commentChars + line.length > budgetForComments) break;
+        prompt += line; usedChars += line.length; commentChars += line.length;
+      }
+    }
+
+    // Truncate the content to fit remaining budget
+    const remainingBudgetChars = TOKEN_BUDGET * CHARS_PER_TOKEN - usedChars - 200; // 200 chars safety margin
+    const truncatedText = plainText.slice(0, Math.max(200, remainingBudgetChars));
+
+    const instruction = `\nMelhore o seguinte texto: corrija erros ortográficos/gramaticais, melhore a clareza e o profissionalismo mantendo o mesmo significado. Retorne APENAS o texto melhorado em HTML, sem explicações adicionais:\n\n${truncatedText}`;
+    prompt += instruction;
+
+    try {
+      const improved = await callAiProvider(provider, "improve_text_with_context", prompt);
+      // Preserve HTML if model returned it; otherwise wrap paragraphs
+      const isHtml = improved.trim().startsWith("<");
+      const improvedHtml = isHtml
+        ? improved.trim()
+        : improved
+            .split(/\n{2,}/)
+            .map((p: string) => `<p>${p.replace(/\n/g, "<br>").trim()}</p>`)
+            .filter((p: string) => p !== "<p></p>")
+            .join("") || "<p></p>";
+      return { response: improvedHtml, original: inputHtml };
+    } catch (e: any) {
+      set.status = 502;
+      return { detail: `Erro no provedor de IA: ${e.message}` };
     }
   })
 
@@ -139,17 +229,24 @@ async function callAiProvider(provider: any, task: string, content: string): Pro
     suggest_description: `Write a clear, detailed description for this task:\n\n${content}`,
     generate_documentation: `Generate technical documentation for this:\n\n${content}`,
     suggest_response: `Suggest a helpful response to this support ticket:\n\n${content}`,
+    improve_text: `Você é um assistente de escrita profissional em português. Melhore o texto abaixo: corrija erros ortográficos e gramaticais, melhore a clareza e o profissionalismo, mantendo o mesmo significado e idioma (português). Retorne APENAS o texto melhorado, sem explicações adicionais.\n\n${content}`,
+    // For improve_text_with_context the caller builds the full prompt and passes it as content
+    improve_text_with_context: content,
   };
 
   const prompt = prompts[task] ?? `${task}:\n\n${content}`;
   const baseUrl = provider.baseUrl ?? getDefaultBaseUrl(provider.providerType);
   const model = provider.defaultModel ?? getDefaultModel(provider.providerType);
 
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  // Ollama and local providers may not need an API key
+  if (provider.apiKey) headers["Authorization"] = `Bearer ${provider.apiKey}`;
+
   const res = await fetch(`${baseUrl}/v1/chat/completions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${provider.apiKey}` },
-    body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], max_tokens: 512 }),
-    signal: AbortSignal.timeout((provider.timeoutSecs ?? 30) * 1000),
+    headers,
+    body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], max_tokens: 1024 }),
+    signal: AbortSignal.timeout((provider.timeoutSecs ?? 60) * 1000),
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

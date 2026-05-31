@@ -27,13 +27,15 @@ function GlobalIntakePage() {
   const { joinedProjectIds, getProjectById } = useProject();
   const { currentWorkspace } = useWorkspace();
 
+  // Show all joined projects — intake is always available
   const intakeProjects = (joinedProjectIds ?? [])
     .map((id) => getProjectById(id))
-    .filter((p) => p && p.inbox_view);
+    .filter((p) => !!p);
 
+  // Only activate a project when explicitly selected via URL param
   const activeProject = selectedProjectId
     ? intakeProjects.find((p) => p?.id === selectedProjectId)
-    : intakeProjects[0];
+    : undefined;
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Intake Global` : "Intake Global";
 
@@ -49,7 +51,7 @@ function GlobalIntakePage() {
         </div>
         <div className="flex-1 overflow-y-auto py-2">
           {intakeProjects.length === 0 && (
-            <p className="px-4 py-3 text-xs text-secondary">Nenhum projeto com intake habilitado.</p>
+            <p className="px-4 py-3 text-xs text-secondary">Nenhum projeto encontrado.</p>
           )}
           {intakeProjects.map((project) => {
             if (!project) return null;
@@ -82,13 +84,13 @@ function GlobalIntakePage() {
             workspaceSlug={workspaceSlug.toString()}
             projectId={activeProject.id}
             inboxIssueId={inboxIssueId}
-            inboxAccessible={activeProject.inbox_view ?? false}
+            inboxAccessible={true}
           />
         ) : (
           <div className="flex h-full items-center justify-center">
             <div className="flex flex-col items-center gap-3 text-secondary">
               <Intake className="size-12" />
-              <p className="text-sm">Selecione um projeto para ver o intake.</p>
+              <p className="text-sm">Selecione um projeto ao lado para ver os intakes.</p>
             </div>
           </div>
         )}

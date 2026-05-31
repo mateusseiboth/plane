@@ -5,12 +5,14 @@ import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 
 const DEFAULT_STATES = [
-  { name: "Backlog",     color: "#94a3b8", group: "backlog",   sequence: 15000, isDefault: true },
-  { name: "A Fazer",    color: "#eb5757", group: "unstarted", sequence: 30000 },
-  { name: "Em Andamento", color: "#f59e0b", group: "started",   sequence: 45000 },
-  { name: "Concluído",  color: "#16a34a", group: "completed", sequence: 60000 },
-  { name: "Cancelado",  color: "#dc2626", group: "cancelled", sequence: 75000 },
-  { name: "Triagem",    color: "#6366f1", group: "triage",    sequence: 90000, isTriage: true },
+  { name: "Backlog",       color: "#94a3b8", group: "backlog",   sequence: 15000, isDefault: true },
+  { name: "Avaliando",     color: "#a855f7", group: "unstarted", sequence: 25000 },
+  { name: "A Fazer",       color: "#3b82f6", group: "unstarted", sequence: 30000 },
+  { name: "Em Andamento",  color: "#f59e0b", group: "started",   sequence: 45000 },
+  { name: "Em Teste",      color: "#ec4899", group: "started",   sequence: 50000 },
+  { name: "Concluído",     color: "#16a34a", group: "completed", sequence: 60000 },
+  { name: "Cancelado",     color: "#dc2626", group: "cancelled", sequence: 75000 },
+  { name: "Triagem",       color: "#6366f1", group: "triage",    sequence: 90000, isTriage: true },
 ];
 
 function slugify(name: string) {
@@ -28,6 +30,15 @@ async function findTriageState(projectId: string) {
     await prisma.state.update({ where: { id: byGroup.id }, data: { isTriage: true } });
   }
   return byGroup;
+}
+
+// Find or create the single active Intake record for a project
+async function findOrCreateIntake(projectId: string, workspaceId: string) {
+  const existing = await prisma.intake.findFirst({
+    where: { projectId, deletedAt: null, isActive: true },
+  });
+  if (existing) return existing;
+  return prisma.intake.create({ data: { projectId, workspaceId } });
 }
 
 function formatProject(p: any, memberRole?: number) {
@@ -402,15 +413,17 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const page    = Number(cursor.split(":")[1] ?? 0);
     const skip    = page * perPage;
 
-    // Intake issues = issues in triage state
     const triageState = await findTriageState(project_id);
-
     const where: any = {projectId: project_id, deletedAt: null, isDraft: false};
     if (triageState) where.stateId = triageState.id;
-    else return { // no triage state → empty intake
+    else return {
       total_count: 0, next_cursor: `${perPage}:1:0`, prev_cursor: `${perPage}:0:1`,
       next_page_results: false, prev_page_results: false, total_results: 0, results: [],
     };
+
+    const statusFilter: number[] | null = (query as any).status
+      ? String((query as any).status).split(",").map(Number)
+      : null;
 
     const [issues, total] = await Promise.all([
       prisma.issue.findMany({
@@ -423,39 +436,45 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const hasNext = issues.length > perPage;
     const pageIssues = hasNext ? issues.slice(0, perPage) : issues;
 
+    // Fetch IntakeIssue records to get per-issue status
+    const issueIds = pageIssues.map((i: any) => i.id);
+    const intakeIssues = issueIds.length
+      ? await prisma.intakeIssue.findMany({where: {issueId: {in: issueIds}, deletedAt: null}})
+      : [];
+    const iiMap = new Map((intakeIssues as any[]).map((ii) => [ii.issueId, ii]));
+
+    const results = pageIssues
+      .map((i: any) => {
+        const ii = iiMap.get(i.id) as any;
+        return {
+          id: i.id,
+          status: ii ? ii.status : -2,
+          snoozed_till: ii?.snoozeTill ?? null,
+          duplicate_to: ii?.duplicateOf ?? undefined,
+          source: ii?.source ?? "IN_APP",
+          created_by: i.createdById,
+          issue: {
+            id: i.id, name: i.name, state_id: i.stateId, priority: i.priority,
+            project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId,
+            description_html: i.descriptionHtml ?? "<p></p>",
+            created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString(),
+          },
+        };
+      })
+      .filter((r: any) => !statusFilter || statusFilter.includes(r.status));
+
     return {
-      total_count: total,
+      total_count: total, total_results: total,
       next_cursor: `${perPage}:${page + 1}:0`,
       prev_cursor: `${perPage}:${Math.max(0, page - 1)}:1`,
-      next_page_results: hasNext,
-      prev_page_results: page > 0,
-      total_results: total,
-      results: pageIssues.map((i: any) => ({
-        id: i.id,
-        status: -2, // pending triage
-        snoozed_till: null,
-        duplicate_to: undefined,
-        source: "IN_APP",
-        created_by: i.createdById,
-        issue: {
-          id: i.id,
-          name: i.name,
-          state_id: i.stateId,
-          priority: i.priority,
-          project_id: i.projectId,
-          workspace_id: i.workspaceId,
-          sequence_id: i.sequenceId,
-          description_html: i.descriptionHtml ?? "<p></p>",
-          created_at: i.createdAt?.toISOString(),
-          updated_at: i.updatedAt?.toISOString(),
-        },
-      })),
+      next_page_results: hasNext, prev_page_results: page > 0,
+      results,
     };
   })
 
   .post("/:project_id/inbox-issues/", async ({params: {slug, project_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const {project} = await getProjectOrFail(ws.id, project_id, user.id);
+    await getProjectOrFail(ws.id, project_id, user.id);
     const b = (body as any).issue ?? body as any;
     const triageState = await findTriageState(project_id);
     const issue = await prisma.issue.create({
@@ -465,8 +484,12 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         stateId: triageState?.id ?? null,
         priority: b.priority ?? "none",
         isDraft: false, createdById: user.id,
-        ...(b.entity_id ? { entityId: b.entity_id } : {}),
+        ...(b.entity_id ? {entityId: b.entity_id} : {}),
       },
+    });
+    const intake = await findOrCreateIntake(project_id, ws.id);
+    await prisma.intakeIssue.create({
+      data: {intakeId: intake.id, issueId: issue.id, workspaceId: ws.id, projectId: project_id, status: -2, source: "in-app"},
     });
     set.status = 201;
     return {
@@ -484,19 +507,22 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       include: {state: {select: {group: true}}},
     });
     if (!issue) { set.status = 404; return {detail: "Not found."}; }
-    // Determine intake status from state group
+    const ii = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}}) as any;
     const stateGroup = issue.state?.group ?? "triage";
-    const intakeStatus = stateGroup === "triage" ? -2 : stateGroup === "cancelled" ? -1 : 1;
+    const derivedStatus = stateGroup === "triage" ? -2 : stateGroup === "cancelled" ? -1 : 1;
+    const status = ii ? ii.status : derivedStatus;
     return {
-      id: issue.id, status: intakeStatus, snoozed_till: null, duplicate_to: undefined,
-      source: "IN_APP", created_by: issue.createdById,
+      id: issue.id, status,
+      snoozed_till: ii?.snoozeTill ?? null,
+      duplicate_to: ii?.duplicateOf ?? undefined,
+      source: ii?.source ?? "IN_APP",
+      created_by: issue.createdById,
       issue: {
         id: issue.id, name: issue.name, state_id: issue.stateId,
         priority: issue.priority, project_id: issue.projectId,
         workspace_id: issue.workspaceId, sequence_id: issue.sequenceId,
         description_html: issue.descriptionHtml ?? "<p></p>",
-        created_at: issue.createdAt?.toISOString(),
-        updated_at: issue.updatedAt?.toISOString(),
+        created_at: issue.createdAt?.toISOString(), updated_at: issue.updatedAt?.toISOString(),
       },
     };
   })
@@ -505,25 +531,57 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
-    const data: any = {};
+    const issueData: any = {};
     const issuePatch = b.issue ?? {};
-    if (issuePatch.name !== undefined) data.name = issuePatch.name;
-    if (issuePatch.state_id !== undefined) data.stateId = issuePatch.state_id;
-    if (issuePatch.priority !== undefined) data.priority = issuePatch.priority;
-    if (b.status !== undefined && b.status !== -2) {
-      // Accepted (0) → move to default state
+    if (issuePatch.name !== undefined) issueData.name = issuePatch.name;
+    if (issuePatch.state_id !== undefined) issueData.stateId = issuePatch.state_id;
+    if (issuePatch.priority !== undefined) issueData.priority = issuePatch.priority;
+
+    // Only ACCEPTED (status=1) moves the issue to default state; all others stay in triage
+    if (b.status === 1) {
       const defaultState = await prisma.state.findFirst({where: {projectId: project_id, default: true, deletedAt: null}});
-      if (defaultState) data.stateId = defaultState.id;
+      if (defaultState) issueData.stateId = defaultState.id;
     }
-    const issue = await prisma.issue.update({where: {id: inbox_id}, data});
-    return {id: issue.id, status: b.status ?? -2, snoozed_till: null, source: "IN_APP", created_by: issue.createdById,
-      issue: {id: issue.id, name: issue.name, state_id: issue.stateId, project_id: issue.projectId}};
+
+    const issue = Object.keys(issueData).length
+      ? await prisma.issue.update({where: {id: inbox_id}, data: issueData})
+      : await prisma.issue.findFirst({where: {id: inbox_id}});
+
+    // Update or create IntakeIssue to persist status, snoozeTill, duplicateOf
+    const iiData: any = {};
+    if (b.status !== undefined) iiData.status = b.status;
+    if (b.duplicate_to !== undefined) iiData.duplicateOf = b.duplicate_to;
+    if (b.snoozed_till !== undefined) iiData.snoozeTill = b.snoozed_till ? new Date(b.snoozed_till) : null;
+
+    let ii: any = null;
+    if (Object.keys(iiData).length) {
+      const existing = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}});
+      if (existing) {
+        ii = await prisma.intakeIssue.update({where: {id: existing.id}, data: iiData});
+      } else {
+        const intake = await findOrCreateIntake(project_id, ws.id);
+        ii = await prisma.intakeIssue.create({
+          data: {intakeId: intake.id, issueId: inbox_id, workspaceId: ws.id, projectId: project_id, source: "in-app", ...iiData},
+        });
+      }
+    }
+
+    return {
+      id: issue!.id, status: ii?.status ?? b.status ?? -2,
+      snoozed_till: ii?.snoozeTill ?? null,
+      duplicate_to: ii?.duplicateOf ?? undefined,
+      source: ii?.source ?? "IN_APP",
+      created_by: issue!.createdById,
+      issue: {id: issue!.id, name: issue!.name, state_id: issue!.stateId, project_id: issue!.projectId},
+    };
   })
 
   .delete("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     await prisma.issue.update({where: {id: inbox_id}, data: {deletedAt: new Date()}});
+    const ii = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}});
+    if (ii) await prisma.intakeIssue.update({where: {id: ii.id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
   })
@@ -658,4 +716,40 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     }
 
     return { synced_projects: projects.length, synced_members: wsMembers.length, records_created: added };
+  })
+
+  // ── Backfill: add Avaliando + Em Teste states to existing projects ────────────
+  // POST /workspaces/:slug/projects/backfill-states/
+  .post("/backfill-states/", async ({ params: { slug }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+
+    const NEW_STATES = [
+      { name: "Avaliando", color: "#a855f7", group: "unstarted", sequence: 25000 },
+      { name: "Em Teste",  color: "#ec4899", group: "started",   sequence: 50000 },
+    ];
+
+    const projects = await prisma.project.findMany({
+      where: { workspaceId: ws.id, deletedAt: null },
+      select: { id: true },
+    });
+
+    let created = 0;
+    for (const project of projects) {
+      const existingNames = (await prisma.state.findMany({
+        where: { projectId: project.id, deletedAt: null },
+        select: { name: true },
+      })).map((s: any) => s.name);
+
+      for (const s of NEW_STATES) {
+        if (!existingNames.includes(s.name)) {
+          await prisma.state.create({
+            data: { ...s, projectId: project.id, workspaceId: ws.id, slug: s.name.toLowerCase().replace(/\s+/g, "-") },
+          });
+          created++;
+        }
+      }
+    }
+
+    return { projects_checked: projects.length, states_created: created };
   });

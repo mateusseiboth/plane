@@ -7,26 +7,48 @@ import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 
 // Role values — mirrors EUserProjectRoles in packages/types
-const ROLES = {ADMIN: 20, GESTOR_PROJETO: 18, MEMBER: 15, TI: 12, QUALIDADE: 8, ATENDIMENTO: 6, GUEST: 5};
+// MEMBER was 15 in original Plane but we use 10 to match our custom roles
+const ROLES = {ADMIN: 20, GESTOR_PROJETO: 18, MEMBER: 10, TI: 12, QUALIDADE: 8, ATENDIMENTO: 6, GUEST: 5};
 
+/**
+ * Mirrors the frontend canTransitionState() from packages/constants/src/project-permissions.ts.
+ * Keep both in sync when updating workflow rules.
+ */
 function stateTransitionAllowed(role: number, fromGroup: string, toGroup: string): boolean {
-  // ADMIN, GESTOR_PROJETO, MEMBER: unrestricted
-  if (role >= ROLES.MEMBER || role === ROLES.GESTOR_PROJETO) return true;
+  // ADMIN and GESTOR_PROJETO: unrestricted moves
+  if (role === ROLES.ADMIN || role === ROLES.GESTOR_PROJETO) return true;
 
-  // ATENDIMENTO: can only keep in triage
-  if (role === ROLES.ATENDIMENTO) return toGroup === "triage";
-
-  // TI: cannot pick up from triage; can move within/between unstarted, started, completed, cancelled
-  if (role === ROLES.TI) {
-    if (fromGroup === "triage") return false;
-    return ["backlog", "unstarted", "started", "completed", "cancelled"].includes(toGroup);
+  // MEMBER: full workflow access
+  if (role === ROLES.MEMBER) {
+    if (toGroup === "cancelled") return true;
+    if (fromGroup === "triage") return toGroup === "triage" || toGroup === "unstarted";
+    return true; // members can move anywhere else
   }
 
-  // QUALIDADE: triage→unstarted, started(In Test)→started(In Progress), started→completed/cancelled
+  // ATENDIMENTO: can only keep item in triage (no state moves)
+  if (role === ROLES.ATENDIMENTO) return toGroup === "triage";
+
+  // GUEST: no moves
+  if (role === ROLES.GUEST) return false;
+
+  // TI: cannot pick up from triage; handles todo→started→completed
+  if (role === ROLES.TI) {
+    if (fromGroup === "triage") return false;
+    if (toGroup === "cancelled") return true;
+    if (fromGroup === "unstarted" && toGroup === "started") return true;  // A Fazer → Em Andamento
+    if (fromGroup === "started" && toGroup === "started") return true;    // Em Andamento → Em Teste
+    if (fromGroup === "started" && toGroup === "completed") return true;  // Em Teste → Concluído
+    if (["backlog","unstarted"].includes(fromGroup) && ["backlog","unstarted"].includes(toGroup)) return true;
+    return false;
+  }
+
+  // QUALIDADE: intake review + return with error
   if (role === ROLES.QUALIDADE) {
+    if (toGroup === "cancelled") return true;
     if (fromGroup === "triage") return toGroup === "unstarted" || toGroup === "triage";
-    if (fromGroup === "started" && toGroup === "started") return true;
-    return toGroup === "completed" || toGroup === "cancelled";
+    if (fromGroup === "unstarted" && toGroup === "unstarted") return true; // Avaliando → A Fazer
+    if (fromGroup === "started" && toGroup === "started") return true;     // devolução
+    return false;
   }
 
   return false;
@@ -376,12 +398,33 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
   .patch("/:issue_id/comments/:comment_id/", async ({params: {issue_id, comment_id}, body, user}) => {
     const b = body as any;
     const data: any = {updatedById: user.id, editedAt: new Date()};
+
     if (b.comment_html !== undefined) {
+      // Snapshot current content as a version before overwriting
+      const existing = await prisma.issueComment.findFirst({where: {id: comment_id}});
+      if (existing?.commentHtml && existing.commentHtml !== b.comment_html) {
+        await prisma.issueCommentVersion.create({
+          data: {commentId: comment_id, commentHtml: existing.commentHtml, editedById: user.id},
+        });
+      }
       data.commentHtml = b.comment_html;
       data.commentStripped = b.comment_html.replace(/<[^>]+>/g, "");
     }
     if (b.access !== undefined) data.access = b.access;
     return prisma.issueComment.update({where: {id: comment_id}, data});
+  })
+
+  // Comment version history
+  .get("/:issue_id/comments/:comment_id/versions/", async ({params: {comment_id}, user}) => {
+    const versions = await prisma.issueCommentVersion.findMany({
+      where: {commentId: comment_id},
+      orderBy: {createdAt: "desc"},
+      take: 20,
+    });
+    return versions.map((v: any) => ({
+      id: v.id, comment_id: v.commentId, comment_html: v.commentHtml,
+      edited_by: v.editedById, created_at: v.createdAt?.toISOString(),
+    }));
   })
 
   .delete("/:issue_id/comments/:comment_id/", async ({params: {comment_id}, set}) => {

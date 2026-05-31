@@ -487,6 +487,25 @@
       },
       "entities": {
         "title": "Entidades"
+      },
+      "ai": {
+        "title": "Provedores de IA",
+        "heading": "Provedores de IA",
+        "description": "Configure provedores de IA (Ollama, OpenAI, etc.) para melhoria de texto e outros recursos.",
+        "add_provider": "Adicionar Provedor",
+        "no_providers": "Nenhum provedor de IA configurado",
+        "provider_type": "Tipo de Provedor",
+        "base_url": "URL Base",
+        "api_key": "API Key (opcional para Ollama)",
+        "default_model": "Modelo Padrão",
+        "timeout": "Timeout (segundos)",
+        "set_default": "Definir como Padrão",
+        "is_default": "Provedor Padrão"
+      },
+      "integrations_custom": {
+        "title": "Integrações Customizadas",
+        "heading": "Integrações Customizadas",
+        "description": "Crie integrações de webhook personalizadas com lógica JavaScript para automação avançada."
       }
     },
     "empty_state": {

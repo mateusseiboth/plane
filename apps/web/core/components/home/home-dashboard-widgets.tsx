@@ -25,6 +25,10 @@ import { StickiesWidget } from "../stickies/widget";
 import { HomeLoader, NoProjectsEmptyState, RecentActivityWidget } from "./widgets";
 import { DashboardQuickLinks } from "./widgets/links";
 import { ManageWidgetsModal } from "./widgets/manage";
+import { MyWorkItemsWidget } from "./widgets/my-work-items";
+import { UpcomingDatesWidget } from "./widgets/upcoming-dates";
+import { OpenIntakesWidget } from "./widgets/open-intakes";
+import { CriticalIssuesWidget } from "./widgets/critical-issues";
 
 export const HOME_WIDGETS_LIST: {
   [key in THomeWidgetKeys]: {
@@ -58,6 +62,21 @@ export const HOME_WIDGETS_LIST: {
     fullWidth: false,
     title: "home.quick_tutorial.title",
   },
+  my_work_items: {
+    component: MyWorkItemsWidget,
+    fullWidth: false,
+    title: "home.my_work_items.title",
+  },
+  upcoming_dates: {
+    component: UpcomingDatesWidget,
+    fullWidth: false,
+    title: "home.upcoming_dates.title",
+  },
+  open_intakes: {
+    component: OpenIntakesWidget,
+    fullWidth: false,
+    title: "home.open_intakes.title",
+  },
 };
 
 export const DashboardWidgets = observer(function DashboardWidgets() {
@@ -90,6 +109,20 @@ export const DashboardWidgets = observer(function DashboardWidgets() {
         handleOnClose={() => toggleWidgetSettings(false)}
       />
       {!isWikiApp && <NoProjectsEmptyState />}
+
+      {/* Custom widgets — always visible ────────────────────────────────── */}
+      {!isWikiApp && (
+        <div className="flex flex-col gap-4">
+          {/* Critical issues — full width, highest priority */}
+          <CriticalIssuesWidget workspaceSlug={workspaceSlug.toString()} />
+          {/* Informational widgets — responsive grid */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <OpenIntakesWidget workspaceSlug={workspaceSlug.toString()} />
+            <MyWorkItemsWidget workspaceSlug={workspaceSlug.toString()} />
+            <UpcomingDatesWidget workspaceSlug={workspaceSlug.toString()} />
+          </div>
+        </div>
+      )}
 
       {isAnyWidgetEnabled ? (
         <div className="flex flex-col">
