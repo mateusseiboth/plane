@@ -156,6 +156,7 @@ export const ISSUE_DISPLAY_PROPERTIES_KEYS: (keyof IIssueDisplayProperties)[] = 
   "modules",
   "cycle",
   "issue_type",
+  "entity",
 ];
 
 export const SUB_ISSUES_DISPLAY_PROPERTIES_KEYS: (keyof IIssueDisplayProperties)[] = [
@@ -208,6 +209,7 @@ export const ISSUE_DISPLAY_PROPERTIES: {
   },
   { key: "modules", titleTranslationKey: "common.module" },
   { key: "cycle", titleTranslationKey: "common.cycle" },
+  { key: "entity", titleTranslationKey: "common.entity" },
 ];
 
 export const SPREADSHEET_PROPERTY_LIST: (keyof IIssueDisplayProperties)[] = [
@@ -225,6 +227,7 @@ export const SPREADSHEET_PROPERTY_LIST: (keyof IIssueDisplayProperties)[] = [
   "link",
   "attachment_count",
   "sub_issue_count",
+  "entity",
 ];
 
 export const SPREADSHEET_PROPERTY_DETAILS: {
@@ -347,6 +350,30 @@ export const SPREADSHEET_PROPERTY_DETAILS: {
     ascendingOrderTitle: "Most",
     descendingOrderKey: "sub_issues_count",
     descendingOrderTitle: "Least",
+    icon: "LayersIcon",
+  },
+  key: {
+    i18n_title: "issue.display.properties.id",
+    ascendingOrderKey: "sequence_id",
+    ascendingOrderTitle: "First",
+    descendingOrderKey: "-sequence_id",
+    descendingOrderTitle: "Last",
+    icon: "LayersIcon",
+  },
+  issue_type: {
+    i18n_title: "common.type",
+    ascendingOrderKey: "type_id",
+    ascendingOrderTitle: "A",
+    descendingOrderKey: "-type_id",
+    descendingOrderTitle: "Z",
+    icon: "LayersIcon",
+  },
+  entity: {
+    i18n_title: "common.entity",
+    ascendingOrderKey: "entity_id",
+    ascendingOrderTitle: "A",
+    descendingOrderKey: "-entity_id",
+    descendingOrderTitle: "Z",
     icon: "LayersIcon",
   },
 };

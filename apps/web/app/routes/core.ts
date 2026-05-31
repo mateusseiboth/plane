@@ -352,6 +352,11 @@ export const coreRoutes: RouteConfigEntry[] = [
                 "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/automations/page.tsx"
               ),
             ]),
+            // Project Permissions
+            route(
+              ":workspaceSlug/settings/projects/:projectId/permissions",
+              "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/permissions/page.tsx"
+            ),
           ]),
         ]),
       ]),

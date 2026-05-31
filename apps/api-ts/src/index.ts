@@ -25,6 +25,8 @@ import { slackIntegrationModule } from "@modules/integration/slack";
 import { aiModule } from "@modules/ai";
 import { premiumModule } from "@modules/premium";
 import { instanceModule } from "@modules/instance";
+import { estimateModule } from "@modules/estimate";
+import { pluginModule } from "@modules/plugin";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -152,7 +154,9 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(gitIntegrationModule)
   .use(slackIntegrationModule)
   .use(aiModule)
-  .use(premiumModule);
+  .use(premiumModule)
+  .use(estimateModule)
+  .use(pluginModule);
 
 // ── Compose into root app ────────────────────────────────────────────────────
 const app = new Elysia()

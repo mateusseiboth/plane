@@ -74,65 +74,6 @@ export const premiumModule = new Elysia()
   })
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ESTIMATES
-  // ─────────────────────────────────────────────────────────────────────────
-
-  .get("/workspaces/:slug/projects/:project_id/estimates/", async ({ params: { slug, project_id }, user, query }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
-    const where = { projectId: project_id, deletedAt: null };
-    return paginate({
-      query: (skip, take) => prisma.estimate.findMany({ where, skip, take, include: { points: { where: { deletedAt: null }, orderBy: { key: "asc" } } } }),
-      count: () => prisma.estimate.count({ where }),
-      cursor: query.cursor as string | undefined,
-    });
-  })
-
-  .post("/workspaces/:slug/projects/:project_id/estimates/", async ({ params: { slug, project_id }, body, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
-
-    const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
-
-    const estimate = await prisma.$transaction(async (tx) => {
-      const e = await tx.estimate.create({
-        data: { workspaceId: ws.id, projectId: project_id, name: b.name, description: b.description ?? "", type: b.type ?? "categories", createdById: user.id },
-      });
-      if (b.points?.length) {
-        await tx.estimatePoint.createMany({
-          data: b.points.map((p: any, i: number) => ({ estimateId: e.id, workspaceId: ws.id, projectId: project_id, key: p.key ?? i, value: p.value ?? String(i + 1), description: p.description ?? "" })),
-        });
-      }
-      return tx.estimate.findUniqueOrThrow({ where: { id: e.id }, include: { points: { orderBy: { key: "asc" } } } });
-    });
-    set.status = 201;
-    return estimate;
-  })
-
-  .patch("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/", async ({ params: { slug, project_id, estimate_id }, body, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
-    const b = body as any;
-    const data: any = {};
-    if (b.name !== undefined) data.name = b.name;
-    if (b.description !== undefined) data.description = b.description;
-    if (b.type !== undefined) data.type = b.type;
-    return prisma.estimate.update({ where: { id: estimate_id }, data, include: { points: { where: { deletedAt: null }, orderBy: { key: "asc" } } } });
-  })
-
-  .delete("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/", async ({ params: { slug, project_id, estimate_id }, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Only admins can delete estimates." }; }
-    await prisma.estimate.update({ where: { id: estimate_id }, data: { deletedAt: new Date() } });
-    set.status = 204;
-    return null;
-  })
-
-  // ─────────────────────────────────────────────────────────────────────────
   // INTAKE / INBOX
   // ─────────────────────────────────────────────────────────────────────────
 

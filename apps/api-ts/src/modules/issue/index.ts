@@ -14,15 +14,121 @@ export const issueModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
 
+    // Build base where clause
     const where: any = { projectId: project_id, deletedAt: null, isDraft: false };
-    if (query.state_id) where.stateId = query.state_id;
-    if (query.priority) where.priority = query.priority;
+
+    // Standard filters
+    if (query.state_id) where.stateId = { in: (query.state_id as string).split(",") };
+    if (query.priority) where.priority = { in: (query.priority as string).split(",") };
     if (query.entity_id) where.entityId = query.entity_id;
     if (query.legacy_ticket_number) where.legacyTicketNumber = query.legacy_ticket_number;
+    if (query.assignees__id) where.assignees = { some: { assigneeId: { in: (query.assignees__id as string).split(",") }, deletedAt: null } };
+    if (query.assignees) where.assignees = { some: { assigneeId: { in: (query.assignees as string).split(",") }, deletedAt: null } };
+    if (query.labels__id) where.labels = { some: { labelId: { in: (query.labels__id as string).split(",") }, deletedAt: null } };
+    if (query.created_by) where.createdById = { in: (query.created_by as string).split(",") };
+    if (query.mention__id) where.mentions = { some: { mentionedId: { in: (query.mention__id as string).split(",") } } };
 
+    // Group-by filters: when the kanban/grouped view passes a specific value to scope to a group
+    if (query.state_id) where.stateId = (query.state_id as string).includes(",")
+      ? { in: (query.state_id as string).split(",") }
+      : query.state_id;
+
+    // State group filter
+    if (query.state__group) {
+      const stateGroups = (query.state__group as string).split(",");
+      const matchingStates = await prisma.state.findMany({
+        where: { projectId: project_id, group: { in: stateGroups }, deletedAt: null },
+        select: { id: true },
+      });
+      where.stateId = { in: matchingStates.map((s: any) => s.id) };
+    }
+
+    // Order by
+    const orderMap: Record<string, any> = {
+      "-created_at": { createdAt: "desc" }, "created_at": { createdAt: "asc" },
+      "-updated_at": { updatedAt: "desc" }, "updated_at": { updatedAt: "asc" },
+      "-priority": { priority: "desc" }, "priority": { priority: "asc" },
+      "-target_date": { targetDate: "desc" }, "target_date": { targetDate: "asc" },
+      "-start_date": { startDate: "desc" }, "start_date": { startDate: "asc" },
+      "sort_order": { sortOrder: "asc" }, "-sort_order": { sortOrder: "desc" },
+      "sequence_id": { sequenceId: "asc" }, "-sequence_id": { sequenceId: "desc" },
+    };
+    const orderBy = orderMap[(query.order_by as string) ?? "-created_at"] ?? { createdAt: "desc" };
+
+    const perPage = Number(query.per_page ?? 30);
+    const groupBy = query.group_by as string | undefined;
+
+    // ── Grouped response (for kanban/groupBy views) ───────────────────────────
+    if (groupBy) {
+      const groupByMap: Record<string, string> = {
+        state_id: "stateId",
+        priority: "priority",
+        "state__group": "stateGroup", // handled specially
+        created_by: "createdById",
+        project_id: "projectId",
+      };
+
+      const prismaField = groupByMap[groupBy];
+
+      // Get all distinct group values
+      let groupValues: (string | null)[] = [];
+
+      if (groupBy === "state_id") {
+        const states = await prisma.state.findMany({
+          where: { projectId: project_id, deletedAt: null },
+          select: { id: true },
+          orderBy: { sequence: "asc" },
+        });
+        groupValues = states.map((s: any) => s.id);
+      } else if (groupBy === "priority") {
+        groupValues = ["urgent", "high", "medium", "low", "none"];
+      } else if (groupBy === "state__group") {
+        groupValues = ["backlog", "unstarted", "started", "completed", "cancelled", "triage"];
+      } else {
+        const distinct = await prisma.issue.findMany({
+          where, select: { [prismaField ?? "stateId"]: true }, distinct: [prismaField ?? "stateId"] as any,
+        });
+        groupValues = distinct.map((d: any) => d[prismaField ?? "stateId"]).filter(Boolean);
+      }
+
+      const total_count = await prisma.issue.count({ where });
+      const results: Record<string, any> = {};
+
+      for (const gv of groupValues) {
+        const groupWhere: any = { ...where };
+
+        if (groupBy === "state_id") groupWhere.stateId = gv;
+        else if (groupBy === "priority") groupWhere.priority = gv;
+        else if (groupBy === "state__group") {
+          const stateIds = await prisma.state.findMany({
+            where: { projectId: project_id, group: gv as string, deletedAt: null },
+            select: { id: true },
+          });
+          groupWhere.stateId = { in: stateIds.map((s: any) => s.id) };
+        }
+
+        const [groupIssues, groupCount] = await Promise.all([
+          prisma.issue.findMany({ where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage }),
+          prisma.issue.count({ where: groupWhere }),
+        ]);
+
+        results[gv ?? "none"] = {
+          results: groupIssues.map(serializeIssue),
+          total_results: groupCount,
+          next_cursor: `${perPage}:1:0`,
+          prev_cursor: `${perPage}:0:1`,
+          next_page_results: groupCount > perPage,
+          prev_page_results: false,
+        };
+      }
+
+      return { total_count, results, next_cursor: null, prev_cursor: null, next_page_results: false, prev_page_results: false };
+    }
+
+    // ── Flat (non-grouped) paginated response ──────────────────────────────────
     return paginate({
       query: (skip, take) =>
-        prisma.issue.findMany({ where, skip, take, include: ISSUE_INCLUDE, orderBy: { createdAt: "desc" } }),
+        prisma.issue.findMany({ where, skip, take, include: ISSUE_INCLUDE, orderBy }),
       count: () => prisma.issue.count({ where }),
       cursor: query.cursor as string | undefined,
       transform: (items) => items.map(serializeIssue),

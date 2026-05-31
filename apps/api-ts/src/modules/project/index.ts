@@ -53,45 +53,51 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .use(authPlugin)
 
   // ── List projects (plain array — frontend expects IPartialProject[]) ─────────
+  // Workspace admins (role >= 20) see ALL projects.
+  // Non-admins see only projects they are active members of.
 
   .get("/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const projects = await prisma.project.findMany({
-      where: {
-        workspaceId: ws.id,
-        deletedAt: null,
-        archivedAt: null,
-        members: { some: { memberId: user.id, isActive: true, deletedAt: null } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    const myMemberships = await prisma.projectMember.findMany({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-      select: { projectId: true, role: true },
-    });
+    const wsMember = await requireWorkspaceMember(ws.id, user.id);
+    const isAdmin = wsMember.role >= 20;
+
+    const where: any = { workspaceId: ws.id, deletedAt: null, archivedAt: null };
+    if (!isAdmin) {
+      where.members = { some: { memberId: user.id, isActive: true, deletedAt: null } };
+    }
+
+    const [projects, myMemberships] = await Promise.all([
+      prisma.project.findMany({ where, orderBy: { createdAt: "desc" } }),
+      prisma.projectMember.findMany({
+        where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
+        select: { projectId: true, role: true },
+      }),
+    ]);
     const roleMap = Object.fromEntries(myMemberships.map((m) => [m.projectId, m.role]));
-    return projects.map((p) => formatProject(p, roleMap[p.id]));
+    // Admins get role 20 for all projects they aren't explicitly in
+    return projects.map((p) => formatProject(p, roleMap[p.id] ?? (isAdmin ? 20 : undefined)));
   })
 
   // Alias for /details/ — frontend calls this for full project list
   .get("/details/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const projects = await prisma.project.findMany({
-      where: {
-        workspaceId: ws.id,
-        deletedAt: null,
-        members: { some: { memberId: user.id, isActive: true, deletedAt: null } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    const myMemberships = await prisma.projectMember.findMany({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-      select: { projectId: true, role: true },
-    });
+    const wsMember = await requireWorkspaceMember(ws.id, user.id);
+    const isAdmin = wsMember.role >= 20;
+
+    const where: any = { workspaceId: ws.id, deletedAt: null };
+    if (!isAdmin) {
+      where.members = { some: { memberId: user.id, isActive: true, deletedAt: null } };
+    }
+
+    const [projects, myMemberships] = await Promise.all([
+      prisma.project.findMany({ where, orderBy: { createdAt: "desc" } }),
+      prisma.projectMember.findMany({
+        where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
+        select: { projectId: true, role: true },
+      }),
+    ]);
     const roleMap = Object.fromEntries(myMemberships.map((m) => [m.projectId, m.role]));
-    return projects.map((p) => formatProject(p, roleMap[p.id]));
+    return projects.map((p) => formatProject(p, roleMap[p.id] ?? (isAdmin ? 20 : undefined)));
   })
 
   .post("/", async ({ params: { slug }, body, user, set }) => {
@@ -318,25 +324,36 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   })
 
   // ── Project member me (two aliases: /members/me/ and /project-members/me/) ──
+  // Workspace admins always get role 20 even if not explicitly in the project.
 
   .get("/:project_id/members/me/", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { project } = await getProjectOrFail(ws.id, project_id, user.id);
+    await getProjectOrFail(ws.id, project_id, user.id); // validates access
     const m = await prisma.projectMember.findFirst({
-      where: { projectId: project.id, memberId: user.id, deletedAt: null },
+      where: { projectId: project_id, memberId: user.id, deletedAt: null },
     });
-    if (!m) { set.status = 404; return { detail: "Not a project member." }; }
-    return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
+    if (m) return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
+    // Check if workspace admin
+    const wsAdmin = await prisma.workspaceMember.findFirst({
+      where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
+    });
+    if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
+    set.status = 404; return { detail: "Not a project member." };
   })
 
   .get("/:project_id/project-members/me/", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { project } = await getProjectOrFail(ws.id, project_id, user.id);
+    await getProjectOrFail(ws.id, project_id, user.id); // validates access
     const m = await prisma.projectMember.findFirst({
-      where: { projectId: project.id, memberId: user.id, deletedAt: null },
+      where: { projectId: project_id, memberId: user.id, deletedAt: null },
     });
-    if (!m) { set.status = 404; return { detail: "Not a project member." }; }
-    return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
+    if (m) return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
+    // Check if workspace admin
+    const wsAdmin = await prisma.workspaceMember.findFirst({
+      where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
+    });
+    if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
+    set.status = 404; return { detail: "Not a project member." };
   })
 
   // ── Project invitations ────────────────────────────────────────────────────

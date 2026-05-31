@@ -32,9 +32,27 @@ export async function getProjectOrFail(workspaceId: string, projectId: string, u
   });
   if (!project) throw { status: 404, message: "Project not found." };
 
-  const member = await prisma.projectMember.findFirst({
+  let member = await prisma.projectMember.findFirst({
     where: { projectId, memberId: userId, isActive: true, deletedAt: null },
   });
+
+  // Workspace admins have access to all projects even without explicit membership
+  if (!member) {
+    const wsMember = await prisma.workspaceMember.findFirst({
+      where: { workspaceId, memberId: userId, role: { gte: 20 }, isActive: true, deletedAt: null },
+    });
+    if (wsMember) {
+      // Return a synthetic member record granting admin-level access
+      member = {
+        id: `ws-admin-${userId}`,
+        projectId, workspaceId, memberId: userId,
+        role: 20, isActive: true,
+        createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
+        sortOrder: null as any,
+      } as any;
+    }
+  }
+
   if (!member) throw { status: 403, message: "You are not a member of this project." };
 
   return { project, member };

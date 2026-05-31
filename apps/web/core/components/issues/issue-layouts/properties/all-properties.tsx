@@ -4,13 +4,14 @@
  * See the LICENSE file for details.
  */
 
+import React from "react";
 import type { SyntheticEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { xor } from "lodash-es";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // icons
-import { Paperclip } from "lucide-react";
+import { Paperclip, Building2 } from "lucide-react";
 // i18n
 import { useTranslation } from "@plane/i18n";
 import { LinkIcon, StartDatePropertyIcon, ViewsIcon, DueDatePropertyIcon } from "@plane/propel/icons";
@@ -47,6 +48,37 @@ import { WorkItemLayoutAdditionalProperties } from "@/plane-web/components/issue
 // local components
 import { IssuePropertyLabels } from "./labels";
 import { WithDisplayPropertiesHOC } from "./with-display-properties-HOC";
+import entityService, { type TEntity } from "@/services/entity.service";
+
+// Simple entity badge for list/kanban properties
+function EntityListProperty({
+  issue,
+  workspaceSlug,
+  isReadOnly,
+}: {
+  issue: TIssue;
+  workspaceSlug: string | string[];
+  isReadOnly: boolean;
+}) {
+  const entityId = (issue as any).entity_id as string | null | undefined;
+  const [entity, setEntity] = React.useState<TEntity | null>(null);
+
+  React.useEffect(() => {
+    if (!entityId || !workspaceSlug) return;
+    entityService.list(workspaceSlug.toString()).then((list) => {
+      setEntity(list.find((e) => e.id === entityId) ?? null);
+    });
+  }, [entityId, workspaceSlug]);
+
+  if (!entity) return null;
+
+  return (
+    <div className="flex items-center gap-1 rounded border border-strong px-2 py-0.5 text-caption-sm-regular">
+      <Building2 className="h-3 w-3 shrink-0 text-secondary" />
+      <span className="max-w-[100px] truncate">{entity.name}</span>
+    </div>
+  );
+}
 
 export interface IIssueProperties {
   issue: TIssue;
@@ -469,6 +501,15 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
             <div className="text-caption-sm-regular">{issue.link_count}</div>
           </div>
         </Tooltip>
+      </WithDisplayPropertiesHOC>
+
+      {/* Entity */}
+      <WithDisplayPropertiesHOC
+        displayProperties={displayProperties}
+        displayPropertyKey="entity"
+        shouldRenderProperty={(properties) => !!properties.entity && !!(issue as any).entity_id}
+      >
+        <EntityListProperty issue={issue} workspaceSlug={workspaceSlug} isReadOnly={isReadOnly} />
       </WithDisplayPropertiesHOC>
 
       {/* Additional Properties */}
