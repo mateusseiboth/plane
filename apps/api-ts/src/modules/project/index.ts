@@ -19,17 +19,29 @@ function slugify(name: string) {
   return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 }
 
-// Find triage state by isTriage flag first, then fall back to group = "triage"
-// This handles projects created before isTriage was properly set
+// Find triage state by isTriage flag first, then fall back to group = "triage".
+// If none found, creates one automatically so intakes always have a proper state.
 async function findTriageState(projectId: string) {
   const byFlag = await prisma.state.findFirst({ where: { projectId, isTriage: true, deletedAt: null } });
   if (byFlag) return byFlag;
+
   const byGroup = await prisma.state.findFirst({ where: { projectId, group: "triage", deletedAt: null } });
   if (byGroup) {
-    // Backfill isTriage flag for this state
     await prisma.state.update({ where: { id: byGroup.id }, data: { isTriage: true } });
+    return byGroup;
   }
-  return byGroup;
+
+  // No triage state exists — create one so intakes are never placed in wrong state
+  const project = await prisma.project.findFirst({ where: { id: projectId, deletedAt: null }, select: { workspaceId: true } });
+  if (!project) return null;
+  return prisma.state.create({
+    data: {
+      projectId, workspaceId: project.workspaceId,
+      name: "In Take", color: "#6366f1", group: "triage",
+      sequence: 1000, isTriage: true,
+      slug: "in-take",
+    },
+  });
 }
 
 // Find or create the single active Intake record for a project
@@ -413,45 +425,60 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const page    = Number(cursor.split(":")[1] ?? 0);
     const skip    = page * perPage;
 
-    const triageState = await findTriageState(project_id);
-    const where: any = {projectId: project_id, deletedAt: null, isDraft: false};
-    if (triageState) where.stateId = triageState.id;
-    else return {
-      total_count: 0, next_cursor: `${perPage}:1:0`, prev_cursor: `${perPage}:0:1`,
-      next_page_results: false, prev_page_results: false, total_results: 0, results: [],
-    };
-
+    // Status filter from frontend: -2=pending, -1=declined, 0=snoozed, 1=accepted, 2=duplicate
     const statusFilter: number[] | null = (query as any).status
       ? String((query as any).status).split(",").map(Number)
       : null;
 
-    const [issues, total] = await Promise.all([
-      prisma.issue.findMany({
-        where, skip, take: perPage + 1,
-        include: {state: {select: {id: true, name: true, color: true, group: true}}},
+    // Use IntakeIssue as primary source so closed (declined/accepted) items are also visible
+    const iiWhere: any = {projectId: project_id, deletedAt: null};
+    if (statusFilter) iiWhere.status = {in: statusFilter};
+
+    const [intakeIssues, total] = await Promise.all([
+      prisma.intakeIssue.findMany({
+        where: iiWhere, skip, take: perPage + 1,
+        include: {issue: {include: {state: {select: {id: true, group: true}}}}},
         orderBy: {createdAt: "desc"},
       }),
-      prisma.issue.count({where}),
+      prisma.intakeIssue.count({where: iiWhere}),
     ]);
-    const hasNext = issues.length > perPage;
-    const pageIssues = hasNext ? issues.slice(0, perPage) : issues;
 
-    // Fetch IntakeIssue records to get per-issue status
-    const issueIds = pageIssues.map((i: any) => i.id);
-    const intakeIssues = issueIds.length
-      ? await prisma.intakeIssue.findMany({where: {issueId: {in: issueIds}, deletedAt: null}})
-      : [];
-    const iiMap = new Map((intakeIssues as any[]).map((ii) => [ii.issueId, ii]));
+    // If no IntakeIssue records exist yet, fall back to triage state query (legacy behaviour)
+    if (total === 0 && !statusFilter) {
+      const triageState = await findTriageState(project_id);
+      if (!triageState) return {total_count: 0, total_results: 0, next_cursor: `${perPage}:1:0`, prev_cursor: `${perPage}:0:1`, next_page_results: false, prev_page_results: false, results: []};
+      const issues = await prisma.issue.findMany({
+        where: {projectId: project_id, stateId: triageState.id, deletedAt: null, isDraft: false},
+        take: perPage, orderBy: {createdAt: "desc"},
+        include: {state: {select: {group: true}}},
+      });
+      return {
+        total_count: issues.length, total_results: issues.length,
+        next_cursor: `${perPage}:1:0`, prev_cursor: `${perPage}:0:1`,
+        next_page_results: false, prev_page_results: false,
+        results: issues.map((i: any) => ({
+          id: i.id, status: -2, snoozed_till: null, duplicate_to: undefined, source: "IN_APP", created_by: i.createdById,
+          issue: {id: i.id, name: i.name, state_id: i.stateId, priority: i.priority, project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId, description_html: i.descriptionHtml ?? "<p></p>", created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString()},
+        })),
+      };
+    }
 
-    const results = pageIssues
-      .map((i: any) => {
-        const ii = iiMap.get(i.id) as any;
+    const hasNext = intakeIssues.length > perPage;
+    const pageItems = hasNext ? intakeIssues.slice(0, perPage) : intakeIssues;
+
+    return {
+      total_count: total, total_results: total,
+      next_cursor: `${perPage}:${page + 1}:0`,
+      prev_cursor: `${perPage}:${Math.max(0, page - 1)}:1`,
+      next_page_results: hasNext, prev_page_results: page > 0,
+      results: pageItems.map((ii: any) => {
+        const i = ii.issue;
+        if (!i) return null;
         return {
-          id: i.id,
-          status: ii ? ii.status : -2,
-          snoozed_till: ii?.snoozeTill ?? null,
-          duplicate_to: ii?.duplicateOf ?? undefined,
-          source: ii?.source ?? "IN_APP",
+          id: i.id, status: ii.status ?? -2,
+          snoozed_till: ii.snoozeTill ?? null,
+          duplicate_to: ii.duplicateOf ?? undefined,
+          source: ii.source ?? "IN_APP",
           created_by: i.createdById,
           issue: {
             id: i.id, name: i.name, state_id: i.stateId, priority: i.priority,
@@ -460,15 +487,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
             created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString(),
           },
         };
-      })
-      .filter((r: any) => !statusFilter || statusFilter.includes(r.status));
-
-    return {
-      total_count: total, total_results: total,
-      next_cursor: `${perPage}:${page + 1}:0`,
-      prev_cursor: `${perPage}:${Math.max(0, page - 1)}:1`,
-      next_page_results: hasNext, prev_page_results: page > 0,
-      results,
+      }).filter(Boolean),
     };
   })
 
@@ -536,6 +555,12 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     if (issuePatch.name !== undefined) issueData.name = issuePatch.name;
     if (issuePatch.state_id !== undefined) issueData.stateId = issuePatch.state_id;
     if (issuePatch.priority !== undefined) issueData.priority = issuePatch.priority;
+    if (issuePatch.description_html !== undefined) {
+      issueData.descriptionHtml = issuePatch.description_html;
+      issueData.descriptionStripped = (issuePatch.description_html ?? "").replace(/<[^>]+>/g, "");
+    }
+    if (issuePatch.label_ids !== undefined) issueData._labelIds = issuePatch.label_ids; // handled after update
+    if (issuePatch.assignee_ids !== undefined) issueData._assigneeIds = issuePatch.assignee_ids; // handled after update
 
     // Only ACCEPTED (status=1) moves the issue to default state; all others stay in triage
     if (b.status === 1) {
@@ -543,9 +568,24 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       if (defaultState) issueData.stateId = defaultState.id;
     }
 
+    // Extract relation arrays before update (they can't go directly into prisma.update)
+    const labelIds: string[] | undefined = issueData._labelIds;
+    const assigneeIds: string[] | undefined = issueData._assigneeIds;
+    delete issueData._labelIds;
+    delete issueData._assigneeIds;
+
     const issue = Object.keys(issueData).length
       ? await prisma.issue.update({where: {id: inbox_id}, data: issueData})
       : await prisma.issue.findFirst({where: {id: inbox_id}});
+
+    if (labelIds !== undefined) {
+      await prisma.issueLabel.updateMany({where: {issueId: inbox_id, deletedAt: null}, data: {deletedAt: new Date()}});
+      if (labelIds.length) await prisma.issueLabel.createMany({data: labelIds.map((lid) => ({issueId: inbox_id, labelId: lid, workspaceId: ws.id, projectId: project_id})), skipDuplicates: true});
+    }
+    if (assigneeIds !== undefined) {
+      await prisma.issueAssignee.updateMany({where: {issueId: inbox_id, deletedAt: null}, data: {deletedAt: new Date()}});
+      if (assigneeIds.length) await prisma.issueAssignee.createMany({data: assigneeIds.map((uid) => ({issueId: inbox_id, assigneeId: uid, workspaceId: ws.id, projectId: project_id})), skipDuplicates: true});
+    }
 
     // Update or create IntakeIssue to persist status, snoozeTill, duplicateOf
     const iiData: any = {};
@@ -572,7 +612,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       duplicate_to: ii?.duplicateOf ?? undefined,
       source: ii?.source ?? "IN_APP",
       created_by: issue!.createdById,
-      issue: {id: issue!.id, name: issue!.name, state_id: issue!.stateId, project_id: issue!.projectId},
+      issue: {
+        id: issue!.id, name: (issue as any).name, state_id: (issue as any).stateId, project_id: (issue as any).projectId,
+        description_html: (issue as any).descriptionHtml ?? "<p></p>",
+        priority: (issue as any).priority,
+      },
     };
   })
 
@@ -752,4 +796,48 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     }
 
     return { projects_checked: projects.length, states_created: created };
+  })
+
+  // ── Comment reactions ─────────────────────────────────────────────────────────
+  // Frontend calls: /api/workspaces/:slug/projects/:project_id/comments/:comment_id/reactions/
+
+  .get("/:project_id/comments/:comment_id/reactions/", async ({params: {slug, project_id, comment_id}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const reactions = await prisma.commentReaction.findMany({
+      where: {commentId: comment_id, deletedAt: null},
+      include: {actor: {select: {id: true, displayName: true, avatarUrl: true}}},
+    });
+    return reactions.map((r: any) => ({
+      id: r.id, comment: comment_id, reaction: r.reaction,
+      actor: r.actor.id,
+      actor_detail: {id: r.actor.id, display_name: r.actor.displayName, avatar_url: r.actor.avatarUrl},
+    }));
+  })
+
+  .post("/:project_id/comments/:comment_id/reactions/", async ({params: {slug, project_id, comment_id}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const b = body as any;
+    if (!b.reaction) { set.status = 400; return {detail: "reaction is required."}; }
+    const existing = await prisma.commentReaction.findFirst({
+      where: {commentId: comment_id, actorId: user.id, reaction: b.reaction, deletedAt: null},
+    });
+    if (existing) { set.status = 409; return {detail: "Already reacted."}; }
+    const r = await prisma.commentReaction.create({
+      data: {commentId: comment_id, actorId: user.id, workspaceId: ws.id, projectId: project_id, reaction: b.reaction},
+    });
+    set.status = 201;
+    return {id: r.id, comment: comment_id, reaction: r.reaction, actor: user.id};
+  })
+
+  .delete("/:project_id/comments/:comment_id/reactions/:reaction/", async ({params: {slug, project_id, comment_id, reaction}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    await prisma.commentReaction.updateMany({
+      where: {commentId: comment_id, actorId: user.id, reaction, deletedAt: null},
+      data: {deletedAt: new Date()},
+    });
+    set.status = 204;
+    return null;
   });

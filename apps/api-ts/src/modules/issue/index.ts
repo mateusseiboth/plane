@@ -629,4 +629,70 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       new_identifier: null,
       issue_detail: {id: issue_id, sequence_id: a.issue?.sequenceId ?? 0, name: ""},
     }));
+  })
+
+  // ── Sub-issues ────────────────────────────────────────────────────────────────
+  .get("/:issue_id/sub-issues/", async ({params: {slug, project_id, issue_id}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const subIssues = await prisma.issue.findMany({
+      where: {parentId: issue_id, deletedAt: null},
+      include: ISSUE_INCLUDE,
+      orderBy: {createdAt: "asc"},
+    });
+    return {
+      count: subIssues.length,
+      sub_issues: subIssues.map(serializeIssue),
+      state_distribution: {},
+    };
+  })
+
+  .post("/:issue_id/sub-issues/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const b = body as any;
+    const subIssueIds: string[] = b.sub_issue_ids ?? [];
+    if (subIssueIds.length) {
+      await prisma.issue.updateMany({
+        where: {id: {in: subIssueIds}, projectId: project_id, deletedAt: null},
+        data: {parentId: issue_id},
+      });
+    }
+    set.status = 201;
+    return {sub_issue_ids: subIssueIds};
+  })
+
+  // ── Issue relations (alias for /relations/ — frontend uses /issue-relation/) ──
+  .get("/:issue_id/issue-relation/", async ({params: {slug, project_id, issue_id}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const relations = await prisma.issueRelation.findMany({
+      where: {issueId: issue_id, deletedAt: null},
+      include: {relatedIssue: {select: {id: true, name: true, priority: true, sequenceId: true}}},
+    });
+    return relations.map((r: any) => ({
+      id: r.id, issue: issue_id, related_issue: r.relatedIssueId,
+      relation_type: r.relationType,
+      related_issue_detail: r.relatedIssue
+        ? {id: r.relatedIssue.id, name: r.relatedIssue.name, priority: r.relatedIssue.priority, sequence_id: r.relatedIssue.sequenceId}
+        : undefined,
+    }));
+  })
+
+  .post("/:issue_id/issue-relation/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const b = body as any;
+    if (!b.related_issue || !b.relation_type) { set.status = 400; return {detail: "related_issue and relation_type are required."}; }
+    const relation = await prisma.issueRelation.create({
+      data: {issueId: issue_id, relatedIssueId: b.related_issue, workspaceId: ws.id, projectId: project_id, relationType: b.relation_type},
+    });
+    set.status = 201;
+    return {id: relation.id, issue: issue_id, related_issue: relation.relatedIssueId, relation_type: relation.relationType};
+  })
+
+  .delete("/:issue_id/issue-relation/:relation_id/", async ({params: {relation_id}, set}) => {
+    await prisma.issueRelation.update({where: {id: relation_id}, data: {deletedAt: new Date()}});
+    set.status = 204;
+    return null;
   });

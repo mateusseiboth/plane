@@ -5,8 +5,16 @@ import { Dialog, Transition } from "@headlessui/react";
 import { useParams, useRouter } from "next/navigation";
 import { Search, X, FileText, Inbox, ArrowUpRight } from "lucide-react";
 import { cn } from "@plane/utils";
-import { useDebounce } from "@plane/hooks";
 import { WorkspaceService } from "@/services/workspace.service";
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 const workspaceService = new WorkspaceService();
 

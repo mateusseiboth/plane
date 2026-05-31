@@ -294,6 +294,18 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/entities",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/entities/page.tsx"
           ),
+          route(
+            ":workspaceSlug/settings/ai",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/ai/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/settings/integrations",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/integrations/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/settings/integrations-custom",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/integrations-custom/page.tsx"
+          ),
         ]),
 
         // --------------------------------------------------------------------

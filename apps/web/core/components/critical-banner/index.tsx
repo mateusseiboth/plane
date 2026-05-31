@@ -85,7 +85,7 @@ export function CriticalIssuesBanner() {
               <Link
                 key={issue.id}
                 href={`/${workspaceSlug}/projects/${issue.project?.id}/issues/${issue.id}/`}
-                className="flex items-center gap-1.5 rounded-full border border-red-300 bg-white px-3 py-1 text-12 text-red-800 hover:border-red-500 hover:bg-red-50 dark:border-red-700 dark:bg-red-900/20 dark:text-red-200 transition-colors"
+                className="flex items-center gap-1.5 rounded-full border border-red-300 bg-white px-3 py-1 text-12 text-red-800 hover:border-red-500 hover:bg-red-50 dark:border-red-700 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900/50 transition-colors"
               >
                 {issue.legacy_ticket_number && (
                   <span className="font-mono font-semibold">#{issue.legacy_ticket_number}</span>
