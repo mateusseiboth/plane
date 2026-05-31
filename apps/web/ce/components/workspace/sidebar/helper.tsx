@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { Wrench } from "lucide-react";
+import { FileBarChart, Wrench } from "lucide-react";
 import {
   AnalyticsIcon,
   ArchiveIcon,
@@ -49,5 +49,7 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <Intake className={cn("size-4 flex-shrink-0", className)} />;
     case "visits":
       return <Wrench className={cn("size-4 flex-shrink-0", className)} />;
+    case "reports":
+      return <FileBarChart className={cn("size-4 flex-shrink-0", className)} />;
   }
 };
