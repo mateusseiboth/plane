@@ -59,6 +59,18 @@ function stateTransitionAllowed(role: number, fromGroup: string, toGroup: string
 export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:project_id/issues"})
   .use(authPlugin)
 
+  // GET /:issue_id/meta/ — minimal payload for redirect (project_identifier + sequence_id)
+  .get("/:issue_id/meta/", async ({params: {slug, project_id, issue_id}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const issue = await prisma.issue.findFirst({
+      where: {id: issue_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
+      include: {project: {select: {identifier: true}}},
+    });
+    if (!issue) { set.status = 404; return {detail: "Issue not found."}; }
+    return {project_identifier: issue.project?.identifier ?? "", sequence_id: String(issue.sequenceId)};
+  })
+
   .get("/", async ({params: {slug, project_id}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);

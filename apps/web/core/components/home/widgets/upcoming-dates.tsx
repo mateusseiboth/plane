@@ -13,7 +13,7 @@ class DueDateService extends APIService {
   upcoming(slug: string) {
     const today = new Date().toISOString().slice(0, 10);
     const inSevenDays = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-    return this.get(`/api/workspaces/${slug}/workspace-views/all-issues/`, {
+    return this.get(`/api/workspaces/${slug}/issues/`, {
       params: { target_date: `${today};${inSevenDays}`, state_group: "backlog,unstarted,started", per_page: 10, cursor: "10:0:0" },
     }).then((r) => r?.data?.results ?? []).catch(() => []);
   }

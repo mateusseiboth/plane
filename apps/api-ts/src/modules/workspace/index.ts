@@ -1314,10 +1314,22 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     }
     if (query.state) where.stateId = {in: (query.state as string).split(",")};
     if (query.entity_id) where.entityId = query.entity_id;
-    if (query.assignees) where.assignees = {some: {assigneeId: {in: (query.assignees as string).split(",")}, deletedAt: null}};
+    if (query.assignees) {
+      const assigneeVal = query.assignees as string;
+      const ids = assigneeVal === "me" ? [user.id] : assigneeVal.split(",");
+      where.assignees = {some: {assigneeId: {in: ids}, deletedAt: null}};
+    }
     if (query.created_by) where.createdById = {in: (query.created_by as string).split(",")};
     if (query.label) where.labels = {some: {labelId: {in: (query.label as string).split(",")}, deletedAt: null}};
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.target_date) {
+      const parts = (query.target_date as string).split(";");
+      if (parts.length === 2) {
+        where.targetDate = {gte: new Date(parts[0]), lte: new Date(parts[1])};
+      } else {
+        where.targetDate = new Date(parts[0]);
+      }
+    }
 
     const orderBy: any = {};
     const order = (query.order_by as string) ?? "-updated_at";
@@ -1365,9 +1377,21 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       where.stateId = {in: states.map((s: any) => s.id)};
     }
     if (query.state) where.stateId = {in: (query.state as string).split(",")};
-    if (query.assignees) where.assignees = {some: {assigneeId: {in: (query.assignees as string).split(",")}, deletedAt: null}};
+    if (query.assignees) {
+      const assigneeVal = query.assignees as string;
+      const ids = assigneeVal === "me" ? [user.id] : assigneeVal.split(",");
+      where.assignees = {some: {assigneeId: {in: ids}, deletedAt: null}};
+    }
     if (query.created_by) where.createdById = {in: (query.created_by as string).split(",")};
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.target_date) {
+      const parts = (query.target_date as string).split(";");
+      if (parts.length === 2) {
+        where.targetDate = {gte: new Date(parts[0]), lte: new Date(parts[1])};
+      } else {
+        where.targetDate = new Date(parts[0]);
+      }
+    }
 
     const orderBy: any = {};
     const order = (query.order_by as string) ?? "-updated_at";

@@ -11,7 +11,7 @@ import { API_BASE_URL } from "@plane/constants";
 class WorkItemService extends APIService {
   constructor() { super(API_BASE_URL); }
   myIssues(slug: string) {
-    return this.get(`/api/workspaces/${slug}/workspace-views/all-issues/`, {
+    return this.get(`/api/workspaces/${slug}/issues/`, {
       params: { assignees: "me", state_group: "backlog,unstarted,started", per_page: 10, cursor: "10:0:0" },
     }).then((r) => r?.data?.results ?? []).catch(() => []);
   }

@@ -18,7 +18,7 @@ export class WebhookService extends APIService {
 
   async fetchWebhooksList(workspaceSlug: string): Promise<IWebhook[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/webhooks/`)
-      .then((response) => response?.data)
+      .then((response) => response?.data?.results ?? response?.data ?? [])
       .catch((error) => {
         throw error?.response?.data;
       });

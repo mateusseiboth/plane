@@ -249,8 +249,8 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
 
   // ── Bulk update project assets upload status ───────────────────────────────
   .post(
-    "/projects/:project_id/:entity_id/bulk/",
-    async ({ params: { slug, project_id, entity_id }, body, user }) => {
+    "/projects/:project_id/:asset_id/bulk/",
+    async ({ params: { slug, project_id, asset_id }, body, user }) => {
       const ws = await getWorkspaceOrFail(slug);
       await getProjectOrFail(ws.id, project_id, user.id);
       const b = body as any;
