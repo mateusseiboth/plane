@@ -8,7 +8,7 @@ import {API_BASE_URL} from "@plane/constants";
 import {cn} from "@plane/utils";
 import {Building2, Calendar, ChevronRight, Plus} from "lucide-react";
 import {observer} from "mobx-react";
-import {useParams} from "next/navigation";
+import {useParams, useRouter} from "next/navigation";
 import {useEffect, useState} from "react";
 
 // ── Service ─────────────────────────────────────────────────────────────────
@@ -50,6 +50,19 @@ const STATUS_COLORS: Record<number, string> = {
   4: "bg-green-100 text-green-800",
   5: "bg-red-100 text-red-800",
 };
+
+const VISIT_STATUS_LABELS = ["Agendada", "Em Andamento", "Relatório", "Aguard. Assinatura", "Concluída", "Cancelada"];
+
+function toDateTimeLocal(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocal(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
 
 function StatusBadge({status, label}: {status: number; label: string}) {
   return (
@@ -152,10 +165,338 @@ function CreateVisitModal({onClose, onCreate}: {onClose: () => void; onCreate: (
   );
 }
 
+function VisitEditorModal({
+  visit,
+  onClose,
+  onSave,
+}: {
+  visit: any;
+  onClose: () => void;
+  onSave: (visitId: string, data: any) => Promise<void>;
+}) {
+  const {workspaceSlug} = useParams();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    entity_id: visit?.entity_id ?? visit?.entity?.id ?? null,
+    city: visit?.city ?? "",
+    scheduled_date: toDateTimeLocal(visit?.scheduled_date),
+    contacts: visit?.contacts ?? "",
+    status: visit?.status ?? 0,
+    started_at: toDateTimeLocal(visit?.started_at),
+    finished_at: toDateTimeLocal(visit?.finished_at),
+    period: visit?.period ?? "",
+    summary: visit?.summary ?? "",
+    conclusion: visit?.conclusion ?? "",
+    mot_update: !!visit?.mot_update,
+    mot_bug_fix: !!visit?.mot_bug_fix,
+    mot_training: !!visit?.mot_training,
+    mot_improvement: !!visit?.mot_improvement,
+    mot_commercial: !!visit?.mot_commercial,
+    mot_other: !!visit?.mot_other,
+    mot_other_description: visit?.mot_other_description ?? "",
+  });
+
+  useEffect(() => {
+    setForm({
+      entity_id: visit?.entity_id ?? visit?.entity?.id ?? null,
+      city: visit?.city ?? "",
+      scheduled_date: toDateTimeLocal(visit?.scheduled_date),
+      contacts: visit?.contacts ?? "",
+      status: visit?.status ?? 0,
+      started_at: toDateTimeLocal(visit?.started_at),
+      finished_at: toDateTimeLocal(visit?.finished_at),
+      period: visit?.period ?? "",
+      summary: visit?.summary ?? "",
+      conclusion: visit?.conclusion ?? "",
+      mot_update: !!visit?.mot_update,
+      mot_bug_fix: !!visit?.mot_bug_fix,
+      mot_training: !!visit?.mot_training,
+      mot_improvement: !!visit?.mot_improvement,
+      mot_commercial: !!visit?.mot_commercial,
+      mot_other: !!visit?.mot_other,
+      mot_other_description: visit?.mot_other_description ?? "",
+    });
+  }, [visit]);
+
+  const isFinalized = form.status === 4 || form.status === 5;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!visit?.id) return;
+    setSaving(true);
+    try {
+      await onSave(visit.id, {
+        entity_id: form.entity_id,
+        city: form.city,
+        scheduled_date: form.scheduled_date ? fromDateTimeLocal(form.scheduled_date) : null,
+        contacts: form.contacts,
+        status: form.status,
+        started_at: form.started_at ? fromDateTimeLocal(form.started_at) : null,
+        finished_at: form.finished_at ? fromDateTimeLocal(form.finished_at) : null,
+        period: form.period || null,
+        summary: form.summary || null,
+        conclusion: form.conclusion || null,
+        mot_update: form.mot_update,
+        mot_bug_fix: form.mot_bug_fix,
+        mot_training: form.mot_training,
+        mot_improvement: form.mot_improvement,
+        mot_commercial: form.mot_commercial,
+        mot_other: form.mot_other,
+        mot_other_description: form.mot_other_description || null,
+      });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-3xl rounded-lg bg-surface-1 shadow-xl">
+        <div className="flex items-center justify-between border-b border-subtle px-6 py-4">
+          <div>
+            <h2 className="text-base font-semibold">Editar Visita Técnica</h2>
+            <p className="text-12 text-secondary">
+              {visit?.entity?.name ?? "Sem entidade"}
+              {visit?.visit_number ? ` · #${visit.visit_number}` : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded px-3 py-1.5 text-13 text-secondary hover:text-primary"
+          >
+            Fechar
+          </button>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="max-h-[80vh] overflow-y-auto px-6 py-5"
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Entidade</label>
+                <EntityDropdown
+                  workspaceSlug={workspaceSlug.toString()}
+                  value={form.entity_id}
+                  onChange={(entityId) => setForm((f) => ({...f, entity_id: entityId}))}
+                  placeholder="Selecionar entidade"
+                  className="w-full"
+                  disabled={isFinalized}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Cidade</label>
+                <input
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.city}
+                  onChange={(e) => setForm((f) => ({...f, city: e.target.value}))}
+                  disabled={isFinalized}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Data agendada</label>
+                <input
+                  type="datetime-local"
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.scheduled_date}
+                  onChange={(e) => setForm((f) => ({...f, scheduled_date: e.target.value}))}
+                  disabled={isFinalized}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Contatos</label>
+                <input
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.contacts}
+                  onChange={(e) => setForm((f) => ({...f, contacts: e.target.value}))}
+                  disabled={isFinalized}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Período</label>
+                <input
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.period}
+                  onChange={(e) => setForm((f) => ({...f, period: e.target.value}))}
+                  placeholder="Ex.: Manhã"
+                  disabled={isFinalized}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Status</label>
+                <select
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.status}
+                  onChange={(e) => setForm((f) => ({...f, status: Number(e.target.value)}))}
+                  disabled={isFinalized}
+                >
+                  {VISIT_STATUS_LABELS.map((label, index) => (
+                    <option
+                      key={label}
+                      value={index}
+                    >
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-12 text-secondary">Início</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                    value={form.started_at}
+                    onChange={(e) => setForm((f) => ({...f, started_at: e.target.value}))}
+                    disabled={isFinalized}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-12 text-secondary">Fim</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                    value={form.finished_at}
+                    onChange={(e) => setForm((f) => ({...f, finished_at: e.target.value}))}
+                    disabled={isFinalized}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  ["mot_update", "Atualização"],
+                  ["mot_bug_fix", "Correção"],
+                  ["mot_training", "Treinamento"],
+                  ["mot_improvement", "Melhoria"],
+                  ["mot_commercial", "Comercial"],
+                  ["mot_other", "Outro"],
+                ].map(([key, label]) => (
+                  <label
+                    key={key}
+                    className="flex items-center gap-2 rounded border border-subtle px-3 py-2 text-13"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={(form as any)[key]}
+                      onChange={(e) => setForm((f) => ({...f, [key]: e.target.checked}) as any)}
+                      disabled={isFinalized}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Descrição do outro motivo</label>
+                <input
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.mot_other_description}
+                  onChange={(e) => setForm((f) => ({...f, mot_other_description: e.target.value}))}
+                  disabled={isFinalized}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Resumo</label>
+                <textarea
+                  rows={5}
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.summary}
+                  onChange={(e) => setForm((f) => ({...f, summary: e.target.value}))}
+                  placeholder="Resumo do que foi realizado"
+                  disabled={isFinalized}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Conclusão</label>
+                <textarea
+                  rows={5}
+                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
+                  value={form.conclusion}
+                  onChange={(e) => setForm((f) => ({...f, conclusion: e.target.value}))}
+                  placeholder="Conclusão da visita"
+                  disabled={isFinalized}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-subtle pt-4">
+            {!isFinalized && (
+              <>
+                {form.status === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({...f, status: 1}))}
+                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
+                  >
+                    Iniciar visita
+                  </button>
+                )}
+                {form.status === 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({...f, status: 2}))}
+                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
+                  >
+                    Iniciar relatório
+                  </button>
+                )}
+                {form.status === 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({...f, status: 3}))}
+                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
+                  >
+                    Solicitar assinatura
+                  </button>
+                )}
+                {(form.status === 2 || form.status === 3) && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({...f, status: 4}))}
+                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
+                  >
+                    Finalizar
+                  </button>
+                )}
+              </>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded px-3 py-1.5 text-13 text-secondary hover:text-primary"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving || isFinalized}
+              className="rounded bg-accent-primary px-4 py-1.5 text-13 font-medium text-white hover:bg-accent-primary/90 disabled:opacity-50"
+            >
+              {saving ? "Salvando..." : isFinalized ? "Visita finalizada" : "Salvar alterações"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 function TechnicalVisitsPage() {
-  const {workspaceSlug} = useParams();
+  const {workspaceSlug, projectId} = useParams();
+  const router = useRouter();
   const {currentWorkspace} = useWorkspace();
   const [visits, setVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,8 +518,8 @@ function TechnicalVisitsPage() {
   }, [workspaceSlug, statusFilter]);
 
   const handleStatusChange = async (visitId: string, newStatus: number) => {
-    await visitService.update(workspaceSlug.toString(), visitId, {status: newStatus});
-    setVisits((vs) => vs.map((v) => (v.id === visitId ? {...v, status: newStatus} : v)));
+    const updated = await visitService.update(workspaceSlug.toString(), visitId, {status: newStatus});
+    setVisits((vs) => vs.map((v) => (v.id === visitId ? {...v, ...updated} : v)));
   };
 
   return (
@@ -205,7 +546,7 @@ function TechnicalVisitsPage() {
       {/* Status filters */}
       <div className="flex gap-2 overflow-x-auto border-b border-subtle px-6 py-3">
         {[null, 0, 1, 2, 3, 4, 5].map((s) => {
-          const label = s === null ? "Todas" : ["Agendada", "Em Andamento", "Relatório", "Aguard. Assinatura", "Concluída", "Cancelada"][s];
+          const label = s === null ? "Todas" : VISIT_STATUS_LABELS[s];
           return (
             <button
               key={s ?? "all"}
@@ -240,7 +581,8 @@ function TechnicalVisitsPage() {
           visits.map((visit) => (
             <div
               key={visit.id}
-              className="flex items-center justify-between border-b border-subtle px-6 py-4 hover:bg-surface-2"
+              onClick={() => router.push(`/${workspaceSlug}/projects/${projectId}/visits/${visit.id}`)}
+              className="flex cursor-pointer items-center justify-between border-b border-subtle px-6 py-4 hover:bg-surface-2"
             >
               <div className="flex items-start gap-4">
                 <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-surface-2">
@@ -275,7 +617,10 @@ function TechnicalVisitsPage() {
                 {/* Quick status transitions */}
                 {visit.status === 0 && (
                   <button
-                    onClick={() => handleStatusChange(visit.id, 1)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStatusChange(visit.id, 1);
+                    }}
                     className="rounded border border-subtle px-2 py-1 text-12 text-secondary hover:border-accent-primary hover:text-accent-primary"
                   >
                     Iniciar
@@ -283,18 +628,24 @@ function TechnicalVisitsPage() {
                 )}
                 {visit.status === 1 && (
                   <button
-                    onClick={() => handleStatusChange(visit.id, 2)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/${workspaceSlug}/projects/${projectId}/visits/${visit.id}`);
+                    }}
                     className="rounded border border-subtle px-2 py-1 text-12 text-secondary hover:border-accent-primary hover:text-accent-primary"
                   >
-                    Elaborar Relatório
+                    Abrir relatório
                   </button>
                 )}
-                {visit.status === 2 && (
+                {(visit.status === 2 || visit.status === 3) && (
                   <button
-                    onClick={() => handleStatusChange(visit.id, 4)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/${workspaceSlug}/projects/${projectId}/visits/${visit.id}`);
+                    }}
                     className="rounded border border-subtle px-2 py-1 text-12 text-secondary hover:border-accent-primary hover:text-accent-primary"
                   >
-                    Concluir
+                    Editar relatório
                   </button>
                 )}
                 <ChevronRight className="h-4 w-4 text-tertiary" />

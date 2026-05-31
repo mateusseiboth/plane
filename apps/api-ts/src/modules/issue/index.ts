@@ -35,10 +35,10 @@ function stateTransitionAllowed(role: number, fromGroup: string, toGroup: string
   if (role === ROLES.TI) {
     if (fromGroup === "triage") return false;
     if (toGroup === "cancelled") return true;
-    if (fromGroup === "unstarted" && toGroup === "started") return true;  // A Fazer → Em Andamento
-    if (fromGroup === "started" && toGroup === "started") return true;    // Em Andamento → Em Teste
-    if (fromGroup === "started" && toGroup === "completed") return true;  // Em Teste → Concluído
-    if (["backlog","unstarted"].includes(fromGroup) && ["backlog","unstarted"].includes(toGroup)) return true;
+    if (fromGroup === "unstarted" && toGroup === "started") return true; // A Fazer → Em Andamento
+    if (fromGroup === "started" && toGroup === "started") return true; // Em Andamento → Em Teste
+    if (fromGroup === "started" && toGroup === "completed") return true; // Em Teste → Concluído
+    if (["backlog", "unstarted"].includes(fromGroup) && ["backlog", "unstarted"].includes(toGroup)) return true;
     return false;
   }
 
@@ -47,7 +47,7 @@ function stateTransitionAllowed(role: number, fromGroup: string, toGroup: string
     if (toGroup === "cancelled") return true;
     if (fromGroup === "triage") return toGroup === "unstarted" || toGroup === "triage";
     if (fromGroup === "unstarted" && toGroup === "unstarted") return true; // Avaliando → A Fazer
-    if (fromGroup === "started" && toGroup === "started") return true;     // devolução
+    if (fromGroup === "started" && toGroup === "started") return true; // devolução
     return false;
   }
 
@@ -67,7 +67,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       where: {id: issue_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
       include: {project: {select: {identifier: true}}},
     });
-    if (!issue) { set.status = 404; return {detail: "Issue not found."}; }
+    if (!issue) {
+      set.status = 404;
+      return {detail: "Issue not found."};
+    }
     return {project_identifier: issue.project?.identifier ?? "", sequence_id: String(issue.sequenceId)};
   })
 
@@ -315,7 +318,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     if (b.priority !== undefined) data.priority = b.priority;
     if (b.start_date !== undefined) data.startDate = b.start_date ? new Date(b.start_date) : null;
     if (b.target_date !== undefined) data.targetDate = b.target_date ? new Date(b.target_date) : null;
-    if (b.entity_id !== undefined) data.entityId = b.entity_id;
+    const entityIdValue = b.entity_id ?? b.entityId;
+    if (entityIdValue !== undefined) {
+      data.entity = entityIdValue ? {connect: {id: entityIdValue}} : {disconnect: true};
+    }
     if (b.legacy_ticket_number !== undefined) data.legacyTicketNumber = b.legacy_ticket_number;
     if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
     // b.type_id intentionally skipped — typeId not in current Prisma client
@@ -434,8 +440,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       take: 20,
     });
     return versions.map((v: any) => ({
-      id: v.id, comment_id: v.commentId, comment_html: v.commentHtml,
-      edited_by: v.editedById, created_at: v.createdAt?.toISOString(),
+      id: v.id,
+      comment_id: v.commentId,
+      comment_html: v.commentHtml,
+      edited_by: v.editedById,
+      created_at: v.createdAt?.toISOString(),
     }));
   })
 
@@ -683,7 +692,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       include: {relatedIssue: {select: {id: true, name: true, priority: true, sequenceId: true}}},
     });
     return relations.map((r: any) => ({
-      id: r.id, issue: issue_id, related_issue: r.relatedIssueId,
+      id: r.id,
+      issue: issue_id,
+      related_issue: r.relatedIssueId,
       relation_type: r.relationType,
       related_issue_detail: r.relatedIssue
         ? {id: r.relatedIssue.id, name: r.relatedIssue.name, priority: r.relatedIssue.priority, sequence_id: r.relatedIssue.sequenceId}
@@ -695,7 +706,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
-    if (!b.related_issue || !b.relation_type) { set.status = 400; return {detail: "related_issue and relation_type are required."}; }
+    if (!b.related_issue || !b.relation_type) {
+      set.status = 400;
+      return {detail: "related_issue and relation_type are required."};
+    }
     const relation = await prisma.issueRelation.create({
       data: {issueId: issue_id, relatedIssueId: b.related_issue, workspaceId: ws.id, projectId: project_id, relationType: b.relation_type},
     });
