@@ -1,0 +1,11 @@
+{
+  "name": "Worker Items Dashboard",
+  "version": "1.0.0",
+  "author": "Platform Team",
+  "description": "Lists open worker items for a given entity with priority filtering.",
+  "entry": "widget.js",
+  "permissions": [
+    "worker-items.read",
+    "stats.read"
+  ]
+}

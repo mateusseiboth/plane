@@ -35,6 +35,7 @@
     "@plane/types": "workspace:*",
     "@plane/ui": "workspace:*",
     "@plane/utils": "workspace:*",
+    "@qualitysistemas/widgets": "workspace:*",
     "@popperjs/core": "^2.11.8",
     "@react-pdf/renderer": "^3.4.5",
     "@react-router/node": "catalog:",

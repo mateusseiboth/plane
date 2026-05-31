@@ -1,0 +1,11 @@
+{
+  "name": "Stats Overview",
+  "version": "1.0.0",
+  "author": "Platform Team",
+  "description": "Shows platform-wide statistics in a card grid.",
+  "entry": "widget.js",
+  "permissions": [
+    "stats.read",
+    "intakes.read"
+  ]
+}

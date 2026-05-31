@@ -33,6 +33,8 @@ import { intakeWorkItemModule } from "@modules/intake-work-item";
 import { technicalVisitModule } from "@modules/technical-visit";
 import { customWidgetModule } from "@modules/custom-widget";
 import { customWebhookModule } from "@modules/custom-webhook";
+import { widgetModule } from "@modules/widget";
+import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -169,7 +171,9 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(intakeWorkItemModule)
   .use(technicalVisitModule)
   .use(customWidgetModule)
-  .use(customWebhookModule);
+  .use(customWebhookModule)
+  .use(widgetModule)
+  .use(widgetSdkGatewayModule);
 
 // ── Compose into root app ────────────────────────────────────────────────────
 const app = new Elysia()

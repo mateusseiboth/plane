@@ -1,0 +1,21 @@
+image: node:latest
+
+stages:
+  # - test
+  - deploy
+
+# test_component:
+#   stage: test
+#   parallel:
+#     matrix:
+#       - COMPONENT: ["alert", "badge", "avatar", "button"]
+#   script:
+#     - npm install
+#     - NODE_OPTIONS="--experimental-vm-modules" npx jest src/components/ui/$COMPONENT.test.tsx
+
+deploy:
+  stage: deploy
+  script:
+    - echo "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}">>.npmrc
+    - npm publish
+  environment: production

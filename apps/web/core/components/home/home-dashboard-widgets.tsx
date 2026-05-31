@@ -29,6 +29,7 @@ import { MyWorkItemsWidget } from "./widgets/my-work-items";
 import { UpcomingDatesWidget } from "./widgets/upcoming-dates";
 import { OpenIntakesWidget } from "./widgets/open-intakes";
 import { CriticalIssuesWidget } from "./widgets/critical-issues";
+import { MarketplaceWidgetsSection } from "./widgets/marketplace-widgets-section";
 
 export const HOME_WIDGETS_LIST: {
   [key in THomeWidgetKeys]: {
@@ -123,6 +124,9 @@ export const DashboardWidgets = observer(function DashboardWidgets() {
           </div>
         </div>
       )}
+
+      {/* Marketplace widgets — active widgets uploaded via the Widget admin panel */}
+      {!isWikiApp && <MarketplaceWidgetsSection />}
 
       {isAnyWidgetEnabled ? (
         <div className="flex flex-col">

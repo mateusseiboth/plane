@@ -83,6 +83,7 @@ model User {
   timeLogs                 IssueTimeLog[]            @relation("TimeLogMember")
   workspaceUserProperties  WorkspaceUserProperties[] @relation("WorkspaceUserPropsUser")
   projectUserProperties    ProjectUserProperty[]     @relation("ProjectUserPropsUser")
+  createdWidgets           Widget[]
   @@map("users")
 }
 
@@ -1530,4 +1531,48 @@ model WorkspaceSetting {
   value       Json      @default("{}")
   @@unique([workspaceId, key])
   @@map("workspace_settings")
+}
+
+// ── Widget Marketplace ────────────────────────────────────────────────────────
+
+enum WidgetStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_APPROVAL
+  ARCHIVED
+}
+
+model Widget {
+  id          String       @id @default(uuid()) @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+  name        String       @db.VarChar(255)
+  description String?
+  version     String       @db.VarChar(50)
+  author      String       @db.VarChar(255)
+  entryFile   String       @map("entry_file") @db.VarChar(500)
+  manifest    Json
+  permissions String[]
+  status      WidgetStatus @default(PENDING_APPROVAL)
+  storageKey  String       @map("storage_key") @db.VarChar(500)
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?      @map("created_by_id") @db.Uuid
+  versions    WidgetVersion[]
+  @@index([status])
+  @@index([createdById])
+  @@map("widgets")
+}
+
+model WidgetVersion {
+  id         String   @id @default(uuid()) @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+  version    String   @db.VarChar(50)
+  storageKey String   @map("storage_key") @db.VarChar(500)
+  manifest   Json
+  changelog  String?
+  widget     Widget   @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+  widgetId   String   @map("widget_id") @db.Uuid
+  @@index([widgetId])
+  @@map("widget_versions")
 }
