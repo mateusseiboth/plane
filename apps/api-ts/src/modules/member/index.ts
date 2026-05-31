@@ -55,18 +55,28 @@ export const memberModule = new Elysia({prefix: "/workspaces/:slug"})
     await getProjectOrFail(ws.id, project_id, user.id);
     const members = await prisma.projectMember.findMany({
       where: {projectId: project_id, isActive: true, deletedAt: null},
-      include: {member: {select: {id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true}}},
+      include: {
+        member: {select: {id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true, isActive: true}},
+      },
       orderBy: {createdAt: "asc"},
     });
-    return members.map((m) => ({
-      id: m.id,
-      member: m.member.id,
-      member__display_name: m.member.displayName,
-      member__avatar_url: m.member.avatarUrl ?? m.member.avatar,
-      role: m.role,
-      original_role: m.role,
-      created_at: m.createdAt.toISOString(),
-    }));
+    // Exclude users whose workspace membership is inactive (suspended users)
+    const activeWsMembers = await prisma.workspaceMember.findMany({
+      where: {workspaceId: ws.id, isActive: true, deletedAt: null},
+      select: {memberId: true},
+    });
+    const activeWsMemberIds = new Set(activeWsMembers.map((m) => m.memberId));
+    return members
+      .filter((m) => m.member.isActive !== false && activeWsMemberIds.has(m.member.id))
+      .map((m) => ({
+        id: m.id,
+        member: m.member.id,
+        member__display_name: m.member.displayName,
+        member__avatar_url: m.member.avatarUrl ?? m.member.avatar,
+        role: m.role,
+        original_role: m.role,
+        created_at: m.createdAt.toISOString(),
+      }));
   })
 
   .post("/projects/:project_id/members/", async ({params: {slug, project_id}, body, user, set}) => {

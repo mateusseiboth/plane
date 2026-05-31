@@ -17,6 +17,19 @@ function slugify(name: string) {
   return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 }
 
+// Find triage state by isTriage flag first, then fall back to group = "triage"
+// This handles projects created before isTriage was properly set
+async function findTriageState(projectId: string) {
+  const byFlag = await prisma.state.findFirst({ where: { projectId, isTriage: true, deletedAt: null } });
+  if (byFlag) return byFlag;
+  const byGroup = await prisma.state.findFirst({ where: { projectId, group: "triage", deletedAt: null } });
+  if (byGroup) {
+    // Backfill isTriage flag for this state
+    await prisma.state.update({ where: { id: byGroup.id }, data: { isTriage: true } });
+  }
+  return byGroup;
+}
+
 function formatProject(p: any, memberRole?: number) {
   return {
     id: p.id,
@@ -390,9 +403,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const skip    = page * perPage;
 
     // Intake issues = issues in triage state
-    const triageState = await prisma.state.findFirst({
-      where: {projectId: project_id, isTriage: true, deletedAt: null},
-    });
+    const triageState = await findTriageState(project_id);
 
     const where: any = {projectId: project_id, deletedAt: null, isDraft: false};
     if (triageState) where.stateId = triageState.id;
@@ -434,6 +445,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
           project_id: i.projectId,
           workspace_id: i.workspaceId,
           sequence_id: i.sequenceId,
+          description_html: i.descriptionHtml ?? "<p></p>",
           created_at: i.createdAt?.toISOString(),
           updated_at: i.updatedAt?.toISOString(),
         },
@@ -445,9 +457,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const ws = await getWorkspaceOrFail(slug);
     const {project} = await getProjectOrFail(ws.id, project_id, user.id);
     const b = (body as any).issue ?? body as any;
-    const triageState = await prisma.state.findFirst({
-      where: {projectId: project_id, isTriage: true, deletedAt: null},
-    });
+    const triageState = await findTriageState(project_id);
     const issue = await prisma.issue.create({
       data: {
         projectId: project_id, workspaceId: ws.id,
@@ -469,12 +479,25 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .get("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const issue = await prisma.issue.findFirst({where: {id: inbox_id, projectId: project_id, deletedAt: null}});
+    const issue = await prisma.issue.findFirst({
+      where: {id: inbox_id, projectId: project_id, deletedAt: null},
+      include: {state: {select: {group: true}}},
+    });
     if (!issue) { set.status = 404; return {detail: "Not found."}; }
+    // Determine intake status from state group
+    const stateGroup = issue.state?.group ?? "triage";
+    const intakeStatus = stateGroup === "triage" ? -2 : stateGroup === "cancelled" ? -1 : 1;
     return {
-      id: issue.id, status: -2, snoozed_till: null, duplicate_to: undefined,
+      id: issue.id, status: intakeStatus, snoozed_till: null, duplicate_to: undefined,
       source: "IN_APP", created_by: issue.createdById,
-      issue: {id: issue.id, name: issue.name, state_id: issue.stateId, project_id: issue.projectId},
+      issue: {
+        id: issue.id, name: issue.name, state_id: issue.stateId,
+        priority: issue.priority, project_id: issue.projectId,
+        workspace_id: issue.workspaceId, sequence_id: issue.sequenceId,
+        description_html: issue.descriptionHtml ?? "<p></p>",
+        created_at: issue.createdAt?.toISOString(),
+        updated_at: issue.updatedAt?.toISOString(),
+      },
     };
   })
 
@@ -510,9 +533,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .get("/:project_id/intake-state/", async ({ params: { slug, project_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const intakeState = await prisma.state.findFirst({
-      where: { projectId: project_id, isTriage: true, deletedAt: null },
-    });
+    const intakeState = await findTriageState(project_id);
     if (!intakeState) return { results: [] };
     return {
       results: [{

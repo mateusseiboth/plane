@@ -12,7 +12,11 @@ import type { IWorkspace } from "../workspace";
 
 export enum EUserProjectRoles {
   ADMIN = 20,
+  GESTOR_PROJETO = 18, // manages members + delete; no workspace config
   MEMBER = 15,
+  TI = 12,             // create/edit/comment; TI workflow only
+  QUALIDADE = 8,       // create/edit/comment; QA workflow only
+  ATENDIMENTO = 6,     // intake-only creation; read otherwise
   GUEST = 5,
 }
 

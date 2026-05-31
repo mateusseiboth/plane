@@ -78,10 +78,14 @@ export const RESTRICTED_URLS: string[] = [
 ];
 
 export const ROLE = {
-  [EUserWorkspaceRoles.GUEST]: "Guest",
-  [EUserWorkspaceRoles.MEMBER]: "Member",
-  [EUserWorkspaceRoles.ADMIN]: "Admin",
-};
+  5:  "Visualizador",  // GUEST
+  6:  "Atendimento",   // ATENDIMENTO
+  8:  "Qualidade",     // QUALIDADE
+  12: "TI",           // TI
+  15: "Membro",       // MEMBER
+  18: "Gestor de Projeto", // GESTOR_PROJETO
+  20: "Administrador", // ADMIN
+} as Record<number, string>;
 
 export const ROLE_DETAILS = {
   [EUserWorkspaceRoles.GUEST]: {

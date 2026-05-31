@@ -15,7 +15,7 @@ cd "$ROOT"
 # ── 1. Load pnpm from zshrc (installed via nvm/fnm style setup) ──────────────
 log "Loading shell environment..."
 # shellcheck disable=SC1090
-source ~/.zshrc 2>/dev/null || source ~/.bashrc 2>/dev/null || true
+export PATH="$HOME/.local/share/pnpm:$PATH"
 command -v pnpm >/dev/null 2>&1 || err "pnpm not found after sourcing shell. Check PATH."
 ok "pnpm $(pnpm --version)"
 

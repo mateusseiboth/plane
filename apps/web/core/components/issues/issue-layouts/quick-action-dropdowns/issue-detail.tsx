@@ -11,6 +11,7 @@ import { useParams } from "next/navigation";
 import { Ellipsis } from "lucide-react";
 // plane imports
 import { ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserProjectRoles } from "@plane/types";
 import type { TIssue } from "@plane/types";
 import { EIssuesStoreType } from "@plane/types";
 import { ContextMenu, CustomMenu } from "@plane/ui";
@@ -75,7 +76,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
   const activeLayout = `${issuesFilter.issueFilters?.displayFilters?.layout} layout`;
   const stateDetails = getStateById(issue.state_id);
   const projectIdentifier = getProjectIdentifierById(issue?.project_id);
-  // auth
+  // auth — editing: ADMIN, MEMBER, GESTOR_PROJETO, TI, QUALIDADE
   const isEditingAllowed =
     allowPermissions(
       [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
@@ -88,7 +89,15 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
   const isInArchivableGroup = !!stateDetails && ARCHIVABLE_STATE_GROUPS.includes(stateDetails?.group);
   const isRestoringAllowed = !!issue.archived_at && isEditingAllowed;
 
-  const isDeletingAllowed = isEditingAllowed;
+  // Deleting: only ADMIN and GESTOR_PROJETO
+  const isDeletingAllowed =
+    !readOnly &&
+    allowPermissions(
+      [EUserPermissions.ADMIN, EUserProjectRoles.GESTOR_PROJETO],
+      EUserPermissionsLevel.PROJECT,
+      workspaceSlug?.toString(),
+      issue.project_id ?? undefined
+    );
 
   const duplicateIssuePayload = omit(
     {

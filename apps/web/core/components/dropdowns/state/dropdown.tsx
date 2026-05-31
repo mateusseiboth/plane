@@ -4,11 +4,12 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // hooks
 import { useProjectState } from "@/hooks/store/use-project-state";
+import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 // local imports
 import type { TWorkItemStateDropdownBaseProps } from "./base";
 import { WorkItemStateDropdownBase } from "./base";
@@ -21,19 +22,34 @@ type TWorkItemStateDropdownProps = Omit<
 };
 
 export const StateDropdown = observer(function StateDropdown(props: TWorkItemStateDropdownProps) {
-  const { projectId, stateIds: propsStateIds } = props;
+  const { projectId, stateIds: propsStateIds, value: currentStateId } = props;
   // router params
   const { workspaceSlug } = useParams();
   // states
   const [stateLoader, setStateLoader] = useState(false);
   // store hooks
   const { fetchProjectStates, getProjectStateIds, getStateById } = useProjectState();
+  const { canMoveToState, role } = useProjectRolePermissions(projectId ?? undefined);
   // derived values
-  const stateIds = propsStateIds ?? getProjectStateIds(projectId);
+  const allStateIds = propsStateIds ?? getProjectStateIds(projectId) ?? [];
+
+  const currentState = currentStateId ? getStateById(currentStateId) : undefined;
+  const fromGroup = currentState?.group ?? "backlog";
+
+  // Filter available states based on role-based transition rules
+  const stateIds = useMemo(() => {
+    if (!role) return allStateIds;
+    return allStateIds.filter((id) => {
+      if (id === currentStateId) return true; // always allow current state
+      const targetState = getStateById(id);
+      if (!targetState) return false;
+      return canMoveToState(fromGroup, targetState.group);
+    });
+  }, [allStateIds, currentStateId, fromGroup, canMoveToState, getStateById, role]);
 
   // fetch states if not provided
   const onDropdownOpen = async () => {
-    if ((stateIds === undefined || stateIds.length === 0) && workspaceSlug && projectId) {
+    if ((allStateIds === undefined || allStateIds.length === 0) && workspaceSlug && projectId) {
       setStateLoader(true);
       await fetchProjectStates(workspaceSlug.toString(), projectId);
       setStateLoader(false);
@@ -45,7 +61,7 @@ export const StateDropdown = observer(function StateDropdown(props: TWorkItemSta
       {...props}
       getStateById={getStateById}
       isInitializing={stateLoader}
-      stateIds={stateIds ?? []}
+      stateIds={stateIds}
       onDropdownOpen={onDropdownOpen}
     />
   );

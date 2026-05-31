@@ -26,7 +26,7 @@ const initialLng =
 export const initPromise = i18nInstance
   .init({
     lng: initialLng,
-    fallbackLng: FALLBACK_LANGUAGE,
+    fallbackLng: [FALLBACK_LANGUAGE, "en"],
     supportedLngs: SUPPORTED_LANGUAGES.map((l) => l.value),
     ns: NAMESPACES,
     defaultNS: DEFAULT_NAMESPACE,

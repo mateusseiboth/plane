@@ -18,6 +18,7 @@ import { CustomMenu } from "@plane/ui";
 import { cn } from "@plane/utils";
 // hooks
 import { useUser } from "@/hooks/store/user";
+import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
 type TCommentCard = {
   activityOperations: TCommentsOperations;
@@ -31,10 +32,11 @@ export const CommentQuickActions = observer(function CommentQuickActions(props: 
   const { activityOperations, comment, setEditMode, showAccessSpecifier, showCopyLinkOption } = props;
   // store hooks
   const { data: currentUser } = useUser();
+  const { canDeleteOthersComment } = useProjectRolePermissions();
   // derived values
   const isAuthor = currentUser?.id === comment.actor;
   const canEdit = isAuthor;
-  const canDelete = isAuthor;
+  const canDelete = isAuthor || canDeleteOthersComment;
   // translation
   const { t } = useTranslation();
 
