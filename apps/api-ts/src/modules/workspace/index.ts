@@ -1026,7 +1026,29 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/home-preferences/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return {widgets: []};
+
+    const DEFAULT_WIDGETS = [
+      {key: "my_work_items",  name: "Meus Work Items",   is_enabled: true, sort_order: 7},
+      {key: "upcoming_dates", name: "Prazos Próximos",   is_enabled: true, sort_order: 6},
+      {key: "open_intakes",   name: "Intakes Abertos",   is_enabled: true, sort_order: 5},
+      {key: "quick_links",    name: "Links Rápidos",     is_enabled: true, sort_order: 4},
+      {key: "recents",        name: "Recentes",          is_enabled: true, sort_order: 3},
+      {key: "my_stickies",    name: "Meus Stickies",     is_enabled: true, sort_order: 2},
+      {key: "quick_tutorial", name: "Tutorial",          is_enabled: true, sort_order: 1},
+      {key: "new_at_plane",   name: "Novidades",         is_enabled: true, sort_order: 0},
+    ];
+
+    const props = await prisma.workspaceUserProperties.findFirst({
+      where: {workspaceId: ws.id, userId: user.id},
+      select: {displayFilters: true},
+    });
+    const widgetPrefs: Record<string, any> = (props?.displayFilters as any)?.widget_preferences ?? {};
+
+    return DEFAULT_WIDGETS.map((w) => ({
+      ...w,
+      is_enabled: widgetPrefs[w.key]?.is_enabled ?? w.is_enabled,
+      sort_order: widgetPrefs[w.key]?.sort_order ?? w.sort_order,
+    }));
   })
 
   .patch("/:slug/home-preferences/", async ({params: {slug}, body, user}) => {
@@ -1044,7 +1066,20 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .patch("/:slug/home-preferences/:key/", async ({params: {slug, key}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return {key, value: (body as any).value ?? null};
+    const b = body as any;
+    const props = await prisma.workspaceUserProperties.findFirst({
+      where: {workspaceId: ws.id, userId: user.id},
+    });
+    const existing = (props?.displayFilters as any) ?? {};
+    const widgetPrefs = existing.widget_preferences ?? {};
+    widgetPrefs[key] = {...(widgetPrefs[key] ?? {}), ...b};
+    const newDisplayFilters = {...existing, widget_preferences: widgetPrefs};
+    await prisma.workspaceUserProperties.upsert({
+      where: {workspaceId_userId: {workspaceId: ws.id, userId: user.id}},
+      update: {displayFilters: newDisplayFilters},
+      create: {workspaceId: ws.id, userId: user.id, displayFilters: newDisplayFilters},
+    });
+    return {key, ...b};
   })
 
   // ── Sidebar preferences ───────────────────────────────────────────────────────
@@ -1438,4 +1473,68 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       assignee_ids: i.assignees.map((a: any) => a.assigneeId),
       updated_at: i.updatedAt?.toISOString(),
     }));
+  })
+
+  // ── Global intake: pending intakes across all projects ────────────────────
+  .get("/:slug/global-intake-issues/", async ({params: {slug}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+
+    const userProjectIds = (await prisma.projectMember.findMany({
+      where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
+      select: {projectId: true},
+    })).map(m => m.projectId);
+
+    const statusFilter: number[] | null = (query as any).status
+      ? String((query as any).status).split(",").map(Number)
+      : [-2]; // default to pending
+
+    const perPage = Number((query as any).per_page ?? 50);
+    const cursor = (query as any).cursor ?? `${perPage}:0:0`;
+    const page = Number(cursor.split(":")[1] ?? 0);
+    const skip = page * perPage;
+
+    const where: any = {workspaceId: ws.id, projectId: {in: userProjectIds}, deletedAt: null};
+    if (statusFilter) where.status = {in: statusFilter};
+
+    const [intakeIssues, total] = await Promise.all([
+      prisma.intakeIssue.findMany({
+        where, skip, take: perPage + 1,
+        include: {
+          issue: {select: {id: true, name: true, priority: true, projectId: true, sequenceId: true, createdAt: true, updatedAt: true}},
+        },
+        orderBy: {createdAt: "desc"},
+      }),
+      prisma.intakeIssue.count({where}),
+    ]);
+
+    // Fetch project data separately
+    const projectIds = [...new Set(intakeIssues.map((ii: any) => ii.projectId).filter(Boolean))];
+    const projects = projectIds.length
+      ? await prisma.project.findMany({where: {id: {in: projectIds as string[]}}, select: {id: true, identifier: true, name: true}})
+      : [];
+    const projectMap = Object.fromEntries(projects.map((p: any) => [p.id, p]));
+
+    const hasNext = intakeIssues.length > perPage;
+    return {
+      total_count: total, total_results: total,
+      next_cursor: `${perPage}:${page + 1}:0`,
+      prev_cursor: `${perPage}:${Math.max(0, page - 1)}:1`,
+      next_page_results: hasNext, prev_page_results: page > 0,
+      results: intakeIssues.slice(0, perPage).map((ii: any) => {
+        const proj = projectMap[ii.projectId];
+        return {
+          id: ii.id,
+          status: ii.status ?? -2,
+          source: ii.source ?? "IN_APP",
+          created_at: ii.createdAt?.toISOString(),
+          project: proj ? {id: proj.id, identifier: proj.identifier, name: proj.name} : null,
+          issue: ii.issue ? {
+            id: ii.issue.id, name: ii.issue.name, priority: ii.issue.priority,
+            project_id: ii.issue.projectId, sequence_id: ii.issue.sequenceId,
+            created_at: ii.issue.createdAt?.toISOString(), updated_at: ii.issue.updatedAt?.toISOString(),
+          } : null,
+        };
+      }),
+    };
   });
