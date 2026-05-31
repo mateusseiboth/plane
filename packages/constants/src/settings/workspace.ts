@@ -80,9 +80,9 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     WORKSPACE_SETTINGS["general"],
     WORKSPACE_SETTINGS["members"],
     WORKSPACE_SETTINGS["entities"],
-    WORKSPACE_SETTINGS["billing-and-plans"],
+    // WORKSPACE_SETTINGS["billing-and-plans"], // Not implemented yet
     WORKSPACE_SETTINGS["export"],
-  ],
+  ].filter(Boolean) as TWorkspaceSettingsItem[],
   [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [],
   [WORKSPACE_SETTINGS_CATEGORY.DEVELOPER]: [WORKSPACE_SETTINGS["webhooks"]],
 };

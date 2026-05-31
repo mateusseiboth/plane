@@ -114,6 +114,11 @@ export const coreRoutes: RouteConfigEntry[] = [
           ),
         ]),
 
+        // Global Intake
+        layout("./(all)/[workspaceSlug]/(projects)/global-intake/layout.tsx", [
+          route(":workspaceSlug/global-intake", "./(all)/[workspaceSlug]/(projects)/global-intake/page.tsx"),
+        ]),
+
         // Plugin Store
         route(":workspaceSlug/plugins", "./(all)/[workspaceSlug]/(projects)/plugins/page.tsx"),
 

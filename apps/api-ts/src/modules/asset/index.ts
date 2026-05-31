@@ -116,3 +116,82 @@ export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
       return null;
     }
   );
+
+// ── assets/v2 — new attachment API (frontend calls /api/assets/v2/workspaces/...) ──────
+// This module handles the v2 asset paths that the frontend uses for file uploads.
+export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" })
+  .use(authPlugin)
+
+  .get(
+    "/projects/:project_id/issues/:issue_id/attachments/",
+    async ({ params: { slug, project_id, issue_id }, user, query }) => {
+      const ws = await getWorkspaceOrFail(slug);
+      await getProjectOrFail(ws.id, project_id, user.id);
+      const where = { issueId: issue_id, deletedAt: null };
+      return paginate({
+        query: (skip, take) => prisma.issueAttachment.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
+        count: () => prisma.issueAttachment.count({ where }),
+        cursor: (query as any).cursor as string | undefined,
+        transform: (items) => items.map((a: any) => ({
+          id: a.id, issue: issue_id, workspace: ws.id, project: project_id,
+          asset: a.asset, attributes: a.attributes ?? {},
+          created_at: a.createdAt?.toISOString(), updated_at: a.updatedAt?.toISOString(),
+        })),
+      });
+    }
+  )
+
+  .post(
+    "/projects/:project_id/issues/:issue_id/attachments/",
+    async ({ params: { slug, project_id, issue_id }, body, user, set }) => {
+      const ws = await getWorkspaceOrFail(slug);
+      await getProjectOrFail(ws.id, project_id, user.id);
+      const b = body as any;
+      const attachment = await prisma.issueAttachment.create({
+        data: {
+          issueId: issue_id, workspaceId: ws.id, projectId: project_id,
+          asset: b.asset ?? b.upload_data?.asset ?? "",
+          attributes: b.attributes ?? b.upload_data?.attributes ?? {},
+        },
+      });
+      set.status = 201;
+      return {
+        id: attachment.id, issue: issue_id, workspace: ws.id, project: project_id,
+        asset: attachment.asset, attributes: attachment.attributes ?? {},
+        created_at: attachment.createdAt?.toISOString(),
+      };
+    }
+  )
+
+  .delete(
+    "/projects/:project_id/issues/:issue_id/attachments/:attachment_id/",
+    async ({ params: { slug, project_id, issue_id, attachment_id }, user, set }) => {
+      const ws = await getWorkspaceOrFail(slug);
+      await getProjectOrFail(ws.id, project_id, user.id);
+      await prisma.issueAttachment.update({ where: { id: attachment_id }, data: { deletedAt: new Date() } });
+      set.status = 204;
+      return null;
+    }
+  )
+
+  // Generate pre-signed upload URL (for direct S3 upload)
+  .post(
+    "/projects/:project_id/issues/:issue_id/attachments/generate-upload-url/",
+    async ({ params: { slug, project_id, issue_id }, body, user, set }) => {
+      const ws = await getWorkspaceOrFail(slug);
+      await getProjectOrFail(ws.id, project_id, user.id);
+      const b = body as any;
+      const assetKey = `issues/${issue_id}/${Date.now()}-${b.name ?? "file"}`;
+      // For local storage, return a direct upload URL
+      set.status = 200;
+      return {
+        upload_data: {
+          url: `/api/assets/v2/workspaces/${slug}/projects/${project_id}/issues/${issue_id}/attachments/`,
+          fields: {},
+        },
+        asset_id: null,
+        asset: assetKey,
+        asset_url: `/media/${assetKey}`,
+      };
+    }
+  );

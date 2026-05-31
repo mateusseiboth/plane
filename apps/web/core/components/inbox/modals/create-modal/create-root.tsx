@@ -156,6 +156,7 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
       label_ids: formData.label_ids || [],
       assignee_ids: formData.assignee_ids || [],
       target_date: formData.target_date || null,
+      ...((formData as any).entity_id ? { entity_id: (formData as any).entity_id } : {}),
     };
     setFormSubmitting(true);
 
@@ -229,7 +230,7 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
                 onEnterKeyPress={() => submitBtnRef?.current?.click()}
                 onAssetUpload={(assetId) => setUploadedAssetIds((prev) => [...prev, assetId])}
               />
-              <InboxIssueProperties projectId={projectId} data={formData} handleData={handleFormData} />
+              <InboxIssueProperties projectId={projectId} workspaceSlug={workspaceSlug} data={formData} handleData={handleFormData} />
             </div>
           </div>
           <div className="flex items-center justify-between gap-2 rounded-b-lg border-t-[0.5px] border-subtle bg-surface-1 px-5 py-4">

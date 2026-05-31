@@ -455,6 +455,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         stateId: triageState?.id ?? null,
         priority: b.priority ?? "none",
         isDraft: false, createdById: user.id,
+        ...(b.entity_id ? { entityId: b.entity_id } : {}),
       },
     });
     set.status = 201;
@@ -602,25 +603,38 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       }),
     ]);
 
-    let added = 0;
+    // Get all existing project member records (to avoid duplicates)
+    const existingSet = new Set(
+      (await prisma.projectMember.findMany({
+        where: { workspaceId: ws.id, deletedAt: null },
+        select: { projectId: true, memberId: true },
+      })).map(m => `${m.projectId}:${m.memberId}`)
+    );
+
+    const toCreate: any[] = [];
     for (const project of projects) {
       for (const wsMember of wsMembers) {
-        try {
-          await prisma.projectMember.upsert({
-            where: { projectId_memberId: { projectId: project.id, memberId: wsMember.memberId } },
-            create: {
-              projectId: project.id,
-              workspaceId: ws.id,
-              memberId: wsMember.memberId,
-              role: Math.min(wsMember.role, 15),
-              isActive: true,
-            },
-            update: { isActive: true, deletedAt: null },
+        const key = `${project.id}:${wsMember.memberId}`;
+        if (!existingSet.has(key)) {
+          toCreate.push({
+            projectId: project.id,
+            workspaceId: ws.id,
+            memberId: wsMember.memberId,
+            role: Math.min(wsMember.role, 15),
+            isActive: true,
           });
-          added++;
-        } catch {}
+        }
       }
     }
 
-    return { synced_projects: projects.length, synced_members: wsMembers.length, records_upserted: added };
+    let added = 0;
+    // Batch insert in chunks to avoid timeout
+    const CHUNK = 500;
+    for (let i = 0; i < toCreate.length; i += CHUNK) {
+      const chunk = toCreate.slice(i, i + CHUNK);
+      const result = await prisma.projectMember.createMany({ data: chunk, skipDuplicates: true });
+      added += result.count;
+    }
+
+    return { synced_projects: projects.length, synced_members: wsMembers.length, records_created: added };
   });

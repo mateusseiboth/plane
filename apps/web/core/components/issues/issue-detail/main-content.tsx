@@ -33,6 +33,7 @@ import { NameDescriptionUpdateStatus } from "../issue-update-status";
 import { PeekOverviewProperties } from "../peek-overview/properties";
 import { IssueTitleInput } from "../title-input";
 import { IssueActivity } from "./issue-activity";
+import { IssueEntitySelect } from "./entity-select";
 import { IssueParentDetail } from "./parent";
 import { IssueReaction } from "./reactions";
 import type { TIssueOperations } from "./root";
@@ -204,6 +205,21 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
           issueOperations={issueOperations}
           disabled={!isEditable || isArchived}
         />
+      )}
+
+      {/* Entity — shown above comments for context */}
+      {(issue as any)?.entity_id && (
+        <div className="flex items-center gap-2 px-6 pb-2 border-b border-subtle">
+          <span className="text-xs font-medium text-secondary-text shrink-0">Entidade:</span>
+          <IssueEntitySelect
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            issueId={issueId}
+            issueOperations={issueOperations}
+            disabled={!isEditable || isArchived}
+            className="flex-1"
+          />
+        </div>
       )}
 
       <IssueActivity workspaceSlug={workspaceSlug} projectId={projectId} issueId={issueId} disabled={isArchived} />

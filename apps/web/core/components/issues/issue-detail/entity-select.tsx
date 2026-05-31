@@ -83,9 +83,9 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
         onClick={() => !disabled && setOpen((o) => !o)}
         className={cn(
           "flex w-full items-center gap-1.5 rounded px-2 py-1 text-body-xs-regular h-7.5",
-          "text-left hover:bg-primary-background-90 transition-colors",
+          "text-left hover:bg-surface-2 transition-colors",
           disabled && "cursor-not-allowed opacity-60",
-          currentEntity ? "" : "text-placeholder"
+          currentEntity ? "" : "text-secondary-text"
         )}
       >
         <Building2 className="h-3.5 w-3.5 shrink-0 text-secondary-text" />
@@ -96,7 +96,7 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
           <span
             role="button"
             onClick={(e) => { e.stopPropagation(); handleSelect(null); }}
-            className="shrink-0 rounded-full hover:bg-primary-background-80 p-0.5"
+            className="shrink-0 rounded-full hover:bg-surface-3 p-0.5"
           >
             <X className="h-3 w-3" />
           </span>
@@ -105,15 +105,15 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[240px] overflow-hidden rounded-md border border-primary-border bg-primary-background shadow-md">
-          <div className="flex items-center gap-2 border-b border-primary-border px-2 py-1.5">
+        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[240px] overflow-hidden rounded-md border border-subtle bg-surface-1 shadow-md">
+          <div className="flex items-center gap-2 border-b border-subtle px-2 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-secondary-text" />
             <input
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar entidade..."
-              className="w-full bg-transparent text-body-xs-regular outline-none placeholder:text-placeholder"
+              className="w-full bg-transparent text-body-xs-regular outline-none placeholder:text-secondary-text"
             />
           </div>
 
@@ -130,7 +130,7 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
               <button
                 type="button"
                 onClick={() => handleSelect(null)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-body-xs-regular text-secondary-text hover:bg-primary-background-90"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-body-xs-regular text-secondary-text hover:bg-surface-2"
               >
                 <X className="h-3 w-3" />
                 Remover entidade
@@ -144,8 +144,8 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
                   type="button"
                   onClick={() => handleSelect(entity.id)}
                   className={cn(
-                    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-xs-regular hover:bg-primary-background-90",
-                    entity.id === currentEntityId && "bg-primary-background-80 font-medium"
+                    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-xs-regular hover:bg-surface-2",
+                    entity.id === currentEntityId && "bg-surface-1-80 font-medium"
                   )}
                 >
                   <Building2 className="h-3.5 w-3.5 shrink-0 text-secondary-text" />

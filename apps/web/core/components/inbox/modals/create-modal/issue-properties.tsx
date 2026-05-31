@@ -14,6 +14,7 @@ import { renderFormattedPayloadDate, getDate, getTabIndex } from "@plane/utils";
 // components
 import { CycleDropdown } from "@/components/dropdowns/cycle";
 import { DateDropdown } from "@/components/dropdowns/date";
+import { EntityDropdown } from "@/components/dropdowns/entity";
 import { EstimateDropdown } from "@/components/dropdowns/estimate";
 import { IntakeStateDropdown } from "@/components/dropdowns/intake-state/dropdown";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
@@ -28,13 +29,14 @@ import { usePlatformOS } from "@/hooks/use-platform-os";
 
 type TInboxIssueProperties = {
   projectId: string;
+  workspaceSlug: string;
   data: Partial<TIssue>;
   handleData: (issueKey: keyof Partial<TIssue>, issueValue: Partial<TIssue>[keyof Partial<TIssue>]) => void;
   isVisible?: boolean;
 };
 
 export const InboxIssueProperties = observer(function InboxIssueProperties(props: TInboxIssueProperties) {
-  const { projectId, data, handleData, isVisible = false } = props;
+  const { projectId, workspaceSlug, data, handleData, isVisible = false } = props;
   // hooks
   const { areEstimateEnabledByProjectId } = useProjectEstimates();
   const { isMobile } = usePlatformOS();
@@ -98,6 +100,17 @@ export const InboxIssueProperties = observer(function InboxIssueProperties(props
           onChange={(labelIds) => handleData("label_ids", labelIds)}
           projectId={projectId}
           tabIndex={getIndex("label_ids")}
+        />
+      </div>
+
+      {/* entity */}
+      <div className="h-7">
+        <EntityDropdown
+          value={(data as any).entity_id ?? null}
+          onChange={(entityId) => (handleData as any)("entity_id", entityId)}
+          workspaceSlug={workspaceSlug}
+          buttonVariant="border-with-text"
+          tabIndex={getIndex("priority")}
         />
       </div>
 

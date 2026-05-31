@@ -11,7 +11,7 @@ import { draggable, dropTargetForElements } from "@atlaskit/pragmatic-drag-and-d
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane helpers
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Building2 } from "lucide-react";
 import { useOutsideClickDetector } from "@plane/hooks";
 // types
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -129,6 +129,16 @@ const KanbanIssueDetailsBlock = observer(function KanbanIssueDetailsBlock(props:
           <span>{issue.name}</span>
         </div>
       </Tooltip>
+
+      {/* Entity badge — always show when set */}
+      {(issue as any).entity && (issue as any).entity.name && (
+        <div className="flex items-center gap-1 mt-1">
+          <div className="inline-flex items-center gap-1 rounded-full border border-subtle bg-surface-2 px-1.5 py-0.5 text-caption-2xs-medium text-secondary-text max-w-[140px]">
+            <Building2 className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{(issue as any).entity.name}</span>
+          </div>
+        </div>
+      )}
 
       <IssueProperties
         className="flex flex-wrap items-center gap-2 pt-1.5 whitespace-nowrap text-tertiary"

@@ -215,12 +215,19 @@ export const issueModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
       data.descriptionHtml = b.description_html;
       data.descriptionStripped = b.description_html.replace(/<[^>]+>/g, "");
     }
+    // Accept both `state` (Django legacy) and `state_id` (frontend ISSUE_FILTER_DEFAULT_DATA)
     if (b.state !== undefined) data.stateId = b.state;
+    if (b.state_id !== undefined) data.stateId = b.state_id;
     if (b.priority !== undefined) data.priority = b.priority;
     if (b.start_date !== undefined) data.startDate = b.start_date ? new Date(b.start_date) : null;
     if (b.target_date !== undefined) data.targetDate = b.target_date ? new Date(b.target_date) : null;
     if (b.entity_id !== undefined) data.entityId = b.entity_id;
     if (b.legacy_ticket_number !== undefined) data.legacyTicketNumber = b.legacy_ticket_number;
+    if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
+    if (b.type_id !== undefined) data.typeId = b.type_id;
+    if (b.is_draft !== undefined) data.isDraft = b.is_draft;
+    if (b.parent_id !== undefined) data.parentId = b.parent_id;
+    if (b.completed_at !== undefined) data.completedAt = b.completed_at ? new Date(b.completed_at) : null;
 
     await prisma.issue.update({ where: { id: issue_id }, data });
 
@@ -408,4 +415,89 @@ export const issueModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     await prisma.issueRelation.update({ where: { id: relation_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
+  })
+
+  // ── Description versions (IssueVersion — history of description edits) ───────
+  .get("/:issue_id/description-versions/", async ({ params: { slug, project_id, issue_id }, user }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const versions = await prisma.issueVersion.findMany({
+      where: { issueId: issue_id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return versions.map((v: any) => ({
+      id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
+      description: v.descriptionJson ?? null,
+      description_html: v.descriptionHtml ?? "<p></p>",
+      description_stripped: "",
+      created_at: v.createdAt?.toISOString(),
+      updated_at: v.createdAt?.toISOString(),
+      owned_by: v.ownedById ?? null,
+      last_saved_at: v.lastSavedAt?.toISOString() ?? v.createdAt?.toISOString(),
+    }));
+  })
+
+  .get("/:issue_id/description-versions/:version_id/", async ({ params: { slug, project_id, issue_id, version_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const v = await prisma.issueVersion.findFirst({ where: { id: version_id, issueId: issue_id } });
+    if (!v) { set.status = 404; return { detail: "Not found." }; }
+    return {
+      id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
+      description: (v as any).descriptionJson ?? null,
+      description_html: (v as any).descriptionHtml ?? "<p></p>",
+      description_stripped: "",
+      created_at: v.createdAt?.toISOString(),
+      owned_by: (v as any).ownedById ?? null,
+      last_saved_at: (v as any).lastSavedAt?.toISOString() ?? v.createdAt?.toISOString(),
+    };
+  })
+
+  // ── History / Activity ────────────────────────────────────────────────────────
+  // Handles both `activity_type=issue-property` and `activity_type=issue-comment`
+  .get("/:issue_id/history/", async ({ params: { slug, project_id, issue_id }, user, query }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+
+    const activityType = (query.activity_type as string) ?? "issue-property";
+    const isComment = activityType.includes("comment");
+
+    const where: any = { issueId: issue_id, deletedAt: null };
+    if (isComment) {
+      // issue-comment: return comments as activity
+      where.issueCommentId = { not: null };
+    } else {
+      // issue-property: return property-change activities
+      where.issueCommentId = null;
+    }
+
+    const activities = await prisma.issueActivity.findMany({
+      where,
+      orderBy: { createdAt: isComment ? "desc" : "asc" },
+      take: 100,
+      include: {
+        issue: { select: { sequenceId: true, projectId: true } },
+      },
+    });
+
+    return activities.map((a: any) => ({
+      id: a.id,
+      issue: issue_id,
+      project: a.projectId,
+      workspace: a.workspaceId,
+      actor: a.actorId ?? null,
+      verb: a.verb,
+      field: a.field ?? null,
+      old_value: a.oldValue ?? null,
+      new_value: a.newValue ?? null,
+      comment: a.comment ?? "",
+      epoch: a.epoch ?? null,
+      issue_comment: a.issueCommentId ?? null,
+      created_at: a.createdAt?.toISOString(),
+      updated_at: a.updatedAt?.toISOString(),
+      old_identifier: null,
+      new_identifier: null,
+      issue_detail: { id: issue_id, sequence_id: a.issue?.sequenceId ?? 0, name: "" },
+    }));
   });

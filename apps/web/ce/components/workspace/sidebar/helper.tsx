@@ -10,7 +10,9 @@ import {
   CycleIcon,
   DraftIcon,
   HomeIcon,
+  Intake,
   InboxIcon,
+  LayersIcon,
   MultipleStickyIcon,
   ProjectIcon,
   ViewsIcon,
@@ -40,5 +42,9 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <ArchiveIcon className={cn("size-4 flex-shrink-0", className)} />;
     case "stickies":
       return <MultipleStickyIcon className={cn("size-4 flex-shrink-0", className)} />;
+    case "all-work-items":
+      return <LayersIcon className={cn("size-4 flex-shrink-0", className)} />;
+    case "global-intake":
+      return <Intake className={cn("size-4 flex-shrink-0", className)} />;
   }
 };

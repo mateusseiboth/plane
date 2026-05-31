@@ -15,7 +15,7 @@ import { workspaceModule } from "@modules/workspace";
 import { userModule } from "@modules/user";
 import { authModule, sessionAuthModule } from "@modules/auth";
 import { entityModule } from "@modules/entity";
-import { assetModule } from "@modules/asset";
+// assetModule imported below (combined with v2)
 import { inviteModule } from "@modules/invite";
 import { analyticsModule } from "@modules/analytics";
 import { webhookModule } from "@modules/webhook";
@@ -27,6 +27,9 @@ import { premiumModule } from "@modules/premium";
 import { instanceModule } from "@modules/instance";
 import { estimateModule } from "@modules/estimate";
 import { pluginModule } from "@modules/plugin";
+import { workItemModule } from "@modules/work-item";
+import { assetModule, assetV2Module } from "@modules/asset";
+import { intakeWorkItemModule } from "@modules/intake-work-item";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -156,7 +159,10 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(aiModule)
   .use(premiumModule)
   .use(estimateModule)
-  .use(pluginModule);
+  .use(pluginModule)
+  .use(workItemModule)
+  .use(assetV2Module)
+  .use(intakeWorkItemModule);
 
 // ── Compose into root app ────────────────────────────────────────────────────
 const app = new Elysia()

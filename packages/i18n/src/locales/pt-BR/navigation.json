@@ -29,6 +29,8 @@
     "epics": "Épicos",
     "upgrade_plan": "Atualizar plano",
     "plane_pro": "Plane Pro",
-    "business": "Business"
+    "business": "Business",
+    "all_work_items": "Todos os itens",
+    "global_intake": "Intake global"
   }
 }
