@@ -1483,6 +1483,7 @@ model TechnicalVisit {
   conclusion    String?
   visitNumber   String?   @map("visit_number") @db.VarChar(50)
   legacyId      Int?      @map("legacy_id")
+  projectIds    Json?     @default("[]") @map("project_ids")
   visitIssues   TechnicalVisitIssue[]
   @@index([visitNumber])
   @@map("technical_visits")

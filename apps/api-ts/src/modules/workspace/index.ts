@@ -571,35 +571,27 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       prisma.issue.findMany({
         where: {workspaceId: ws.id, deletedAt: null, OR: [{name: {contains: q, mode: "insensitive"}}, {legacyTicketNumber: {contains: q}}]},
         select: {
-          id: true,
-          name: true,
-          sequenceId: true,
-          priority: true,
-          legacyTicketNumber: true,
+          id: true, name: true, sequenceId: true, priority: true, legacyTicketNumber: true,
           project: {select: {id: true, identifier: true}},
-          workspace: {select: {slug: true}},
         },
         take: 10,
       }),
       prisma.project.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
-        select: {id: true, name: true, identifier: true, workspace: {select: {slug: true}}},
+        select: {id: true, name: true, identifier: true},
         take: 5,
       }),
     ]);
     return {
       results: {
         issue: issues.map((i: any) => ({
-          id: i.id,
-          name: i.name,
-          sequence_id: i.sequenceId,
-          project_id: i.project?.id,
-          project__identifier: i.project?.identifier,
-          workspace__slug: i.workspace?.slug,
+          id: i.id, name: i.name, sequence_id: i.sequenceId,
+          project_id: i.project?.id, project__identifier: i.project?.identifier,
+          workspace__slug: ws.slug,
           legacy_ticket_number: i.legacyTicketNumber ?? null,
           type_id: null,
         })),
-        project: projects.map((p: any) => ({id: p.id, name: p.name, identifier: p.identifier, workspace__slug: p.workspace?.slug})),
+        project: projects.map((p: any) => ({id: p.id, name: p.name, identifier: p.identifier, workspace__slug: ws.slug})),
         page: [],
         cycle: [],
         module: [],

@@ -28,7 +28,7 @@ import { instanceModule } from "@modules/instance";
 import { estimateModule } from "@modules/estimate";
 import { pluginModule } from "@modules/plugin";
 import { workItemModule } from "@modules/work-item";
-import { assetModule, assetV2Module } from "@modules/asset";
+import { assetModule, assetV2Module, userAssetV2Module } from "@modules/asset";
 import { intakeWorkItemModule } from "@modules/intake-work-item";
 import { technicalVisitModule } from "@modules/technical-visit";
 import { customWidgetModule } from "@modules/custom-widget";
@@ -165,6 +165,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(pluginModule)
   .use(workItemModule)
   .use(assetV2Module)
+  .use(userAssetV2Module)
   .use(intakeWorkItemModule)
   .use(technicalVisitModule)
   .use(customWidgetModule)

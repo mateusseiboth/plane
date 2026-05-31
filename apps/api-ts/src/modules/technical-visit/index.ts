@@ -48,6 +48,7 @@ function serializeVisit(v: any) {
     mot_other_description: v.motOtherDescription ?? null,
     summary: v.summary ?? null,
     conclusion: v.conclusion ?? null,
+    project_ids: Array.isArray(v.projectIds) ? v.projectIds : (v.projectIds ? v.projectIds : []),
     visit_number: v.visitNumber ?? null,
     created_by: v.createdById ?? null,
     created_at: isoDate(v.createdAt),
@@ -149,6 +150,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
     if (b.mot_commercial !== undefined) data.motCommercial = b.mot_commercial;
     if (b.mot_other !== undefined) data.motOther = b.mot_other;
     if (b.mot_other_description !== undefined) data.motOtherDescription = b.mot_other_description;
+    if (b.project_ids !== undefined) data.projectIds = b.project_ids;
 
     const updated = await prisma.technicalVisit.update({
       where: {id: visit_id},

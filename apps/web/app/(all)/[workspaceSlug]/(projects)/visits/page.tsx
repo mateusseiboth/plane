@@ -2,13 +2,14 @@
 
 import {PageHead} from "@/components/core/page-title";
 import {EntityDropdown} from "@/components/dropdowns/entity";
+import {useProject} from "@/hooks/store/use-project";
 import {useWorkspace} from "@/hooks/store/use-workspace";
 import {APIService} from "@/services/api.service";
 import {API_BASE_URL} from "@plane/constants";
 import {cn} from "@plane/utils";
-import {Building2, Calendar, ChevronRight, Plus} from "lucide-react";
+import {Building2, Calendar, Check, ChevronRight, Layers, Plus} from "lucide-react";
 import {observer} from "mobx-react";
-import {useParams, useRouter} from "next/navigation";
+import {useParams} from "next/navigation";
 import {useEffect, useState} from "react";
 
 // ── Service ─────────────────────────────────────────────────────────────────
@@ -175,7 +176,9 @@ function VisitEditorModal({
   onSave: (visitId: string, data: any) => Promise<void>;
 }) {
   const {workspaceSlug} = useParams();
+  const {joinedProjectIds, getProjectById} = useProject();
   const [saving, setSaving] = useState(false);
+  const [projectIds, setProjectIds] = useState<string[]>(Array.isArray(visit?.project_ids) ? visit.project_ids : []);
   const [form, setForm] = useState({
     entity_id: visit?.entity_id ?? visit?.entity?.id ?? null,
     city: visit?.city ?? "",
@@ -243,6 +246,7 @@ function VisitEditorModal({
         mot_commercial: form.mot_commercial,
         mot_other: form.mot_other,
         mot_other_description: form.mot_other_description || null,
+        project_ids: projectIds,
       });
       onClose();
     } finally {
@@ -287,6 +291,32 @@ function VisitEditorModal({
                   disabled={isFinalized}
                 />
               </div>
+              <div>
+                <label className="mb-1 block text-12 text-secondary">Sistemas atendidos</label>
+                <div className="max-h-36 overflow-y-auto rounded border border-subtle bg-surface-2 p-1">
+                  {(joinedProjectIds ?? []).length === 0 && (
+                    <p className="px-2 py-1 text-12 text-tertiary">Nenhum projeto disponível</p>
+                  )}
+                  {(joinedProjectIds ?? []).map((pid) => {
+                    const proj = getProjectById(pid);
+                    if (!proj) return null;
+                    const selected = projectIds.includes(pid);
+                    return (
+                      <button
+                        key={pid}
+                        type="button"
+                        onClick={() => setProjectIds((ids) => selected ? ids.filter((id) => id !== pid) : [...ids, pid])}
+                        className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-13 hover:bg-surface-1", selected && "bg-accent-primary/10 text-accent-primary")}
+                      >
+                        <Layers className="h-3.5 w-3.5 shrink-0" />
+                        <span className="flex-1 truncate text-left">{proj.name}</span>
+                        {selected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="mb-1 block text-12 text-secondary">Cidade</label>
                 <input
@@ -495,12 +525,12 @@ function VisitEditorModal({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 function TechnicalVisitsPage() {
-  const {workspaceSlug, projectId} = useParams();
-  const router = useRouter();
+  const {workspaceSlug} = useParams();
   const {currentWorkspace} = useWorkspace();
   const [visits, setVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingVisit, setEditingVisit] = useState<any | null>(null);
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Visitas Técnicas` : "Visitas Técnicas";
@@ -581,7 +611,7 @@ function TechnicalVisitsPage() {
           visits.map((visit) => (
             <div
               key={visit.id}
-              onClick={() => router.push(`/${workspaceSlug}/projects/${projectId}/visits/${visit.id}`)}
+              onClick={() => setEditingVisit(visit)}
               className="flex cursor-pointer items-center justify-between border-b border-subtle px-6 py-4 hover:bg-surface-2"
             >
               <div className="flex items-start gap-4">
@@ -590,10 +620,7 @@ function TechnicalVisitsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <StatusBadge
-                      status={visit.status}
-                      label={visit.status_label}
-                    />
+                    <StatusBadge status={visit.status} label={visit.status_label} />
                     {visit.visit_number && <span className="text-11 text-tertiary">#{visit.visit_number}</span>}
                   </div>
                   <div className="mt-1 flex items-center gap-3 text-13">
@@ -614,38 +641,20 @@ function TechnicalVisitsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {/* Quick status transitions */}
                 {visit.status === 0 && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStatusChange(visit.id, 1);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleStatusChange(visit.id, 1); }}
                     className="rounded border border-subtle px-2 py-1 text-12 text-secondary hover:border-accent-primary hover:text-accent-primary"
                   >
                     Iniciar
                   </button>
                 )}
-                {visit.status === 1 && (
+                {(visit.status === 1 || visit.status === 2 || visit.status === 3) && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/${workspaceSlug}/projects/${projectId}/visits/${visit.id}`);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setEditingVisit(visit); }}
                     className="rounded border border-subtle px-2 py-1 text-12 text-secondary hover:border-accent-primary hover:text-accent-primary"
                   >
-                    Abrir relatório
-                  </button>
-                )}
-                {(visit.status === 2 || visit.status === 3) && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/${workspaceSlug}/projects/${projectId}/visits/${visit.id}`);
-                    }}
-                    className="rounded border border-subtle px-2 py-1 text-12 text-secondary hover:border-accent-primary hover:text-accent-primary"
-                  >
-                    Editar relatório
+                    {visit.status === 1 ? "Abrir relatório" : "Editar relatório"}
                   </button>
                 )}
                 <ChevronRight className="h-4 w-4 text-tertiary" />
@@ -658,6 +667,18 @@ function TechnicalVisitsPage() {
         <CreateVisitModal
           onClose={() => setShowCreate(false)}
           onCreate={(v) => setVisits((vs) => [v, ...vs])}
+        />
+      )}
+
+      {editingVisit && (
+        <VisitEditorModal
+          visit={editingVisit}
+          onClose={() => setEditingVisit(null)}
+          onSave={async (visitId, data) => {
+            const updated = await visitService.update(workspaceSlug.toString(), visitId, data);
+            setVisits((vs) => vs.map((v) => v.id === visitId ? {...v, ...updated} : v));
+            setEditingVisit((prev: any) => prev ? {...prev, ...updated} : null);
+          }}
         />
       )}
     </div>
