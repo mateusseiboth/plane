@@ -11,10 +11,11 @@ import {API_BASE_URL} from "@plane/constants";
 import type {EditorRefApi} from "@plane/editor";
 import {EFileAssetType} from "@plane/types";
 import {cn} from "@plane/utils";
-import {Building2, Calendar, ChevronLeft, Save} from "lucide-react";
+import {Building2, Calendar, Check, ChevronLeft, Layers, Save} from "lucide-react";
 import {observer} from "mobx-react";
 import {useParams, useRouter} from "next/navigation";
 import {useEffect, useRef, useState} from "react";
+import {useProject} from "@/hooks/store/use-project";
 
 class TechnicalVisitService extends APIService {
   constructor() {
@@ -88,9 +89,11 @@ function VisitNotFound() {
 
 function TechnicalVisitDetailPage() {
   const router = useRouter();
-  const {workspaceSlug, projectId, visitId} = useParams();
+  const {workspaceSlug, visitId} = useParams();
   const {currentWorkspace} = useWorkspace();
+  const {joinedProjectIds, getProjectById} = useProject();
   const {uploadEditorAsset, duplicateEditorAsset} = useEditorAsset();
+  const [projectIds, setProjectIds] = useState<string[]>([]);
   const editorRef = useRef<EditorRefApi>(null);
   const conclusionEditorRef = useRef<EditorRefApi>(null);
   const [loading, setLoading] = useState(true);
@@ -132,6 +135,7 @@ function TechnicalVisitDetailPage() {
         return;
       }
       setVisit(data);
+      setProjectIds(Array.isArray(data.project_ids) ? data.project_ids : []);
       setForm({
         entity_id: data.entity_id ?? data.entity?.id ?? null,
         city: data.city ?? "",
@@ -185,6 +189,7 @@ function TechnicalVisitDetailPage() {
         mot_commercial: form.mot_commercial,
         mot_other: form.mot_other,
         mot_other_description: form.mot_other_description || null,
+        project_ids: projectIds,
       });
       setVisit(updated);
     } finally {
@@ -379,6 +384,39 @@ function TechnicalVisitDetailPage() {
                 placeholder="Ex.: Manhã"
               />
             </div>
+
+            <div>
+              <label className="mb-1 block text-12 text-secondary">Sistemas atendidos</label>
+              <div className="rounded border border-subtle bg-surface-2">
+                {(joinedProjectIds ?? []).length === 0 && (
+                  <p className="px-3 py-2 text-13 text-tertiary">Nenhum projeto disponível</p>
+                )}
+                {(joinedProjectIds ?? []).map((pid) => {
+                  const proj = getProjectById(pid);
+                  if (!proj) return null;
+                  const selected = projectIds.includes(pid);
+                  return (
+                    <button
+                      key={pid}
+                      type="button"
+                      disabled={!canEdit}
+                      onClick={() => setProjectIds((ids) =>
+                        selected ? ids.filter((id) => id !== pid) : [...ids, pid]
+                      )}
+                      className={cn(
+                        "flex w-full items-center gap-2 border-b border-subtle px-3 py-2 text-13 last:border-0 hover:bg-surface-1 disabled:opacity-60",
+                        selected && "bg-accent-primary/10 text-accent-primary"
+                      )}
+                    >
+                      <Layers className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex-1 truncate text-left">{proj.name}</span>
+                      {selected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid gap-2 sm:grid-cols-2">
               {(
                 [
@@ -429,14 +467,14 @@ function TechnicalVisitDetailPage() {
                   initialValue={form.summary || "<p></p>"}
                   workspaceSlug={workspaceSlug.toString()}
                   workspaceId={workspaceDetails.id}
-                  projectId={projectId?.toString()}
+                  projectId={undefined}
                   dragDropEnabled
                   onChange={(_json, html) => updateField("summary", html)}
                   placeholder="Descreva o resumo da visita"
                   searchMentionCallback={async (payload) =>
                     await workspaceService.searchEntity(workspaceSlug.toString(), {
                       ...payload,
-                      project_id: projectId?.toString() ?? "",
+                      project_id: "",
                     })
                   }
                   containerClassName="min-h-[180px]"
@@ -448,7 +486,7 @@ function TechnicalVisitDetailPage() {
                         entity_type: EFileAssetType.ISSUE_DESCRIPTION,
                       },
                       file,
-                      projectId: projectId?.toString(),
+                      projectId: undefined,
                       workspaceSlug: workspaceSlug.toString(),
                     });
                     return asset_id;
@@ -457,7 +495,7 @@ function TechnicalVisitDetailPage() {
                     const {asset_id} = await duplicateEditorAsset({
                       assetId,
                       entityType: EFileAssetType.ISSUE_DESCRIPTION,
-                      projectId: projectId?.toString(),
+                      projectId: undefined,
                       workspaceSlug: workspaceSlug.toString(),
                     });
                     return asset_id;
@@ -479,14 +517,14 @@ function TechnicalVisitDetailPage() {
                   initialValue={form.conclusion || "<p></p>"}
                   workspaceSlug={workspaceSlug.toString()}
                   workspaceId={workspaceDetails.id}
-                  projectId={projectId?.toString()}
+                  projectId={undefined}
                   dragDropEnabled
                   onChange={(_json, html) => updateField("conclusion", html)}
                   placeholder="Registre a conclusão da visita"
                   searchMentionCallback={async (payload) =>
                     await workspaceService.searchEntity(workspaceSlug.toString(), {
                       ...payload,
-                      project_id: projectId?.toString() ?? "",
+                      project_id: "",
                     })
                   }
                   containerClassName="min-h-[180px]"
@@ -498,7 +536,7 @@ function TechnicalVisitDetailPage() {
                         entity_type: EFileAssetType.ISSUE_DESCRIPTION,
                       },
                       file,
-                      projectId: projectId?.toString(),
+                      projectId: undefined,
                       workspaceSlug: workspaceSlug.toString(),
                     });
                     return asset_id;
@@ -507,7 +545,7 @@ function TechnicalVisitDetailPage() {
                     const {asset_id} = await duplicateEditorAsset({
                       assetId,
                       entityType: EFileAssetType.ISSUE_DESCRIPTION,
-                      projectId: projectId?.toString(),
+                      projectId: undefined,
                       workspaceSlug: workspaceSlug.toString(),
                     });
                     return asset_id;

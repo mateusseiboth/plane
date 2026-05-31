@@ -2,14 +2,13 @@
 
 import {PageHead} from "@/components/core/page-title";
 import {EntityDropdown} from "@/components/dropdowns/entity";
-import {useProject} from "@/hooks/store/use-project";
 import {useWorkspace} from "@/hooks/store/use-workspace";
 import {APIService} from "@/services/api.service";
 import {API_BASE_URL} from "@plane/constants";
 import {cn} from "@plane/utils";
-import {Building2, Calendar, Check, ChevronRight, Layers, Plus} from "lucide-react";
+import {Building2, Calendar, ChevronRight, Plus} from "lucide-react";
 import {observer} from "mobx-react";
-import {useParams} from "next/navigation";
+import {useParams, useRouter} from "next/navigation";
 import {useEffect, useState} from "react";
 
 // ── Service ─────────────────────────────────────────────────────────────────
@@ -166,371 +165,15 @@ function CreateVisitModal({onClose, onCreate}: {onClose: () => void; onCreate: (
   );
 }
 
-function VisitEditorModal({
-  visit,
-  onClose,
-  onSave,
-}: {
-  visit: any;
-  onClose: () => void;
-  onSave: (visitId: string, data: any) => Promise<void>;
-}) {
-  const {workspaceSlug} = useParams();
-  const {joinedProjectIds, getProjectById} = useProject();
-  const [saving, setSaving] = useState(false);
-  const [projectIds, setProjectIds] = useState<string[]>(Array.isArray(visit?.project_ids) ? visit.project_ids : []);
-  const [form, setForm] = useState({
-    entity_id: visit?.entity_id ?? visit?.entity?.id ?? null,
-    city: visit?.city ?? "",
-    scheduled_date: toDateTimeLocal(visit?.scheduled_date),
-    contacts: visit?.contacts ?? "",
-    status: visit?.status ?? 0,
-    started_at: toDateTimeLocal(visit?.started_at),
-    finished_at: toDateTimeLocal(visit?.finished_at),
-    period: visit?.period ?? "",
-    summary: visit?.summary ?? "",
-    conclusion: visit?.conclusion ?? "",
-    mot_update: !!visit?.mot_update,
-    mot_bug_fix: !!visit?.mot_bug_fix,
-    mot_training: !!visit?.mot_training,
-    mot_improvement: !!visit?.mot_improvement,
-    mot_commercial: !!visit?.mot_commercial,
-    mot_other: !!visit?.mot_other,
-    mot_other_description: visit?.mot_other_description ?? "",
-  });
-
-  useEffect(() => {
-    setForm({
-      entity_id: visit?.entity_id ?? visit?.entity?.id ?? null,
-      city: visit?.city ?? "",
-      scheduled_date: toDateTimeLocal(visit?.scheduled_date),
-      contacts: visit?.contacts ?? "",
-      status: visit?.status ?? 0,
-      started_at: toDateTimeLocal(visit?.started_at),
-      finished_at: toDateTimeLocal(visit?.finished_at),
-      period: visit?.period ?? "",
-      summary: visit?.summary ?? "",
-      conclusion: visit?.conclusion ?? "",
-      mot_update: !!visit?.mot_update,
-      mot_bug_fix: !!visit?.mot_bug_fix,
-      mot_training: !!visit?.mot_training,
-      mot_improvement: !!visit?.mot_improvement,
-      mot_commercial: !!visit?.mot_commercial,
-      mot_other: !!visit?.mot_other,
-      mot_other_description: visit?.mot_other_description ?? "",
-    });
-  }, [visit]);
-
-  const isFinalized = form.status === 4 || form.status === 5;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!visit?.id) return;
-    setSaving(true);
-    try {
-      await onSave(visit.id, {
-        entity_id: form.entity_id,
-        city: form.city,
-        scheduled_date: form.scheduled_date ? fromDateTimeLocal(form.scheduled_date) : null,
-        contacts: form.contacts,
-        status: form.status,
-        started_at: form.started_at ? fromDateTimeLocal(form.started_at) : null,
-        finished_at: form.finished_at ? fromDateTimeLocal(form.finished_at) : null,
-        period: form.period || null,
-        summary: form.summary || null,
-        conclusion: form.conclusion || null,
-        mot_update: form.mot_update,
-        mot_bug_fix: form.mot_bug_fix,
-        mot_training: form.mot_training,
-        mot_improvement: form.mot_improvement,
-        mot_commercial: form.mot_commercial,
-        mot_other: form.mot_other,
-        mot_other_description: form.mot_other_description || null,
-        project_ids: projectIds,
-      });
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-surface-1 shadow-xl">
-        <div className="flex items-center justify-between border-b border-subtle px-6 py-4">
-          <div>
-            <h2 className="text-base font-semibold">Editar Visita Técnica</h2>
-            <p className="text-12 text-secondary">
-              {visit?.entity?.name ?? "Sem entidade"}
-              {visit?.visit_number ? ` · #${visit.visit_number}` : ""}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded px-3 py-1.5 text-13 text-secondary hover:text-primary"
-          >
-            Fechar
-          </button>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="max-h-[80vh] overflow-y-auto px-6 py-5"
-        >
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Entidade</label>
-                <EntityDropdown
-                  workspaceSlug={workspaceSlug.toString()}
-                  value={form.entity_id}
-                  onChange={(entityId) => setForm((f) => ({...f, entity_id: entityId}))}
-                  placeholder="Selecionar entidade"
-                  className="w-full"
-                  disabled={isFinalized}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Sistemas atendidos</label>
-                <div className="max-h-36 overflow-y-auto rounded border border-subtle bg-surface-2 p-1">
-                  {(joinedProjectIds ?? []).length === 0 && (
-                    <p className="px-2 py-1 text-12 text-tertiary">Nenhum projeto disponível</p>
-                  )}
-                  {(joinedProjectIds ?? []).map((pid) => {
-                    const proj = getProjectById(pid);
-                    if (!proj) return null;
-                    const selected = projectIds.includes(pid);
-                    return (
-                      <button
-                        key={pid}
-                        type="button"
-                        onClick={() => setProjectIds((ids) => selected ? ids.filter((id) => id !== pid) : [...ids, pid])}
-                        className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-13 hover:bg-surface-1", selected && "bg-accent-primary/10 text-accent-primary")}
-                      >
-                        <Layers className="h-3.5 w-3.5 shrink-0" />
-                        <span className="flex-1 truncate text-left">{proj.name}</span>
-                        {selected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Cidade</label>
-                <input
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.city}
-                  onChange={(e) => setForm((f) => ({...f, city: e.target.value}))}
-                  disabled={isFinalized}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Data agendada</label>
-                <input
-                  type="datetime-local"
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.scheduled_date}
-                  onChange={(e) => setForm((f) => ({...f, scheduled_date: e.target.value}))}
-                  disabled={isFinalized}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Contatos</label>
-                <input
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.contacts}
-                  onChange={(e) => setForm((f) => ({...f, contacts: e.target.value}))}
-                  disabled={isFinalized}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Período</label>
-                <input
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.period}
-                  onChange={(e) => setForm((f) => ({...f, period: e.target.value}))}
-                  placeholder="Ex.: Manhã"
-                  disabled={isFinalized}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Status</label>
-                <select
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.status}
-                  onChange={(e) => setForm((f) => ({...f, status: Number(e.target.value)}))}
-                  disabled={isFinalized}
-                >
-                  {VISIT_STATUS_LABELS.map((label, index) => (
-                    <option
-                      key={label}
-                      value={index}
-                    >
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-12 text-secondary">Início</label>
-                  <input
-                    type="datetime-local"
-                    className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                    value={form.started_at}
-                    onChange={(e) => setForm((f) => ({...f, started_at: e.target.value}))}
-                    disabled={isFinalized}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-12 text-secondary">Fim</label>
-                  <input
-                    type="datetime-local"
-                    className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                    value={form.finished_at}
-                    onChange={(e) => setForm((f) => ({...f, finished_at: e.target.value}))}
-                    disabled={isFinalized}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                {[
-                  ["mot_update", "Atualização"],
-                  ["mot_bug_fix", "Correção"],
-                  ["mot_training", "Treinamento"],
-                  ["mot_improvement", "Melhoria"],
-                  ["mot_commercial", "Comercial"],
-                  ["mot_other", "Outro"],
-                ].map(([key, label]) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-2 rounded border border-subtle px-3 py-2 text-13"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={(form as any)[key]}
-                      onChange={(e) => setForm((f) => ({...f, [key]: e.target.checked}) as any)}
-                      disabled={isFinalized}
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Descrição do outro motivo</label>
-                <input
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.mot_other_description}
-                  onChange={(e) => setForm((f) => ({...f, mot_other_description: e.target.value}))}
-                  disabled={isFinalized}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Resumo</label>
-                <textarea
-                  rows={5}
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.summary}
-                  onChange={(e) => setForm((f) => ({...f, summary: e.target.value}))}
-                  placeholder="Resumo do que foi realizado"
-                  disabled={isFinalized}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-12 text-secondary">Conclusão</label>
-                <textarea
-                  rows={5}
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-                  value={form.conclusion}
-                  onChange={(e) => setForm((f) => ({...f, conclusion: e.target.value}))}
-                  placeholder="Conclusão da visita"
-                  disabled={isFinalized}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-subtle pt-4">
-            {!isFinalized && (
-              <>
-                {form.status === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setForm((f) => ({...f, status: 1}))}
-                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
-                  >
-                    Iniciar visita
-                  </button>
-                )}
-                {form.status === 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setForm((f) => ({...f, status: 2}))}
-                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
-                  >
-                    Iniciar relatório
-                  </button>
-                )}
-                {form.status === 2 && (
-                  <button
-                    type="button"
-                    onClick={() => setForm((f) => ({...f, status: 3}))}
-                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
-                  >
-                    Solicitar assinatura
-                  </button>
-                )}
-                {(form.status === 2 || form.status === 3) && (
-                  <button
-                    type="button"
-                    onClick={() => setForm((f) => ({...f, status: 4}))}
-                    className="rounded border border-subtle px-3 py-1.5 text-13 text-secondary hover:border-accent-primary hover:text-accent-primary"
-                  >
-                    Finalizar
-                  </button>
-                )}
-              </>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded px-3 py-1.5 text-13 text-secondary hover:text-primary"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving || isFinalized}
-              className="rounded bg-accent-primary px-4 py-1.5 text-13 font-medium text-white hover:bg-accent-primary/90 disabled:opacity-50"
-            >
-              {saving ? "Salvando..." : isFinalized ? "Visita finalizada" : "Salvar alterações"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 function TechnicalVisitsPage() {
   const {workspaceSlug} = useParams();
+  const router = useRouter();
   const {currentWorkspace} = useWorkspace();
   const [visits, setVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [editingVisit, setEditingVisit] = useState<any | null>(null);
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Visitas Técnicas` : "Visitas Técnicas";
@@ -611,7 +254,7 @@ function TechnicalVisitsPage() {
           visits.map((visit) => (
             <div
               key={visit.id}
-              onClick={() => setEditingVisit(visit)}
+              onClick={() => router.push(`/${workspaceSlug}/visits/${visit.id}`)}
               className="flex cursor-pointer items-center justify-between border-b border-subtle px-6 py-4 hover:bg-surface-2"
             >
               <div className="flex items-start gap-4">
@@ -651,7 +294,7 @@ function TechnicalVisitsPage() {
                 )}
                 {(visit.status === 1 || visit.status === 2 || visit.status === 3) && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setEditingVisit(visit); }}
+                    onClick={(e) => { e.stopPropagation(); router.push(`/${workspaceSlug}/visits/${visit.id}`); }}
                     className="rounded border border-subtle px-2 py-1 text-12 text-secondary hover:border-accent-primary hover:text-accent-primary"
                   >
                     {visit.status === 1 ? "Abrir relatório" : "Editar relatório"}
@@ -670,17 +313,6 @@ function TechnicalVisitsPage() {
         />
       )}
 
-      {editingVisit && (
-        <VisitEditorModal
-          visit={editingVisit}
-          onClose={() => setEditingVisit(null)}
-          onSave={async (visitId, data) => {
-            const updated = await visitService.update(workspaceSlug.toString(), visitId, data);
-            setVisits((vs) => vs.map((v) => v.id === visitId ? {...v, ...updated} : v));
-            setEditingVisit((prev: any) => prev ? {...prev, ...updated} : null);
-          }}
-        />
-      )}
     </div>
   );
 }

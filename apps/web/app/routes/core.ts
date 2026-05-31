@@ -121,6 +121,7 @@ export const coreRoutes: RouteConfigEntry[] = [
 
         // Technical Visits
         route(":workspaceSlug/visits", "./(all)/[workspaceSlug]/(projects)/visits/page.tsx"),
+        route(":workspaceSlug/visits/:visitId", "./(all)/[workspaceSlug]/(projects)/visits/[visitId]/page.tsx"),
 
         // Plugin Store
         route(":workspaceSlug/plugins", "./(all)/[workspaceSlug]/(projects)/plugins/page.tsx"),
