@@ -6,18 +6,18 @@
  *   DATABASE_URL=postgresql://... bun run scripts/seed.ts
  */
 
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import {PrismaPg} from "@prisma/adapter-pg";
+import {PrismaClient} from "@prisma/client";
+import {Pool} from "pg";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+const pool = new Pool({connectionString: process.env.DATABASE_URL});
+const prisma = new PrismaClient({adapter: new PrismaPg(pool)});
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@plane.so";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin";
 const ADMIN_NAME = process.env.ADMIN_NAME ?? "Admin";
-const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "main";
-const WORKSPACE_NAME = process.env.WORKSPACE_NAME ?? "Main Workspace";
+const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "quality";
+const WORKSPACE_NAME = process.env.WORKSPACE_NAME ?? "Quality Workspace";
 
 function log(msg: string) {
   console.log(`[seed] ${msg}`);
@@ -27,12 +27,12 @@ async function main() {
   log(`Starting seed...`);
 
   // 1. Create or update admin user
-  const hash = await Bun.password.hash(ADMIN_PASSWORD, { algorithm: "bcrypt", cost: 12 });
+  const hash = await Bun.password.hash(ADMIN_PASSWORD, {algorithm: "bcrypt", cost: 12});
 
-  let admin = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
+  let admin = await prisma.user.findUnique({where: {email: ADMIN_EMAIL}});
   if (admin) {
     admin = await prisma.user.update({
-      where: { email: ADMIN_EMAIL },
+      where: {email: ADMIN_EMAIL},
       data: {
         password: hash,
         isSuperuser: true,
@@ -83,8 +83,8 @@ async function main() {
     log(`✅  Instance record created`);
   } else if (!existingInstance.isSetupDone) {
     await prisma.instance.update({
-      where: { id: existingInstance.id },
-      data: { isSetupDone: true, isSignupScreenVisited: true },
+      where: {id: existingInstance.id},
+      data: {isSetupDone: true, isSignupScreenVisited: true},
     });
     log(`✅  Instance marked as setup done`);
   } else {
@@ -92,7 +92,7 @@ async function main() {
   }
 
   // 3. Create default workspace if doesn't exist
-  let workspace = await prisma.workspace.findFirst({ where: { slug: WORKSPACE_SLUG } });
+  let workspace = await prisma.workspace.findFirst({where: {slug: WORKSPACE_SLUG}});
   if (!workspace) {
     workspace = await prisma.workspace.create({
       data: {
@@ -108,11 +108,11 @@ async function main() {
 
   // 3. Add admin as workspace owner (role=20)
   const existing = await prisma.workspaceMember.findFirst({
-    where: { workspaceId: workspace.id, memberId: admin.id, deletedAt: null },
+    where: {workspaceId: workspace.id, memberId: admin.id, deletedAt: null},
   });
   if (!existing) {
     await prisma.workspaceMember.create({
-      data: { workspaceId: workspace.id, memberId: admin.id, role: 20, isActive: true },
+      data: {workspaceId: workspace.id, memberId: admin.id, role: 20, isActive: true},
     });
     log(`✅  Admin added as workspace owner`);
   }

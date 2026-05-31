@@ -1,9 +1,9 @@
 "use client";
 
 import {PageHead} from "@/components/core/page-title";
-import {EntityDropdown} from "@/components/dropdowns/entity";
 import {RichTextEditor} from "@/components/editor/rich-text";
 import {useEditorAsset} from "@/hooks/store/use-editor-asset";
+import {useProject} from "@/hooks/store/use-project";
 import {useWorkspace} from "@/hooks/store/use-workspace";
 import {APIService} from "@/services/api.service";
 import {WorkspaceService} from "@/services/workspace.service";
@@ -15,7 +15,6 @@ import {Building2, Calendar, Check, ChevronLeft, Layers, Save} from "lucide-reac
 import {observer} from "mobx-react";
 import {useParams, useRouter} from "next/navigation";
 import {useEffect, useRef, useState} from "react";
-import {useProject} from "@/hooks/store/use-project";
 
 class TechnicalVisitService extends APIService {
   constructor() {
@@ -296,17 +295,6 @@ function TechnicalVisitDetailPage() {
         <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
           <div className="space-y-4 rounded-lg border border-subtle bg-surface-1 p-5">
             <div>
-              <label className="mb-1 block text-12 text-secondary">Entidade</label>
-              <EntityDropdown
-                workspaceSlug={workspaceSlug.toString()}
-                value={form.entity_id}
-                onChange={(entityId) => updateField("entity_id", entityId)}
-                placeholder="Selecionar entidade"
-                className="w-full"
-                disabled={!canEdit}
-              />
-            </div>
-            <div>
               <label className="mb-1 block text-12 text-secondary">Cidade</label>
               <input
                 value={form.city}
@@ -387,10 +375,8 @@ function TechnicalVisitDetailPage() {
 
             <div>
               <label className="mb-1 block text-12 text-secondary">Sistemas atendidos</label>
-              <div className="rounded border border-subtle bg-surface-2">
-                {(joinedProjectIds ?? []).length === 0 && (
-                  <p className="px-3 py-2 text-13 text-tertiary">Nenhum projeto disponível</p>
-                )}
+              <div className="rounded border border-subtle bg-surface-2 max-h-48 overflow-y-auto">
+                {(joinedProjectIds ?? []).length === 0 && <p className="px-3 py-2 text-13 text-tertiary">Nenhum projeto disponível</p>}
                 {(joinedProjectIds ?? []).map((pid) => {
                   const proj = getProjectById(pid);
                   if (!proj) return null;
@@ -400,12 +386,10 @@ function TechnicalVisitDetailPage() {
                       key={pid}
                       type="button"
                       disabled={!canEdit}
-                      onClick={() => setProjectIds((ids) =>
-                        selected ? ids.filter((id) => id !== pid) : [...ids, pid]
-                      )}
+                      onClick={() => setProjectIds((ids) => (selected ? ids.filter((id) => id !== pid) : [...ids, pid]))}
                       className={cn(
                         "flex w-full items-center gap-2 border-b border-subtle px-3 py-2 text-13 last:border-0 hover:bg-surface-1 disabled:opacity-60",
-                        selected && "bg-accent-primary/10 text-accent-primary"
+                        selected && "bg-accent-primary/10 text-accent-primary",
                       )}
                     >
                       <Layers className="h-3.5 w-3.5 shrink-0" />
