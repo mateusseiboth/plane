@@ -1,165 +1,174 @@
 <br /><br />
 
 <p align="center">
-<a href="https://plane.so">
-  <img src="https://media.docs.plane.so/logo/plane_github_readme.png" alt="Plane Logo" width="400">
-</a>
+  <!-- Placeholder logo — this fork does NOT use Plane's brand assets. Replace with your own. -->
+  <img src="https://placehold.co/400x120/1e293b/ffffff/png?text=Avi%C3%A3o" alt="Project logo placeholder" width="400">
 </p>
-<p align="center"><b>Modern project management for all teams</b></p>
+<p align="center"><b>A Plane-based project management & service-desk platform, re-engineered in TypeScript</b></p>
 
 <p align="center">
-    <a href="https://plane.so/"><b>Website</b></a> •
-    <a href="https://forum.plane.so"><b>Forum</b></a> •
-    <a href="https://x.com/planepowers"><b>X</b></a> •
-    <a href="https://docs.plane.so/"><b>Documentation</b></a>
+  <img src="https://img.shields.io/badge/based%20on-Plane-5b5fc7?style=for-the-badge" alt="Based on Plane" />
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge" alt="AGPL-3.0" />
+  <img src="https://img.shields.io/badge/API-TypeScript%20(Bun%20%2B%20Elysia)-3178c6?style=for-the-badge" alt="TypeScript API" />
+  <img src="https://img.shields.io/badge/mobile-Expo-000020?style=for-the-badge&logo=expo" alt="Expo mobile app" />
 </p>
 
-<p>
-    <a href="https://app.plane.so/#gh-light-mode-only" target="_blank">
-      <img
-        src="https://media.docs.plane.so/GitHub-readme/github-top.webp"
-        alt="Plane Screens"
-        width="100%"
-      />
-    </a>
-</p>
+---
 
-Meet [Plane](https://plane.so/), an open-source project management tool to track issues, run ~sprints~ cycles, and manage product roadmaps without the chaos of managing the tool itself. 🧘‍♀️
+## 📌 About this project
 
-> Plane is evolving every day. Your suggestions, ideas, and reported bugs help us immensely. Do not hesitate to join in the conversation on [Forum](https://forum.plane.so) or raise a GitHub issue. We read everything and respond to most.
+This repository is a **fork of [Plane](https://plane.so/)**, the open-source project
+management tool by [Plane (makeplane)](https://github.com/makeplane/plane). We are deeply
+grateful to the Plane team and community for their work — without it, this project would not
+exist.
 
-## 🚀 Installation
+It is **not** affiliated with, endorsed by, or supported by Plane. We do **not** use Plane's
+logos, brand assets, or trademarks anywhere in this fork; all branding shown here uses
+placeholders that you should replace with your own.
 
-Getting started with Plane is simple. Choose the setup that works best for you:
+We have evolved Plane Community Edition in two major directions:
 
-- **Plane Cloud**
-  Sign up for a free account on [Plane Cloud](https://app.plane.so)—it's the fastest way to get up and running without worrying about infrastructure.
+1. **A full rewrite of the backend API in TypeScript.** The original Django/Python REST API
+   (`apps/api/`) is **deprecated and no longer used** at runtime — it is kept **read-only, for
+   historical reference only**. All new development happens in the new TypeScript API
+   (`apps/api-ts/`), built with **Bun + Elysia + Prisma 7 (PostgreSQL)**, while preserving the
+   original `/api/v1/` contract.
 
-- **Self-host Plane**
-  Prefer full control over your data and infrastructure? Install and run Plane on your own servers. Follow our detailed [deployment guides](https://developers.plane.so/self-hosting/overview) to get started.
+2. **A set of additional features** layered on top of Plane Community Edition — most notably a
+   service-desk / SAC workflow (entities, technical visits, legacy ticket migration),
+   managerial reports, a developer widget marketplace, granular role-based permissions, and a
+   brand-new **mobile app ("Avião")** built with Expo.
 
-| Installation methods | Docs link                                                                                                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Docker               | [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://developers.plane.so/self-hosting/methods/docker-compose)         |
-| Kubernetes           | [![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)](https://developers.plane.so/self-hosting/methods/kubernetes) |
+> **License & attribution.** This project remains licensed under the **GNU Affero General
+> Public License v3.0 (AGPL-3.0)**, the same license as upstream Plane. The original copyright
+> of Plane is retained; our changes are contributed under the same terms. See
+> [LICENSE.txt](./LICENSE.txt).
 
-`Instance admins` can configure instance settings with [God mode](https://developers.plane.so/self-hosting/govern/instance-admin).
+---
 
-## 🌟 Features
+## 🆚 What we changed vs. Plane Community Edition
 
-- **Work Items**
-  Efficiently create and manage tasks with a robust rich text editor that supports file uploads. Enhance organization and tracking by adding sub-properties and referencing related issues.
+| Area | Plane Community Edition | This fork |
+| --- | --- | --- |
+| **Backend API** | Django / Python REST Framework (`apps/api/`) | **Rewritten in TypeScript** — Bun + Elysia + Prisma 7 on PostgreSQL (`apps/api-ts/`). Same `/api/v1/` contract, `X-Api-Key` auth, identical pagination/cursor format. |
+| **Django API** | Active, primary backend | **Deprecated / read-only.** Kept only as a reference for legacy business rules; not run, not patched, no new endpoints or migrations. |
+| **Mobile app** | — | **New "Avião" app** built with Expo (latest SDK): intake, work items, wiki, technical visits, rich text editor, offline-first sync, push notifications, light/dark themes. |
+| **Service desk (SAC)** | — | **Entities** (clients) and **Technical Visits** as first-class, workspace-scoped models, plus a one-shot migration from the legacy MySQL SAC system into Plane issues. |
+| **Legacy ticket numbers** | — | `legacy_ticket_number` preserved on every migrated issue and shown across all views. |
+| **Technical visits** | — | Dedicated screen + API: schedule visits, two technicians, motivation flags, link to issues, write visit reports, list & **calendar** views. |
+| **Managerial reports** | Basic analytics only | **Reports module**: tickets, productivity & people, technical visits, SLA, and temporal/managerial breakdowns, with PDF/print export. |
+| **Widget marketplace** | — | **Developer widget system**: upload/host widget assets, an SDK gateway API, dynamic widget loader, and a `@empresa/widget-sdk` package for third-party widgets. |
+| **Home widgets** | Static home | Configurable, useful home widgets. |
+| **Permissions** | Admin / Member / Guest | **Granular role-based permissions** mirrored across backend, web, and mobile (e.g. service-desk, quality, IT, project-manager roles), with sector-derived role mapping on import. |
+| **Intake** | Available (paid/EE in places) | Intake work items implemented in the TypeScript API and exposed on web + mobile, with persistence fixes. |
+| **Urgent tickets** | — | Urgent-ticket banner, home surfacing, and **push notifications**. |
+| **Global search** | Basic | **Full-text search with typo tolerance.** |
+| **AI text assist** | Pages AI | AI-assisted text improvement on comments/descriptions. |
+| **Comment history** | — | Edit history for comments. |
+| **Default locale** | English | **pt-BR available as default**, full i18n retained. |
+| **File / image upload** | Web | Web **and** mobile, via the asset module (`FileAsset` / `IssueAttachment`). |
 
-- **Cycles**
-  Maintain your team’s momentum with Cycles. Track progress effortlessly using burn-down charts and other insightful tools.
+> A living backlog of these features lives in [`ToDo.md`](./ToDo.md),
+> [`RELATORIOS_TODO.md`](./RELATORIOS_TODO.md) and
+> [`WIDGET_MARKETPLACE_TODO.md`](./WIDGET_MARKETPLACE_TODO.md).
 
-- **Modules**
-  Simplify complex projects by dividing them into smaller, manageable modules.
+---
 
-- **Views**
-  Customize your workflow by creating filters to display only the most relevant issues. Save and share these views with ease.
+## 🏗️ Architecture
 
-- **Pages**
-  Capture and organize ideas using Plane Pages, complete with AI capabilities and a rich text editor. Format text, insert images, add hyperlinks, or convert your notes into actionable items.
+```text
+apps/
+├── api/        # ⛔ Legacy Django API — DEPRECATED, read-only reference only
+├── api-ts/     # ✅ Current backend — Bun + Elysia + Prisma 7 (PostgreSQL)
+├── web/        # Web client (React Router)
+├── admin/      # Admin / God-mode console
+├── space/      # Public spaces
+├── live/       # Realtime collaboration server
+├── proxy-ts/   # Reverse proxy (TypeScript)
+└── mobile/     # 📱 "Avião" — Expo mobile app   (added by this fork)
+```
 
-- **Analytics**
-  Access real-time insights across all your Plane data. Visualize trends, remove blockers, and keep your projects moving forward.
+**Backend (`apps/api-ts/`) at a glance**
 
-## 🛠️ Local development
+- **Runtime:** Bun · **Framework:** Elysia · **ORM:** Prisma 7 with `@prisma/adapter-pg`
+- **Docs:** `@elysiajs/swagger` (OpenAPI)
+- **Contract:** `/api/v1/` prefix, `X-Api-Key` auth, Plane-compatible cursor pagination
+- **Modules:** project, state, label, cycle, module, issue, page, workspace, member, user, auth,
+  entity, technical-visit, asset, invite, analytics, reports, webhook, notification, ai,
+  premium, intake-work-item, work-item, widget / widget-sdk-gateway / custom-widget, plugin,
+  and integrations (Git, Slack).
 
-See [CONTRIBUTING](./CONTRIBUTING.md)
+> **Django is no longer used.** Per project policy, no new code, bug fixes, endpoints,
+> migrations, or model changes are made in `apps/api/`. Treat it as read-only documentation of
+> legacy behavior only.
+
+---
+
+## 📱 Mobile app — "Avião"
+
+The name **Avião** ("airplane" in Portuguese) is a nod to *Plane*. The app talks exclusively to
+the new TypeScript API and brings the web experience to mobile:
+
+- Intake, work items, wiki, and technical visits — feature parity with the web app
+- Rich text editor matching the web editor's capabilities
+- Open intakes & work items; change status, entity, and assignee (assignee changes for admins)
+- Permissions identical to web/backend
+- Light & dark themes, fully reusable component library
+- Offline-first: local storage with sync for **new** items, with clear "pending sync" indicators
+- File & image upload
+- Push notifications for **urgent** tickets
+- Technical-visit reports in **list or calendar** views
+
+Built with **Expo (latest SDK)** under `apps/mobile/`.
+
+---
+
+## 🚀 Local development
+
+This is a pnpm + Turborepo monorepo. See [CONTRIBUTING.md](./CONTRIBUTING.md) and the
+`docker-compose-*.yml` files at the repo root for local and stack setups.
+
+```bash
+# install
+pnpm install
+
+# run the TypeScript API tests
+docker compose -f docker-compose-test-ts.yml up --build \
+  --abort-on-container-exit --exit-code-from api-ts-tests
+```
 
 ## ⚙️ Built with
 
+[![Bun](https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white)](https://bun.sh/)
+[![Elysia](https://img.shields.io/badge/Elysia-0f172a?style=for-the-badge)](https://elysiajs.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![React Router](https://img.shields.io/badge/-React%20Router-CA4245?logo=react-router&style=for-the-badge&logoColor=white)](https://reactrouter.com/)
-[![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=green)](https://www.djangoproject.com/)
-[![Node JS](https://img.shields.io/badge/node.js-339933?style=for-the-badge&logo=Node.js&logoColor=white)](https://nodejs.org/en)
+[![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
 
-## 📸 Screenshots
+> The Django badge was removed: the Python backend is deprecated in this fork.
 
-  <p>
-    <a href="https://plane.so" target="_blank">
-      <img
-        src="https://media.docs.plane.so/GitHub-readme/github-work-items.webp"
-        alt="Plane Views"
-        width="100%"
-      />
-    </a>
-  </p>
-  <p>
-    <a href="https://plane.so" target="_blank">
-      <img
-        src="https://media.docs.plane.so/GitHub-readme/github-cycles.webp"
-        width="100%"
-      />
-    </a>
-  </p>
-  <p>
-    <a href="https://plane.so" target="_blank">
-      <img
-        src="https://media.docs.plane.so/GitHub-readme/github-modules.webp"
-        alt="Plane Cycles and Modules"
-        width="100%"
-      />
-    </a>
-  </p>
-  <p>
-    <a href="https://plane.so" target="_blank">
-      <img
-        src="https://media.docs.plane.so/GitHub-readme/github-views.webp"
-        alt="Plane Analytics"
-        width="100%"
-      />
-    </a>
-  </p>
-   <p>
-    <a href="https://plane.so" target="_blank">
-      <img
-        src="https://media.docs.plane.so/GitHub-readme/github-analytics.webp"
-        alt="Plane Pages"
-        width="100%"
-      />
-    </a>
-  </p>
-</p>
+---
 
-## 📝 Documentation
+## 🙏 Credits & upstream
 
-Explore Plane's [product documentation](https://docs.plane.so/) and [developer documentation](https://developers.plane.so/) to learn about features, setup, and usage.
+This project is built on top of **[Plane](https://github.com/makeplane/plane)**. All of Plane's
+original features, documentation, and design are the work of the Plane team and contributors.
+Please support the upstream project:
 
-## ❤️ Community
-
-Join the Plane community on [GitHub Discussions](https://github.com/orgs/makeplane/discussions) and our [Forum](https://forum.plane.so). We follow a [Code of conduct](https://github.com/makeplane/plane/blob/master/CODE_OF_CONDUCT.md) in all our community channels.
-
-Feel free to ask questions, report bugs, participate in discussions, share ideas, request features, or showcase your projects. We’d love to hear from you!
+- Website: [plane.so](https://plane.so/)
+- Repository: [github.com/makeplane/plane](https://github.com/makeplane/plane)
+- Docs: [docs.plane.so](https://docs.plane.so/) · [developers.plane.so](https://developers.plane.so/)
 
 ## 🛡️ Security
 
-If you discover a security vulnerability in Plane, please report it responsibly instead of opening a public issue. We take all legitimate reports seriously and will investigate them promptly. See [Security policy](https://github.com/makeplane/plane/blob/master/SECURITY.md) for more info.
+If you discover a security vulnerability, please report it responsibly instead of opening a
+public issue. For vulnerabilities in **upstream Plane**, follow Plane's
+[security policy](https://github.com/makeplane/plane/blob/master/SECURITY.md).
 
-To disclose any security issues, please email us at security@plane.so.
+## 📜 License
 
-## 🤝 Contributing
-
-There are many ways you can contribute to Plane:
-
-- Report [bugs](https://github.com/makeplane/plane/issues/new?assignees=srinivaspendem%2Cpushya22&labels=%F0%9F%90%9Bbug&projects=&template=--bug-report.yaml&title=%5Bbug%5D%3A+) or submit [feature requests](https://github.com/makeplane/plane/issues/new?assignees=srinivaspendem%2Cpushya22&labels=%E2%9C%A8feature&projects=&template=--feature-request.yaml&title=%5Bfeature%5D%3A+).
-- Review the [documentation](https://docs.plane.so/) and submit [pull requests](https://github.com/makeplane/docs) to improve it—whether it's fixing typos or adding new content.
-- Talk or write about Plane or any other ecosystem integration and [let us know](https://forum.plane.so)!
-- Show your support by upvoting [popular feature requests](https://github.com/makeplane/plane/issues).
-
-Please read [CONTRIBUTING.md](https://github.com/makeplane/plane/blob/master/CONTRIBUTING.md) for details on the process for submitting pull requests to us.
-
-### Repo activity
-
-![Plane Repo Activity](https://repobeats.axiom.co/api/embed/2523c6ed2f77c082b7908c33e2ab208981d76c39.svg "Repobeats analytics image")
-
-### We couldn't have done this without you.
-
-<a href="https://github.com/makeplane/plane/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=makeplane/plane" />
-</a>
-
-## License
-
-This project is licensed under the [GNU Affero General Public License v3.0](https://github.com/makeplane/plane/blob/master/LICENSE.txt).
+This project is licensed under the **[GNU Affero General Public License v3.0](./LICENSE.txt)** —
+the same license as upstream Plane. As required by the AGPL-3.0, the source of our modifications
+is published here and remains available to all users who interact with the software over a
+network.
