@@ -31,6 +31,7 @@ import { workItemModule } from "@modules/work-item";
 import { assetModule, assetV2Module, userAssetV2Module } from "@modules/asset";
 import { intakeWorkItemModule } from "@modules/intake-work-item";
 import { technicalVisitModule } from "@modules/technical-visit";
+import { reportsModule } from "@modules/reports";
 import { customWidgetModule } from "@modules/custom-widget";
 import { customWebhookModule } from "@modules/custom-webhook";
 import { widgetModule } from "@modules/widget";
@@ -170,6 +171,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(userAssetV2Module)
   .use(intakeWorkItemModule)
   .use(technicalVisitModule)
+  .use(reportsModule)
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)
