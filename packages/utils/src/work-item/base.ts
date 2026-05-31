@@ -4,12 +4,12 @@
  * See the LICENSE file for details.
  */
 
-import { differenceInCalendarDays } from "date-fns/differenceInCalendarDays";
-import { isEmpty } from "lodash-es";
-import { v4 as uuidv4 } from "uuid";
+import {differenceInCalendarDays} from "date-fns/differenceInCalendarDays";
+import {isEmpty} from "lodash-es";
+import {v4 as uuidv4} from "uuid";
 // plane imports
-import type { TIssueFilterPriorityObject, TIssuePriorities } from "@plane/constants";
-import { ISSUE_DISPLAY_FILTERS_BY_PAGE, ISSUE_PRIORITY_FILTERS, STATE_GROUPS } from "@plane/constants";
+import type {TIssueFilterPriorityObject, TIssuePriorities} from "@plane/constants";
+import {ISSUE_DISPLAY_FILTERS_BY_PAGE, ISSUE_PRIORITY_FILTERS, STATE_GROUPS} from "@plane/constants";
 import type {
   IGanttBlock,
   IIssueDisplayFilterOptions,
@@ -23,11 +23,11 @@ import type {
   TSubGroupedIssues,
   TUnGroupedIssues,
 } from "@plane/types";
-import { EIssueLayoutTypes } from "@plane/types";
+import {EIssueLayoutTypes} from "@plane/types";
 // local imports
-import { orderArrayBy } from "../array";
-import { getDate } from "../datetime";
-import { isEditorEmpty } from "../editor";
+import {orderArrayBy} from "../array";
+import {getDate} from "../datetime";
+import {isEditorEmpty} from "../editor";
 
 type THandleIssuesMutation = (
   formData: Partial<TIssue>,
@@ -39,7 +39,7 @@ type THandleIssuesMutation = (
     | {
         [key: string]: TIssue[];
       }
-    | TIssue[]
+    | TIssue[],
 ) =>
   | {
       [key: string]: TIssue[];
@@ -47,14 +47,7 @@ type THandleIssuesMutation = (
   | TIssue[]
   | undefined;
 
-export const handleIssuesMutation: THandleIssuesMutation = (
-  formData,
-  oldGroupTitle,
-  selectedGroupBy,
-  issueIndex,
-  orderBy,
-  prevData
-) => {
+export const handleIssuesMutation: THandleIssuesMutation = (formData, oldGroupTitle, selectedGroupBy, issueIndex, orderBy, prevData) => {
   if (!prevData) return prevData;
 
   if (Array.isArray(prevData)) {
@@ -84,7 +77,7 @@ export const handleIssuesMutation: THandleIssuesMutation = (
         ...prevData,
         [oldGroupTitle ?? ""]: orderArrayBy(
           oldGroup.map((i) => (i.id === updatedIssue.id ? updatedIssue : i)),
-          orderBy
+          orderBy,
         ),
       };
 
@@ -94,7 +87,7 @@ export const handleIssuesMutation: THandleIssuesMutation = (
       ...prevData,
       [oldGroupTitle ?? ""]: orderArrayBy(
         oldGroup.filter((i) => i.id !== updatedIssue.id),
-        orderBy
+        orderBy,
       ),
       [groupThatIsUpdated ?? ""]: orderArrayBy([...newGroup, updatedIssue], orderBy),
     };
@@ -103,14 +96,7 @@ export const handleIssuesMutation: THandleIssuesMutation = (
 
 export const handleIssueQueryParamsByLayout = (
   layout: EIssueLayoutTypes | undefined,
-  viewType:
-    | "my_issues"
-    | "issues"
-    | "profile_issues"
-    | "archived_issues"
-    | "draft_issues"
-    | "team_issues"
-    | "team_project_work_items"
+  viewType: "my_issues" | "issues" | "profile_issues" | "archived_issues" | "draft_issues" | "team_issues" | "team_project_work_items",
 ): TIssueParams[] | null => {
   const queryParams: TIssueParams[] = ["filters"];
 
@@ -143,7 +129,7 @@ export const handleIssueQueryParamsByLayout = (
  */
 export const createIssuePayload: (projectId: string, formData: Partial<TIssue>) => TIssue = (
   projectId: string,
-  formData: Partial<TIssue>
+  formData: Partial<TIssue>,
 ) => {
   const payload: TIssue = {
     id: uuidv4(),
@@ -169,10 +155,7 @@ export const createIssuePayload: (projectId: string, formData: Partial<TIssue>) 
  * @param stateGroup
  * @returns boolean
  */
-export const shouldHighlightIssueDueDate = (
-  date: string | Date | null,
-  stateGroup: TStateGroups | undefined
-): boolean => {
+export const shouldHighlightIssueDueDate = (date: string | Date | null, stateGroup: TStateGroups | undefined): boolean => {
   if (!date || !stateGroup) return false;
   // if the issue is completed or cancelled, don't highlight the due date
   if ([STATE_GROUPS.completed.key, STATE_GROUPS.cancelled.key].includes(stateGroup)) return false;
@@ -226,7 +209,7 @@ export const issueCountBasedOnFilters = (
   issueIds: TGroupedIssues | TUnGroupedIssues | TSubGroupedIssues,
   layout: EIssueLayoutTypes,
   groupBy: string | undefined,
-  subGroupBy: string | undefined
+  subGroupBy: string | undefined,
 ): number => {
   let issuesCount = 0;
   if (!layout) return issuesCount;
@@ -269,7 +252,7 @@ export const issueCountBasedOnFilters = (
  */
 export const getComputedDisplayFilters = (
   displayFilters: IIssueDisplayFilterOptions = {},
-  defaultValues?: IIssueDisplayFilterOptions
+  defaultValues?: IIssueDisplayFilterOptions,
 ): IIssueDisplayFilterOptions => {
   const filters = !isEmpty(displayFilters) ? displayFilters : defaultValues;
   return {
@@ -291,9 +274,7 @@ export const getComputedDisplayFilters = (
  * @param {IIssueDisplayProperties} displayProperties
  * @returns {IIssueDisplayProperties}
  */
-export const getComputedDisplayProperties = (
-  displayProperties: IIssueDisplayProperties = {}
-): IIssueDisplayProperties => ({
+export const getComputedDisplayProperties = (displayProperties: IIssueDisplayProperties = {}): IIssueDisplayProperties => ({
   assignee: displayProperties?.assignee ?? true,
   start_date: displayProperties?.start_date ?? true,
   due_date: displayProperties?.due_date ?? true,
@@ -335,6 +316,20 @@ export const generateWorkItemLink = ({
   const epicLink = workItemLink;
 
   return isArchived ? archiveIssueLink : isEpic ? epicLink : workItemLink;
+};
+
+export const generateIssueDetailLink = ({
+  workspaceSlug,
+  projectId,
+  issueId,
+}: {
+  workspaceSlug: string | undefined | null;
+  projectId: string | undefined | null;
+  issueId: string | undefined | null;
+}): string => {
+  if (!workspaceSlug || !projectId || !issueId) return "#";
+
+  return `/${workspaceSlug}/projects/${projectId}/issues/${issueId}/`;
 };
 
 export const getIssuePriorityFilters = (priorityKey: TIssuePriorities): TIssueFilterPriorityObject | undefined => {

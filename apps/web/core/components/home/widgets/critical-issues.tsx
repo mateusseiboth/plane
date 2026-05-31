@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {APIService} from "@/services/api.service";
+import {API_BASE_URL} from "@plane/constants";
+import type {THomeWidgetProps} from "@plane/types";
+import {calculateTimeAgo, cn, generateIssueDetailLink} from "@plane/utils";
+import {AlertTriangle} from "lucide-react";
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
-import type { THomeWidgetProps } from "@plane/types";
-import { calculateTimeAgo, cn } from "@plane/utils";
-import { APIService } from "@/services/api.service";
-import { API_BASE_URL } from "@plane/constants";
+import {useEffect, useState} from "react";
 
 class UrgentService extends APIService {
-  constructor() { super(API_BASE_URL); }
+  constructor() {
+    super(API_BASE_URL);
+  }
   list(slug: string) {
-    return this.get(`/api/workspaces/${slug}/urgent-issues/`).then((r) => r?.data ?? []).catch(() => []);
+    return this.get(`/api/workspaces/${slug}/urgent-issues/`)
+      .then((r) => r?.data ?? [])
+      .catch(() => []);
   }
 }
 
@@ -24,12 +28,15 @@ const STATE_GROUP_BG: Record<string, string> = {
   triage: "bg-purple-100 text-purple-700",
 };
 
-export function CriticalIssuesWidget({ workspaceSlug }: THomeWidgetProps) {
+export function CriticalIssuesWidget({workspaceSlug}: THomeWidgetProps) {
   const [issues, setIssues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    urgentService.list(workspaceSlug).then(setIssues).finally(() => setLoading(false));
+    urgentService
+      .list(workspaceSlug)
+      .then(setIssues)
+      .finally(() => setLoading(false));
   }, [workspaceSlug]);
 
   if (loading) return <div className="h-32 animate-pulse rounded-xl border border-subtle bg-surface-2" />;
@@ -39,39 +46,40 @@ export function CriticalIssuesWidget({ workspaceSlug }: THomeWidgetProps) {
     <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
       <div className="mb-3 flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-red-600" />
-        <span className="text-13 font-semibold text-red-800 dark:text-red-300">
-          Chamados Urgentes em Aberto ({issues.length})
-        </span>
+        <span className="text-13 font-semibold text-red-800 dark:text-red-300">Chamados Urgentes em Aberto ({issues.length})</span>
       </div>
       <div className="space-y-2">
         {issues.slice(0, 6).map((issue) => (
           <Link
             key={issue.id}
-            href={`/${workspaceSlug}/projects/${issue.project?.id}/issues/${issue.id}/`}
-            className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm hover:shadow transition-shadow dark:bg-red-900/20"
+            href={generateIssueDetailLink({workspaceSlug, projectId: issue.project?.id, issueId: issue.id})}
+            className="flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 shadow-sm transition-colors hover:border-red-200 hover:bg-red-100/70 dark:border-red-900/50 dark:bg-red-950/35 dark:hover:bg-red-950/55"
           >
             {issue.legacy_ticket_number && (
-              <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
+              <span className="shrink-0 rounded border border-danger-strong/20 bg-danger-subtle px-1.5 py-0.5 text-10 font-mono font-semibold text-danger-primary dark:border-danger-strong/40 dark:bg-danger-primary/20 dark:text-danger-secondary">
                 #{issue.legacy_ticket_number}
               </span>
             )}
             {issue.project?.identifier && (
-              <span className="shrink-0 text-11 font-medium text-red-500">
+              <span className="shrink-0 rounded border border-danger-strong/10 bg-danger-transparent px-1.5 py-0.5 text-11 font-medium text-danger-primary dark:border-danger-strong/25 dark:bg-danger-primary/10 dark:text-danger-secondary">
                 {issue.project.identifier}-{issue.sequence_id}
               </span>
             )}
             <span className="flex-1 truncate text-13 text-primary">{issue.name}</span>
             {issue.state && (
-              <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-10 font-medium", STATE_GROUP_BG[issue.state.group] ?? "bg-surface-2 text-secondary")}>
+              <span
+                className={cn(
+                  "shrink-0 rounded px-1.5 py-0.5 text-10 font-medium",
+                  STATE_GROUP_BG[issue.state.group] ?? "bg-surface-2 text-secondary",
+                )}
+              >
                 {issue.state.name}
               </span>
             )}
             <span className="shrink-0 text-11 text-tertiary">{calculateTimeAgo(issue.updated_at)}</span>
           </Link>
         ))}
-        {issues.length > 6 && (
-          <p className="text-center text-12 text-red-600">+{issues.length - 6} outros chamados urgentes</p>
-        )}
+        {issues.length > 6 && <p className="text-center text-12 text-red-600">+{issues.length - 6} outros chamados urgentes</p>}
       </div>
     </div>
   );

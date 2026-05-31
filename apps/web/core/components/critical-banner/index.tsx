@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {APIService} from "@/services/api.service";
+import {API_BASE_URL} from "@plane/constants";
+import {cn, generateIssueDetailLink} from "@plane/utils";
+import {AlertTriangle, ChevronDown, ChevronUp, X} from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { AlertTriangle, ChevronDown, ChevronUp, X } from "lucide-react";
-import { cn } from "@plane/utils";
-import { APIService } from "@/services/api.service";
-import { API_BASE_URL } from "@plane/constants";
+import {useParams} from "next/navigation";
+import {useEffect, useRef, useState} from "react";
 
 class UrgentIssueService extends APIService {
-  constructor() { super(API_BASE_URL); }
+  constructor() {
+    super(API_BASE_URL);
+  }
   list(slug: string) {
     return this.get(`/api/workspaces/${slug}/urgent-issues/`)
       .then((r) => r?.data ?? [])
@@ -34,7 +36,7 @@ const STATE_GROUP_COLOR: Record<string, string> = {
  * Polls every 60 s. Collapses to save space.
  */
 export function CriticalIssuesBanner() {
-  const { workspaceSlug } = useParams();
+  const {workspaceSlug} = useParams();
   const [issues, setIssues] = useState<any[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -48,7 +50,9 @@ export function CriticalIssuesBanner() {
   useEffect(() => {
     load();
     intervalRef.current = setInterval(load, 60_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [workspaceSlug]);
 
   if (dismissed || issues.length === 0) return null;
@@ -84,14 +88,18 @@ export function CriticalIssuesBanner() {
             {issues.slice(0, 8).map((issue) => (
               <Link
                 key={issue.id}
-                href={`/${workspaceSlug}/projects/${issue.project?.id}/issues/${issue.id}/`}
-                className="flex items-center gap-1.5 rounded-full border border-red-300 bg-white px-3 py-1 text-12 text-red-800 hover:border-red-500 hover:bg-red-50 dark:border-red-700 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900/50 transition-colors"
+                href={generateIssueDetailLink({workspaceSlug: workspaceSlug.toString(), projectId: issue.project?.id, issueId: issue.id})}
+                className="flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-12 text-red-800 transition-colors hover:border-red-500 hover:bg-red-100 dark:border-red-700 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/65"
               >
                 {issue.legacy_ticket_number && (
-                  <span className="font-mono font-semibold">#{issue.legacy_ticket_number}</span>
+                  <span className="rounded bg-red-100 px-1 font-mono font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-200">
+                    #{issue.legacy_ticket_number}
+                  </span>
                 )}
                 {issue.project?.identifier && (
-                  <span className="font-medium text-red-500">{issue.project.identifier}-{issue.sequence_id}</span>
+                  <span className="rounded bg-red-100/70 px-1 font-medium text-red-600 dark:bg-red-900/40 dark:text-red-300">
+                    {issue.project.identifier}-{issue.sequence_id}
+                  </span>
                 )}
                 <span className="max-w-[200px] truncate">{issue.name}</span>
                 {issue.state && (
@@ -101,11 +109,7 @@ export function CriticalIssuesBanner() {
                 )}
               </Link>
             ))}
-            {issues.length > 8 && (
-              <span className="flex items-center px-2 text-12 text-red-600">
-                +{issues.length - 8} mais
-              </span>
-            )}
+            {issues.length > 8 && <span className="flex items-center px-2 text-12 text-red-600">+{issues.length - 8} mais</span>}
           </div>
         </div>
       )}

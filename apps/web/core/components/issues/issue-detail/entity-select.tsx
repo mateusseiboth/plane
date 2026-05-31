@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { observer } from "mobx-react";
-import { Building2, Search, X, ChevronDown } from "lucide-react";
-import { cn } from "@plane/utils";
-import { useIssueDetail } from "@/hooks/store/use-issue-detail";
-import entityService, { type TEntity, entityTypeLabel } from "@/services/entity.service";
-import type { TIssueOperations } from "./root";
+import {useIssueDetail} from "@/hooks/store/use-issue-detail";
+import entityService, {type TEntity, entityTypeLabel} from "@/services/entity.service";
+import {cn} from "@plane/utils";
+import {Building2, ChevronDown, Search, X} from "lucide-react";
+import {observer} from "mobx-react";
+import {useCallback, useEffect, useRef, useState} from "react";
+import type {TIssueOperations} from "./root";
 
 type Props = {
   workspaceSlug: string;
@@ -24,7 +24,7 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
   className,
 }: Props) {
   const {
-    issue: { getIssueById },
+    issue: {getIssueById},
   } = useIssueDetail();
 
   const issue = getIssueById(issueId);
@@ -35,7 +35,19 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentEntityId = (issue as any)?.entity_id as string | null | undefined;
+  const issueEntity = (issue as any)?.entity as TEntity | undefined;
   const currentEntity = entities.find((e) => e.id === currentEntityId);
+  const selectedEntity = currentEntity ?? issueEntity ?? null;
+
+  useEffect(() => {
+    if (!currentEntityId || entities.some((entity) => entity.id === currentEntityId)) return;
+
+    setLoading(true);
+    entityService
+      .list(workspaceSlug)
+      .then(setEntities)
+      .finally(() => setLoading(false));
+  }, [currentEntityId, entities, workspaceSlug]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,9 +73,9 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
     async (entityId: string | null) => {
       setOpen(false);
       setSearch("");
-      await issueOperations.update(workspaceSlug, projectId, issueId, { entity_id: entityId } as any);
+      await issueOperations.update(workspaceSlug, projectId, issueId, {entity_id: entityId} as any);
     },
-    [workspaceSlug, projectId, issueId, issueOperations]
+    [workspaceSlug, projectId, issueId, issueOperations],
   );
 
   const filtered = entities.filter((e) => {
@@ -77,7 +89,10 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
   });
 
   return (
-    <div ref={dropdownRef} className={cn("relative w-full", className)}>
+    <div
+      ref={dropdownRef}
+      className={cn("relative w-full", className)}
+    >
       <button
         type="button"
         onClick={() => !disabled && setOpen((o) => !o)}
@@ -85,17 +100,18 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
           "flex w-full items-center gap-1.5 rounded px-2 py-1 text-body-xs-regular h-7.5",
           "text-left hover:bg-surface-2 transition-colors",
           disabled && "cursor-not-allowed opacity-60",
-          currentEntity ? "" : "text-secondary-text"
+          currentEntity ? "" : "text-secondary-text",
         )}
       >
         <Building2 className="h-3.5 w-3.5 shrink-0 text-secondary-text" />
-        <span className="grow truncate">
-          {currentEntity ? currentEntity.name : "Adicionar entidade"}
-        </span>
-        {currentEntity && !disabled && (
+        <span className="grow truncate">{selectedEntity ? selectedEntity.name : "Adicionar entidade"}</span>
+        {selectedEntity && !disabled && (
           <span
             role="button"
-            onClick={(e) => { e.stopPropagation(); handleSelect(null); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelect(null);
+            }}
             className="shrink-0 rounded-full hover:bg-surface-3 p-0.5"
           >
             <X className="h-3 w-3" />
@@ -118,9 +134,7 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
           </div>
 
           <div className="max-h-48 overflow-y-auto py-1">
-            {loading && (
-              <div className="px-3 py-2 text-body-xs-regular text-secondary-text">Carregando...</div>
-            )}
+            {loading && <div className="px-3 py-2 text-body-xs-regular text-secondary-text">Carregando...</div>}
 
             {!loading && filtered.length === 0 && (
               <div className="px-3 py-2 text-body-xs-regular text-secondary-text">Nenhuma entidade encontrada.</div>
@@ -145,7 +159,7 @@ export const IssueEntitySelect = observer(function IssueEntitySelect({
                   onClick={() => handleSelect(entity.id)}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-xs-regular hover:bg-surface-2",
-                    entity.id === currentEntityId && "bg-surface-1-80 font-medium"
+                    entity.id === currentEntityId && "bg-surface-1-80 font-medium",
                   )}
                 >
                   <Building2 className="h-3.5 w-3.5 shrink-0 text-secondary-text" />
