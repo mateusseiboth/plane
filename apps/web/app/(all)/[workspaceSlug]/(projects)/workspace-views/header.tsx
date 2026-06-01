@@ -78,15 +78,20 @@ export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
   const handleLayoutChange = useCallback(
     (layout: EIssueLayoutTypes) => {
       if (!workspaceSlug || !globalViewId) return;
+      const displayFilterUpdate: Record<string, unknown> = { layout };
+      // Kanban requires a group_by; default to state when none is set so the
+      // global board renders columns instead of an empty screen.
+      const currentGroupBy = issueFilters?.displayFilters?.group_by;
+      if (layout === EIssueLayoutTypes.KANBAN && !currentGroupBy) displayFilterUpdate.group_by = "state";
       updateFilters(
         workspaceSlug.toString(),
         undefined,
         EIssueFilterType.DISPLAY_FILTERS,
-        { layout: layout },
+        displayFilterUpdate,
         globalViewId
       );
     },
-    [workspaceSlug, updateFilters, globalViewId]
+    [workspaceSlug, updateFilters, globalViewId, issueFilters]
   );
 
   const isLocked = viewDetails?.is_locked;

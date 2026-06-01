@@ -47,7 +47,7 @@ export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
       data: {
         workspaceId: ws.id,
         entityType: b.entity_type ?? ENTITY_TYPE.WORKSPACE,
-        entityId: b.entity_id ?? null,
+        entityId: b.entity_id || null,
         asset: b.asset,
         size: b.size ?? 0,
         mimeType: b.mime_type ?? null,
@@ -156,7 +156,7 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     const asset = await prisma.fileAsset.create({
       data: {
         workspaceId: ws.id, entityType: ENTITY_TYPE_MAP[entityTypeStr] ?? 0,
-        entityId: b.entity_identifier ?? null, asset: `ws/${ws.id}/${Date.now()}.${ext}`,
+        entityId: b.entity_identifier || null, asset: `ws/${ws.id}/${Date.now()}.${ext}`,
         size: b.size ?? 0, mimeType: b.type ?? null,
         attributes: {name: b.name, type: b.type, size: b.size, entity_type: entityTypeStr},
         isUploaded: false,
@@ -226,8 +226,8 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     if (!original) { set.status = 404; return {detail: "Asset not found."}; }
     const dup = await prisma.fileAsset.create({
       data: {
-        workspaceId: ws.id, projectId: b.project_id ?? original.projectId,
-        entityType: original.entityType, entityId: b.entity_id ?? original.entityId,
+        workspaceId: ws.id, projectId: b.project_id || original.projectId,
+        entityType: original.entityType, entityId: b.entity_id || original.entityId,
         asset: original.asset, size: original.size, mimeType: original.mimeType,
         attributes: original.attributes as any, isUploaded: original.isUploaded,
       },
@@ -273,7 +273,7 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
       data: {
         workspaceId: ws.id, projectId: project_id,
         entityType: ENTITY_TYPE_MAP[entityTypeStr] ?? 1,
-        entityId: b.entity_identifier ?? null,
+        entityId: b.entity_identifier || null,
         asset: `proj/${project_id}/${Date.now()}.${ext}`,
         size: b.size ?? 0, mimeType: b.type ?? null,
         attributes: {name: b.name, type: b.type, size: b.size, entity_type: entityTypeStr},

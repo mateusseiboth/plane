@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { observer } from "mobx-react-lite";
 import { useWidgets } from "@/hooks/use-widgets";
+import type { IWidget } from "@/services/widget.service";
+import { observer } from "mobx-react";
+import React, { useState } from "react";
+import { WidgetDetailPanel } from "./widget-detail-panel";
 import { WidgetList } from "./widget-list";
 import { WidgetUploadModal } from "./widget-upload-modal";
-import { WidgetDetailPanel } from "./widget-detail-panel";
-import type { IWidget } from "@/services/widget.service";
 
 export const WidgetAdminPage: React.FC = observer(() => {
   const {

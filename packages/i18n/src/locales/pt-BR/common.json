@@ -715,9 +715,10 @@
     "custom_properties": "Propriedades personalizadas",
     "your_profile": "Your profile",
     "developer": "Developer",
-    "work_structure": "Work structure",
-    "execution": "Execution",
-    "administration": "Administration"
+    "work_structure": "Estrutura de trabalho",
+    "execution": "Execução",
+    "administration": "Administração",
+    "permissions": "Permissões"
   },
   "chart": {
     "x_axis": "Eixo X",

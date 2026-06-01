@@ -101,9 +101,13 @@ export const AllIssueLayoutRoot = observer(function AllIssueLayoutRoot(props: Pr
         clear();
         toggleLoading(true);
         await fetchFilters(workspaceSlug, globalViewId);
+        // Group the fetch when the active layout uses grouping (kanban / grouped list),
+        // so non-spreadsheet layouts receive grouped issue ids. Spreadsheet stays flat.
+        const groupBy = workItemFilters?.displayFilters?.group_by;
+        const canGroup = !!groupBy;
         await fetchIssues(workspaceSlug, globalViewId, groupedIssueIds ? "mutation" : "init-loader", {
-          canGroup: false,
-          perPageCount: 100,
+          canGroup,
+          perPageCount: canGroup ? 50 : 100,
         });
         toggleLoading(false);
       }

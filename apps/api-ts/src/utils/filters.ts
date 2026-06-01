@@ -126,12 +126,26 @@ export async function applyIssueFilters(
   }
   if (stateIdSet.size) where.stateId = {in: [...stateIdSet]};
 
-  // date ranges: "after;before" or single date
+  // date ranges: "after;before" or single date. Guards against invalid/empty dates
+  // (Prisma throws on Invalid Date), and supports Django-style "<token>;<date>" pairs.
+  const valid = (s: string) => {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  };
   const applyDate = (field: string, raw: string[]) => {
     if (!raw.length) return;
-    const parts = raw[0].split(";");
-    if (parts.length === 2) where[field] = {gte: new Date(parts[0]), lte: new Date(parts[1])};
-    else where[field] = new Date(parts[0]);
+    const parts = raw[0].split(";").map((p) => p.trim());
+    if (parts.length === 2) {
+      const a = valid(parts[0]);
+      const b = valid(parts[1]);
+      const range: any = {};
+      if (a) range.gte = a;
+      if (b) range.lte = b;
+      if (Object.keys(range).length) where[field] = range;
+    } else {
+      const d = valid(parts[0]);
+      if (d) where[field] = d;
+    }
   };
   if (filters.target_date?.length) applyDate("targetDate", filters.target_date);
   if (filters.start_date?.length) applyDate("startDate", filters.start_date);

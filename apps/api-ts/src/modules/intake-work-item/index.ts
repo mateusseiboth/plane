@@ -7,7 +7,7 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
-import { serializeIssue, ISSUE_INCLUDE } from "@utils/serialize";
+import { serializeIssue, ISSUE_INCLUDE, COMMENT_INCLUDE, serializeComment } from "@utils/serialize";
 import { paginate } from "@utils/pagination";
 import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 
@@ -91,9 +91,19 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
     await getProjectOrFail(ws.id, project_id, user.id);
     const activityType = (query as any).activity_type ?? "issue-property";
     const isComment = activityType.includes("comment");
-    const where: any = { issueId: issue_id, deletedAt: null };
-    if (isComment) where.issueCommentId = { not: null };
-    else where.issueCommentId = null;
+    // issue-comment feed returns full comment objects (same as the issue module)
+    if (isComment) {
+      const commentWhere: any = { issueId: issue_id, deletedAt: null };
+      if ((query as any).created_at__gt) commentWhere.createdAt = { gt: new Date((query as any).created_at__gt) };
+      const comments = await prisma.issueComment.findMany({
+        where: commentWhere,
+        orderBy: { createdAt: "asc" },
+        include: COMMENT_INCLUDE,
+        take: 200,
+      });
+      return comments.map(serializeComment);
+    }
+    const where: any = { issueId: issue_id, deletedAt: null, issueCommentId: null };
     const activities = await prisma.issueActivity.findMany({ where, orderBy: { createdAt: "asc" }, take: 100 });
     return activities.map((a: any) => ({
       id: a.id, issue: issue_id, project: a.projectId, workspace: a.workspaceId,

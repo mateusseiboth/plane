@@ -265,7 +265,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       include: {state: {select: {id: true, name: true, group: true}}},
     });
 
-    const data: any = {updatedBy: {connect: {id: user.id}}};
+    // Use unchecked scalar fields throughout (updatedById/stateId/entityId/parentId).
+    // Mixing relation-style connects (e.g. updatedBy:{connect}) forces Prisma's
+    // checked input type, which then rejects scalar FKs like `stateId`.
+    const data: any = {updatedById: user.id};
     if (b.name !== undefined) data.name = b.name;
     if (b.description_html !== undefined) {
       data.descriptionHtml = b.description_html;
@@ -296,7 +299,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     if (b.target_date !== undefined) data.targetDate = b.target_date ? new Date(b.target_date) : null;
     const entityIdValue = b.entity_id ?? b.entityId;
     if (entityIdValue !== undefined) {
-      data.entity = entityIdValue ? {connect: {id: entityIdValue}} : {disconnect: true};
+      data.entityId = entityIdValue || null;
     }
     if (b.legacy_ticket_number !== undefined) data.legacyTicketNumber = b.legacy_ticket_number;
     if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
@@ -442,20 +445,6 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         createdById: user.id,
       },
       include: COMMENT_INCLUDE,
-    });
-    // Mirror into the activity feed so the "comments" history tab shows it
-    await prisma.issueActivity.create({
-      data: {
-        issueId: issue_id,
-        workspaceId: ws.id,
-        projectId: project_id,
-        actorId: user.id,
-        verb: "created",
-        field: "comment",
-        comment: "created a comment",
-        issueCommentId: comment.id,
-        epoch: Date.now(),
-      },
     });
     set.status = 201;
     return serializeComment(comment);
@@ -662,22 +651,26 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const activityType = (query.activity_type as string) ?? "issue-property";
     const isComment = activityType.includes("comment");
 
-    const where: any = {issueId: issue_id, deletedAt: null};
+    // issue-comment feed: the frontend's getIssueComments() hits this endpoint and
+    // expects full comment objects (comment_html/comment_json/actor_detail…).
     if (isComment) {
-      // issue-comment: return comments as activity
-      where.issueCommentId = {not: null};
-    } else {
-      // issue-property: return property-change activities
-      where.issueCommentId = null;
+      const commentWhere: any = {issueId: issue_id, deletedAt: null};
+      if (query.created_at__gt) commentWhere.createdAt = {gt: new Date(query.created_at__gt as string)};
+      const comments = await prisma.issueComment.findMany({
+        where: commentWhere,
+        orderBy: {createdAt: "asc"},
+        include: COMMENT_INCLUDE,
+        take: 200,
+      });
+      return comments.map(serializeComment);
     }
 
+    // issue-property feed: property-change activities
     const activities = await prisma.issueActivity.findMany({
-      where,
-      orderBy: {createdAt: isComment ? "desc" : "asc"},
+      where: {issueId: issue_id, deletedAt: null, issueCommentId: null},
+      orderBy: {createdAt: "asc"},
       take: 100,
-      include: {
-        issue: {select: {sequenceId: true, projectId: true}},
-      },
+      include: {issue: {select: {sequenceId: true, projectId: true}}},
     });
 
     return activities.map((a: any) => ({

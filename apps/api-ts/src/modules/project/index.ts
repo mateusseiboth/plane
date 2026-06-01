@@ -5,15 +5,16 @@ import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import { notifyQualityOfIntake } from "@utils/notifications";
 
+// Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
-  { name: "Backlog",       color: "#94a3b8", group: "backlog",   sequence: 15000, isDefault: true },
-  { name: "Avaliando",     color: "#a855f7", group: "unstarted", sequence: 25000 },
-  { name: "A Fazer",       color: "#3b82f6", group: "unstarted", sequence: 30000 },
-  { name: "Em Andamento",  color: "#f59e0b", group: "started",   sequence: 45000 },
-  { name: "Em Teste",      color: "#ec4899", group: "started",   sequence: 50000 },
-  { name: "Concluído",     color: "#16a34a", group: "completed", sequence: 60000 },
-  { name: "Cancelado",     color: "#dc2626", group: "cancelled", sequence: 75000 },
-  { name: "Triagem",       color: "#6366f1", group: "triage",    sequence: 90000, isTriage: true },
+  { name: "Triagem",            color: "#6366f1", group: "triage",    sequence: 5000,  isTriage: true },
+  { name: "Pendências",         color: "#94a3b8", group: "backlog",   sequence: 10000, isDefault: true },
+  { name: "A Fazer",            color: "#64748b", group: "unstarted", sequence: 15000 },
+  { name: "Em Análise",         color: "#eab308", group: "started",   sequence: 20000 },
+  { name: "Em Desenvolvimento", color: "#3b82f6", group: "started",   sequence: 25000 },
+  { name: "Em Teste",           color: "#8b5cf6", group: "started",   sequence: 30000 },
+  { name: "Concluído",          color: "#16a34a", group: "completed", sequence: 40000 },
+  { name: "Cancelado",          color: "#dc2626", group: "cancelled", sequence: 50000 },
 ];
 
 function slugify(name: string) {
@@ -38,9 +39,9 @@ async function findTriageState(projectId: string) {
   return prisma.state.create({
     data: {
       projectId, workspaceId: project.workspaceId,
-      name: "In Take", color: "#6366f1", group: "triage",
-      sequence: 1000, isTriage: true,
-      slug: "in-take",
+      name: "Triagem", color: "#6366f1", group: "triage",
+      sequence: 5000, isTriage: true,
+      slug: "triagem",
     },
   });
 }

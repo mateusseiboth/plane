@@ -260,7 +260,7 @@ const ProjectPermissionsPage = observer(function ProjectPermissionsPage({params}
         }}
       >
         <Dialog.Panel width={EDialogWidth.LG}>
-          <div className="p-6">
+          <div className="max-h-[85vh] overflow-y-auto p-6">
             <div className="mb-5">
               <Dialog.Title>Alterar papel de {roleDialogMember?.display_name}</Dialog.Title>
               <p className="mt-1 text-sm text-secondary-text">Selecione o nível de acesso para este membro.</p>
