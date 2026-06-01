@@ -488,6 +488,12 @@
       "entities": {
         "title": "Entidades"
       },
+      "roles": {
+        "title": "Funções"
+      },
+      "sla": {
+        "title": "SLA / Prazos"
+      },
       "ai": {
         "title": "Provedores de IA",
         "heading": "Provedores de IA",

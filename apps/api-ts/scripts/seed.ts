@@ -9,6 +9,7 @@
 import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@prisma/client";
 import {Pool} from "pg";
+import {seedWorkflowRoles} from "../src/utils/permissions";
 
 const pool = new Pool({connectionString: process.env.DATABASE_URL});
 const prisma = new PrismaClient({adapter: new PrismaPg(pool)});
@@ -42,6 +43,7 @@ async function main() {
         isEmailVerified: true,
         displayName: ADMIN_NAME,
         firstName: ADMIN_NAME,
+        language: "pt-BR",
       },
     });
     log(`✅  Admin user updated: ${ADMIN_EMAIL}`);
@@ -59,6 +61,7 @@ async function main() {
         isInstanceAdmin: true,
         isActive: true,
         isEmailVerified: true,
+        language: "pt-BR",
       },
     });
     log(`✅  Admin user created: ${ADMIN_EMAIL}`);
@@ -78,17 +81,19 @@ async function main() {
         isSignupScreenVisited: true,
         isTelemetryEnabled: false,
         isSupportRequired: false,
+        // SLA: ajuste de prazo (horas corridas) por prioridade — totalmente editável (C2)
+        configurations: {priority_sla: {urgent: -8, high: -4, medium: 0, low: 8, none: 0}},
       },
     });
     log(`✅  Instance record created`);
-  } else if (!existingInstance.isSetupDone) {
+  } else {
+    const cfg = (existingInstance.configurations as any) ?? {};
+    if (!cfg.priority_sla) cfg.priority_sla = {urgent: -8, high: -4, medium: 0, low: 8, none: 0};
     await prisma.instance.update({
       where: {id: existingInstance.id},
-      data: {isSetupDone: true, isSignupScreenVisited: true},
+      data: {isSetupDone: true, isSignupScreenVisited: true, configurations: cfg},
     });
-    log(`✅  Instance marked as setup done`);
-  } else {
-    log(`ℹ️   Instance already exists`);
+    log(`✅  Instance updated (setup done + priority_sla ensured)`);
   }
 
   // 3. Create default workspace if doesn't exist
@@ -116,6 +121,10 @@ async function main() {
     });
     log(`✅  Admin added as workspace owner`);
   }
+
+  // 3b. Seed configurable roles (system roles + default visibility/transitions)
+  const roleIds = await seedWorkflowRoles(prisma, workspace.id);
+  log(`✅  Workflow roles seeded (${Object.keys(roleIds).length} roles)`);
 
   // Projects are created by the SAC migration script (one per sistema).
   // Seed does not create projects — run scripts/migrate-sac.ts after seeding.

@@ -1,7 +1,10 @@
 import prisma from "@/db";
 import {paginate} from "@/utils/pagination";
+import {invalidatePrioritySlaCache} from "@/utils/sla";
 import {Elysia} from "elysia";
 import {SignJWT, jwtVerify} from "jose";
+
+const DEFAULT_PRIORITY_SLA = {urgent: -8, high: -4, medium: 0, low: 8, none: 0};
 
 const JWT_SECRET_BYTES = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -403,6 +406,40 @@ export const instanceModule = new Elysia({prefix: "/instances"})
     });
 
     return instanceConfigurationsDto(merged);
+  })
+
+  // ── Priority SLA config (C4) ─────────────────────────────────────────────
+  // Kept separate from /configurations/ because that endpoint flattens keys to
+  // UPPERCASE strings, which would corrupt this nested object.
+  .get("/priority-sla/", async ({headers, set}) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) {
+      set.status = 403;
+      return {detail: "Instance admin access required."};
+    }
+    const instance = await prisma.instance.findFirst({select: {configurations: true}});
+    const cfg = (instance?.configurations as any)?.priority_sla;
+    return {priority_sla: cfg && typeof cfg === "object" ? {...DEFAULT_PRIORITY_SLA, ...cfg} : DEFAULT_PRIORITY_SLA};
+  })
+
+  .patch("/priority-sla/", async ({body, headers, set}) => {
+    const caller = await resolveUser(headers as any);
+    if (!caller?.isInstanceAdmin) {
+      set.status = 403;
+      return {detail: "Instance admin access required."};
+    }
+    const instance = await prisma.instance.findFirst();
+    if (!instance) { set.status = 400; return {detail: "Instance not found."}; }
+    const incoming = (body as any)?.priority_sla ?? body;
+    const existing = (instance.configurations as any) ?? {};
+    const current = existing.priority_sla && typeof existing.priority_sla === "object" ? existing.priority_sla : DEFAULT_PRIORITY_SLA;
+    const next: Record<string, number> = {...DEFAULT_PRIORITY_SLA, ...current};
+    for (const k of ["urgent", "high", "medium", "low", "none"]) {
+      if (incoming && typeof incoming[k] === "number") next[k] = incoming[k];
+    }
+    await prisma.instance.update({where: {id: instance.id}, data: {configurations: {...existing, priority_sla: next}}});
+    invalidatePrioritySlaCache();
+    return {priority_sla: next};
   })
 
   .delete("/configurations/disable-email-feature/", async ({headers, set}) => {

@@ -178,7 +178,7 @@ export const userModule = new Elysia({ prefix: "/users" })
       user: user.id,
       role: null,
       last_workspace_id: lastMembership?.workspaceId ?? null,
-      language: (fresh as any)?.language ?? meta.language ?? "en",
+      language: (fresh as any)?.language ?? meta.language ?? "pt-BR",
       week_start_day: (fresh as any)?.weekStartDay ?? meta.week_start_day ?? 0,
       theme: meta.theme ?? {
         theme: "system",

@@ -38,6 +38,7 @@ import { widgetModule } from "@modules/widget";
 import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 import { pluginRegistryModule } from "@modules/plugin-registry";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
+import { rolesModule } from "@modules/roles";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -179,7 +180,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(widgetModule)
   .use(widgetSdkGatewayModule)
   .use(pluginRegistryModule)
-  .use(pluginSdkGatewayModule);
+  .use(pluginSdkGatewayModule)
+  .use(rolesModule);
 
 // ── Compose into root app ────────────────────────────────────────────────────
 const app = new Elysia()

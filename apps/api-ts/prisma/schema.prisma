@@ -46,7 +46,7 @@ model User {
   isInstanceAdmin   Boolean   @default(false) @map("is_instance_admin")
   isBotUser         Boolean   @default(false) @map("is_bot_user")
   userTimezone      String    @default("UTC") @map("user_timezone")
-  language          String    @default("en") @db.VarChar(20)
+  language          String    @default("pt-BR") @db.VarChar(20)
   weekStartDay      Int       @default(0) @map("week_start_day")
   metadata          Json      @default("{}")
   lastLoginMedium   String    @default("email") @map("last_login_medium")
@@ -133,6 +133,7 @@ model Workspace {
   timezone    String    @default("UTC")
   members               WorkspaceMember[]
   memberInvites         WorkspaceMemberInvite[]
+  workflowRoles         WorkflowRole[]
   projects              Project[]
   labels                Label[]
   pages                 Page[]
@@ -172,6 +173,9 @@ model WorkspaceMember {
   role        Int       @default(5)
   isActive    Boolean   @default(true) @map("is_active")
   companyRole String?   @map("company_role")
+  // Configurable role (H1). When set, it overrides the legacy `role` Int.
+  workflowRole   WorkflowRole? @relation(fields: [workflowRoleId], references: [id])
+  workflowRoleId String?       @map("workflow_role_id") @db.Uuid
   @@unique([workspaceId, memberId, deletedAt])
   @@map("workspace_members")
 }
@@ -259,6 +263,9 @@ model ProjectMember {
   memberId    String    @map("member_id") @db.Uuid
   role        Int       @default(5)
   isActive    Boolean   @default(true) @map("is_active")
+  // Configurable role (H1). When set, it overrides the legacy `role` Int.
+  workflowRole   WorkflowRole? @relation(fields: [workflowRoleId], references: [id])
+  workflowRoleId String?       @map("workflow_role_id") @db.Uuid
   @@unique([projectId, memberId, deletedAt])
   @@map("project_members")
 }
@@ -340,6 +347,9 @@ model Label {
   sortOrder   Float     @default(65535) @map("sort_order")
   externalSource String? @map("external_source")
   externalId  String?   @map("external_id")
+  // SLA: prazo automático (em horas corridas) aplicado à data de vencimento
+  // quando a label é atribuída. null = sem prazo automático. (C1)
+  slaHours    Int?      @map("sla_hours")
   issueLabels IssueLabel[]
   pageLabels  PageLabel[]
   @@map("labels")
@@ -989,6 +999,56 @@ model PageVersion {
   descriptionHtml String? @map("description_html")
   descriptionStripped String? @map("description_stripped")
   @@map("page_versions")
+}
+
+// ── Configurable roles / workflow (H1) ──────────────────────────────────────
+// Workspace-scoped roles whose capabilities, board visibility and allowed state
+// transitions are fully editable. Visibility/transitions are keyed by state
+// GROUP (+ optional state name) so a single config applies across all projects,
+// which share the same state template.
+
+model WorkflowRole {
+  id          String    @id @default(uuid()) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String    @map("workspace_id") @db.Uuid
+  name        String
+  key         String // slug, e.g. "qualidade"
+  level       Int       @default(10) // hierarchy & legacy role-Int compatibility
+  isSystem    Boolean   @default(false) @map("is_system")
+  permissions Json      @default("[]") // array of EProjectAction strings
+  visibility       RoleStateVisibility[]
+  transitions      RoleStateTransition[]
+  workspaceMembers WorkspaceMember[]
+  projectMembers   ProjectMember[]
+  @@unique([workspaceId, key, deletedAt])
+  @@map("workflow_roles")
+}
+
+model RoleStateVisibility {
+  id          String       @id @default(uuid()) @db.Uuid
+  role        WorkflowRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId      String       @map("role_id") @db.Uuid
+  workspaceId String       @map("workspace_id") @db.Uuid
+  group       String // state group: backlog | unstarted | started | completed | cancelled | triage
+  stateName   String?      @map("state_name") // null = entire group
+  canView     Boolean      @default(true) @map("can_view")
+  @@map("role_state_visibility")
+}
+
+model RoleStateTransition {
+  id            String       @id @default(uuid()) @db.Uuid
+  role          WorkflowRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId        String       @map("role_id") @db.Uuid
+  workspaceId   String       @map("workspace_id") @db.Uuid
+  fromGroup     String       @map("from_group")
+  fromStateName String?      @map("from_state_name") // null = any state in fromGroup
+  toGroup       String       @map("to_group")
+  toStateName   String?      @map("to_state_name") // null = any state in toGroup
+  allowed       Boolean      @default(true)
+  @@map("role_state_transitions")
 }
 
 model Intake {

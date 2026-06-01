@@ -3,6 +3,7 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
+import { notifyQualityOfIntake } from "@utils/notifications";
 
 const DEFAULT_STATES = [
   { name: "Backlog",       color: "#94a3b8", group: "backlog",   sequence: 15000, isDefault: true },
@@ -510,6 +511,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await prisma.intakeIssue.create({
       data: {intakeId: intake.id, issueId: issue.id, workspaceId: ws.id, projectId: project_id, status: -2, source: "in-app"},
     });
+    // D3: notify Quality-team members of the project that a new intake was opened
+    await notifyQualityOfIntake({workspaceId: ws.id, projectId: project_id, issueId: issue.id, actorId: user.id, issueName: issue.name});
     set.status = 201;
     return {
       id: issue.id, status: -2, snoozed_till: null, duplicate_to: undefined,

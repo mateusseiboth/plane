@@ -13,6 +13,7 @@ import { useTranslation } from "@plane/i18n";
 import { AddWorkItemIcon } from "@plane/propel/icons";
 import type { TIssue } from "@plane/types";
 // components
+import { IntakeQuickCreate } from "@/components/inbox/modals/intake-quick-create";
 import { CreateUpdateIssueModal } from "@/components/issues/issue-modal/modal";
 import { SidebarAddButton } from "@/components/sidebar/add-button";
 // hooks
@@ -26,6 +27,7 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
   // states
   const [isDraftIssueModalOpen, setIsDraftIssueModalOpen] = useState(false);
   const [_isDraftButtonOpen, setIsDraftButtonOpen] = useState(false);
+  const [isIntakeCreateOpen, setIsIntakeCreateOpen] = useState(false);
   // refs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const timeoutRef = useRef<any>();
@@ -35,7 +37,7 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
   // store hooks
   const { toggleCreateIssueModal } = useCommandPalette();
   const { joinedProjectIds } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { allowPermissions, getProjectRolesByWorkspaceSlug } = useUserPermissions();
   // local storage
   const { storedValue, setValue } = useLocalStorage<Record<string, Partial<TIssue>>>("draftedIssue", {});
   // derived values
@@ -43,7 +45,22 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
     EUserPermissionsLevel.WORKSPACE
   );
-  const disabled = joinedProjectIds.length === 0 || !canCreateIssue;
+
+  // D2 — usuários "Atendimento" (papel de projeto 6) criam intakes, não work items.
+  // É tratado como Atendimento quando seu papel mais alto entre os projetos é 6.
+  const projectRoles = workspaceSlug ? getProjectRolesByWorkspaceSlug(workspaceSlug) : {};
+  const roleValues = Object.values(projectRoles ?? {}) as number[];
+  const intakeProjectIds = Object.entries(projectRoles ?? {})
+    .filter(([, role]) => Number(role) === 6)
+    .map(([projectId]) => projectId);
+  const isAtendimento = roleValues.length > 0 && Math.max(...roleValues) === 6 && intakeProjectIds.length > 0;
+
+  const disabled = joinedProjectIds.length === 0 || (!canCreateIssue && !isAtendimento);
+
+  const handleCreateClick = () => {
+    if (isAtendimento) setIsIntakeCreateOpen(true);
+    else toggleCreateIssueModal(true);
+  };
   const workspaceDraftIssue = workspaceSlug ? (storedValue?.[workspaceSlug] ?? undefined) : undefined;
 
   const handleMouseEnter = () => {
@@ -77,15 +94,25 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
         fetchIssueDetails={false}
         isDraft
       />
+      {workspaceSlug && (
+        <IntakeQuickCreate
+          workspaceSlug={workspaceSlug}
+          projectIds={intakeProjectIds}
+          isOpen={isIntakeCreateOpen}
+          onClose={() => setIsIntakeCreateOpen(false)}
+        />
+      )}
       <div className="flex cursor-pointer items-center justify-between gap-2">
         <SidebarAddButton
           label={
             <>
               <AddWorkItemIcon className="size-4" />
-              <span className="max-w-[145px] truncate text-13 font-medium">{t("sidebar.new_work_item")}</span>
+              <span className="max-w-[145px] truncate text-13 font-medium">
+                {isAtendimento ? "Novo intake" : t("sidebar.new_work_item")}
+              </span>
             </>
           }
-          onClick={() => toggleCreateIssueModal(true)}
+          onClick={handleCreateClick}
           disabled={disabled}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}

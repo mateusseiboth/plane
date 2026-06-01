@@ -1820,6 +1820,60 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
     orderBy[fieldMap[field] ?? "updatedAt"] = dir;
 
+    // ── Grouped response (kanban / grouped list / grouped layouts) ─────────────
+    const groupBy = query.group_by as string | undefined;
+    const perPage = Number(query.per_page ?? 100);
+    const SUPPORTED_GROUP_BY = ["state_id", "priority", "state__group", "project_id"];
+    if (groupBy && SUPPORTED_GROUP_BY.includes(groupBy)) {
+      const accessibleProjectIds = (where.projectId?.in as string[]) ?? userProjectIds;
+      let groupValues: (string | null)[] = [];
+      if (groupBy === "state_id") {
+        const states = await prisma.state.findMany({
+          where: {projectId: {in: accessibleProjectIds}, deletedAt: null},
+          select: {id: true},
+          orderBy: {sequence: "asc"},
+        });
+        groupValues = states.map((s) => s.id);
+      } else if (groupBy === "priority") {
+        groupValues = ["urgent", "high", "medium", "low", "none"];
+      } else if (groupBy === "state__group") {
+        groupValues = ["backlog", "unstarted", "started", "completed", "cancelled", "triage"];
+      } else if (groupBy === "project_id") {
+        groupValues = accessibleProjectIds;
+      } else {
+        groupValues = [];
+      }
+
+      const total_count = await prisma.issue.count({where});
+      const results: Record<string, any> = {};
+      for (const gv of groupValues) {
+        const groupWhere: any = {...where};
+        if (groupBy === "state_id") groupWhere.stateId = gv;
+        else if (groupBy === "priority") groupWhere.priority = gv;
+        else if (groupBy === "project_id") groupWhere.projectId = gv;
+        else if (groupBy === "state__group") {
+          const stateIds = await prisma.state.findMany({
+            where: {projectId: {in: accessibleProjectIds}, group: gv as string, deletedAt: null},
+            select: {id: true},
+          });
+          groupWhere.stateId = {in: stateIds.map((s) => s.id)};
+        }
+        const [groupIssues, groupCount] = await Promise.all([
+          prisma.issue.findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage}),
+          prisma.issue.count({where: groupWhere}),
+        ]);
+        results[gv ?? "none"] = {
+          results: groupIssues.map(serializeIssue),
+          total_results: groupCount,
+          next_cursor: `${perPage}:1:0`,
+          prev_cursor: `${perPage}:0:1`,
+          next_page_results: groupCount > perPage,
+          prev_page_results: false,
+        };
+      }
+      return {total_count, results, next_cursor: null, prev_cursor: null, next_page_results: false, prev_page_results: false};
+    }
+
     return paginate({
       query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
       count: () => prisma.issue.count({where}),

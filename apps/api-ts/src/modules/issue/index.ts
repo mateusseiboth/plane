@@ -5,58 +5,15 @@ import {paginate} from "@utils/pagination";
 import {COMMENT_INCLUDE, ISSUE_INCLUDE, serializeComment, serializeIssue} from "@utils/serialize";
 import {diffChange, recordActivities, type ActivityChange} from "@utils/activity";
 import {applyIssueFilters, normalizeFilters} from "@utils/filters";
+import {canTransition, resolveRole, visibleStateIds} from "@utils/permission-checks";
+import {replicateToLinkedIntakes} from "@utils/intake-replication";
+import {computeTargetDate} from "@utils/sla";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 
-// Role values — mirrors EUserProjectRoles in packages/types
-// MEMBER was 15 in original Plane but we use 10 to match our custom roles
-const ROLES = {ADMIN: 20, GESTOR_PROJETO: 18, MEMBER: 10, TI: 12, QUALIDADE: 8, ATENDIMENTO: 6, GUEST: 5};
-
-/**
- * Mirrors the frontend canTransitionState() from packages/constants/src/project-permissions.ts.
- * Keep both in sync when updating workflow rules.
- */
-function stateTransitionAllowed(role: number, fromGroup: string, toGroup: string): boolean {
-  // ADMIN, GESTOR_PROJETO and any high/unknown elevated role (>=18): unrestricted moves.
-  // The >=18 guard prevents spurious 403s when a membership row carries a role value
-  // not enumerated in ROLES (e.g. 15 from older migrations).
-  if (role >= ROLES.GESTOR_PROJETO) return true;
-
-  // MEMBER: full workflow access
-  if (role === ROLES.MEMBER) {
-    if (toGroup === "cancelled") return true;
-    if (fromGroup === "triage") return toGroup === "triage" || toGroup === "unstarted";
-    return true; // members can move anywhere else
-  }
-
-  // ATENDIMENTO: can only keep item in triage (no state moves)
-  if (role === ROLES.ATENDIMENTO) return toGroup === "triage";
-
-  // GUEST: no moves
-  if (role === ROLES.GUEST) return false;
-
-  // TI: cannot pick up from triage; handles todo→started→completed
-  if (role === ROLES.TI) {
-    if (fromGroup === "triage") return false;
-    if (toGroup === "cancelled") return true;
-    if (fromGroup === "unstarted" && toGroup === "started") return true; // A Fazer → Em Andamento
-    if (fromGroup === "started" && toGroup === "started") return true; // Em Andamento → Em Teste
-    if (fromGroup === "started" && toGroup === "completed") return true; // Em Teste → Concluído
-    if (["backlog", "unstarted"].includes(fromGroup) && ["backlog", "unstarted"].includes(toGroup)) return true;
-    return false;
-  }
-
-  // QUALIDADE: intake review + return with error
-  if (role === ROLES.QUALIDADE) {
-    if (toGroup === "cancelled") return true;
-    if (fromGroup === "triage") return toGroup === "unstarted" || toGroup === "triage";
-    if (fromGroup === "unstarted" && toGroup === "unstarted") return true; // Avaliando → A Fazer
-    if (fromGroup === "started" && toGroup === "started") return true; // devolução
-    return false;
-  }
-
-  return false;
-}
+// State-transition rules are now data-driven (utils/permission-checks.ts), seeded
+// per workspace and editable through the roles API. See utils/permissions.ts for
+// the default matrix.
 
 // serializeIssue, ISSUE_INCLUDE, isoDate, dateOnly imported from @utils/serialize
 
@@ -80,7 +37,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
   .get("/", async ({params: {slug, project_id}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    const {member} = await getProjectOrFail(ws.id, project_id, user.id);
 
     // Build base where clause
     const where: any = {projectId: project_id, deletedAt: null, isDraft: false};
@@ -92,6 +49,15 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     // Parse the frontend `filters` JSON param (+ loose params) and apply it
     const filters = normalizeFilters(query as Record<string, unknown>);
     await applyIssueFilters(where, filters, {projectId: project_id});
+
+    // Board visibility per role (H3): restrict to states this role may see.
+    const role = await resolveRole(ws.id, member.role, (member as any).workflowRoleId);
+    const allowedStates = await visibleStateIds(role, project_id);
+    if (allowedStates) {
+      const existing = where.stateId?.in as string[] | undefined;
+      const intersect = existing ? existing.filter((id) => allowedStates.includes(id)) : allowedStates;
+      where.stateId = {in: intersect};
+    }
 
     // Order by
     const orderMap: Record<string, any> = {
@@ -257,13 +223,20 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       return created;
     });
 
+    // SLA (C): auto due date from label deadlines + priority when none was given.
+    let createdIssue = issue;
+    if (!b.target_date && b.labels?.length) {
+      const auto = await computeTargetDate(b.labels, b.priority ?? "none", issue.createdAt ?? new Date());
+      if (auto) createdIssue = await prisma.issue.update({where: {id: issue.id}, data: {targetDate: auto}, include: ISSUE_INCLUDE});
+    }
+
     await recordActivities(
       {issueId: issue.id, workspaceId: ws.id, projectId: project_id, actorId: user.id},
       [{verb: "created", field: "issue", comment: "created the work item"}],
     );
 
     set.status = 201;
-    return serializeIssue(issue);
+    return serializeIssue(createdIssue);
   })
 
   .get("/:issue_id", async ({params: {slug, project_id, issue_id}, user}) => {
@@ -302,12 +275,15 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const newStateId = b.state ?? b.state_id;
     let targetState: {id: string; name: string; group: string} | null = null;
     if (newStateId !== undefined) {
-      // Validate state transition based on role
+      // Validate state transition against the role's configurable workflow (H3)
       targetState = await prisma.state.findFirst({where: {id: newStateId}, select: {id: true, name: true, group: true}});
       if (before && targetState) {
-        const fromGroup = before.state?.group ?? "backlog";
-        const toGroup = targetState.group;
-        const allowed = stateTransitionAllowed(member.role, fromGroup, toGroup);
+        const role = await resolveRole(ws.id, member.role, (member as any).workflowRoleId);
+        const allowed = await canTransition(
+          role,
+          {group: before.state?.group ?? "backlog", name: before.state?.name ?? ""},
+          {group: targetState.group, name: targetState.name},
+        );
         if (!allowed) {
           set.status = 403;
           return {detail: "Sua função não permite esta transição de estado."};
@@ -350,6 +326,17 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       }
     }
 
+    // SLA (C): recompute the auto due date when labels/priority change and the
+    // caller did not explicitly set target_date.
+    if (b.target_date === undefined && (b.labels !== undefined || b.priority !== undefined) && before) {
+      const labelIds: string[] =
+        b.labels !== undefined
+          ? b.labels
+          : (await prisma.issueLabel.findMany({where: {issueId: issue_id, deletedAt: null}, select: {labelId: true}})).map((l) => l.labelId);
+      const auto = await computeTargetDate(labelIds, b.priority ?? before.priority, before.createdAt ?? new Date());
+      if (auto) await prisma.issue.update({where: {id: issue_id}, data: {targetDate: auto}});
+    }
+
     // ── Activity log ──────────────────────────────────────────────────────────
     if (before) {
       const changes: ActivityChange[] = [];
@@ -388,6 +375,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       if (b.assignees !== undefined) changes.push({field: "assignees", comment: "updated the assignees"});
       if (b.labels !== undefined) changes.push({field: "labels", comment: "updated the labels"});
       await recordActivities({issueId: issue_id, workspaceId: ws.id, projectId: project_id, actorId: user.id}, changes);
+
+      // H4: when completed/cancelled, replicate comments+activities to linked intakes
+      if (targetState && (targetState.group === "completed" || targetState.group === "cancelled")) {
+        await replicateToLinkedIntakes(issue_id, targetState.group as "completed" | "cancelled");
+      }
     }
 
     return serializeIssue(await prisma.issue.findFirstOrThrow({where: {id: issue_id}, include: ISSUE_INCLUDE}));

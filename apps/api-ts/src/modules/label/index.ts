@@ -10,6 +10,7 @@ function labelDto(l: any) {
     color: l.color ?? "",
     description: l.description ?? "",
     parent: l.parentId ?? null,
+    sla_hours: l.slaHours ?? null,
     sort_order: l.sortOrder ?? 65535,
     project_id: l.projectId,
     workspace_id: l.workspaceId,
@@ -44,6 +45,7 @@ function buildLabelModule(prefix: string) {
           workspaceId: ws.id, projectId: project_id,
           name: b.name, description: b.description ?? "", color: b.color ?? "",
           parentId: b.parent ?? null,
+          slaHours: b.sla_hours ?? null,
           externalSource: b.external_source ?? null, externalId: b.external_id ?? null,
           createdById: user.id,
         },
@@ -76,6 +78,7 @@ function buildLabelModule(prefix: string) {
       if (b.color !== undefined) data.color = b.color;
       if (b.description !== undefined) data.description = b.description;
       if (b.parent !== undefined) data.parentId = b.parent;
+      if (b.sla_hours !== undefined) data.slaHours = b.sla_hours;
       const l = await prisma.label.update({ where: { id: label_id }, data });
       return labelDto(l);
     })
@@ -90,6 +93,7 @@ function buildLabelModule(prefix: string) {
       if (b.color !== undefined) data.color = b.color;
       if (b.description !== undefined) data.description = b.description;
       if (b.parent !== undefined) data.parentId = b.parent;
+      if (b.sla_hours !== undefined) data.slaHours = b.sla_hours;
       const l = await prisma.label.update({ where: { id: label_id }, data });
       return labelDto(l);
     })

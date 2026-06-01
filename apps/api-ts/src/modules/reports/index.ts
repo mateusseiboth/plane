@@ -23,6 +23,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const GROUP_LABELS: Record<string, string> = {
+  triage: "Triagem",
   backlog: "Backlog",
   unstarted: "Não iniciado",
   started: "Em andamento",
@@ -785,4 +786,97 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
       top_systems: byProject.map((p) => ({ project_id: p.projectId, name: projNames.get(p.projectId)?.name ?? "—", count: p._count.id })),
       top_entities: byEntity.map((e) => ({ entity_id: e.entityId, name: e.entityId ? entNames.get(e.entityId) ?? "—" : "Sem entidade", count: e._count.id })),
     };
+  })
+
+  // ── 14. Tempo em cada etapa (Triagem, Em Teste, Em Desenvolvimento…) ─────────
+  // Reconstrói o tempo gasto por cada work item em cada estado a partir do
+  // histórico de mudanças de estado (issue_activities field='state'). Estados
+  // sem histórico (itens antigos pré-log) acumulam todo o tempo no estado atual.
+  .get("/time-in-state/", async ({ params: { slug }, user, query }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const f = parseFilters(query);
+    const where = issueWhere(ws.id, f);
+
+    const issues = await prisma.issue.findMany({
+      where,
+      select: { id: true, createdAt: true, completedAt: true, state: { select: { name: true, group: true } } },
+    });
+    if (!issues.length) return { by_state: [], by_group: [] };
+
+    const issueIds = issues.map((i) => i.id);
+    const activities = await prisma.issueActivity.findMany({
+      where: { issueId: { in: issueIds }, field: "state", deletedAt: null },
+      select: { issueId: true, oldValue: true, newValue: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+    const actsByIssue = new Map<string, typeof activities>();
+    for (const a of activities) {
+      const arr = actsByIssue.get(a.issueId) ?? [];
+      arr.push(a);
+      actsByIssue.set(a.issueId, arr);
+    }
+
+    // name → group (for labelling); built from current states + activity history
+    const nameToGroup = new Map<string, string>();
+    for (const i of issues) if (i.state?.name) nameToGroup.set(i.state.name, i.state.group);
+
+    const now = Date.now();
+    const stateAgg = new Map<string, { minutes: number; issues: Set<string> }>();
+    const add = (name: string | null, fromTs: number, toTs: number, issueId: string) => {
+      if (!name) return;
+      const mins = Math.max(0, (toTs - fromTs) / 60000);
+      const cur = stateAgg.get(name) ?? { minutes: 0, issues: new Set<string>() };
+      cur.minutes += mins;
+      cur.issues.add(issueId);
+      stateAgg.set(name, cur);
+    };
+
+    for (const issue of issues) {
+      const acts = actsByIssue.get(issue.id) ?? [];
+      let lastTs = new Date(issue.createdAt).getTime();
+      // Estado inicial: o oldValue da primeira atividade, ou o estado atual se não houver histórico
+      let currentName: string | null = acts.length ? acts[0].oldValue : issue.state?.name ?? null;
+      // Estado terminal (completed/cancelled) "congela" o tempo na conclusão
+      const endTs = issue.completedAt ? new Date(issue.completedAt).getTime() : now;
+      for (const a of acts) {
+        const ts = new Date(a.createdAt).getTime();
+        add(currentName, lastTs, ts, issue.id);
+        currentName = a.newValue;
+        lastTs = ts;
+      }
+      add(currentName, lastTs, endTs, issue.id);
+    }
+
+    const by_state = [...stateAgg.entries()]
+      .map(([name, v]) => {
+        const group = nameToGroup.get(name) ?? null;
+        const count = v.issues.size;
+        return {
+          state_name: name,
+          group,
+          group_label: group ? GROUP_LABELS[group] ?? group : null,
+          total_hours: round(v.minutes / 60, 1),
+          avg_hours_per_item: count ? round(v.minutes / 60 / count, 1) : null,
+          items_count: count,
+        };
+      })
+      .sort((a, b) => (b.total_hours ?? 0) - (a.total_hours ?? 0));
+
+    // agregação por grupo
+    const groupAgg = new Map<string, { minutes: number }>();
+    for (const s of by_state) {
+      if (!s.group) continue;
+      const cur = groupAgg.get(s.group) ?? { minutes: 0 };
+      cur.minutes += (s.total_hours ?? 0) * 60;
+      groupAgg.set(s.group, cur);
+    }
+    const GROUP_ORDER = ["triage", "backlog", "unstarted", "started", "completed", "cancelled"];
+    const by_group = GROUP_ORDER.filter((g) => groupAgg.has(g)).map((g) => ({
+      group: g,
+      group_label: GROUP_LABELS[g] ?? g,
+      total_hours: round((groupAgg.get(g)!.minutes) / 60, 1),
+    }));
+
+    return { by_state, by_group };
   });

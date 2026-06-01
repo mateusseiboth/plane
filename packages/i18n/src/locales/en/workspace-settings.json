@@ -488,6 +488,12 @@
       "entities": {
         "title": "Entities"
       },
+      "roles": {
+        "title": "Roles"
+      },
+      "sla": {
+        "title": "SLA / Deadlines"
+      },
       "ai": {
         "title": "AI Providers",
         "heading": "AI Providers",
