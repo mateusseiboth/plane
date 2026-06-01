@@ -100,6 +100,9 @@ storybook-static
 # Each deployment must provide its own migration script.
 apps/api-ts/scripts/migrate-sac.ts
 
+# Per-app npmrc may carry private registry tokens — never commit it.
+apps/web/.npmrc
+
 build/
 .react-router/
 
