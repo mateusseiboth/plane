@@ -73,13 +73,23 @@ export function normalizeFilters(query: Record<string, unknown>): FilterMap {
     out[key] = [...(out[key] ?? []), ...vals];
   };
 
-  // 1. JSON `filters` param
+  // 1. JSON `filters` param. The frontend now wraps conditions in nested
+  // `and`/`or` arrays (e.g. {"and":[{"state_group__in":"started"},{"priority__in":"medium"}]}),
+  // so walk the tree recursively instead of reading only the top-level object.
+  const walk = (node: any) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "and" || k === "or") walk(v);
+      else add(k, v);
+    }
+  };
   if (typeof query.filters === "string" && query.filters) {
     try {
-      const parsed = JSON.parse(query.filters as string);
-      if (parsed && typeof parsed === "object") {
-        for (const [k, v] of Object.entries(parsed)) add(k, v);
-      }
+      walk(JSON.parse(query.filters as string));
     } catch {
       // ignore malformed filters json
     }

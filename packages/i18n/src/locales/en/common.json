@@ -1,4 +1,15 @@
 {
+  "activity": {
+    "set_priority_to": "set the priority to",
+    "set_state_to": "set the state to",
+    "set_due_date_to": "set the due date to",
+    "removed_due_date": "removed the due date",
+    "set_start_date_to": "set the start date to",
+    "removed_start_date": "removed the start date",
+    "set_name_to": "set the name to",
+    "for": "for",
+    "from": "from"
+  },
   "draft": {
     "save_title": "Save this draft?",
     "save_description": "You can save this work item to Drafts so you can come back to it later.",

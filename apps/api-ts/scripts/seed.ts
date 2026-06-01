@@ -141,8 +141,13 @@ async function main() {
   // so logins are predictable. Runs without MySQL — fixes existing imported users.
   const importedHash = await Bun.password.hash(DEFAULT_USER_PASSWORD, {algorithm: "bcrypt", cost: 12});
   const pwReset = await prisma.user.updateMany({
-    where: {isPasswordAutoset: true, isInstanceAdmin: false, deletedAt: null},
-    data: {password: importedHash, isActive: true, isEmailVerified: true},
+    where: {
+      isInstanceAdmin: false,
+      deletedAt: null,
+      // imported users are flagged isPasswordAutoset and/or have a `sac_<id>` username
+      OR: [{isPasswordAutoset: true}, {username: {startsWith: "sac_"}}],
+    },
+    data: {password: importedHash, isActive: true, isEmailVerified: true, isPasswordAutoset: true},
   });
   log(`✅  Imported users reset to default password "${DEFAULT_USER_PASSWORD}": ${pwReset.count} user(s)`);
 

@@ -1,4 +1,15 @@
 {
+  "activity": {
+    "set_priority_to": "definiu a prioridade como",
+    "set_state_to": "definiu o estado como",
+    "set_due_date_to": "definiu a data de vencimento para",
+    "removed_due_date": "removeu a data de vencimento",
+    "set_start_date_to": "definiu a data de início para",
+    "removed_start_date": "removeu a data de início",
+    "set_name_to": "definiu o nome como",
+    "for": "em",
+    "from": "de"
+  },
   "draft": {
     "save_title": "Salvar este rascunho?",
     "save_description": "Você pode salvar este item em Rascunhos para retomar mais tarde.",

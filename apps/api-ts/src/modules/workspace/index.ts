@@ -1863,6 +1863,28 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // ── Grouped response (kanban / grouped list / grouped layouts) ─────────────
     const groupBy = query.group_by as string | undefined;
     const perPage = Number(query.per_page ?? 100);
+
+    // Calendar groups by target_date — keyed by YYYY-MM-DD. Done in JS since the
+    // set of dates is open-ended.
+    if (groupBy === "target_date") {
+      const calIssues = await prisma.issue.findMany({
+        where: {...where, targetDate: {not: null}},
+        include: ISSUE_INCLUDE,
+        orderBy,
+        take: 2000,
+      });
+      const results: Record<string, any> = {};
+      for (const i of calIssues as any[]) {
+        const key = i.targetDate ? new Date(i.targetDate).toISOString().split("T")[0] : "none";
+        if (!results[key]) {
+          results[key] = {results: [], total_results: 0, next_cursor: `${perPage}:1:0`, prev_cursor: `${perPage}:0:1`, next_page_results: false, prev_page_results: false};
+        }
+        results[key].results.push(serializeIssue(i));
+        results[key].total_results++;
+      }
+      return {total_count: calIssues.length, results, next_cursor: null, prev_cursor: null, next_page_results: false, prev_page_results: false};
+    }
+
     const SUPPORTED_GROUP_BY = ["state_id", "priority", "state__group", "project_id"];
     if (groupBy && SUPPORTED_GROUP_BY.includes(groupBy)) {
       const accessibleProjectIds = (where.projectId?.in as string[]) ?? userProjectIds;

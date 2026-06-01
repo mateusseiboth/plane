@@ -7,6 +7,7 @@
 import { observer } from "mobx-react";
 // hooks
 import { StatePropertyIcon } from "@plane/propel/icons";
+import { useTranslation } from "@plane/i18n";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 // components
 import { IssueActivityBlockComponent, IssueLink } from "./";
@@ -16,6 +17,7 @@ type TIssueStateActivity = { activityId: string; showIssue?: boolean; ends: "top
 
 export const IssueStateActivity = observer(function IssueStateActivity(props: TIssueStateActivity) {
   const { activityId, showIssue = true, ends } = props;
+  const { t } = useTranslation();
   // hooks
   const {
     activity: { getActivityById },
@@ -31,8 +33,8 @@ export const IssueStateActivity = observer(function IssueStateActivity(props: TI
       ends={ends}
     >
       <>
-        set the state to <span className="font-medium text-primary">{activity.new_value}</span>
-        {showIssue ? ` for ` : ``}
+        {t("activity.set_state_to")} <span className="font-medium text-primary">{activity.new_value}</span>
+        {showIssue ? ` ${t("activity.for")} ` : ``}
         {showIssue && <IssueLink activityId={activityId} />}.
       </>
     </IssueActivityBlockComponent>

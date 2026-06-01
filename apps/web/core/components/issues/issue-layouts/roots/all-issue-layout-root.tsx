@@ -11,8 +11,7 @@ import useSWR from "swr";
 // plane imports
 import { GLOBAL_VIEW_TRACKER_ELEMENTS, ISSUE_DISPLAY_FILTERS_BY_PAGE } from "@plane/constants";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
-import type { EIssueLayoutTypes } from "@plane/types";
-import { EIssuesStoreType, STATIC_VIEW_TYPES } from "@plane/types";
+import { EIssueLayoutTypes, EIssuesStoreType, STATIC_VIEW_TYPES } from "@plane/types";
 // assets
 // components
 import { IssuePeekOverview } from "@/components/issues/peek-overview";
@@ -93,22 +92,27 @@ export const AllIssueLayoutRoot = observer(function AllIssueLayoutRoot(props: Pr
     { revalidateIfStale: false, revalidateOnFocus: false }
   );
 
-  // Fetch issues
+  // Fetch issues. Only kanban/list group; spreadsheet/calendar/gantt stay flat.
+  // Only the SPREADSHEET layout relies on this fetch (it has no self-fetch). The
+  // list/kanban/calendar/gantt roots fetch their own (grouped) data, so fetching
+  // here too would race and clobber their store with a flat shape. We still always
+  // load the filters. The key includes the layout so it re-runs on layout change.
+  const isSpreadsheet = !activeLayout || activeLayout === EIssueLayoutTypes.SPREADSHEET;
   const { isLoading: issuesLoading } = useSWR(
-    workspaceSlug && globalViewId ? `WORKSPACE_GLOBAL_VIEW_ISSUES_${workspaceSlug}_${globalViewId}` : null,
+    workspaceSlug && globalViewId
+      ? `WORKSPACE_GLOBAL_VIEW_ISSUES_${workspaceSlug}_${globalViewId}_${activeLayout ?? "spreadsheet"}`
+      : null,
     async () => {
       if (workspaceSlug && globalViewId) {
-        clear();
         toggleLoading(true);
         await fetchFilters(workspaceSlug, globalViewId);
-        // Group the fetch when the active layout uses grouping (kanban / grouped list),
-        // so non-spreadsheet layouts receive grouped issue ids. Spreadsheet stays flat.
-        const groupBy = workItemFilters?.displayFilters?.group_by;
-        const canGroup = !!groupBy;
-        await fetchIssues(workspaceSlug, globalViewId, groupedIssueIds ? "mutation" : "init-loader", {
-          canGroup,
-          perPageCount: canGroup ? 50 : 100,
-        });
+        if (isSpreadsheet) {
+          clear();
+          await fetchIssues(workspaceSlug, globalViewId, groupedIssueIds ? "mutation" : "init-loader", {
+            canGroup: false,
+            perPageCount: 100,
+          });
+        }
         toggleLoading(false);
       }
     },

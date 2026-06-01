@@ -79,10 +79,15 @@ export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
     (layout: EIssueLayoutTypes) => {
       if (!workspaceSlug || !globalViewId) return;
       const displayFilterUpdate: Record<string, unknown> = { layout };
-      // Kanban requires a group_by; default to state when none is set so the
-      // global board renders columns instead of an empty screen.
+      // Kanban/List on the GLOBAL (cross-project) view must group by STATE GROUP
+      // (Backlog/Todo/In Progress/…), never by individual state_id — state ids are
+      // per-project, so grouping by them produces dozens of unmappable columns and
+      // an empty board. state_detail.group → fixed, project-agnostic columns.
       const currentGroupBy = issueFilters?.displayFilters?.group_by;
-      if (layout === EIssueLayoutTypes.KANBAN && !currentGroupBy) displayFilterUpdate.group_by = "state";
+      const groupedLayout = layout === EIssueLayoutTypes.KANBAN || layout === EIssueLayoutTypes.LIST;
+      if (groupedLayout && (!currentGroupBy || currentGroupBy === "state")) {
+        displayFilterUpdate.group_by = "state_detail.group";
+      }
       updateFilters(
         workspaceSlug.toString(),
         undefined,
