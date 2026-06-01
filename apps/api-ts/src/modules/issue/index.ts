@@ -15,6 +15,14 @@ import Elysia from "elysia";
 // per workspace and editable through the roles API. See utils/permissions.ts for
 // the default matrix.
 
+// Reverse of each relation type (mirrors REVERSE_RELATIONS on the frontend).
+const RELATION_REVERSE: Record<string, string> = {
+  blocking: "blocked_by",
+  blocked_by: "blocking",
+  duplicate: "duplicate",
+  relates_to: "relates_to",
+};
+
 // serializeIssue, ISSUE_INCLUDE, isoDate, dateOnly imported from @utils/serialize
 
 export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:project_id/issues"})
@@ -183,12 +191,14 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
           descriptionStripped: (b.description_html ?? "").replace(/<[^>]+>/g, ""),
           descriptionJson: b.description ?? null,
           // Frontend sends `state_id`; `state` is the Django-legacy alias. Honor either.
-          stateId: b.state ?? b.state_id ?? defaultState?.id ?? null,
+          // Use `||` so an empty string ("") falls through to the default state /
+          // null instead of being sent to Postgres as an invalid uuid.
+          stateId: b.state || b.state_id || defaultState?.id || null,
           priority: b.priority ?? "none",
           startDate: b.start_date ? new Date(b.start_date) : null,
           targetDate: b.target_date ? new Date(b.target_date) : null,
           isDraft: b.is_draft ?? false,
-          entityId: b.entity_id ?? null,
+          entityId: b.entity_id || null,
           legacyTicketNumber: b.legacy_ticket_number ?? null,
           externalSource: b.external_source ?? null,
           externalId: b.external_id ?? null,
@@ -334,6 +344,20 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         await prisma.issueLabel.createMany({
           data: newLabels.map((lid: string) => ({issueId: issue_id, labelId: lid, workspaceId: ws.id, projectId: project_id})),
           skipDuplicates: true,
+        });
+      }
+    }
+
+    // Whoever moves the card (changes its state) is auto-added as an assignee, so
+    // the person who advanced the work item is recorded as responsible for it.
+    if (newStateId !== undefined && before && before.stateId !== newStateId) {
+      const already = await prisma.issueAssignee.findFirst({
+        where: {issueId: issue_id, assigneeId: user.id, deletedAt: null},
+        select: {id: true},
+      });
+      if (!already) {
+        await prisma.issueAssignee.create({
+          data: {issueId: issue_id, assigneeId: user.id, workspaceId: ws.id, projectId: project_id},
         });
       }
     }
@@ -734,38 +758,81 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     return {sub_issue_ids: subIssueIds};
   })
 
-  // ── Issue relations (alias for /relations/ — frontend uses /issue-relation/) ──
+  // ── Issue relations ─────────────────────────────────────────────────────────
+  // The frontend expects a grouped object {blocking, blocked_by, duplicate,
+  // relates_to} of full work items, and computes reverse relations from both
+  // directions. We never persist the inverse — the GET derives it.
   .get("/:issue_id/issue-relation/", async ({params: {slug, project_id, issue_id}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const relations = await prisma.issueRelation.findMany({
-      where: {issueId: issue_id, deletedAt: null},
-      include: {relatedIssue: {select: {id: true, name: true, priority: true, sequenceId: true}}},
-    });
-    return relations.map((r: any) => ({
-      id: r.id,
-      issue: issue_id,
-      related_issue: r.relatedIssueId,
-      relation_type: r.relationType,
-      related_issue_detail: r.relatedIssue
-        ? {id: r.relatedIssue.id, name: r.relatedIssue.name, priority: r.relatedIssue.priority, sequence_id: r.relatedIssue.sequenceId}
-        : undefined,
-    }));
+
+    const [direct, reverse] = await Promise.all([
+      prisma.issueRelation.findMany({where: {issueId: issue_id, deletedAt: null}, include: {relatedIssue: {include: ISSUE_INCLUDE}}}),
+      prisma.issueRelation.findMany({where: {relatedIssueId: issue_id, deletedAt: null}, include: {issue: {include: ISSUE_INCLUDE}}}),
+    ]);
+
+    const grouped: Record<string, any[]> = {blocking: [], blocked_by: [], duplicate: [], relates_to: []};
+    for (const r of direct as any[]) {
+      if (grouped[r.relationType] && r.relatedIssue) grouped[r.relationType].push(serializeIssue(r.relatedIssue));
+    }
+    for (const r of reverse as any[]) {
+      const t = RELATION_REVERSE[r.relationType] ?? r.relationType;
+      if (grouped[t] && r.issue) grouped[t].push(serializeIssue(r.issue));
+    }
+    return grouped;
   })
 
   .post("/:issue_id/issue-relation/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
-    if (!b.related_issue || !b.relation_type) {
+    const relationType: string = b.relation_type;
+    const ids: string[] = b.issues ?? (b.related_issue ? [b.related_issue] : []);
+    if (!relationType || !ids.length) {
       set.status = 400;
-      return {detail: "related_issue and relation_type are required."};
+      return {detail: "relation_type and issues are required."};
     }
-    const relation = await prisma.issueRelation.create({
-      data: {issueId: issue_id, relatedIssueId: b.related_issue, workspaceId: ws.id, projectId: project_id, relationType: b.relation_type},
-    });
+    const created: any[] = [];
+    for (const rid of ids) {
+      if (rid === issue_id) continue;
+      const exists = await prisma.issueRelation.findFirst({
+        where: {issueId: issue_id, relatedIssueId: rid, relationType, deletedAt: null},
+        select: {id: true},
+      });
+      if (!exists) {
+        await prisma.issueRelation.create({
+          data: {issueId: issue_id, relatedIssueId: rid, workspaceId: ws.id, projectId: project_id, relationType},
+        });
+      }
+      const ri = await prisma.issue.findFirst({where: {id: rid, deletedAt: null}, include: ISSUE_INCLUDE});
+      if (ri) created.push(serializeIssue(ri));
+    }
     set.status = 201;
-    return {id: relation.id, issue: issue_id, related_issue: relation.relatedIssueId, relation_type: relation.relationType};
+    return created;
+  })
+
+  // Remove a relation by (relation_type, related_issue) — also clears any inverse.
+  .post("/:issue_id/remove-relation/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const b = body as any;
+    const relationType: string = b.relation_type;
+    const related: string = b.related_issue;
+    if (!relationType || !related) {
+      set.status = 400;
+      return {detail: "relation_type and related_issue are required."};
+    }
+    const rev = RELATION_REVERSE[relationType] ?? relationType;
+    await prisma.issueRelation.updateMany({
+      where: {issueId: issue_id, relatedIssueId: related, relationType, deletedAt: null},
+      data: {deletedAt: new Date()},
+    });
+    await prisma.issueRelation.updateMany({
+      where: {issueId: related, relatedIssueId: issue_id, relationType: rev, deletedAt: null},
+      data: {deletedAt: new Date()},
+    });
+    set.status = 204;
+    return null;
   })
 
   .delete("/:issue_id/issue-relation/:relation_id/", async ({params: {relation_id}, set}) => {

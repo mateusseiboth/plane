@@ -1,4 +1,9 @@
 {
+  "draft": {
+    "save_title": "Salvar este rascunho?",
+    "save_description": "Você pode salvar este item em Rascunhos para retomar mais tarde.",
+    "save_to_drafts": "Salvar em Rascunhos"
+  },
   "cloud_maintenance_message": {
     "we_are_working_on_this_if_you_need_immediate_assistance": "Estamos trabalhando nisso. Se você precisar de assistência imediata,",
     "reach_out_to_us": "entre em contato conosco",

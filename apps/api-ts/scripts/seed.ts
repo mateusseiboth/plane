@@ -18,6 +18,7 @@ const prisma = new PrismaClient({adapter: new PrismaPg(pool)});
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@plane.so";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin";
 const ADMIN_NAME = process.env.ADMIN_NAME ?? "Admin";
+const DEFAULT_USER_PASSWORD = process.env.DEFAULT_PASSWORD ?? "teste";
 const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "quality";
 const WORKSPACE_NAME = process.env.WORKSPACE_NAME ?? "Quality Workspace";
 
@@ -135,6 +136,15 @@ async function main() {
       `${norm.statesRenamed} state(s) renamed, ${norm.statesCreated} created, ` +
       `${norm.intakesCreated} intake(s), ${norm.labelsCreated} label(s)`
   );
+
+  // 3d. Reset imported users (auto-set password, non-admin) to the default password
+  // so logins are predictable. Runs without MySQL — fixes existing imported users.
+  const importedHash = await Bun.password.hash(DEFAULT_USER_PASSWORD, {algorithm: "bcrypt", cost: 12});
+  const pwReset = await prisma.user.updateMany({
+    where: {isPasswordAutoset: true, isInstanceAdmin: false, deletedAt: null},
+    data: {password: importedHash, isActive: true, isEmailVerified: true},
+  });
+  log(`✅  Imported users reset to default password "${DEFAULT_USER_PASSWORD}": ${pwReset.count} user(s)`);
 
   // Projects are created by the SAC migration script (one per sistema).
   // Seed does not create projects — run scripts/migrate-sac.ts after seeding.

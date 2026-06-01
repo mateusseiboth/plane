@@ -201,6 +201,8 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
               minDate={minDate ?? undefined}
               placeholder={t("due_date")}
               tabIndex={getIndex("target_date")}
+              // Due date is driven by the label SLA; only admins may override it.
+              disabled={!canCreateLabel}
             />
           </div>
         )}

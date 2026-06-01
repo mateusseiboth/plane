@@ -78,41 +78,52 @@ async function emailCheck(email: string, set: any) {
   return { existing: false, status: "CREDENTIAL" };
 }
 
+// The web app signs in/up by submitting a real browser <form> POST (not AJAX),
+// so these endpoints must 302-redirect: on success to next_path (the workspace),
+// on failure back to the sign-in page with an ?error_code the web understands.
+// Error codes mirror packages helpers/authentication.helper.tsx.
+const AUTH_ERR = {
+  REQUIRED_SIGN_IN: "5070", // REQUIRED_EMAIL_PASSWORD_SIGN_IN
+  FAILED_SIGN_IN: "5065", // AUTHENTICATION_FAILED_SIGN_IN
+  REQUIRED_SIGN_UP: "5040", // REQUIRED_EMAIL_PASSWORD_SIGN_UP
+  USER_ALREADY_EXISTS: "5030", // USER_ALREADY_EXIST
+} as const;
+
+// Only allow relative in-app paths to avoid open redirects.
+function safeNext(nextPath: any): string {
+  const p = typeof nextPath === "string" ? nextPath : "";
+  return p.startsWith("/") && !p.startsWith("//") ? p : "/";
+}
+function authRedirect(set: any, location: string) {
+  set.headers["Location"] = location;
+  set.status = 302;
+  return null;
+}
+
 // ── Shared sign-in logic ───────────────────────────────────────────────────────
 async function signIn(b: any, set: any) {
-  if (!b.email || !b.password) {
-    set.status = 400;
-    return { detail: "email and password are required." };
-  }
-  const email = b.email.toLowerCase().trim();
+  const next = safeNext(b?.next_path);
+  if (!b?.email || !b?.password) return authRedirect(set, `/?error_code=${AUTH_ERR.REQUIRED_SIGN_IN}`);
+  const email = String(b.email).toLowerCase().trim();
+  const fail = () => authRedirect(set, `/?error_code=${AUTH_ERR.FAILED_SIGN_IN}&email=${encodeURIComponent(email)}`);
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user?.password) { set.status = 403; return { detail: "Invalid email or password." }; }
-  if (!user.isActive) { set.status = 403; return { detail: "This account is deactivated." }; }
-
+  if (!user?.password || !user.isActive) return fail();
   const valid = await Bun.password.verify(b.password, user.password);
-  if (!valid) { set.status = 403; return { detail: "Invalid email or password." }; }
+  if (!valid) return fail();
 
   const token = await signToken(user.id, user.email);
   set.headers["Set-Cookie"] = setCookieHeader(token);
-  return {
-    id: user.id, email: user.email, display_name: user.displayName,
-    first_name: user.firstName, last_name: user.lastName,
-    is_superuser: user.isSuperuser, is_instance_admin: user.isInstanceAdmin, token,
-  };
+  return authRedirect(set, next);
 }
 
 // ── Shared sign-up logic ───────────────────────────────────────────────────────
 async function signUp(b: any, set: any) {
-  if (!b.email || !b.password) {
-    set.status = 400;
-    return { detail: "email and password are required." };
-  }
-  const email = b.email.toLowerCase().trim();
+  const next = safeNext(b?.next_path);
+  if (!b?.email || !b?.password) return authRedirect(set, `/?error_code=${AUTH_ERR.REQUIRED_SIGN_UP}`);
+  const email = String(b.email).toLowerCase().trim();
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    set.status = 400;
-    return { detail: "A user with this email already exists." };
-  }
+  if (existing) return authRedirect(set, `/?error_code=${AUTH_ERR.USER_ALREADY_EXISTS}&email=${encodeURIComponent(email)}`);
+
   const hash = await Bun.password.hash(b.password, { algorithm: "bcrypt", cost: 12 });
   const user = await prisma.user.create({
     data: {
@@ -122,15 +133,12 @@ async function signUp(b: any, set: any) {
       displayName: b.display_name ?? email.split("@")[0],
       username: `user_${Date.now()}`,
       isEmailVerified: true,
+      language: "pt-BR",
     },
   });
   const token = await signToken(user.id, user.email);
-  set.status = 201;
   set.headers["Set-Cookie"] = setCookieHeader(token);
-  return {
-    id: user.id, email: user.email, display_name: user.displayName,
-    is_superuser: user.isSuperuser, is_instance_admin: user.isInstanceAdmin, token,
-  };
+  return authRedirect(set, next);
 }
 
 // ── Public auth routes ─────────────────────────────────────────────────────────

@@ -416,6 +416,51 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     return null;
   })
 
+  // ── Issue search (used by the "add relation" / blocked-by modal) ─────────────
+  .get("/:project_id/search-issues/", async ({params: {slug, project_id}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+
+    const search = String(query.search ?? "").trim();
+    const excludeId = query.issue_id as string | undefined;
+    const workspaceSearch = query.workspace_search === "true";
+
+    const where: any = {workspaceId: ws.id, deletedAt: null, isDraft: false};
+    if (!workspaceSearch) where.projectId = project_id;
+    if (excludeId) where.id = {not: excludeId};
+    if (search) {
+      const or: any[] = [{name: {contains: search, mode: "insensitive"}}];
+      const num = parseInt(search.replace(/\D/g, ""), 10);
+      if (!isNaN(num)) or.push({sequenceId: num});
+      where.OR = or;
+    }
+
+    const issues = await prisma.issue.findMany({
+      where,
+      take: 100,
+      orderBy: {updatedAt: "desc"},
+      include: {
+        state: {select: {name: true, color: true, group: true}},
+        project: {select: {identifier: true, name: true}},
+      },
+    });
+
+    return issues.map((i: any) => ({
+      id: i.id,
+      name: i.name,
+      project_id: i.projectId,
+      project__identifier: i.project?.identifier ?? "",
+      project__name: i.project?.name ?? "",
+      sequence_id: i.sequenceId ?? 0,
+      start_date: i.startDate ? i.startDate.toISOString().split("T")[0] : null,
+      state__color: i.state?.color ?? "",
+      state__group: i.state?.group ?? "backlog",
+      state__name: i.state?.name ?? "",
+      workspace__slug: slug,
+      type_id: null,
+    }));
+  })
+
   // ── Inbox / Intake issues ─────────────────────────────────────────────────────
   // Returns TInboxIssueWithPagination — triage/intake issues (pending review)
 

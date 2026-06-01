@@ -1,4 +1,9 @@
 {
+  "draft": {
+    "save_title": "Save this draft?",
+    "save_description": "You can save this work item to Drafts so you can come back to it later.",
+    "save_to_drafts": "Save to Drafts"
+  },
   "cloud_maintenance_message": {
     "we_are_working_on_this_if_you_need_immediate_assistance": "We're working on this. If you need immediate assistance,",
     "reach_out_to_us": "reach out to us",
