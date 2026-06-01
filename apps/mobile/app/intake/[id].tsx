@@ -1,49 +1,48 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Alert, RefreshControl } from "react-native";
 
-import { endpoints, State, WorkItem } from "@/api";
+import { endpoints, WorkItem } from "@/api";
 import { useAuth } from "@/auth/AuthContext";
 import { Button, Card, LegacyTicketBadge, Loading, PriorityBadge, RichTextViewer, Row, Screen, StateBadge, Text } from "@/components";
-import { OptionSheet } from "@/components/Sheet";
 import { useAsync } from "@/hooks/useAsync";
 import { usePermissions } from "@/permissions/usePermissions";
-import { stateGroupColors, useTheme } from "@/theme";
-import { View } from "react-native";
+import { useTheme } from "@/theme";
 
 export default function IntakeDetailScreen() {
   const { id, projectId } = useLocalSearchParams<{ id: string; projectId: string }>();
   const { activeWorkspace } = useAuth();
   const slug = activeWorkspace?.slug;
+  const router = useRouter();
   const { can } = usePermissions(projectId);
-  const { colors } = useTheme();
+  const { colors, spacing } = useTheme();
 
   const item = useAsync<WorkItem | null>(
     () => (slug && projectId && id ? endpoints.intake.get(slug, projectId, id) : Promise.resolve(null)),
     [slug, projectId, id],
   );
-  const states = useAsync<State[]>(() => (slug && projectId ? endpoints.projects.states(slug, projectId) : Promise.resolve([])), [slug, projectId]);
-  const [sheet, setSheet] = useState(false);
+  const [working, setWorking] = useState(false);
 
-  const accept = useCallback(
-    async (stateId: string) => {
+  const decide = useCallback(
+    async (status: 1 | -1) => {
       if (!slug || !projectId || !id) return;
+      setWorking(true);
       try {
-        // Moving out of triage promotes the intake item to a work item.
-        await endpoints.intake.update(slug, projectId, id, { state_id: stateId });
-        item.refetch();
+        await endpoints.intake.setStatus(slug, projectId, id, status);
+        Alert.alert(status === 1 ? "Aprovado" : "Recusado", status === 1 ? "Chamado movido para o fluxo de trabalho." : "Intake recusado.");
+        router.back();
       } catch {
         Alert.alert("Erro", "Não foi possível atualizar o intake.");
+      } finally {
+        setWorking(false);
       }
     },
-    [slug, projectId, id, item],
+    [slug, projectId, id, router],
   );
 
   if (item.loading && !item.data) return <Loading />;
   const wi = item.data;
   if (!wi) return <Screen><Text>Item não encontrado.</Text></Screen>;
-
-  const nonTriage = (states.data ?? []).filter((s) => s.group !== "triage");
 
   return (
     <Screen scroll refreshControl={<RefreshControl refreshing={item.loading} onRefresh={item.refetch} tintColor={colors.primary} />}>
@@ -59,21 +58,14 @@ export default function IntakeDetailScreen() {
         <RichTextViewer html={wi.description_html ?? ""} minHeight={120} />
       </Card>
 
-      {can("createWorkItem") && (
-        <Button title="Aceitar e mover para…" onPress={() => setSheet(true)} />
+      {can("createWorkItem") ? (
+        <Row gap={spacing.md}>
+          <Button title="Recusar" variant="danger" onPress={() => decide(-1)} loading={working} style={{ flex: 1 }} />
+          <Button title="Aprovar" onPress={() => decide(1)} loading={working} style={{ flex: 1 }} />
+        </Row>
+      ) : (
+        <Text variant="tertiary">Aguardando triagem por um revisor.</Text>
       )}
-
-      <OptionSheet
-        visible={sheet}
-        title="Mover intake para"
-        onSelect={(v) => accept(String(v))}
-        onClose={() => setSheet(false)}
-        options={nonTriage.map((s) => ({
-          value: s.id,
-          label: s.name,
-          accessory: <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: stateGroupColors[s.group] ?? colors.textTertiary }} />,
-        }))}
-      />
     </Screen>
   );
 }

@@ -13,10 +13,8 @@ export type TPageFlagHookReturnType = {
   isPageSharingEnabled: boolean;
 };
 
-export const usePageFlag = (args: TPageFlagHookArgs): TPageFlagHookReturnType => {
-  const {} = args;
-  return {
-    isMovePageEnabled: false,
-    isPageSharingEnabled: false,
-  };
-};
+// Paywall removed in this fork: page move and page sharing are enabled for everyone.
+export const usePageFlag = (_args: TPageFlagHookArgs): TPageFlagHookReturnType => ({
+  isMovePageEnabled: true,
+  isPageSharingEnabled: true,
+});

@@ -37,8 +37,8 @@ async function performOutbox(item: OutboxItem): Promise<void> {
       await endpoints.issues.create(item.slug, item.projectId!, item.body);
       return;
     case "intake":
-      // Intake items are created through the issues endpoint with triage intent.
-      await endpoints.issues.create(item.slug, item.projectId!, { ...item.body, is_draft: false });
+      // Real intake: an inbox issue in triage, pending approval (same as web).
+      await endpoints.intake.create(item.slug, item.projectId!, item.body);
       return;
     case "visit":
       await endpoints.visits.create(item.slug, item.body);

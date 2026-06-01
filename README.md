@@ -52,7 +52,7 @@ We have evolved Plane Community Edition in two major directions:
 | --- | --- | --- |
 | **Backend API** | Django / Python REST Framework (`apps/api/`) | **Rewritten in TypeScript** — Bun + Elysia + Prisma 7 on PostgreSQL (`apps/api-ts/`). Same `/api/v1/` contract, `X-Api-Key` auth, identical pagination/cursor format. |
 | **Django API** | Active, primary backend | **Deprecated / read-only.** Kept only as a reference for legacy business rules; not run, not patched, no new endpoints or migrations. |
-| **Mobile app** | — | **New "Avião" app** built with Expo (latest SDK): intake, work items, wiki, technical visits, rich text editor, offline-first sync, push notifications, light/dark themes. |
+| **Mobile app** | — | **New "Avião" app** built with Expo (latest SDK): a data-rich home (assigned/urgent/open stats), work items, **real intake approval flow**, entities, notifications, wiki, technical visits, global search, rich text editor, offline-first sync, push notifications, light/dark themes. |
 | **Service desk (SAC)** | — | **Entities** (clients) and **Technical Visits** as first-class, workspace-scoped models, plus a one-shot migration from the legacy MySQL SAC system into Plane issues. |
 | **Legacy ticket numbers** | — | `legacy_ticket_number` preserved on every migrated issue and shown across all views. |
 | **Technical visits** | — | Dedicated screen + API: schedule visits, two technicians, motivation flags, link to issues, write visit reports, list & **calendar** views. |
@@ -60,17 +60,31 @@ We have evolved Plane Community Edition in two major directions:
 | **Widget marketplace** | — | **Developer widget system**: upload/host widget assets, an SDK gateway API, dynamic widget loader, and a `@empresa/widget-sdk` package for third-party widgets. |
 | **Home widgets** | Static home | Configurable, useful home widgets. |
 | **Permissions** | Admin / Member / Guest | **Granular role-based permissions** mirrored across backend, web, and mobile (e.g. service-desk, quality, IT, project-manager roles), with sector-derived role mapping on import. |
-| **Intake** | Available (paid/EE in places) | Intake work items implemented in the TypeScript API and exposed on web + mobile, with persistence fixes. |
+| **Intake** | Available (paid/EE in places) | Full **intake/approval flow** (triage → approve/decline) in the TypeScript API, exposed on web **and** mobile, with offline creation and persistence fixes. |
 | **Urgent tickets** | — | Urgent-ticket banner, home surfacing, and **push notifications**. |
-| **Global search** | Basic | **Full-text search with typo tolerance.** |
+| **Global search** | Basic `contains` | **Native PostgreSQL full-text search** (`tsvector` + `websearch_to_tsquery`) with **trigram typo tolerance**, accent-folding, comment matching and **legacy ticket number** indexing; plus an admin **reindex** route. |
 | **AI text assist** | Pages AI | AI-assisted text improvement on comments/descriptions. |
 | **Comment history** | — | Edit history for comments. |
 | **Default locale** | English | **pt-BR available as default**, full i18n retained. |
 | **File / image upload** | Web | Web **and** mobile, via the asset module (`FileAsset` / `IssueAttachment`). |
+| **Paywalls / "Pro" gating** | Upgrade modals, badges & feature flags gate features | **All paywalls removed** — upgrade UI renders nothing and gated CE features (bulk operations, page move/share, issue embeds) are enabled for everyone. |
+| **Whitelabel branding** | Hardcoded "Plane" | **Single switch point** (`APP_NAME` / `VITE_APP_NAME`) — defaults to **"Avião"**; titles, metadata and chrome derive from it. |
+| **Developer docs** | — | In-app **Widgets & Custom Integrations** docs page (`/<workspace>/developers/widgets`), linked from the home "Manage widgets" dialog. |
 
 > A living backlog of these features lives in [`ToDo.md`](./ToDo.md),
 > [`RELATORIOS_TODO.md`](./RELATORIOS_TODO.md) and
 > [`WIDGET_MARKETPLACE_TODO.md`](./WIDGET_MARKETPLACE_TODO.md).
+
+### 🎨 Whitelabel & no paywalls
+
+- **Whitelabel:** the product name is centralized in `APP_NAME`
+  ([`packages/constants/src/metadata.ts`](./packages/constants/src/metadata.ts)) and defaults to
+  **Avião**. Override per build with `VITE_APP_NAME`, `VITE_APP_TAGLINE` and `VITE_APP_URL` — all
+  page titles, metadata and visible chrome follow it. Logos use placeholders (no Plane brand
+  assets).
+- **No paywalls:** every "upgrade to Pro" surface (badges, banners, the plan-upgrade modal,
+  issue-embed and active-cycles CTAs) renders nothing, and the CE feature flags that hid bulk
+  operations and page move/sharing are enabled for everyone.
 
 ---
 

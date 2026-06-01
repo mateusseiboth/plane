@@ -69,6 +69,9 @@ export const WORKSPACE_ACTIVE_CYCLES_DETAILS = [
 ];
 
 export const WorkspaceActiveCyclesUpgrade = observer(function WorkspaceActiveCyclesUpgrade() {
+  // Paywall removed in this fork: no upgrade CTA is shown.
+  return null;
+  // eslint-disable-next-line no-unreachable
   const { t } = useTranslation();
   // store hooks
   const {

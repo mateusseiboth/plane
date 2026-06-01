@@ -48,10 +48,13 @@ function AuthGate() {
       <Stack.Screen name="work-item/[id]" options={{ title: "Work Item" }} />
       <Stack.Screen name="work-item/new" options={{ title: "Novo Work Item", presentation: "modal" }} />
       <Stack.Screen name="intake/[id]" options={{ title: "Intake" }} />
+      <Stack.Screen name="intake/new" options={{ title: "Novo Intake", presentation: "modal" }} />
       <Stack.Screen name="visit/[id]" options={{ title: "Visita Técnica" }} />
       <Stack.Screen name="visit/new" options={{ title: "Nova Visita", presentation: "modal" }} />
       <Stack.Screen name="wiki/index" options={{ title: "Wiki" }} />
       <Stack.Screen name="wiki/[id]" options={{ title: "Página" }} />
+      <Stack.Screen name="entities/index" options={{ title: "Entidades" }} />
+      <Stack.Screen name="notifications" options={{ title: "Notificações" }} />
       <Stack.Screen name="search" options={{ title: "Buscar", presentation: "modal" }} />
     </Stack>
   );

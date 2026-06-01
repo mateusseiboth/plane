@@ -7,6 +7,7 @@ import { api, QueryParams } from "./client";
 import {
   AppNotification,
   AuthUser,
+  DashboardResponse,
   Entity,
   Label,
   Me,
@@ -35,7 +36,7 @@ export const endpoints = {
     workspaces: () => api.get<Workspace[]>(`${V1}/users/me/workspaces/`),
     projectRoles: (slug: string) =>
       api.get<Record<string, number>>(`${V1}/users/me/workspaces/${slug}/project-roles/`),
-    dashboard: (slug: string) => api.get<unknown>(`${V1}/users/me/workspaces/${slug}/dashboard/`),
+    dashboard: (slug: string) => api.get<DashboardResponse>(`${V1}/users/me/workspaces/${slug}/dashboard/`),
   },
 
   workspaces: {
@@ -81,6 +82,13 @@ export const endpoints = {
         `${V1}/workspaces/${slug}/projects/${projectId}/intake-work-items/${issueId}/`,
         body,
       ),
+    // Real intake creation = an inbox issue in triage with pending status (-2),
+    // awaiting approval — same flow the web uses.
+    create: (slug: string, projectId: string, issue: Partial<WorkItem>) =>
+      api.post<{ id: string }>(`${V1}/workspaces/${slug}/projects/${projectId}/inbox-issues/`, { issue }),
+    // status: 1 = accepted (promoted to the project's default state), -1 = declined.
+    setStatus: (slug: string, projectId: string, inboxId: string, status: 1 | -1, issue?: Partial<WorkItem>) =>
+      api.patch<unknown>(`${V1}/workspaces/${slug}/projects/${projectId}/inbox-issues/${inboxId}/`, { status, ...(issue ? { issue } : {}) }),
   },
 
   entities: {

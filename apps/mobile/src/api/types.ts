@@ -171,6 +171,23 @@ export type SearchResults = {
   modules: { id: string; name: string; projectId?: string }[];
 };
 
+/** Raw (camelCase) issue shape returned by the "my workspace dashboard" endpoint. */
+export type DashboardIssue = {
+  id: string;
+  name: string;
+  priority: Priority;
+  sequenceId?: number;
+  legacyTicketNumber?: string | null;
+  projectId: string;
+  stateId?: string | null;
+  state?: { name: string; group: StateGroup; color?: string } | null;
+};
+
+export type DashboardResponse = {
+  issues: DashboardIssue[];
+  workspace_id?: string;
+};
+
 export type SearchHit = {
   id: string;
   name: string;

@@ -4,15 +4,17 @@ import React from "react";
 import { RefreshControl, View } from "react-native";
 
 import { endpoints, WorkItem } from "@/api";
-import { EmptyState, Loading, ProjectPicker, Screen, Text, WorkItemRow } from "@/components";
+import { EmptyState, Fab, Loading, ProjectPicker, Screen, Text, WorkItemRow } from "@/components";
 import { useAsync } from "@/hooks/useAsync";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { usePermissions } from "@/permissions/usePermissions";
 import { useTheme } from "@/theme";
 
 export default function IntakeScreen() {
   const router = useRouter();
   const { colors, spacing } = useTheme();
   const { slug, projects, current, setCurrent } = useCurrentProject();
+  const { can } = usePermissions(current?.id);
 
   const items = useAsync<WorkItem[]>(
     async () => {
@@ -62,6 +64,12 @@ export default function IntakeScreen() {
             />
           )}
         />
+      )}
+
+      {can("createIntake") && (
+        <Fab onPress={() => router.push(`/intake/new?projectId=${current.id}`)}>
+          <Text style={{ fontSize: 26, color: colors.onPrimary }}>＋</Text>
+        </Fab>
       )}
     </Screen>
   );

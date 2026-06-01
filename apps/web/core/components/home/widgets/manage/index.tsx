@@ -25,7 +25,17 @@ export const ManageWidgetsModal = observer(function ManageWidgetsModal(props: TP
   return (
     <ModalCore isOpen={isModalOpen} handleClose={handleOnClose} width={EModalWidth.MD}>
       <div className="p-4">
-        <div className="text-18 font-medium"> {t("home.manage_widgets")}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-18 font-medium"> {t("home.manage_widgets")}</div>
+          {/* Link to our developer documentation so devs know they can build their own widgets. */}
+          <a
+            href={`/${workspaceSlug}/developers/widgets`}
+            onClick={handleOnClose}
+            className="shrink-0 text-13 font-medium text-custom-primary-100 hover:underline"
+          >
+            Como criar um widget? →
+          </a>
+        </div>
         <WidgetList workspaceSlug={workspaceSlug} />
       </div>
     </ModalCore>

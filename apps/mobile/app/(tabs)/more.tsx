@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 
@@ -10,7 +11,23 @@ import { usePermissions } from "@/permissions/usePermissions";
 import { ThemeMode, useTheme } from "@/theme";
 import { displayName } from "@/utils/format";
 
+function NavRow({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  const { colors, spacing } = useTheme();
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => ({ paddingVertical: spacing.md, backgroundColor: pressed ? colors.surfaceSunken : "transparent" })}>
+      <Row align="space-between">
+        <Row gap={spacing.sm}>
+          <Text style={{ fontSize: 18 }}>{icon}</Text>
+          <Text>{label}</Text>
+        </Row>
+        <Text variant="tertiary">›</Text>
+      </Row>
+    </Pressable>
+  );
+}
+
 export default function MoreScreen() {
+  const router = useRouter();
   const { me, activeWorkspace, workspaces, setActiveWorkspace, signOut } = useAuth();
   const { preference, setPreference, colors, spacing } = useTheme();
   const { online, pendingCount, syncing, syncNow } = useSync();
@@ -58,6 +75,17 @@ export default function MoreScreen() {
           </Row>
         </Card>
       </Pressable>
+
+      <Text variant="heading">Navegação</Text>
+      <Card style={{ paddingVertical: 0 }}>
+        <NavRow icon="🔍" label="Buscar" onPress={() => router.push("/search")} />
+        <Divider />
+        <NavRow icon="🔔" label="Notificações" onPress={() => router.push("/notifications")} />
+        <Divider />
+        <NavRow icon="🏢" label="Entidades" onPress={() => router.push("/entities")} />
+        <Divider />
+        <NavRow icon="📄" label="Wiki" onPress={() => router.push("/wiki")} />
+      </Card>
 
       <Text variant="heading">Sincronização</Text>
       <Card>

@@ -4,4 +4,5 @@
  * See the LICENSE file for details.
  */
 
-export const useBulkOperationStatus = () => false;
+// Paywall removed in this fork: bulk operations are enabled for everyone.
+export const useBulkOperationStatus = () => true;

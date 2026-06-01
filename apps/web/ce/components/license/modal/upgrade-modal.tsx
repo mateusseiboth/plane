@@ -32,6 +32,9 @@ export type PaidPlanUpgradeModalProps = {
 };
 
 export const PaidPlanUpgradeModal = observer(function PaidPlanUpgradeModal(props: PaidPlanUpgradeModalProps) {
+  // Paywall removed in this fork: the upgrade modal never renders.
+  return null;
+  // eslint-disable-next-line no-unreachable
   const { isOpen, handleClose } = props;
   // derived values
   const isSelfHosted = true;

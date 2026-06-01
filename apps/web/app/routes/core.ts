@@ -105,6 +105,12 @@ export const coreRoutes: RouteConfigEntry[] = [
           route(":workspaceSlug/stickies", "./(all)/[workspaceSlug]/(projects)/stickies/page.tsx"),
         ]),
 
+        // Developer docs — widgets & custom integrations
+        route(
+          ":workspaceSlug/developers/widgets",
+          "./(all)/[workspaceSlug]/(projects)/developers/widgets/page.tsx"
+        ),
+
         // Workspace Views
         layout("./(all)/[workspaceSlug]/(projects)/workspace-views/layout.tsx", [
           route(":workspaceSlug/workspace-views", "./(all)/[workspaceSlug]/(projects)/workspace-views/page.tsx"),
