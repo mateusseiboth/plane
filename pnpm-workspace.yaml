@@ -3,6 +3,9 @@ packages:
   - packages/*
   - "!apps/api"
   - "!apps/proxy"
+  # Self-contained Expo app — manages its own install to avoid React Native /
+  # Metro symlink issues with pnpm's node_modules layout.
+  - "!apps/mobile"
 
 catalog:
   "@atlaskit/pragmatic-drag-and-drop-auto-scroll": 1.4.0
