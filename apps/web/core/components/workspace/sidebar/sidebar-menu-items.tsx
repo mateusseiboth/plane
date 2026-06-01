@@ -29,6 +29,8 @@ import {
 } from "@/hooks/use-navigation-preferences";
 // plane-web imports
 import { SidebarItem } from "@/plane-web/components/workspace/sidebar/sidebar-item";
+// plugin imports
+import { PluginSidebarItems } from "@/components/plugins/plugin-sidebar-items";
 
 export const SidebarMenuItems = observer(function SidebarMenuItems() {
   // routers
@@ -154,6 +156,7 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
                 {sortedNavigationItems.map((item, _index) => (
                   <SidebarItem key={`dynamic_${_index}`} item={item} />
                 ))}
+                <PluginSidebarItems />
                 <SidebarNavItem>
                   <button
                     type="button"

@@ -111,6 +111,12 @@ export const coreRoutes: RouteConfigEntry[] = [
           "./(all)/[workspaceSlug]/(projects)/developers/widgets/page.tsx"
         ),
 
+        // Plugin pages — dynamically rendered from active plugins' contributions
+        route(
+          ":workspaceSlug/plugins/:pluginSlug",
+          "./(all)/[workspaceSlug]/(projects)/plugins/[pluginSlug]/page.tsx"
+        ),
+
         // Workspace Views
         layout("./(all)/[workspaceSlug]/(projects)/workspace-views/layout.tsx", [
           route(":workspaceSlug/workspace-views", "./(all)/[workspaceSlug]/(projects)/workspace-views/page.tsx"),
@@ -403,6 +409,12 @@ export const coreRoutes: RouteConfigEntry[] = [
     layout("./(all)/settings/profile/layout.tsx", [
       route("settings/profile/:profileTabId", "./(all)/settings/profile/[profileTabId]/page.tsx"),
     ]),
+
+    // Instance-level Widget marketplace settings
+    route("settings/widgets", "./(all)/settings/widgets/page.tsx"),
+
+    // Instance-level Plugin settings
+    route("settings/plugins", "./(all)/settings/plugins/page.tsx"),
   ]),
 
   // ========================================================================

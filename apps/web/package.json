@@ -36,6 +36,7 @@
     "@plane/ui": "workspace:*",
     "@plane/utils": "workspace:*",
     "@mateusseiboth/widgets-aviao": "workspace:*",
+    "@mateusseiboth/plugins-aviao": "workspace:*",
     "@popperjs/core": "^2.11.8",
     "@react-pdf/renderer": "^3.4.5",
     "@react-router/node": "catalog:",

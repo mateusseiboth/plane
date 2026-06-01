@@ -84,6 +84,7 @@ model User {
   workspaceUserProperties  WorkspaceUserProperties[] @relation("WorkspaceUserPropsUser")
   projectUserProperties    ProjectUserProperty[]     @relation("ProjectUserPropsUser")
   createdWidgets           Widget[]
+  createdPlugins           Plugin[]
   @@map("users")
 }
 
@@ -1575,4 +1576,54 @@ model WidgetVersion {
   widgetId   String   @map("widget_id") @db.Uuid
   @@index([widgetId])
   @@map("widget_versions")
+}
+
+// ── Plugin Marketplace ────────────────────────────────────────────────────────
+// Plugins extend the application itself: they can register sidebar items, mount
+// full pages (with routing) and consume the same data APIs widgets use.
+
+enum PluginStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_APPROVAL
+  ARCHIVED
+}
+
+model Plugin {
+  id            String          @id @default(uuid()) @db.Uuid
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  deletedAt     DateTime?       @map("deleted_at")
+  name          String          @db.VarChar(255)
+  slug          String          @unique @db.VarChar(255)
+  description   String?
+  version       String          @db.VarChar(50)
+  author        String          @db.VarChar(255)
+  entryFile     String          @map("entry_file") @db.VarChar(500)
+  manifest      Json
+  permissions   String[]
+  // Declarative graphical contributions: sidebar items, pages/routes, etc.
+  contributions Json            @default("{}")
+  status        PluginStatus    @default(PENDING_APPROVAL)
+  storageKey    String          @map("storage_key") @db.VarChar(500)
+  createdBy     User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?         @map("created_by_id") @db.Uuid
+  versions      PluginVersion[]
+  @@index([status])
+  @@index([createdById])
+  @@map("plugins")
+}
+
+model PluginVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  version       String   @db.VarChar(50)
+  storageKey    String   @map("storage_key") @db.VarChar(500)
+  manifest      Json
+  contributions Json     @default("{}")
+  changelog     String?
+  plugin        Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  pluginId      String   @map("plugin_id") @db.Uuid
+  @@index([pluginId])
+  @@map("plugin_versions")
 }
