@@ -96,6 +96,10 @@ dev-editor
 
 storybook-static
 
+# Company-specific data-migration scripts — not for version control.
+# Each deployment must provide its own migration script.
+apps/api-ts/scripts/migrate-sac.ts
+
 build/
 .react-router/
 

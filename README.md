@@ -35,7 +35,7 @@ We have evolved Plane Community Edition in two major directions:
    original `/api/v1/` contract.
 
 2. **A set of additional features** layered on top of Plane Community Edition — most notably a
-   service-desk / SAC workflow (entities, technical visits, legacy ticket migration),
+   service-desk / SAC workflow (entities, technical visits, legacy ticket numbers),
    managerial reports, a developer widget marketplace, granular role-based permissions, and a
    brand-new **mobile app ("Avião")** built with Expo.
 
@@ -53,8 +53,8 @@ We have evolved Plane Community Edition in two major directions:
 | **Backend API** | Django / Python REST Framework (`apps/api/`) | **Rewritten in TypeScript** — Bun + Elysia + Prisma 7 on PostgreSQL (`apps/api-ts/`). Same `/api/v1/` contract, `X-Api-Key` auth, identical pagination/cursor format. |
 | **Django API** | Active, primary backend | **Deprecated / read-only.** Kept only as a reference for legacy business rules; not run, not patched, no new endpoints or migrations. |
 | **Mobile app** | — | **New "Avião" app** built with Expo (latest SDK): a data-rich home (assigned/urgent/open stats), work items, **real intake approval flow**, entities, notifications, wiki, technical visits, global search, rich text editor, offline-first sync, push notifications, light/dark themes. |
-| **Service desk (SAC)** | — | **Entities** (clients) and **Technical Visits** as first-class, workspace-scoped models, plus a one-shot migration from the legacy MySQL SAC system into Plane issues. |
-| **Legacy ticket numbers** | — | `legacy_ticket_number` preserved on every migrated issue and shown across all views. |
+| **Service desk (SAC)** | — | **Entities** (clients) and **Technical Visits** as first-class, workspace-scoped models. |
+| **Legacy ticket numbers** | — | `legacy_ticket_number` field preserved on issues and shown across all views. |
 | **Technical visits** | — | Dedicated screen + API: schedule visits, two technicians, motivation flags, link to issues, write visit reports, list & **calendar** views. |
 | **Managerial reports** | Basic analytics only | **Reports module**: tickets, productivity & people, technical visits, SLA, and temporal/managerial breakdowns, with PDF/print export. |
 | **Widget marketplace** | — | **Developer widget system**: upload/host widget assets, an SDK gateway API, dynamic widget loader, and a `@empresa/widget-sdk` package for third-party widgets. |
