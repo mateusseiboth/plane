@@ -573,6 +573,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         select: {
           id: true, name: true, sequenceId: true, priority: true, legacyTicketNumber: true,
           project: {select: {id: true, identifier: true}},
+          state: {select: {group: true}},
         },
         take: 10,
       }),
@@ -589,6 +590,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           project_id: i.project?.id, project__identifier: i.project?.identifier,
           workspace__slug: ws.slug,
           legacy_ticket_number: i.legacyTicketNumber ?? null,
+          is_intake: i.state?.group === "triage",
           type_id: null,
         })),
         project: projects.map((p: any) => ({id: p.id, name: p.name, identifier: p.identifier, workspace__slug: ws.slug})),

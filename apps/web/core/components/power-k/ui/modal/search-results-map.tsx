@@ -14,7 +14,6 @@ import type {
   IWorkspaceProjectSearchResult,
   IWorkspaceSearchResult,
 } from "@plane/types";
-import { generateWorkItemLink } from "@plane/utils";
 // components
 import type { TPowerKSearchResultsKeys } from "@/components/power-k/core/types";
 // plane web imports
@@ -53,14 +52,12 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
         {workItem.name}
       </div>
     ),
+    // Route by work item ID (not identifier-sequence) so migrated items without a
+    // valid sequence still resolve. Intake/triage items open in the intake view.
     path: (workItem: IWorkspaceIssueSearchResult) =>
-      generateWorkItemLink({
-        workspaceSlug: workItem?.workspace__slug,
-        projectId: workItem?.project_id,
-        issueId: workItem?.id,
-        projectIdentifier: workItem.project__identifier,
-        sequenceId: workItem?.sequence_id,
-      }),
+      workItem?.is_intake
+        ? `/${workItem?.workspace__slug}/projects/${workItem?.project_id}/intake/?currentTab=open&inboxIssueId=${workItem?.id}`
+        : `/${workItem?.workspace__slug}/projects/${workItem?.project_id}/issues/${workItem?.id}`,
     title: "Work items",
   },
   issue_view: {

@@ -135,6 +135,9 @@ export interface IWorkspaceIssueSearchResult {
   sequence_id: number;
   workspace__slug: string;
   type_id: string;
+  /** True when the work item sits in a triage/intake state. Used to route search hits to the intake view. */
+  is_intake?: boolean;
+  legacy_ticket_number?: string | null;
 }
 
 export interface IWorkspacePageSearchResult {
