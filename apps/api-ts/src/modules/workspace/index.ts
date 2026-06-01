@@ -1,8 +1,10 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {paginate} from "@utils/pagination";
+import {COMMENT_FTS_DOC_C, ensureSearchIndexes, ISSUE_FTS_DOC_I, PT_FTS_CONFIG} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue} from "@utils/serialize";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
+import {Prisma} from "@prisma/client";
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
 
@@ -608,87 +610,63 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/global-search/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const q = ((query.query as string) ?? "").trim();
+    // The web client sends `?q=`; older callers used `?query=`. Accept both.
+    const q = (((query.q ?? query.query) as string) ?? "").trim();
     if (!q) return {results: {issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []}};
 
-    // Build fuzzy patterns: original query + each word token + one-char-dropped variations
-    function buildFuzzyTerms(input: string): string[] {
-      const terms = new Set<string>([input]);
-      // Add each word as individual search term
-      input.split(/\s+/).forEach((w) => w.length >= 2 && terms.add(w));
-      // For short words/numbers, also try without last char (handles truncated numbers)
-      if (input.length >= 4 && input.length <= 12) {
-        terms.add(input.slice(0, -1));
-      }
-      // Swap adjacent chars (handle transpositions like "1324" for "1234")
-      for (let i = 0; i < Math.min(input.length - 1, 8); i++) {
-        const swapped = input.slice(0, i) + input[i + 1] + input[i] + input.slice(i + 2);
-        terms.add(swapped);
-      }
-      return [...terms];
-    }
+    // ── Issues + intakes: native Postgres full-text + trigram search ──────────
+    // - websearch_to_tsquery over a stemmed, accent-folded document (title +
+    //   description + legacy number) handles natural-language queries.
+    // - pg_trgm `%` / similarity() add typo & transposition tolerance.
+    // - comment bodies are matched through an EXISTS sub-query.
+    // Ranking blends ts_rank with trigram similarity; the planner uses the GIN
+    // indexes created by ensureSearchIndexes().
+    type IssueRow = {
+      id: string;
+      name: string;
+      sequence_id: number;
+      priority: string;
+      legacy_ticket_number: string | null;
+      state_group: string | null;
+      state_name: string | null;
+      project_id: string | null;
+      project_identifier: string | null;
+      project_name: string | null;
+    };
 
-    const fuzzyTerms = buildFuzzyTerms(q);
+    const ftsDoc = Prisma.raw(ISSUE_FTS_DOC_I);
+    const commentDoc = Prisma.raw(COMMENT_FTS_DOC_C);
+    const cfg = Prisma.raw(`'${PT_FTS_CONFIG}'`);
 
-    // Build Prisma OR conditions for fuzzy text matching
-    function issueSearchWhere(terms: string[]) {
-      return terms.flatMap((t) => [
-        {name: {contains: t, mode: "insensitive" as const}},
-        {descriptionStripped: {contains: t, mode: "insensitive" as const}},
-        {legacyTicketNumber: {contains: t, mode: "insensitive" as const}},
-      ]);
-    }
+    const issueRowsP = prisma.$queryRaw<IssueRow[]>(Prisma.sql`
+      SELECT i.id, i.name, i.sequence_id, i.priority, i.legacy_ticket_number,
+             s."group" AS state_group, s.name AS state_name,
+             p.id AS project_id, p.identifier AS project_identifier, p.name AS project_name
+      FROM issues i
+      LEFT JOIN states s ON s.id = i.state_id
+      LEFT JOIN projects p ON p.id = i.project_id
+      WHERE i.workspace_id = ${ws.id}::uuid
+        AND i.deleted_at IS NULL
+        AND i.is_draft = false
+        AND (
+          ${ftsDoc} @@ websearch_to_tsquery(${cfg}, ${q})
+          OR i.name % ${q}
+          OR i.legacy_ticket_number ILIKE '%' || ${q} || '%'
+          OR EXISTS (
+            SELECT 1 FROM issue_comments c
+            WHERE c.issue_id = i.id AND c.deleted_at IS NULL
+              AND (${commentDoc} @@ websearch_to_tsquery(${cfg}, ${q}) OR c.comment_stripped % ${q})
+          )
+        )
+      ORDER BY (
+        ts_rank(${ftsDoc}, websearch_to_tsquery(${cfg}, ${q})) * 2
+        + GREATEST(similarity(i.name, ${q}), similarity(coalesce(i.legacy_ticket_number,''), ${q}))
+      ) DESC, i.updated_at DESC
+      LIMIT 40
+    `);
 
-    const [rawIssues, intakeIssues, commentIssueIds, projects, pages, cycles, modules] = await Promise.all([
-      // Work items — search title, description, legacy number
-      prisma.issue.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, isDraft: false, OR: issueSearchWhere(fuzzyTerms)},
-        select: {
-          id: true,
-          name: true,
-          sequenceId: true,
-          priority: true,
-          stateId: true,
-          legacyTicketNumber: true,
-          project: {select: {id: true, identifier: true, name: true}},
-          state: {select: {name: true, group: true}},
-        },
-        orderBy: {updatedAt: "desc"},
-        take: 20,
-      }),
-      // Intake issues (triage state) — search separately
-      prisma.issue.findMany({
-        where: {
-          workspaceId: ws.id,
-          deletedAt: null,
-          isDraft: false,
-          state: {group: "triage"},
-          OR: issueSearchWhere(fuzzyTerms),
-        },
-        select: {
-          id: true,
-          name: true,
-          sequenceId: true,
-          priority: true,
-          legacyTicketNumber: true,
-          project: {select: {id: true, identifier: true, name: true}},
-        },
-        take: 10,
-      }),
-      // Comments — find issue IDs where comment text matches
-      (async () => {
-        const comments = await prisma.issueComment.findMany({
-          where: {
-            workspaceId: ws.id,
-            deletedAt: null,
-            OR: fuzzyTerms.map((t) => ({commentStripped: {contains: t, mode: "insensitive" as const}})),
-          },
-          select: {issueId: true},
-          distinct: ["issueId"],
-          take: 10,
-        });
-        return comments.map((c: any) => c.issueId);
-      })(),
+    const [issueRows, projects, pages, cycles, modules] = await Promise.all([
+      issueRowsP,
       prisma.project.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
         select: {id: true, name: true, identifier: true},
@@ -711,58 +689,30 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       }),
     ]);
 
-    // Fetch additional issues matched by comments
-    const commentMatchedIssues = commentIssueIds.length
-      ? await prisma.issue.findMany({
-          where: {id: {in: commentIssueIds}, deletedAt: null},
-          select: {
-            id: true,
-            name: true,
-            sequenceId: true,
-            priority: true,
-            stateId: true,
-            legacyTicketNumber: true,
-            project: {select: {id: true, identifier: true, name: true}},
-            state: {select: {name: true, group: true}},
-          },
-        })
-      : [];
+    const toProject = (r: IssueRow) =>
+      r.project_id ? {id: r.project_id, identifier: r.project_identifier, name: r.project_name} : null;
 
-    // Merge and deduplicate issues (work items)
-    const intakeIds = new Set(intakeIssues.map((i: any) => i.id));
-    const allIssues = [...rawIssues, ...commentMatchedIssues].filter((i: any) => !intakeIds.has(i.id));
-    const issueMap = new Map(allIssues.map((i: any) => [i.id, i]));
-
-    // Score results: exact match in name > legacy number > description
-    function scoreIssue(issue: any): number {
-      const lq = q.toLowerCase();
-      let score = 0;
-      if (issue.name?.toLowerCase().includes(lq)) score += 10;
-      if (issue.legacyTicketNumber?.toLowerCase().includes(lq)) score += 15;
-      if (fuzzyTerms.some((t) => issue.name?.toLowerCase().includes(t.toLowerCase()))) score += 5;
-      return score;
-    }
-
-    const sortedIssues = [...issueMap.values()].sort((a, b) => scoreIssue(b) - scoreIssue(a)).slice(0, 15);
+    const intakes = issueRows.filter((r) => r.state_group === "triage");
+    const workItems = issueRows.filter((r) => r.state_group !== "triage");
 
     return {
       results: {
-        issues: sortedIssues.map((i: any) => ({
-          id: i.id,
-          name: i.name,
+        issues: workItems.slice(0, 15).map((r) => ({
+          id: r.id,
+          name: r.name,
           type: "issue",
-          sequence_id: i.sequenceId,
-          legacy_ticket_number: i.legacyTicketNumber ?? null,
-          priority: i.priority,
-          state: i.state ? {name: i.state.name, group: i.state.group} : null,
-          project: i.project ? {id: i.project.id, identifier: i.project.identifier, name: i.project.name} : null,
+          sequence_id: r.sequence_id,
+          legacy_ticket_number: r.legacy_ticket_number ?? null,
+          priority: r.priority,
+          state: r.state_name ? {name: r.state_name, group: r.state_group} : null,
+          project: toProject(r),
         })),
-        intakes: intakeIssues.slice(0, 8).map((i: any) => ({
-          id: i.id,
-          name: i.name,
+        intakes: intakes.slice(0, 8).map((r) => ({
+          id: r.id,
+          name: r.name,
           type: "intake",
-          legacy_ticket_number: i.legacyTicketNumber ?? null,
-          project: i.project ? {id: i.project.id, identifier: i.project.identifier, name: i.project.name} : null,
+          legacy_ticket_number: r.legacy_ticket_number ?? null,
+          project: toProject(r),
         })),
         projects: projects.map((p: any) => ({...p, type: "project"})),
         pages: pages.map((p: any) => ({...p, type: "page"})),
@@ -770,6 +720,16 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         modules: modules.map((m: any) => ({...m, type: "module"})),
       },
     };
+  })
+
+  // ── Search index maintenance ──────────────────────────────────────────────
+  // Idempotently (re)creates the FTS extensions, the pt_unaccent config and the
+  // GIN indexes, then refreshes planner statistics. Requires workspace admin.
+  .post("/:slug/search/reindex/", async ({params: {slug}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceWriter(ws.id, user.id);
+    const result = await ensureSearchIndexes(true);
+    return result;
   })
 
   // ── Workspace slug check ──────────────────────────────────────────────────────

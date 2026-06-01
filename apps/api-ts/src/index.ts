@@ -187,4 +187,14 @@ console.log(`🚀 Plane API running on http://localhost:${PORT}/api/v1`);
 console.log(`🔐 Auth endpoints: http://localhost:${PORT}/auth/`);
 console.log(`📖 Swagger: http://localhost:${PORT}/api/v1/schema`);
 
+// Ensure full-text search extensions/indexes exist (idempotent, best-effort).
+// Skip the ANALYZE pass on boot to keep startup cheap; the reindex route runs it.
+import("@utils/search")
+  .then(({ensureSearchIndexes}) => ensureSearchIndexes(false))
+  .then((r) => {
+    if (r.ok) console.log("🔎 Search indexes ready");
+    else console.warn("🔎 Search index setup had errors:", r.errors);
+  })
+  .catch((e) => console.warn("🔎 Search index setup failed:", e?.message ?? e));
+
 export type App = typeof app;
