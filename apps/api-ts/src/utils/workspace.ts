@@ -36,12 +36,17 @@ export async function getProjectOrFail(workspaceId: string, projectId: string, u
     where: {projectId, memberId: userId, isActive: true, deletedAt: null},
   });
 
-  // Workspace admins have access to all projects even without explicit membership
-  if (!member) {
-    const wsMember = await prisma.workspaceMember.findFirst({
-      where: {workspaceId, memberId: userId, role: {gte: 20}, isActive: true, deletedAt: null},
-    });
-    if (wsMember) {
+  // Workspace admins have full access to every project. This must hold even when
+  // a lower-privilege project membership row exists (e.g. migrations that added
+  // the admin to projects at role 15) — otherwise admins get spurious 403s on
+  // role-gated actions like state transitions. Elevate the effective role to 20.
+  const wsAdmin = await prisma.workspaceMember.findFirst({
+    where: {workspaceId, memberId: userId, role: {gte: 20}, isActive: true, deletedAt: null},
+  });
+  if (wsAdmin) {
+    if (member) {
+      member = {...member, role: Math.max(member.role, 20)} as any;
+    } else {
       // Return a synthetic member record granting admin-level access
       member = {
         id: `ws-admin-${userId}`,

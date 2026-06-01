@@ -2,7 +2,9 @@ import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {Prisma} from "@prisma/client/extension";
 import {paginate} from "@utils/pagination";
-import {ISSUE_INCLUDE, serializeIssue} from "@utils/serialize";
+import {COMMENT_INCLUDE, ISSUE_INCLUDE, serializeComment, serializeIssue} from "@utils/serialize";
+import {diffChange, recordActivities, type ActivityChange} from "@utils/activity";
+import {applyIssueFilters, normalizeFilters} from "@utils/filters";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 
@@ -15,8 +17,10 @@ const ROLES = {ADMIN: 20, GESTOR_PROJETO: 18, MEMBER: 10, TI: 12, QUALIDADE: 8, 
  * Keep both in sync when updating workflow rules.
  */
 function stateTransitionAllowed(role: number, fromGroup: string, toGroup: string): boolean {
-  // ADMIN and GESTOR_PROJETO: unrestricted moves
-  if (role === ROLES.ADMIN || role === ROLES.GESTOR_PROJETO) return true;
+  // ADMIN, GESTOR_PROJETO and any high/unknown elevated role (>=18): unrestricted moves.
+  // The >=18 guard prevents spurious 403s when a membership row carries a role value
+  // not enumerated in ROLES (e.g. 15 from older migrations).
+  if (role >= ROLES.GESTOR_PROJETO) return true;
 
   // MEMBER: full workflow access
   if (role === ROLES.MEMBER) {
@@ -81,30 +85,13 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     // Build base where clause
     const where: any = {projectId: project_id, deletedAt: null, isDraft: false};
 
-    // Standard filters
-    if (query.state_id) where.stateId = {in: (query.state_id as string).split(",")};
-    if (query.priority) where.priority = {in: (query.priority as string).split(",")};
+    // Non-filter scalar params that are not part of the filter map
     if (query.entity_id) where.entityId = query.entity_id;
     if (query.legacy_ticket_number) where.legacyTicketNumber = query.legacy_ticket_number;
-    if (query.assignees__id) where.assignees = {some: {assigneeId: {in: (query.assignees__id as string).split(",")}, deletedAt: null}};
-    if (query.assignees) where.assignees = {some: {assigneeId: {in: (query.assignees as string).split(",")}, deletedAt: null}};
-    if (query.labels__id) where.labels = {some: {labelId: {in: (query.labels__id as string).split(",")}, deletedAt: null}};
-    if (query.created_by) where.createdById = {in: (query.created_by as string).split(",")};
-    if (query.mention__id) where.mentions = {some: {mentionedId: {in: (query.mention__id as string).split(",")}}};
 
-    // Group-by filters: when the kanban/grouped view passes a specific value to scope to a group
-    if (query.state_id)
-      where.stateId = (query.state_id as string).includes(",") ? {in: (query.state_id as string).split(",")} : query.state_id;
-
-    // State group filter
-    if (query.state__group) {
-      const stateGroups = (query.state__group as string).split(",");
-      const matchingStates = await prisma.state.findMany({
-        where: {projectId: project_id, group: {in: stateGroups}, deletedAt: null},
-        select: {id: true},
-      });
-      where.stateId = {in: matchingStates.map((s: any) => s.id)};
-    }
+    // Parse the frontend `filters` JSON param (+ loose params) and apply it
+    const filters = normalizeFilters(query as Record<string, unknown>);
+    await applyIssueFilters(where, filters, {projectId: project_id});
 
     // Order by
     const orderMap: Record<string, any> = {
@@ -229,7 +216,8 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
           descriptionHtml: b.description_html ?? "<p></p>",
           descriptionStripped: (b.description_html ?? "").replace(/<[^>]+>/g, ""),
           descriptionJson: b.description ?? null,
-          stateId: b.state ?? defaultState?.id ?? null,
+          // Frontend sends `state_id`; `state` is the Django-legacy alias. Honor either.
+          stateId: b.state ?? b.state_id ?? defaultState?.id ?? null,
           priority: b.priority ?? "none",
           startDate: b.start_date ? new Date(b.start_date) : null,
           targetDate: b.target_date ? new Date(b.target_date) : null,
@@ -269,6 +257,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       return created;
     });
 
+    await recordActivities(
+      {issueId: issue.id, workspaceId: ws.id, projectId: project_id, actorId: user.id},
+      [{verb: "created", field: "issue", comment: "created the work item"}],
+    );
+
     set.status = 201;
     return serializeIssue(issue);
   })
@@ -292,6 +285,13 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     }
 
     const b = body as any;
+
+    // Snapshot the issue before mutation so we can log activity diffs afterwards.
+    const before = await prisma.issue.findFirst({
+      where: {id: issue_id},
+      include: {state: {select: {id: true, name: true, group: true}}},
+    });
+
     const data: any = {updatedBy: {connect: {id: user.id}}};
     if (b.name !== undefined) data.name = b.name;
     if (b.description_html !== undefined) {
@@ -300,12 +300,12 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     }
     // Accept both `state` (Django legacy) and `state_id` (frontend ISSUE_FILTER_DEFAULT_DATA)
     const newStateId = b.state ?? b.state_id;
+    let targetState: {id: string; name: string; group: string} | null = null;
     if (newStateId !== undefined) {
       // Validate state transition based on role
-      const currentIssue = await prisma.issue.findFirst({where: {id: issue_id}, include: {state: {select: {group: true}}}});
-      const targetState = await prisma.state.findFirst({where: {id: newStateId}, select: {group: true}});
-      if (currentIssue && targetState) {
-        const fromGroup = currentIssue.state?.group ?? "backlog";
+      targetState = await prisma.state.findFirst({where: {id: newStateId}, select: {id: true, name: true, group: true}});
+      if (before && targetState) {
+        const fromGroup = before.state?.group ?? "backlog";
         const toGroup = targetState.group;
         const allowed = stateTransitionAllowed(member.role, fromGroup, toGroup);
         if (!allowed) {
@@ -350,6 +350,46 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       }
     }
 
+    // ── Activity log ──────────────────────────────────────────────────────────
+    if (before) {
+      const changes: ActivityChange[] = [];
+      if (newStateId !== undefined && before.stateId !== newStateId) {
+        changes.push({
+          field: "state",
+          oldValue: before.state?.name ?? null,
+          newValue: targetState?.name ?? null,
+          comment: "updated the state",
+        });
+      }
+      if (b.name !== undefined) {
+        const c = diffChange("name", before.name, b.name, "updated the name");
+        if (c) changes.push(c);
+      }
+      if (b.priority !== undefined) {
+        const c = diffChange("priority", before.priority, b.priority, "updated the priority");
+        if (c) changes.push(c);
+      }
+      if (b.target_date !== undefined) {
+        const oldTd = before.targetDate ? before.targetDate.toISOString().split("T")[0] : null;
+        const newTd = b.target_date ? new Date(b.target_date).toISOString().split("T")[0] : null;
+        const c = diffChange("target_date", oldTd, newTd, "updated the due date");
+        if (c) changes.push(c);
+      }
+      if (b.start_date !== undefined) {
+        const oldSd = before.startDate ? before.startDate.toISOString().split("T")[0] : null;
+        const newSd = b.start_date ? new Date(b.start_date).toISOString().split("T")[0] : null;
+        const c = diffChange("start_date", oldSd, newSd, "updated the start date");
+        if (c) changes.push(c);
+      }
+      if (b.parent_id !== undefined) {
+        const c = diffChange("parent", before.parentId, b.parent_id, "updated the parent");
+        if (c) changes.push(c);
+      }
+      if (b.assignees !== undefined) changes.push({field: "assignees", comment: "updated the assignees"});
+      if (b.labels !== undefined) changes.push({field: "labels", comment: "updated the labels"});
+      await recordActivities({issueId: issue_id, workspaceId: ws.id, projectId: project_id, actorId: user.id}, changes);
+    }
+
     return serializeIssue(await prisma.issue.findFirstOrThrow({where: {id: issue_id}, include: ISSUE_INCLUDE}));
   })
 
@@ -377,11 +417,12 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
           where,
           skip,
           take,
-          include: {actor: {select: {id: true, displayName: true, email: true}}},
+          include: COMMENT_INCLUDE,
           orderBy: {createdAt: "asc"},
         }),
       count: () => prisma.issueComment.count({where}),
       cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializeComment),
     });
   })
 
@@ -408,9 +449,24 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         parentId: b.parent ?? null,
         createdById: user.id,
       },
+      include: COMMENT_INCLUDE,
+    });
+    // Mirror into the activity feed so the "comments" history tab shows it
+    await prisma.issueActivity.create({
+      data: {
+        issueId: issue_id,
+        workspaceId: ws.id,
+        projectId: project_id,
+        actorId: user.id,
+        verb: "created",
+        field: "comment",
+        comment: "created a comment",
+        issueCommentId: comment.id,
+        epoch: Date.now(),
+      },
     });
     set.status = 201;
-    return comment;
+    return serializeComment(comment);
   })
 
   .patch("/:issue_id/comments/:comment_id/", async ({params: {issue_id, comment_id}, body, user}) => {
@@ -429,7 +485,8 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       data.commentStripped = b.comment_html.replace(/<[^>]+>/g, "");
     }
     if (b.access !== undefined) data.access = b.access;
-    return prisma.issueComment.update({where: {id: comment_id}, data});
+    const updated = await prisma.issueComment.update({where: {id: comment_id}, data, include: COMMENT_INCLUDE});
+    return serializeComment(updated);
   })
 
   // Comment version history

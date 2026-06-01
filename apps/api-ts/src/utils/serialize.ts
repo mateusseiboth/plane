@@ -72,6 +72,47 @@ export function serializeIssue(issue: any): Record<string, unknown> {
   };
 }
 
+// Include shape for comments so serializeComment can build actor_detail.
+export const COMMENT_INCLUDE = {
+  actor: { select: { id: true, displayName: true, firstName: true, lastName: true, email: true, avatar: true, avatarUrl: true } },
+} as const;
+
+export function serializeComment(c: any): Record<string, unknown> {
+  const a = c.actor;
+  return {
+    id:               c.id,
+    workspace:        c.workspaceId ?? null,
+    project:          c.projectId ?? null,
+    issue:            c.issueId ?? null,
+    actor:            c.actorId ?? null,
+    actor_detail:     a
+      ? {
+          id:           a.id,
+          display_name: a.displayName ?? "",
+          first_name:   a.firstName ?? "",
+          last_name:    a.lastName ?? "",
+          email:        a.email ?? "",
+          avatar:       a.avatar ?? "",
+          avatar_url:   a.avatarUrl ?? null,
+        }
+      : null,
+    created_at:       isoDate(c.createdAt),
+    updated_at:       isoDate(c.updatedAt),
+    edited_at:        isoDate(c.editedAt),
+    created_by:       c.createdById ?? null,
+    updated_by:       c.updatedById ?? null,
+    attachments:      [],
+    comment_reactions: [],
+    comment_stripped: c.commentStripped ?? "",
+    comment_html:     c.commentHtml ?? "<p></p>",
+    comment_json:     c.commentJson ?? null,
+    external_id:      c.externalId ?? null,
+    external_source:  c.externalSource ?? null,
+    access:           c.access ?? "INTERNAL",
+    parent:           c.parentId ?? null,
+  };
+}
+
 export function serializeModule(mod: any): Record<string, unknown> {
   const totalIssues = mod._count?.moduleIssues ?? 0;
   return {

@@ -9,6 +9,7 @@ import prisma from "@db";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
 import { serializeIssue, ISSUE_INCLUDE } from "@utils/serialize";
 import { paginate } from "@utils/pagination";
+import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 
 function isoDate(d: any) { if (!d) return null; return d instanceof Date ? d.toISOString() : String(d); }
 
@@ -109,9 +110,15 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
     if (member.role < 5) { set.status = 403; return { detail: "Permission denied." }; }
     const b = body as any;
+
+    const before = await prisma.issue.findFirst({
+      where: { id: issue_id },
+      include: { state: { select: { id: true, name: true } } },
+    });
+
     const data: any = { updatedById: user.id };
-    if (b.state !== undefined) data.stateId = b.state;
-    if (b.state_id !== undefined) data.stateId = b.state_id;
+    const newStateId = b.state ?? b.state_id;
+    if (newStateId !== undefined) data.stateId = newStateId;
     if (b.priority !== undefined) data.priority = b.priority;
     if (b.entity_id !== undefined) data.entityId = b.entity_id;
     if (b.description_html !== undefined) {
@@ -119,5 +126,19 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
       data.descriptionStripped = b.description_html.replace(/<[^>]+>/g, "");
     }
     const updated = await prisma.issue.update({ where: { id: issue_id }, data, include: ISSUE_INCLUDE });
+
+    if (before) {
+      const changes: ActivityChange[] = [];
+      if (newStateId !== undefined && before.stateId !== newStateId) {
+        const target = await prisma.state.findFirst({ where: { id: newStateId }, select: { name: true } });
+        changes.push({ field: "state", oldValue: before.state?.name ?? null, newValue: target?.name ?? null, comment: "updated the state" });
+      }
+      if (b.priority !== undefined) {
+        const c = diffChange("priority", before.priority, b.priority, "updated the priority");
+        if (c) changes.push(c);
+      }
+      await recordActivities({ issueId: issue_id, workspaceId: ws.id, projectId: project_id, actorId: user.id }, changes);
+    }
+
     return serializeIssue(updated);
   });

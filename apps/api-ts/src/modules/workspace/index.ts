@@ -1,5 +1,6 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
+import {applyIssueFilters, normalizeFilters} from "@utils/filters";
 import {paginate} from "@utils/pagination";
 import {COMMENT_FTS_DOC_C, ensureSearchIndexes, ISSUE_FTS_DOC_I, PT_FTS_CONFIG} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue} from "@utils/serialize";
@@ -1794,34 +1795,17 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       projectId: {in: userProjectIds},
     };
 
-    // Apply filters forwarded by the frontend
-    if (query.project_id) where.projectId = query.project_id;
-    if (query.priority) where.priority = {in: (query.priority as string).split(",")};
-    if (query.state_group) {
-      const states = await prisma.state.findMany({
-        where: {workspaceId: ws.id, group: {in: (query.state_group as string).split(",")}, deletedAt: null},
-        select: {id: true},
-      });
-      where.stateId = {in: states.map((s: any) => s.id)};
-    }
-    if (query.state) where.stateId = {in: (query.state as string).split(",")};
     if (query.entity_id) where.entityId = query.entity_id;
-    if (query.assignees) {
-      const assigneeVal = query.assignees as string;
-      const ids = assigneeVal === "me" ? [user.id] : assigneeVal.split(",");
-      where.assignees = {some: {assigneeId: {in: ids}, deletedAt: null}};
-    }
-    if (query.created_by) where.createdById = {in: (query.created_by as string).split(",")};
-    if (query.label) where.labels = {some: {labelId: {in: (query.label as string).split(",")}, deletedAt: null}};
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
-    if (query.target_date) {
-      const parts = (query.target_date as string).split(";");
-      if (parts.length === 2) {
-        where.targetDate = {gte: new Date(parts[0]), lte: new Date(parts[1])};
-      } else {
-        where.targetDate = new Date(parts[0]);
-      }
-    }
+
+    // Parse the frontend `filters` JSON param (+ loose params) and apply it.
+    const filters = normalizeFilters(query as Record<string, unknown>);
+    await applyIssueFilters(where, filters, {workspaceId: ws.id});
+    // Project filter must stay within the user's accessible projects.
+    if (query.project_id) where.projectId = query.project_id;
+    else if (filters.project?.length) where.projectId = {in: filters.project.filter((p) => userProjectIds.includes(p))};
+    // "me" alias for assignees
+    if (filters.assignees?.includes("me")) where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
 
     const orderBy: any = {};
     const order = (query.order_by as string) ?? "-updated_at";
@@ -1863,31 +1847,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       projectId: {in: userProjectIds},
     };
 
-    if (query.project_id) where.projectId = query.project_id;
-    if (query.priority) where.priority = {in: (query.priority as string).split(",")};
-    if (query.state_group) {
-      const states = await prisma.state.findMany({
-        where: {workspaceId: ws.id, group: {in: (query.state_group as string).split(",")}, deletedAt: null},
-        select: {id: true},
-      });
-      where.stateId = {in: states.map((s: any) => s.id)};
-    }
-    if (query.state) where.stateId = {in: (query.state as string).split(",")};
-    if (query.assignees) {
-      const assigneeVal = query.assignees as string;
-      const ids = assigneeVal === "me" ? [user.id] : assigneeVal.split(",");
-      where.assignees = {some: {assigneeId: {in: ids}, deletedAt: null}};
-    }
-    if (query.created_by) where.createdById = {in: (query.created_by as string).split(",")};
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
-    if (query.target_date) {
-      const parts = (query.target_date as string).split(";");
-      if (parts.length === 2) {
-        where.targetDate = {gte: new Date(parts[0]), lte: new Date(parts[1])};
-      } else {
-        where.targetDate = new Date(parts[0]);
-      }
-    }
+
+    const filters = normalizeFilters(query as Record<string, unknown>);
+    await applyIssueFilters(where, filters, {workspaceId: ws.id});
+    if (query.project_id) where.projectId = query.project_id;
+    else if (filters.project?.length) where.projectId = {in: filters.project.filter((p) => userProjectIds.includes(p))};
+    if (filters.assignees?.includes("me")) where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
 
     const orderBy: any = {};
     const order = (query.order_by as string) ?? "-updated_at";
