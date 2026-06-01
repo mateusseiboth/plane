@@ -941,6 +941,46 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     });
   })
 
+  // ── Workspace-level label SLA config ─────────────────────────────────────────
+  // Labels are project-scoped, but their SLA (deadline) is managed once at the
+  // workspace level: labels are aggregated by name across all projects.
+  .get("/:slug/label-sla/", async ({params: {slug}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const labels = await prisma.label.findMany({
+      where: {workspaceId: ws.id, deletedAt: null},
+      select: {name: true, color: true, slaHours: true},
+    });
+    const byName = new Map<string, {name: string; color: string; sla_hours: number | null; project_count: number}>();
+    for (const l of labels) {
+      const cur = byName.get(l.name);
+      if (cur) cur.project_count++;
+      else byName.set(l.name, {name: l.name, color: l.color ?? "", sla_hours: l.slaHours ?? null, project_count: 1});
+    }
+    return {labels: [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))};
+  })
+
+  // Update SLA (and color) by label name across every project in the workspace.
+  .put("/:slug/label-sla/", async ({params: {slug}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const m = await requireWorkspaceMember(ws.id, user.id);
+    if (m.role < 18) {
+      set.status = 403;
+      return {detail: "Apenas administradores podem configurar SLA de etiquetas."};
+    }
+    const rows: any[] = (body as any)?.labels ?? [];
+    for (const r of rows) {
+      if (!r?.name) continue;
+      const data: any = {};
+      if (r.sla_hours === null || typeof r.sla_hours === "number") data.slaHours = r.sla_hours;
+      if (typeof r.color === "string" && r.color) data.color = r.color;
+      if (Object.keys(data).length) {
+        await prisma.label.updateMany({where: {workspaceId: ws.id, name: r.name, deletedAt: null}, data});
+      }
+    }
+    return {ok: true};
+  })
+
   // ── User issue properties (filters) ─────────────────────────────────────────
 
   .get("/:slug/user-properties/", async ({params: {slug}, user}) => {

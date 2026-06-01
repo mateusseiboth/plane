@@ -175,13 +175,16 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(intakeWorkItemModule)
   .use(technicalVisitModule)
   .use(reportsModule)
+  // rolesModule MUST be registered before the SDK gateways: those use a
+  // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
+  // after them, which would make /roles/ demand an X-Widget-Id header.
+  .use(rolesModule)
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)
   .use(widgetSdkGatewayModule)
   .use(pluginRegistryModule)
-  .use(pluginSdkGatewayModule)
-  .use(rolesModule);
+  .use(pluginSdkGatewayModule);
 
 // ── Compose into root app ────────────────────────────────────────────────────
 const app = new Elysia()

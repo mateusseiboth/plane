@@ -197,9 +197,13 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         include: ISSUE_INCLUDE,
       });
 
+      // Frontend sends `assignee_ids`/`label_ids`; accept the legacy names too.
+      const assigneeIds: string[] = b.assignee_ids ?? b.assignees ?? [];
+      const labelIds: string[] = b.label_ids ?? b.labels ?? [];
+
       // Auto-assign creator (premium feature recreation)
       // Merge creator into assignees list automatically
-      const assigneeSet = new Set<string>([user.id, ...(b.assignees ?? [])]);
+      const assigneeSet = new Set<string>([user.id, ...assigneeIds]);
       await tx.issueAssignee.createMany({
         data: Array.from(assigneeSet).map((uid: string) => ({
           issueId: created.id,
@@ -209,9 +213,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         })),
         skipDuplicates: true,
       });
-      if (b.labels?.length) {
+      if (labelIds.length) {
         await tx.issueLabel.createMany({
-          data: b.labels.map((lid: string) => ({
+          data: labelIds.map((lid: string) => ({
             issueId: created.id,
             labelId: lid,
             workspaceId: ws.id,
@@ -224,9 +228,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     });
 
     // SLA (C): auto due date from label deadlines + priority when none was given.
+    const createLabelIds: string[] = b.label_ids ?? b.labels ?? [];
     let createdIssue = issue;
-    if (!b.target_date && b.labels?.length) {
-      const auto = await computeTargetDate(b.labels, b.priority ?? "none", issue.createdAt ?? new Date());
+    if (!b.target_date && createLabelIds.length) {
+      const auto = await computeTargetDate(createLabelIds, b.priority ?? "none", issue.createdAt ?? new Date());
       if (auto) createdIssue = await prisma.issue.update({where: {id: issue.id}, data: {targetDate: auto}, include: ISSUE_INCLUDE});
     }
 
@@ -310,20 +315,24 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
     await prisma.issue.update({where: {id: issue_id}, data});
 
-    if (b.assignees !== undefined) {
+    // Frontend sends `assignee_ids`/`label_ids`; accept the legacy names too.
+    const newAssignees: string[] | undefined = b.assignee_ids ?? b.assignees;
+    const newLabels: string[] | undefined = b.label_ids ?? b.labels;
+
+    if (newAssignees !== undefined) {
       await prisma.issueAssignee.updateMany({where: {issueId: issue_id}, data: {deletedAt: new Date()}});
-      if (b.assignees.length) {
+      if (newAssignees.length) {
         await prisma.issueAssignee.createMany({
-          data: b.assignees.map((uid: string) => ({issueId: issue_id, assigneeId: uid, workspaceId: ws.id, projectId: project_id})),
+          data: newAssignees.map((uid: string) => ({issueId: issue_id, assigneeId: uid, workspaceId: ws.id, projectId: project_id})),
           skipDuplicates: true,
         });
       }
     }
-    if (b.labels !== undefined) {
+    if (newLabels !== undefined) {
       await prisma.issueLabel.updateMany({where: {issueId: issue_id}, data: {deletedAt: new Date()}});
-      if (b.labels.length) {
+      if (newLabels.length) {
         await prisma.issueLabel.createMany({
-          data: b.labels.map((lid: string) => ({issueId: issue_id, labelId: lid, workspaceId: ws.id, projectId: project_id})),
+          data: newLabels.map((lid: string) => ({issueId: issue_id, labelId: lid, workspaceId: ws.id, projectId: project_id})),
           skipDuplicates: true,
         });
       }
@@ -331,10 +340,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
     // SLA (C): recompute the auto due date when labels/priority change and the
     // caller did not explicitly set target_date.
-    if (b.target_date === undefined && (b.labels !== undefined || b.priority !== undefined) && before) {
+    if (b.target_date === undefined && (newLabels !== undefined || b.priority !== undefined) && before) {
       const labelIds: string[] =
-        b.labels !== undefined
-          ? b.labels
+        newLabels !== undefined
+          ? newLabels
           : (await prisma.issueLabel.findMany({where: {issueId: issue_id, deletedAt: null}, select: {labelId: true}})).map((l) => l.labelId);
       const auto = await computeTargetDate(labelIds, b.priority ?? before.priority, before.createdAt ?? new Date());
       if (auto) await prisma.issue.update({where: {id: issue_id}, data: {targetDate: auto}});
@@ -375,8 +384,8 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         const c = diffChange("parent", before.parentId, b.parent_id, "updated the parent");
         if (c) changes.push(c);
       }
-      if (b.assignees !== undefined) changes.push({field: "assignees", comment: "updated the assignees"});
-      if (b.labels !== undefined) changes.push({field: "labels", comment: "updated the labels"});
+      if (newAssignees !== undefined) changes.push({field: "assignees", comment: "updated the assignees"});
+      if (newLabels !== undefined) changes.push({field: "labels", comment: "updated the labels"});
       await recordActivities({issueId: issue_id, workspaceId: ws.id, projectId: project_id, actorId: user.id}, changes);
 
       // H4: when completed/cancelled, replicate comments+activities to linked intakes

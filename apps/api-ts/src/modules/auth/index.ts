@@ -143,9 +143,13 @@ export const sessionAuthModule = new Elysia()
   // ── Sign-in / sign-up / sign-out ─────────────────────────────────────────────
   .post("/auth/sign-in/", async ({ body, set }) => signIn(body, set))
   .post("/auth/sign-up/", async ({ body, set }) => signUp(body, set))
+  // The web app logs out by submitting a browser form to this endpoint, so we
+  // must clear the cookie AND redirect (302) to the app root — a 204 would leave
+  // the user on a blank page, still "logged in" client-side.
   .post("/auth/sign-out/", ({ set }) => {
     set.headers["Set-Cookie"] = clearCookieHeader();
-    set.status = 204;
+    set.headers["Location"] = "/";
+    set.status = 302;
     return null;
   })
 
@@ -154,12 +158,14 @@ export const sessionAuthModule = new Elysia()
   .post("/auth/spaces/sign-up/", async ({ body, set }) => signUp(body, set))
   .post("/auth/spaces/sign-out/", ({ set }) => {
     set.headers["Set-Cookie"] = clearCookieHeader();
-    set.status = 204;
+    set.headers["Location"] = "/";
+    set.status = 302;
     return null;
   })
 
-  // ── CSRF token (not needed for JWT but frontend may call it) ─────────────────
-  .get("/auth/get-csrf-token/", () => ({ csrf_token: "" }))
+  // ── CSRF token (not needed for JWT, but the web app refuses to submit the
+  // sign-out form when it's empty, so return a non-empty opaque token) ─────────
+  .get("/auth/get-csrf-token/", () => ({ csrf_token: crypto.randomUUID().replace(/-/g, "") }))
 
   // ── Token refresh ────────────────────────────────────────────────────────────
   .post("/auth/token/refresh/", async ({ body, headers, set }) => {
