@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, type ComponentType } from "react";
-import { initializeSDK } from "@qualitysistemas/widgets";
+import { initializeSDK } from "@mateusseiboth/widgets-aviao";
 import { widgetRegistry } from "@/services/widget-registry.service";
 
 interface DynamicWidgetProps {

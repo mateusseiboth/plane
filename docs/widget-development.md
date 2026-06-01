@@ -126,13 +126,13 @@ The host platform injects `window.WidgetSDK` before your bundle executes.
 If you are using the npm package:
 
 ```bash
-npm install @qualitysistemas/widgets
+npm install @mateusseiboth/widgets-aviao
 ```
 
 Then use React hooks:
 
 ```tsx
-import { useWorkerItems, useStats } from "@qualitysistemas/widgets";
+import { useWorkerItems, useStats } from "@mateusseiboth/widgets-aviao";
 
 export default function MyWidget({ entityId }: { entityId?: string }) {
   const { data, loading, error } = useWorkerItems({ entity_id: entityId, limit: 10 });
@@ -154,7 +154,7 @@ Or use `window.WidgetSDK` directly (no package needed):
 
 ```tsx
 declare const window: Window & {
-  WidgetSDK: import("@qualitysistemas/widgets").WidgetSDKInstance;
+  WidgetSDK: import("@mateusseiboth/widgets-aviao").WidgetSDKInstance;
 };
 
 export default function MyWidget() {

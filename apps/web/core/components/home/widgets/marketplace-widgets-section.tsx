@@ -119,7 +119,7 @@ function WidgetDevGuideModal({ onClose }: { onClose: () => void }) {
             O arquivo <code className="rounded bg-custom-background-80 px-1">src/index.tsx</code> deve exportar um
             componente React como <strong>default export</strong>:
           </p>
-          <Code>{`import { useWorkerItems } from "@qualitysistemas/widgets";
+          <Code>{`import { useWorkerItems } from "@mateusseiboth/widgets-aviao";
 
 export default function MeuWidget({ entityId }) {
   const { data, loading } = useWorkerItems({ entity_id: entityId });
@@ -176,7 +176,7 @@ zip widget.zip manifest.json -j dist/widget.js`}</Code>
         <div className="rounded-lg border border-custom-primary-100/30 bg-custom-primary-100/5 p-4">
           <p className="font-medium text-custom-primary-100">SDK disponível</p>
           <p className="mt-1">
-            Instale <code className="rounded bg-custom-background-80 px-1">@qualitysistemas/widgets</code> para acessar
+            Instale <code className="rounded bg-custom-background-80 px-1">@mateusseiboth/widgets-aviao</code> para acessar
             hooks React (<code className="rounded bg-custom-background-80 px-1">useWorkerItems</code>,{" "}
             <code className="rounded bg-custom-background-80 px-1">useStats</code>, etc.) e{" "}
             <code className="rounded bg-custom-background-80 px-1">window.WidgetSDK</code> no runtime.

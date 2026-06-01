@@ -7,7 +7,7 @@
     "pack": "zip widget.zip manifest.json -j dist/widget.js"
   },
   "dependencies": {
-    "@qualitysistemas/widgets": "^1.0.0",
+    "@mateusseiboth/widgets-aviao": "^1.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useWorkerItems, useStats, type WorkerItem } from "@qualitysistemas/widgets";
+import { useWorkerItems, useStats, type WorkerItem } from "@mateusseiboth/widgets-aviao";
 
 interface Props {
   entityId?: string;

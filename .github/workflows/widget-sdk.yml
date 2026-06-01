@@ -1,0 +1,102 @@
+name: Build & publish widget SDK
+
+# Builds @mateusseiboth/widgets-aviao on every push that touches the package and
+# "stores" it three ways so it can be installed straight from this repository,
+# without relying on the public npm registry:
+#   1. a build artifact attached to the workflow run (always),
+#   2. a publish to GitHub Packages (npm.pkg.github.com),
+#   3. a tarball attached to a rolling "widget-sdk-latest" pre-release.
+#
+# Install (consumers) — pick one:
+#   # GitHub Packages (needs a GitHub token with read:packages in your ~/.npmrc):
+#   echo "@mateusseiboth:registry=https://npm.pkg.github.com" >> .npmrc
+#   npm install @mateusseiboth/widgets-aviao
+#
+#   # …or tokenless, straight from the release tarball:
+#   npm install https://github.com/mateusseiboth/plane/releases/download/widget-sdk-latest/widgets-aviao.tgz
+
+on:
+  push:
+    branches: [preview]
+    paths:
+      - "packages/widget-sdk/**"
+      - ".github/workflows/widget-sdk.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: widget-sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # create/update the rolling pre-release
+  packages: write # publish to GitHub Packages
+
+jobs:
+  build-publish:
+    name: build & publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/widget-sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: blob:none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@mateusseiboth"
+
+      - name: Enable Corepack and pnpm
+        run: corepack enable pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: . # install the whole workspace so peer deps resolve
+
+      - name: Build
+        run: pnpm --filter @mateusseiboth/widgets-aviao build
+        working-directory: .
+
+      - name: Stamp a unique CI version
+        # Keeps the base SemVer but makes every commit publish a unique,
+        # installable pre-release (avoids "version already exists" failures).
+        run: npm version "1.0.0-ci.${{ github.run_number }}" --no-git-tag-version
+
+      - name: Pack tarball
+        run: |
+          npm pack
+          # Normalise the filename so the release URL is stable.
+          mv mateusseiboth-widgets-aviao-*.tgz widgets-aviao.tgz
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: widgets-aviao-${{ github.run_number }}
+          path: |
+            packages/widget-sdk/widgets-aviao.tgz
+            packages/widget-sdk/dist/**
+
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true # never block the run on a registry hiccup
+
+      - name: Update rolling "widget-sdk-latest" pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: widget-sdk-latest
+          name: Widget SDK (latest build)
+          prerelease: true
+          files: packages/widget-sdk/widgets-aviao.tgz
+          body: |
+            Automated build of `@mateusseiboth/widgets-aviao` from commit ${{ github.sha }}.
+            Install tokenless: `npm install https://github.com/mateusseiboth/plane/releases/download/widget-sdk-latest/widgets-aviao.tgz`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -101,7 +101,7 @@ export default function WidgetDocsPage() {
               Instale o pacote do SDK para acessar hooks React e o runtime global{" "}
               <Pill>window.WidgetSDK</Pill>:
             </p>
-            <Code>{`npm install @qualitysistemas/widgets`}</Code>
+            <Code>{`npm install @mateusseiboth/widgets-aviao`}</Code>
             <p>Hooks disponíveis (todos respeitam as permissões do manifest):</p>
             <ul className="ml-5 list-disc">
               <li>
@@ -144,7 +144,7 @@ export default function WidgetDocsPage() {
               3. Exporte um componente React como <strong>default export</strong>. Ele recebe props de contexto (por
               exemplo <Pill>entityId</Pill>):
             </p>
-            <Code>{`import { useWorkerItems } from "@qualitysistemas/widgets";
+            <Code>{`import { useWorkerItems } from "@mateusseiboth/widgets-aviao";
 
 export default function MeuWidget({ entityId }) {
   const { data, loading } = useWorkerItems({ entity_id: entityId });

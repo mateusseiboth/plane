@@ -1,12 +1,18 @@
 {
-  "name": "@qualitysistemas/widgets",
+  "name": "@mateusseiboth/widgets-aviao",
   "version": "1.0.0",
-  "description": "Official SDK for Plane Widget Marketplace",
+  "description": "Official SDK for the Avião Widget Marketplace",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mateusseiboth/plane.git",
+    "directory": "packages/widget-sdk"
+  },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "src/index.ts",
   "publishConfig": {
-    "@mateus.seiboth:registry": "http://srvgit.qualitysistemas.local/api/v4/projects/228/packages/npm/"
+    "@mateusseiboth:registry": "https://npm.pkg.github.com",
+    "access": "public"
   },
   "exports": {
     ".": {

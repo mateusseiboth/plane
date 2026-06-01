@@ -1,5 +1,5 @@
 import React from "react";
-import { useStats, useCurrentUser } from "@qualitysistemas/widgets";
+import { useStats, useCurrentUser } from "@mateusseiboth/widgets-aviao";
 
 interface Props {
   workspaceSlug?: string;
