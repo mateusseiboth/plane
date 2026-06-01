@@ -315,6 +315,14 @@ export const coreRoutes: RouteConfigEntry[] = [
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/entities/page.tsx"
           ),
           route(
+            ":workspaceSlug/settings/roles",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/roles/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/settings/sla",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/sla/page.tsx"
+          ),
+          route(
             ":workspaceSlug/settings/ai",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/ai/page.tsx"
           ),

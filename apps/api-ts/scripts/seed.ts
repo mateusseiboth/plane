@@ -10,6 +10,7 @@ import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@prisma/client";
 import {Pool} from "pg";
 import {seedWorkflowRoles} from "../src/utils/permissions";
+import {ensureProjectDefaults} from "../src/utils/project-defaults";
 
 const pool = new Pool({connectionString: process.env.DATABASE_URL});
 const prisma = new PrismaClient({adapter: new PrismaPg(pool)});
@@ -125,6 +126,15 @@ async function main() {
   // 3b. Seed configurable roles (system roles + default visibility/transitions)
   const roleIds = await seedWorkflowRoles(prisma, workspace.id);
   log(`✅  Workflow roles seeded (${Object.keys(roleIds).length} roles)`);
+
+  // 3c. Normalize every existing project: pt-BR states, intake enabled, default labels.
+  // Runs without MySQL, so the seeder (executed on every start) keeps projects correct.
+  const norm = await ensureProjectDefaults(prisma, workspace.id);
+  log(
+    `✅  Projects normalized: ${norm.projects} project(s), ` +
+      `${norm.statesRenamed} state(s) renamed, ${norm.statesCreated} created, ` +
+      `${norm.intakesCreated} intake(s), ${norm.labelsCreated} label(s)`
+  );
 
   // Projects are created by the SAC migration script (one per sistema).
   // Seed does not create projects — run scripts/migrate-sac.ts after seeding.

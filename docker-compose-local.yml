@@ -55,7 +55,7 @@ services:
     restart: "no"
     networks:
       - dev_env
-    command: ["bunx", "prisma", "db", "push"]
+    command: ["bunx", "prisma", "migrate", "deploy"]
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
     depends_on:

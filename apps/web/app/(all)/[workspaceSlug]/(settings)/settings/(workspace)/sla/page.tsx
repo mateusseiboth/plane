@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { Clock } from "lucide-react";

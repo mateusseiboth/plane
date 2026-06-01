@@ -101,7 +101,7 @@ services:
       AWS_S3_BUCKET_NAME: uploads
     command: >
       sh -c "
-        bunx prisma db push --url $$DATABASE_URL --accept-data-loss &&
+        bunx prisma migrate deploy &&
         bun run src/index.ts
       "
     depends_on:
@@ -129,7 +129,7 @@ services:
       JWT_SECRET: plane-jwt-secret-change-in-production-please
     command: >
       sh -c "
-        bunx prisma db push --url $$DATABASE_URL --accept-data-loss &&
+        bunx prisma migrate deploy &&
         bunx prisma generate &&
         bun run scripts/seed.ts
       "
