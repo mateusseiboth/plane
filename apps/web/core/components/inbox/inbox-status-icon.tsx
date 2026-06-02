@@ -36,6 +36,11 @@ export const ICON_PROPERTIES = {
     textColor: (snoozeDatePassed: boolean = false) => (snoozeDatePassed ? "" : "text-secondary"),
     bgColor: (snoozeDatePassed: boolean = false) => (snoozeDatePassed ? "" : "bg-layer-3"),
   },
+  [EInboxIssueStatus.FULFILLED]: {
+    icon: CheckCircle2,
+    textColor: (snoozeDatePassed: boolean = false) => (snoozeDatePassed ? "" : "text-success-primary"),
+    bgColor: (snoozeDatePassed: boolean = false) => (snoozeDatePassed ? "" : "bg-success-subtle"),
+  },
 };
 export function InboxStatusIcon({
   type,

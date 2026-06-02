@@ -39,6 +39,7 @@ import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 import { pluginRegistryModule } from "@modules/plugin-registry";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
 import { rolesModule } from "@modules/roles";
+import { realtimeModule } from "@modules/realtime";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -179,6 +180,9 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
   // after them, which would make /roles/ demand an X-Widget-Id header.
   .use(rolesModule)
+  // Mounted before the SDK gateways so their global widget-auth hook doesn't leak
+  // onto the SSE stream (see the rolesModule note above).
+  .use(realtimeModule)
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)

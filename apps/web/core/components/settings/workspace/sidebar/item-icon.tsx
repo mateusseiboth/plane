@@ -5,7 +5,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { ArrowUpToLine, Bot, Building, Building2, Clock, CreditCard, Link2, Shield, Users, Webhook } from "lucide-react";
+import { ArrowUpToLine, Bot, Building, Building2, Clock, CreditCard, Database, Link2, Shield, Users, Webhook } from "lucide-react";
 // plane imports
 import type { ISvgIcons } from "@plane/propel/icons";
 import type { TWorkspaceSettingsTabs } from "@plane/types";
@@ -21,4 +21,5 @@ export const WORKSPACE_SETTINGS_ICONS: Record<TWorkspaceSettingsTabs, LucideIcon
   entities: Building2,
   ai: Bot,
   "integrations-custom": Link2,
+  storage: Database,
 };

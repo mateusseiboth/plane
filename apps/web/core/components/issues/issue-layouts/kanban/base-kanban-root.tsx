@@ -18,6 +18,7 @@ import { EIssueServiceType, EIssueLayoutTypes } from "@plane/types";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useKanbanView } from "@/hooks/store/use-kanban-view";
+import { useRealtimeRefetch } from "@/hooks/use-realtime";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useGroupIssuesDragNDrop } from "@/hooks/use-group-dragndrop";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
@@ -98,6 +99,14 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
   useEffect(() => {
     fetchIssues("init-loader", { canGroup: true, perPageCount: sub_group_by ? 10 : 30 }, viewId);
   }, [fetchIssues, storeType, group_by, sub_group_by, viewId]);
+
+  // Live-update the board when anyone creates/moves/edits a work item or intake.
+  useRealtimeRefetch(
+    (e) =>
+      (e.entity === "issue" || e.entity === "intake") &&
+      (!e.project_id || !projectId || e.project_id === projectId.toString()),
+    () => fetchIssues("mutation", { canGroup: true, perPageCount: sub_group_by ? 10 : 30 }, viewId)
+  );
 
   const fetchMoreIssues = useCallback(
     (groupId?: string, subgroupId?: string) => {

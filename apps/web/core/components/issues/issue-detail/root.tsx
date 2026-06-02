@@ -96,10 +96,13 @@ export const IssueDetailRoot = observer(function IssueDetailRoot(props: TIssueDe
           await updateIssue(workspaceSlug, projectId, issueId, data);
         } catch (error) {
           console.log("Error in updating issue:", error);
+          // Prefer the backend reason (e.g. a blocked state transition) over the
+          // generic "failed to update" message.
+          const detail = (error as { detail?: string; error?: string })?.detail ?? (error as { error?: string })?.error;
           setToast({
             title: t("common.error.label"),
             type: TOAST_TYPE.ERROR,
-            message: t("entity.update.failed", { entity: t("issue.label") }),
+            message: detail ?? t("entity.update.failed", { entity: t("issue.label") }),
           });
         }
       },

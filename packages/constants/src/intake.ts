@@ -43,6 +43,12 @@ export const INBOX_STATUS: {
     status: EInboxIssueStatus.DUPLICATE,
     i18n_description: () => `inbox_issue.status.duplicate.description`,
   },
+  {
+    key: "fulfilled",
+    i18n_title: "inbox_issue.status.fulfilled.title",
+    status: EInboxIssueStatus.FULFILLED,
+    i18n_description: () => `inbox_issue.status.fulfilled.description`,
+  },
 ];
 
 export const INBOX_ISSUE_ORDER_BY_OPTIONS = [

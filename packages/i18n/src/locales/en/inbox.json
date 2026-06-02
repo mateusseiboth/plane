@@ -20,6 +20,10 @@
       "duplicate": {
         "title": "Duplicate",
         "description": "Duplicate"
+      },
+      "fulfilled": {
+        "title": "Fulfilled",
+        "description": "Fulfilled"
       }
     },
     "modals": {

@@ -173,6 +173,40 @@ export class WorkspaceService extends APIService {
       });
   }
 
+  async getStorageConfig(workspaceSlug: string): Promise<{
+    provider: "s3" | "local";
+    endpoint: string;
+    region: string;
+    bucket: string;
+    access_key: string;
+    has_secret_key: boolean;
+    is_configured: boolean;
+  }> {
+    return this.get(`/api/workspaces/${workspaceSlug}/storage-config/`)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async updateStorageConfig(
+    workspaceSlug: string,
+    data: {
+      provider: "s3" | "local";
+      endpoint?: string;
+      region?: string;
+      bucket?: string;
+      access_key?: string;
+      secret_key?: string;
+    }
+  ): Promise<{ detail: string; provider: string; is_configured: boolean }> {
+    return this.patch(`/api/workspaces/${workspaceSlug}/storage-config/`, data)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async workspaceInvitations(workspaceSlug: string): Promise<IWorkspaceMemberInvitation[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/invitations/`)
       .then((response) => response?.data)

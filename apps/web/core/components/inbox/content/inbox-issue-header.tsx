@@ -33,6 +33,7 @@ import { NameDescriptionUpdateStatus } from "@/components/issues/issue-update-st
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
+import { useProjectState } from "@/hooks/store/use-project-state";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 // store
@@ -105,7 +106,23 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
     workspaceSlug,
     projectId
   );
-  const isAcceptedOrDeclined = inboxIssue?.status ? [-1, 1, 2].includes(inboxIssue.status) : undefined;
+  const isAcceptedOrDeclined = inboxIssue?.status ? [-1, 1, 2, 3].includes(inboxIssue.status) : undefined;
+  // ── "Atendido" / "Devolver para Em Teste" (accepted chamados only) ──────────
+  const { getStateById, getProjectStates } = useProjectState();
+  const isCreator = issue?.created_by === currentUser?.id;
+  const isManager = allowPermissions(
+    [EUserPermissions.ADMIN, EUserPermissions.GESTOR_PROJETO],
+    EUserPermissionsLevel.PROJECT,
+    workspaceSlug,
+    projectId
+  );
+  const isAccepted = inboxIssue?.status === EInboxIssueStatus.ACCEPTED;
+  const isWorkItemDone = getStateById(issue?.state_id)?.group === "completed";
+  // The creator (cliente/atendente) or a manager can close or return an accepted
+  // chamado; "atendido" only once the work item is Concluído.
+  const canManageAcceptedIntake = isAccepted && (isCreator || isManager);
+  const canMarkFulfilled = canManageAcceptedIntake && isWorkItemDone;
+  const emTesteStateId = getProjectStates(projectId)?.find((s) => s.name === "Em Teste")?.id;
   // days left for snooze
   const numberOfDaysLeft = findHowManyDaysLeft(inboxIssue?.snoozed_till);
 
@@ -144,6 +161,32 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
     await inboxIssue?.updateInboxIssueStatus(EInboxIssueStatus.DECLINED);
     setDeclineIssueModal(false);
     handleRedirection(nextOrPreviousIssueId);
+  };
+
+  // "Atendido": closes the accepted chamado (moves it to the Closed tab).
+  const handleMarkFulfilled = async () => {
+    try {
+      await inboxIssue?.updateInboxIssueStatus(EInboxIssueStatus.FULFILLED);
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Chamado atendido", message: "O chamado foi marcado como atendido." });
+    } catch (err: unknown) {
+      const error = err as { detail?: string };
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: error?.detail || "Não foi possível marcar como atendido." });
+    }
+  };
+
+  // "Devolver para Em Teste": sends the work item back for rework; intake stays open.
+  const handleReturnToTest = async () => {
+    if (!emTesteStateId) {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: 'Estado "Em Teste" não encontrado neste projeto.' });
+      return;
+    }
+    try {
+      await inboxIssue?.updateIssue({ state_id: emTesteStateId });
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Devolvido", message: "Work item devolvido para Em Teste." });
+    } catch (err: unknown) {
+      const error = err as { detail?: string };
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: error?.detail || "Não foi possível devolver para Em Teste." });
+    }
   };
 
   const handleInboxIssueSnooze = async (date: Date) => {
@@ -357,6 +400,20 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
                 <CloseCircleFilledIcon className="size-4 shrink-0 text-danger-secondary" />
                 {t("inbox_issue.actions.decline")}
               </Button>
+            )}
+
+            {canManageAcceptedIntake && (
+              <div className="flex items-center gap-2">
+                {canMarkFulfilled && (
+                  <Button variant="primary" size="lg" onClick={handleMarkFulfilled}>
+                    <CheckCircleFilledIcon className="size-4 shrink-0" />
+                    Marcar como atendido
+                  </Button>
+                )}
+                <Button variant="secondary" size="lg" onClick={handleReturnToTest}>
+                  Devolver para Em Teste
+                </Button>
+              </div>
             )}
 
             {isAcceptedOrDeclined ? (

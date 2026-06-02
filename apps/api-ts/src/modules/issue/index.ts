@@ -7,6 +7,7 @@ import {diffChange, recordActivities, type ActivityChange} from "@utils/activity
 import {applyIssueFilters, normalizeFilters} from "@utils/filters";
 import {canTransition, resolveRole, visibleStateIds} from "@utils/permission-checks";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
+import {publishRealtime} from "@utils/realtime";
 import {nextSequenceId} from "@utils/sequence";
 import {computeTargetDate} from "@utils/sla";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
@@ -256,6 +257,8 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       [{verb: "created", field: "issue", comment: "created the work item"}],
     );
 
+    publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, actor: user.id});
+
     set.status = 201;
     return serializeIssue(createdIssue);
   })
@@ -424,6 +427,8 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       }
     }
 
+    publishRealtime(ws.id, {entity: "issue", action: "update", project_id, id: issue_id, actor: user.id});
+
     return serializeIssue(await prisma.issue.findFirstOrThrow({where: {id: issue_id}, include: ISSUE_INCLUDE}));
   })
 
@@ -435,6 +440,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       return {detail: "Permission denied."};
     }
     await prisma.issue.update({where: {id: issue_id}, data: {deletedAt: new Date()}});
+    publishRealtime(ws.id, {entity: "issue", action: "delete", project_id, id: issue_id, actor: user.id});
     set.status = 204;
     return null;
   })
@@ -485,6 +491,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       },
       include: COMMENT_INCLUDE,
     });
+    publishRealtime(ws.id, {entity: "comment", action: "create", project_id, issue_id, id: comment.id, actor: user.id});
     set.status = 201;
     return serializeComment(comment);
   })
@@ -506,6 +513,14 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     }
     if (b.access !== undefined) data.access = b.access;
     const updated = await prisma.issueComment.update({where: {id: comment_id}, data, include: COMMENT_INCLUDE});
+    publishRealtime((updated as any).workspaceId, {
+      entity: "comment",
+      action: "update",
+      project_id: (updated as any).projectId,
+      issue_id,
+      id: comment_id,
+      actor: user.id,
+    });
     return serializeComment(updated);
   })
 
@@ -525,8 +540,16 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     }));
   })
 
-  .delete("/:issue_id/comments/:comment_id/", async ({params: {comment_id}, set}) => {
-    await prisma.issueComment.update({where: {id: comment_id}, data: {deletedAt: new Date()}});
+  .delete("/:issue_id/comments/:comment_id/", async ({params: {issue_id, comment_id}, user, set}) => {
+    const deleted = await prisma.issueComment.update({where: {id: comment_id}, data: {deletedAt: new Date()}});
+    publishRealtime((deleted as any).workspaceId, {
+      entity: "comment",
+      action: "delete",
+      project_id: (deleted as any).projectId,
+      issue_id,
+      id: comment_id,
+      actor: user.id,
+    });
     set.status = 204;
     return null;
   })

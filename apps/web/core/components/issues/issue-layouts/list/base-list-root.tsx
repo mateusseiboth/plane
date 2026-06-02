@@ -16,6 +16,7 @@ import { EIssueLayoutTypes } from "@plane/types";
 // constants
 // hooks
 import { useIssues } from "@/hooks/store/use-issues";
+import { useRealtimeRefetch } from "@/hooks/use-realtime";
 import { useUserPermissions } from "@/hooks/store/user";
 // hooks
 import { useGroupIssuesDragNDrop } from "@/hooks/use-group-dragndrop";
@@ -89,6 +90,14 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
   useEffect(() => {
     fetchIssues("init-loader", { canGroup: true, perPageCount: group_by ? 50 : 100 }, viewId);
   }, [fetchIssues, storeType, group_by, viewId]);
+
+  // Live-update the list when anyone creates/moves/edits a work item or intake.
+  useRealtimeRefetch(
+    (e) =>
+      (e.entity === "issue" || e.entity === "intake") &&
+      (!e.project_id || !projectId || e.project_id === projectId.toString()),
+    () => fetchIssues("mutation", { canGroup: true, perPageCount: group_by ? 50 : 100 }, viewId)
+  );
 
   const groupedIssueIds = issues?.groupedIssueIds as TGroupedIssues | undefined;
   // auth

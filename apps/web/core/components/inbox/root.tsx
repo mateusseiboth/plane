@@ -19,6 +19,7 @@ import { InboxSidebar } from "@/components/inbox/sidebar";
 import { InboxLayoutLoader } from "@/components/ui/loader/layouts/project-inbox/inbox-layout-loader";
 // hooks
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
+import { useRealtimeRefetch } from "@/hooks/use-realtime";
 
 type TInboxIssueRoot = {
   workspaceSlug: string;
@@ -56,6 +57,22 @@ export const InboxIssueRoot = observer(function InboxIssueRoot(props: TInboxIssu
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inboxAccessible, workspaceSlug, projectId]);
+
+  // Live-update the intake list when anyone opens/accepts/declines a chamado.
+  useRealtimeRefetch(
+    (e) =>
+      (e.entity === "intake" || e.entity === "issue") &&
+      (!e.project_id || !projectId || e.project_id === projectId?.toString()),
+    () => {
+      if (!inboxAccessible || !workspaceSlug || !projectId) return;
+      fetchInboxIssues(
+        workspaceSlug.toString(),
+        projectId.toString(),
+        undefined,
+        currentTab || navigationTab || EInboxIssueCurrentTab.OPEN
+      );
+    }
+  );
 
   // loader
   if (loader === "init-loading")

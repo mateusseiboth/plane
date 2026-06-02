@@ -152,6 +152,7 @@ export const premiumModule = new Elysia()
     if (b.status !== undefined) data.status = b.status;
     if (b.snooze_till !== undefined) data.snoozeTill = b.snooze_till ? new Date(b.snooze_till) : null;
     if (b.duplicate_of !== undefined) data.duplicateOf = b.duplicate_of;
+
     return prisma.intakeIssue.update({ where: { id: issue_id }, data, include: { issue: true } });
   })
 

@@ -512,6 +512,10 @@
         "title": "Custom Integrations",
         "heading": "Custom Integrations",
         "description": "Create custom webhook integrations with JavaScript logic for advanced automation."
+      },
+      "storage": {
+        "title": "Storage",
+        "heading": "Storage"
       }
     },
     "empty_state": {

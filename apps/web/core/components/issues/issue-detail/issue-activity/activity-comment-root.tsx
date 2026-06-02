@@ -13,6 +13,7 @@ import type { TCommentsOperations } from "@plane/types";
 import { CommentCard } from "@/components/comments/card/root";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
+import { useRealtimeRefetch } from "@/hooks/use-realtime";
 // plane web components
 import { IssueAdditionalPropertiesActivity } from "@/plane-web/components/issues/issue-details/issue-properties-activity";
 import { IssueActivityWorklog } from "@/plane-web/components/issues/worklog/activity/root";
@@ -46,11 +47,21 @@ export const IssueActivityCommentRoot = observer(function IssueActivityCommentRo
   } = props;
   // store hooks
   const {
-    activity: { getActivityAndCommentsByIssueId },
-    comment: { getCommentById },
+    activity: { getActivityAndCommentsByIssueId, fetchActivities },
+    comment: { getCommentById, fetchComments },
   } = useIssueDetail();
   // derived values
   const activityAndComments = getActivityAndCommentsByIssueId(issueId, sortOrder);
+
+  // Live-update activity + comments when this work item changes for anyone.
+  useRealtimeRefetch(
+    (e) => (e.entity === "comment" || e.entity === "issue") && (e.issue_id === issueId || e.id === issueId),
+    () => {
+      if (!workspaceSlug || !projectId || !issueId) return;
+      fetchActivities(workspaceSlug, projectId, issueId).catch(() => {});
+      fetchComments(workspaceSlug, projectId, issueId).catch(() => {});
+    }
+  );
 
   if (!activityAndComments) return <IssueActivityLoader />;
 

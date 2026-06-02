@@ -2,6 +2,7 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
+import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import { notifyQualityOfIntake } from "@utils/notifications";
@@ -561,6 +562,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     });
     // D3: notify Quality-team members of the project that a new intake was opened
     await notifyQualityOfIntake({workspaceId: ws.id, projectId: project_id, issueId: issue.id, actorId: user.id, issueName: issue.name});
+    publishRealtime(ws.id, {entity: "intake", action: "create", project_id, id: issue.id, issue_id: issue.id, actor: user.id});
+    publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, actor: user.id});
     set.status = 201;
     return {
       id: issue.id, status: -2, snoozed_till: null, duplicate_to: undefined,
@@ -597,10 +600,31 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     };
   })
 
-  .patch("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, body, user}) => {
+  .patch("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    const {member: callerMember} = await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
+
+    // FULFILLED (3) = "atendido": closes the intake. Only the chamado's creator or a
+    // project admin/gestor (role ≥ 18) may set it, and only once the work item is
+    // actually completed. Accepted (1) intakes stay in the OPEN tab until then.
+    if (b.status === 3) {
+      const issueRow = await prisma.issue.findFirst({
+        where: {id: inbox_id, deletedAt: null},
+        include: {state: {select: {group: true}}},
+      });
+      const isCreator = issueRow?.createdById === user.id;
+      const isManager = (callerMember?.role ?? 0) >= 18;
+      if (!isCreator && !isManager) {
+        set.status = 403;
+        return {detail: "Apenas o criador do chamado ou um gestor pode marcar como atendido."};
+      }
+      if (issueRow?.state?.group !== "completed") {
+        set.status = 400;
+        return {detail: "O work item precisa estar Concluído antes de marcar o chamado como atendido."};
+      }
+    }
+
     const issueData: any = {};
     const issuePatch = b.issue ?? {};
     if (issuePatch.name !== undefined) issueData.name = issuePatch.name;
@@ -613,10 +637,23 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     if (issuePatch.label_ids !== undefined) issueData._labelIds = issuePatch.label_ids; // handled after update
     if (issuePatch.assignee_ids !== undefined) issueData._assigneeIds = issuePatch.assignee_ids; // handled after update
 
-    // Only ACCEPTED (status=1) moves the issue to default state; all others stay in triage
-    if (b.status === 1) {
-      const defaultState = await prisma.state.findFirst({where: {projectId: project_id, default: true, deletedAt: null}});
-      if (defaultState) issueData.stateId = defaultState.id;
+    // Intake decision drives the work item's state:
+    //   accepted (1)  → "Em Análise" (enters the active workflow)
+    //   declined (-1) → "Cancelado"
+    // Snoozed/duplicate and the default keep it in "Triagem".
+    if (b.status === 1 || b.status === -1) {
+      const targetName = b.status === 1 ? "Em Análise" : "Cancelado";
+      const targetState = await prisma.state.findFirst({
+        where: {projectId: project_id, name: targetName, deletedAt: null},
+        select: {id: true},
+      });
+      // Fall back to the project default only if the canonical state is missing.
+      const fallback =
+        b.status === 1
+          ? await prisma.state.findFirst({where: {projectId: project_id, default: true, deletedAt: null}, select: {id: true}})
+          : null;
+      const resolved = targetState ?? fallback;
+      if (resolved) issueData.stateId = resolved.id;
     }
 
     // Extract relation arrays before update (they can't go directly into prisma.update)
@@ -657,7 +694,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       }
     }
 
-    return {
+    const result = {
       id: issue!.id, status: ii?.status ?? b.status ?? -2,
       snoozed_till: ii?.snoozeTill ?? null,
       duplicate_to: ii?.duplicateOf ?? undefined,
@@ -669,6 +706,9 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         priority: (issue as any).priority,
       },
     };
+    publishRealtime(ws.id, {entity: "intake", action: "update", project_id, id: inbox_id, issue_id: inbox_id, actor: user.id});
+    publishRealtime(ws.id, {entity: "issue", action: "update", project_id, id: inbox_id, actor: user.id});
+    return result;
   })
 
   .delete("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, user, set}) => {
@@ -677,6 +717,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await prisma.issue.update({where: {id: inbox_id}, data: {deletedAt: new Date()}});
     const ii = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}});
     if (ii) await prisma.intakeIssue.update({where: {id: ii.id}, data: {deletedAt: new Date()}});
+    publishRealtime(ws.id, {entity: "intake", action: "delete", project_id, id: inbox_id, issue_id: inbox_id, actor: user.id});
+    publishRealtime(ws.id, {entity: "issue", action: "delete", project_id, id: inbox_id, actor: user.id});
     set.status = 204;
     return null;
   })

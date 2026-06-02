@@ -512,6 +512,10 @@
         "title": "Integrações Customizadas",
         "heading": "Integrações Customizadas",
         "description": "Crie integrações de webhook personalizadas com lógica JavaScript para automação avançada."
+      },
+      "storage": {
+        "title": "Armazenamento",
+        "heading": "Armazenamento"
       }
     },
     "empty_state": {

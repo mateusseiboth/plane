@@ -20,6 +20,7 @@ import {GanttChartRoot} from "@/components/gantt-chart/root";
 import {IssueGanttSidebar} from "@/components/gantt-chart/sidebar/issues/sidebar";
 // hooks
 import {useIssues} from "@/hooks/store/use-issues";
+import {useRealtimeRefetch} from "@/hooks/use-realtime";
 import {useUserPermissions} from "@/hooks/store/user";
 import {useIssueStoreType} from "@/hooks/use-issue-layout-store";
 import {useIssuesActions} from "@/hooks/use-issues-actions";
@@ -67,6 +68,14 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
   useEffect(() => {
     fetchIssues("init-loader", {canGroup: false, perPageCount: 100}, viewId);
   }, [fetchIssues, storeType, viewId]);
+
+  // Live-update the timeline when anyone creates/moves/edits a work item or intake.
+  useRealtimeRefetch(
+    (e) =>
+      (e.entity === "issue" || e.entity === "intake") &&
+      (!e.project_id || !projectId || e.project_id === projectId.toString()),
+    () => fetchIssues("mutation", {canGroup: false, perPageCount: 100}, viewId)
+  );
 
   useEffect(() => {
     initGantt();

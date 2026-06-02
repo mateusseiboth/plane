@@ -3,12 +3,7 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
-import { writeFile, mkdir, readFile } from "fs/promises";
-import { existsSync, mkdirSync } from "fs";
-import path from "path";
-
-const MEDIA_ROOT = process.env.MEDIA_ROOT || path.join(process.cwd(), "media");
-if (!existsSync(MEDIA_ROOT)) { try { mkdirSync(MEDIA_ROOT, { recursive: true }); } catch {} }
+import { saveAsset, serveAsset, copyAsset } from "@utils/storage";
 
 const ENTITY_TYPE_MAP: Record<string, number> = {
   COMMENT_DESCRIPTION: 4, ISSUE_ATTACHMENT: 2, ISSUE_DESCRIPTION: 2,
@@ -16,18 +11,14 @@ const ENTITY_TYPE_MAP: Record<string, number> = {
   USER_AVATAR: 0, USER_COVER: 0, WORKSPACE_LOGO: 0,
 };
 
+// Files are stored in the configured S3 bucket when one is set up (workspace
+// settings → Storage), otherwise on local disk. See utils/storage.ts.
 async function saveFile(assetId: string, file: Blob) {
-  const filePath = path.join(MEDIA_ROOT, assetId);
-  await mkdir(path.dirname(filePath), {recursive: true});
-  await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
+  await saveAsset(assetId, file);
 }
 
 function serveFile(assetId: string, mimeType?: string | null) {
-  const filePath = path.join(MEDIA_ROOT, assetId);
-  if (!existsSync(filePath)) return null;
-  return readFile(filePath).then(buf =>
-    new Response(buf, {headers: {"Content-Type": mimeType ?? "application/octet-stream", "Cache-Control": "public, max-age=31536000"}})
-  );
+  return serveAsset(assetId, mimeType);
 }
 
 // Entity types enum: 0=workspace, 1=project, 2=issue, 3=page, 4=comment
@@ -232,11 +223,8 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
         attributes: original.attributes as any, isUploaded: original.isUploaded,
       },
     });
-    // Copy file on disk
-    const srcPath = path.join(MEDIA_ROOT, asset_id);
-    if (existsSync(srcPath)) {
-      await readFile(srcPath).then(buf => writeFile(path.join(MEDIA_ROOT, dup.id), buf)).catch(() => {});
-    }
+    // Copy the underlying file (S3 or local) to the new asset id.
+    await copyAsset(asset_id, dup.id).catch(() => {});
     return {[asset_id]: dup.id};
   })
 

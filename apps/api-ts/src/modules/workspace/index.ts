@@ -4,6 +4,7 @@ import {Prisma} from "@prisma/client";
 import {applyIssueFilters, normalizeFilters} from "@utils/filters";
 import {paginate} from "@utils/pagination";
 import {nextSequenceId} from "@utils/sequence";
+import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {COMMENT_FTS_DOC_C, ensureSearchIndexes, ISSUE_FTS_DOC_I, PT_FTS_CONFIG} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue} from "@utils/serialize";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
@@ -919,6 +920,73 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     });
     set.status = 204;
     return null;
+  })
+
+  // ── S3 storage configuration (instance-wide) ──────────────────────────────
+  // Stored on the Instance row (configurations.s3). The secret key is never
+  // returned — the GET only reports whether one is set.
+  .get("/:slug/storage-config/", async ({params: {slug}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const caller = await requireWorkspaceMember(ws.id, user.id);
+    if (caller.role < 20) {
+      set.status = 403;
+      return {detail: "Apenas administradores podem ver a configuração de armazenamento."};
+    }
+    const instance = await prisma.instance.findFirst({select: {configurations: true}});
+    const cfg = ((instance?.configurations as any)?.s3 ?? {}) as S3Config;
+    const isConfigured = Boolean(cfg.endpoint && cfg.bucket && cfg.access_key && cfg.secret_key);
+    return {
+      provider: isConfigured ? "s3" : "local",
+      endpoint: cfg.endpoint ?? "",
+      region: cfg.region ?? "",
+      bucket: cfg.bucket ?? "",
+      access_key: cfg.access_key ?? "",
+      has_secret_key: Boolean(cfg.secret_key),
+      is_configured: isConfigured,
+    };
+  })
+
+  .patch("/:slug/storage-config/", async ({params: {slug}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const caller = await requireWorkspaceMember(ws.id, user.id);
+    if (caller.role < 20) {
+      set.status = 403;
+      return {detail: "Apenas administradores podem alterar a configuração de armazenamento."};
+    }
+    const b = (body as any) ?? {};
+    const instance = await prisma.instance.findFirst();
+    if (!instance) {
+      set.status = 400;
+      return {detail: "Instância não configurada."};
+    }
+    const configurations = (instance.configurations as any) ?? {};
+    const current = (configurations.s3 ?? {}) as S3Config;
+
+    // Empty/omitted secret keeps the existing one (so the admin needn't re-type it).
+    const provider = b.provider === "local" ? "local" : "s3";
+    const next: S3Config =
+      provider === "local"
+        ? {}
+        : {
+            endpoint: String(b.endpoint ?? current.endpoint ?? "").trim(),
+            region: String(b.region ?? current.region ?? "").trim(),
+            bucket: String(b.bucket ?? current.bucket ?? "").trim(),
+            access_key: String(b.access_key ?? current.access_key ?? "").trim(),
+            secret_key:
+              typeof b.secret_key === "string" && b.secret_key.trim().length > 0
+                ? b.secret_key.trim()
+                : (current.secret_key ?? ""),
+          };
+
+    if (provider === "s3" && (!next.endpoint || !next.bucket || !next.access_key || !next.secret_key)) {
+      set.status = 400;
+      return {detail: "Para usar S3 informe endpoint, bucket, access key e secret key."};
+    }
+
+    configurations.s3 = next;
+    await prisma.instance.update({where: {id: instance.id}, data: {configurations}});
+    invalidateStorageCache();
+    return {detail: "Configuração de armazenamento salva.", provider, is_configured: provider === "s3"};
   })
 
   .get("/:slug/workspace-members/me/", async ({params: {slug}, user, set}) => {

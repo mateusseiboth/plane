@@ -155,29 +155,30 @@ export class ProjectInboxStore implements IProjectInboxStore {
   }
 
   get filteredInboxIssueIds() {
-    let appliedFilters =
+    // OPEN keeps ACCEPTED chamados visible (work in progress) until the creator
+    // marks them FULFILLED ("atendido"); CLOSED shows FULFILLED/DECLINED/DUPLICATE.
+    const tabStatuses =
       this.currentTab === EInboxIssueCurrentTab.OPEN
-        ? [EInboxIssueStatus.PENDING, EInboxIssueStatus.SNOOZED]
-        : [EInboxIssueStatus.ACCEPTED, EInboxIssueStatus.DECLINED, EInboxIssueStatus.DUPLICATE];
-    appliedFilters = appliedFilters.filter((filter) => this.inboxFilters?.status?.includes(filter));
-    const currentTime = new Date().getTime();
+        ? [EInboxIssueStatus.PENDING, EInboxIssueStatus.SNOOZED, EInboxIssueStatus.ACCEPTED]
+        : [EInboxIssueStatus.FULFILLED, EInboxIssueStatus.DECLINED, EInboxIssueStatus.DUPLICATE];
+    // Intersect with any explicit status filter the user picked in the UI.
+    const statusFilter = this.inboxFilters?.status?.length
+      ? tabStatuses.filter((s) => this.inboxFilters?.status?.includes(s))
+      : tabStatuses;
+    const now = new Date().getTime();
 
-    return this.currentTab === EInboxIssueCurrentTab.OPEN
-      ? this.inboxIssueIds.filter((id) => {
-          if (appliedFilters.length == 2) return true;
-          if (appliedFilters[0] === EInboxIssueStatus.SNOOZED)
-            return (
-              this.inboxIssues[id].status === EInboxIssueStatus.SNOOZED &&
-              currentTime < new Date(this.inboxIssues[id].snoozed_till!).getTime()
-            );
-          if (appliedFilters[0] === EInboxIssueStatus.PENDING)
-            return (
-              appliedFilters.includes(this.inboxIssues[id].status) ||
-              (this.inboxIssues[id].status === EInboxIssueStatus.SNOOZED &&
-                currentTime > new Date(this.inboxIssues[id].snoozed_till!).getTime())
-            );
-        })
-      : this.inboxIssueIds.filter((id) => appliedFilters.includes(this.inboxIssues[id].status));
+    return this.inboxIssueIds.filter((id) => {
+      const item = this.inboxIssues[id];
+      if (!item) return false;
+      // A snoozed chamado whose snooze has elapsed behaves like pending again.
+      if (item.status === EInboxIssueStatus.SNOOZED) {
+        const stillSnoozed = item.snoozed_till ? now < new Date(item.snoozed_till).getTime() : false;
+        return stillSnoozed
+          ? statusFilter.includes(EInboxIssueStatus.SNOOZED)
+          : statusFilter.includes(EInboxIssueStatus.PENDING);
+      }
+      return statusFilter.includes(item.status);
+    });
   }
 
   getIssueInboxByIssueId = computedFn((issueId: string) => this.inboxIssues?.[issueId]);
@@ -269,8 +270,8 @@ export class ProjectInboxStore implements IProjectInboxStore {
         set(this.filtersMap, [projectId], {
           status:
             tab === EInboxIssueCurrentTab.OPEN
-              ? [EInboxIssueStatus.PENDING]
-              : [EInboxIssueStatus.ACCEPTED, EInboxIssueStatus.DECLINED, EInboxIssueStatus.DUPLICATE],
+              ? [EInboxIssueStatus.PENDING, EInboxIssueStatus.SNOOZED, EInboxIssueStatus.ACCEPTED]
+              : [EInboxIssueStatus.FULFILLED, EInboxIssueStatus.DECLINED, EInboxIssueStatus.DUPLICATE],
         });
       });
       this.fetchInboxIssues(workspaceSlug, projectId, "filter-loading");
@@ -307,8 +308,8 @@ export class ProjectInboxStore implements IProjectInboxStore {
       set(this.filtersMap, [projectId], {
         status:
           tab === EInboxIssueCurrentTab.OPEN
-            ? [EInboxIssueStatus.PENDING]
-            : [EInboxIssueStatus.ACCEPTED, EInboxIssueStatus.DECLINED, EInboxIssueStatus.DUPLICATE],
+            ? [EInboxIssueStatus.PENDING, EInboxIssueStatus.SNOOZED, EInboxIssueStatus.ACCEPTED]
+            : [EInboxIssueStatus.FULFILLED, EInboxIssueStatus.DECLINED, EInboxIssueStatus.DUPLICATE],
       });
     }
     if (isEmpty(this.inboxSorting)) {

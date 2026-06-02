@@ -22,6 +22,9 @@ export enum EInboxIssueStatus {
   SNOOZED = 0,
   ACCEPTED = 1,
   DUPLICATE = 2,
+  // "Atendido" — the creator (or a manager) confirmed the accepted chamado was
+  // resolved after the work item reached Concluído. Only then does it close.
+  FULFILLED = 3,
 }
 
 export enum EInboxIssueSource {

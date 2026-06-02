@@ -155,17 +155,21 @@ export type TransitionRule = {fromGroup: string; fromStateName?: string | null; 
 // Allow-list visibility for the restricted roles. Roles not listed here see all.
 export const DEFAULT_VISIBILITY: Record<string, VisibilityRule[]> = {
   qualidade: [
+    {group: "backlog"}, // Pendências
     {group: "triage"}, // intake (Triagem)
     {group: "started", stateName: STATE.EM_ANALISE},
     {group: "started", stateName: STATE.EM_TESTE},
     {group: "completed"},
     {group: "cancelled"},
+    // NB: Qualidade does NOT see "A Fazer" (unstarted) nor "Em Desenvolvimento".
   ],
   ti: [
     {group: "unstarted"}, // A Fazer
     {group: "started", stateName: STATE.EM_DESENVOLVIMENTO},
+    {group: "started", stateName: STATE.EM_TESTE}, // TI vê e envia para testes
     {group: "completed"},
     {group: "cancelled"},
+    // NB: TI does NOT see "Em Análise" (Qualidade's lane) by default.
   ],
   atendimento: [
     {group: "triage"},
@@ -189,6 +193,8 @@ export const DEFAULT_TRANSITIONS: Record<string, TransitionRule[]> = {
   ti: [
     {fromGroup: "unstarted", fromStateName: STATE.A_FAZER, toGroup: "started", toStateName: STATE.EM_DESENVOLVIMENTO},
     {fromGroup: "started", fromStateName: STATE.EM_ANALISE, toGroup: "started", toStateName: STATE.EM_DESENVOLVIMENTO},
+    // TI can also park work back in "A Fazer" (own to-do lane) from development.
+    {fromGroup: "started", fromStateName: STATE.EM_DESENVOLVIMENTO, toGroup: "unstarted", toStateName: STATE.A_FAZER},
     {fromGroup: "started", fromStateName: STATE.EM_DESENVOLVIMENTO, toGroup: "started", toStateName: STATE.EM_TESTE},
     {fromGroup: "started", fromStateName: STATE.EM_TESTE, toGroup: "completed"},
     {fromGroup: "started", toGroup: "cancelled"},
@@ -240,32 +246,40 @@ export async function seedWorkflowRoles(db: any, workspaceId: string): Promise<R
     keyToId[def.key] = role.id;
   }
 
+  // By default we only seed visibility/transition rows for a role that has none,
+  // so admin edits made through the roles API survive restarts. Set
+  // RESEED_WORKFLOW=true to force the code defaults back onto the system roles
+  // (use after changing DEFAULT_VISIBILITY / DEFAULT_TRANSITIONS).
+  const reseed = process.env.RESEED_WORKFLOW === "true";
+
   for (const [key, rules] of Object.entries(DEFAULT_VISIBILITY)) {
     const roleId = keyToId[key];
     if (!roleId) continue;
-    if ((await db.roleStateVisibility.count({where: {roleId}})) === 0) {
-      await db.roleStateVisibility.createMany({
-        data: rules.map((r) => ({roleId, workspaceId, group: r.group, stateName: r.stateName ?? null, canView: true})),
-      });
-    }
+    const count = await db.roleStateVisibility.count({where: {roleId}});
+    if (count > 0 && !reseed) continue;
+    if (count > 0) await db.roleStateVisibility.deleteMany({where: {roleId}});
+    await db.roleStateVisibility.createMany({
+      data: rules.map((r) => ({roleId, workspaceId, group: r.group, stateName: r.stateName ?? null, canView: true})),
+    });
   }
 
   for (const [key, rules] of Object.entries(DEFAULT_TRANSITIONS)) {
     const roleId = keyToId[key];
     if (!roleId) continue;
-    if ((await db.roleStateTransition.count({where: {roleId}})) === 0) {
-      await db.roleStateTransition.createMany({
-        data: rules.map((r) => ({
-          roleId,
-          workspaceId,
-          fromGroup: r.fromGroup,
-          fromStateName: r.fromStateName ?? null,
-          toGroup: r.toGroup,
-          toStateName: r.toStateName ?? null,
-          allowed: true,
-        })),
-      });
-    }
+    const count = await db.roleStateTransition.count({where: {roleId}});
+    if (count > 0 && !reseed) continue;
+    if (count > 0) await db.roleStateTransition.deleteMany({where: {roleId}});
+    await db.roleStateTransition.createMany({
+      data: rules.map((r) => ({
+        roleId,
+        workspaceId,
+        fromGroup: r.fromGroup,
+        fromStateName: r.fromStateName ?? null,
+        toGroup: r.toGroup,
+        toStateName: r.toStateName ?? null,
+        allowed: true,
+      })),
+    });
   }
 
   const pickKey = (roleInt: number) =>

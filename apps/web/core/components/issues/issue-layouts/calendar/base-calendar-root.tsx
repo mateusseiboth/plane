@@ -16,6 +16,7 @@ import { EIssuesStoreType } from "@plane/types";
 // hooks
 import { useCalendarView } from "@/hooks/store/use-calendar-view";
 import { useIssues } from "@/hooks/store/use-issues";
+import { useRealtimeRefetch } from "@/hooks/use-realtime";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
@@ -110,6 +111,25 @@ export const BaseCalendarRoot = observer(function BaseCalendarRoot(props: IBaseC
       );
     }
   }, [fetchIssues, storeType, startDate, endDate, layout, viewId]);
+
+  // Live-update the calendar when anyone creates/moves/edits a work item or intake.
+  useRealtimeRefetch(
+    (e) => e.entity === "issue" || e.entity === "intake",
+    () => {
+      if (!startDate || !endDate || !layout) return;
+      fetchIssues(
+        "mutation",
+        {
+          canGroup: true,
+          perPageCount: layout === "month" ? 4 : 30,
+          before: endDate,
+          after: startDate,
+          groupedBy: EIssueGroupByToServerOptions["target_date"],
+        },
+        viewId
+      );
+    }
+  );
 
   const handleDragAndDrop = async (
     issueId: string | undefined,

@@ -66,6 +66,10 @@ export const useGroupIssuesDragNDrop = (
       title: "Error!",
       message: "Error while updating work item",
     };
+    // Surface the backend reason (e.g. "Sua função não permite esta transição de
+    // estado.") instead of the generic message whenever the API returns one.
+    const showError = (err: any) =>
+      setToast({ ...errorToastProps, message: err?.detail ?? err?.error ?? errorToastProps.message });
     const moduleKey = ISSUE_FILTER_DEFAULT_DATA["module"];
     const cycleKey = ISSUE_FILTER_DEFAULT_DATA["cycle"];
 
@@ -74,11 +78,9 @@ export const useGroupIssuesDragNDrop = (
 
     if (isCycleChanged && workspaceSlug) {
       if (data[cycleKey]) {
-        addCycleToIssue(workspaceSlug.toString(), projectId, data[cycleKey]?.toString() ?? "", issueId).catch(() =>
-          setToast(errorToastProps)
-        );
+        addCycleToIssue(workspaceSlug.toString(), projectId, data[cycleKey]?.toString() ?? "", issueId).catch(showError);
       } else {
-        removeCycleFromIssue(workspaceSlug.toString(), projectId, issueId).catch(() => setToast(errorToastProps));
+        removeCycleFromIssue(workspaceSlug.toString(), projectId, issueId).catch(showError);
       }
       delete data[cycleKey];
     }
@@ -90,11 +92,11 @@ export const useGroupIssuesDragNDrop = (
         issueId,
         issueUpdates[moduleKey].ADD,
         issueUpdates[moduleKey].REMOVE
-      ).catch(() => setToast(errorToastProps));
+      ).catch(showError);
       delete data[moduleKey];
     }
 
-    updateIssue && updateIssue(projectId, issueId, data).catch(() => setToast(errorToastProps));
+    updateIssue && updateIssue(projectId, issueId, data).catch(showError);
   };
 
   const handleOnDrop = async (source: GroupDropLocation, destination: GroupDropLocation) => {

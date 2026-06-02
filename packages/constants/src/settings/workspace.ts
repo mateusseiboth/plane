@@ -97,6 +97,13 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/integrations-custom/`,
   },
+  storage: {
+    key: "storage",
+    i18n_label: "workspace_settings.settings.storage.title",
+    href: `/settings/storage`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/storage/`,
+  },
 };
 
 export const WORKSPACE_SETTINGS_ACCESS = Object.fromEntries(
@@ -112,6 +119,7 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     WORKSPACE_SETTINGS["entities"],
     // WORKSPACE_SETTINGS["billing-and-plans"], // Not implemented yet
     WORKSPACE_SETTINGS["export"],
+    WORKSPACE_SETTINGS["storage"],
   ].filter(Boolean) as TWorkspaceSettingsItem[],
   [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [],
   [WORKSPACE_SETTINGS_CATEGORY.DEVELOPER]: [
