@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { Clock, FileStack, MoreHorizontal, MoveRight } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { IconButton, getIconButtonStyling } from "@plane/propel/icon-button";
@@ -87,7 +87,7 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
   const issue = inboxIssue?.issue;
   // derived values
   const isAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

@@ -7,7 +7,7 @@
 import { isEmpty } from "lodash-es";
 import { observer } from "mobx-react";
 // plane helpers
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
 // components
 import { SidebarWrapper } from "@/components/sidebar/sidebar-wrapper";
 import { SidebarFavoritesMenu } from "@/components/workspace/sidebar/favorites/favorites-menu";
@@ -27,7 +27,7 @@ export const AppSidebar = observer(function AppSidebar() {
 
   // derived values
   const canPerformWorkspaceMemberActions = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_VIEW_ROLES,
     EUserPermissionsLevel.WORKSPACE
   );
 

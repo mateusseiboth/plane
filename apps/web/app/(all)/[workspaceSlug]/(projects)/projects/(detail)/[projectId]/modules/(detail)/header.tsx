@@ -16,6 +16,7 @@ import {
   EUserPermissions,
   EUserPermissionsLevel,
   WORK_ITEM_TRACKER_ELEMENTS,
+  PROJECT_WORK_ROLES,
 } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { ModuleIcon } from "@plane/propel/icons";
@@ -78,7 +79,7 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
   const activeLayout = issueFilters?.displayFilters?.layout;
   const moduleDetails = moduleId ? getModuleById(moduleId) : undefined;
   const canUserCreateIssue = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
   const workItemsCount = getGroupIssueCount(undefined, undefined, false);

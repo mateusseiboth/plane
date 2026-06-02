@@ -6,7 +6,7 @@
 
 import { observer } from "mobx-react";
 // components
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { EIssuesStoreType } from "@plane/types";
 // hooks
@@ -20,7 +20,7 @@ export const ProjectViewEmptyState = observer(function ProjectViewEmptyState() {
 
   // auth
   const isCreatingIssueAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
 

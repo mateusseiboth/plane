@@ -804,6 +804,22 @@
       "title": "Guest",
       "description": "External members of organizations can be invited as guests."
     },
+    "atendimento": {
+      "title": "Service Desk",
+      "description": "Opens intake tickets and follows their progress; does not create or move work items directly."
+    },
+    "qualidade": {
+      "title": "Quality",
+      "description": "Near-admin permissions for project work (work items, cycles, modules, pages and intake); cannot change project configuration."
+    },
+    "ti": {
+      "title": "IT",
+      "description": "Near-admin permissions for project work (work items, cycles, modules, pages and intake); cannot change project configuration."
+    },
+    "gestor_projeto": {
+      "title": "Project Manager",
+      "description": "Manages the project, including its configuration (states, labels and members)."
+    },
     "member": {
       "title": "Member",
       "description": "Ability to read, write, edit, and delete entities inside projects, cycles, and modules"

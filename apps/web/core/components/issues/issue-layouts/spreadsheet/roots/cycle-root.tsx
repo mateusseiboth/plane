@@ -25,7 +25,14 @@ export const CycleSpreadsheetLayout = observer(function CycleSpreadsheetLayout()
   const isCompletedCycle =
     cycleId && currentProjectCompletedCycleIds ? currentProjectCompletedCycleIds.includes(cycleId.toString()) : false;
   const isEditingAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
     EUserPermissionsLevel.PROJECT
   );
 

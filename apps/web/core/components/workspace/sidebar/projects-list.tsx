@@ -12,7 +12,7 @@ import { useParams, usePathname } from "next/navigation";
 import { Ellipsis } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_TRACKER_ELEMENTS } from "@plane/constants";
+import { EUserPermissionsLevel, PROJECT_TRACKER_ELEMENTS, PROJECT_CREATE_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { PlusIcon, ChevronRightIcon } from "@plane/propel/icons";
 import { IconButton } from "@plane/propel/icon-button";
@@ -55,7 +55,7 @@ export const SidebarProjectsList = observer(function SidebarProjectsList() {
 
   // auth
   const isAuthorizedUser = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_CREATE_ROLES,
     EUserPermissionsLevel.WORKSPACE
   );
 

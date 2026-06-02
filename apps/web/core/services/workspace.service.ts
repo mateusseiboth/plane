@@ -161,6 +161,18 @@ export class WorkspaceService extends APIService {
       });
   }
 
+  async resetWorkspaceMemberPassword(
+    workspaceSlug: string,
+    memberId: string,
+    password?: string
+  ): Promise<{ detail: string; password: string }> {
+    return this.post(`/api/workspaces/${workspaceSlug}/members/${memberId}/reset-password/`, password ? { password } : {})
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async workspaceInvitations(workspaceSlug: string): Promise<IWorkspaceMemberInvitation[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/invitations/`)
       .then((response) => response?.data)

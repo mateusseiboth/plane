@@ -4,27 +4,34 @@
  * See the LICENSE file for details.
  */
 
-import { observer } from "mobx-react";
-import { useParams } from "next/navigation";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {observer} from "mobx-react";
+import {useParams} from "next/navigation";
 // hooks
-import { useUserPermissions } from "@/hooks/store/user";
+import {useUserPermissions} from "@/hooks/store/user";
 // local imports
-import { ProjectIssueQuickActions } from "../../quick-action-dropdowns";
-import { BaseListRoot } from "../base-list-root";
+import {ProjectIssueQuickActions} from "../../quick-action-dropdowns";
+import {BaseListRoot} from "../base-list-root";
 
 export const ProfileIssuesListLayout = observer(function ProfileIssuesListLayout() {
   // router
-  const { workspaceSlug, profileViewId } = useParams();
+  const {workspaceSlug, profileViewId} = useParams();
   // store
-  const { allowPermissions } = useUserPermissions();
+  const {allowPermissions} = useUserPermissions();
 
   const canEditPropertiesBasedOnProject = (projectId: string) =>
     allowPermissions(
-      [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
       EUserPermissionsLevel.PROJECT,
       workspaceSlug.toString(),
-      projectId
+      projectId,
     );
 
   return (

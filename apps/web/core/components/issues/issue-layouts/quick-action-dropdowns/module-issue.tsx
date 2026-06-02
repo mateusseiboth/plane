@@ -4,30 +4,30 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
-import { omit } from "lodash-es";
-import { observer } from "mobx-react";
-import { useParams } from "next/navigation";
+import {omit} from "lodash-es";
+import {observer} from "mobx-react";
+import {useParams} from "next/navigation";
+import {useState} from "react";
 // plane imports
-import { ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import type { TIssue } from "@plane/types";
-import { EIssuesStoreType } from "@plane/types";
-import { ContextMenu, CustomMenu } from "@plane/ui";
-import { cn } from "@plane/utils";
+import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import type {TIssue} from "@plane/types";
+import {EIssuesStoreType} from "@plane/types";
+import {ContextMenu, CustomMenu} from "@plane/ui";
+import {cn} from "@plane/utils";
 // hooks
-import { useIssues } from "@/hooks/store/use-issues";
-import { useProject } from "@/hooks/store/use-project";
-import { useProjectState } from "@/hooks/store/use-project-state";
-import { useUserPermissions } from "@/hooks/store/user";
+import {useIssues} from "@/hooks/store/use-issues";
+import {useProject} from "@/hooks/store/use-project";
+import {useProjectState} from "@/hooks/store/use-project-state";
+import {useUserPermissions} from "@/hooks/store/user";
 // plane-web components
-import { DuplicateWorkItemModal } from "@/plane-web/components/issues/issue-layouts/quick-action-dropdowns/duplicate-modal";
+import {DuplicateWorkItemModal} from "@/plane-web/components/issues/issue-layouts/quick-action-dropdowns/duplicate-modal";
 // helper
-import { ArchiveIssueModal } from "../../archive-issue-modal";
-import { DeleteIssueModal } from "../../delete-issue-modal";
-import { CreateUpdateIssueModal } from "../../issue-modal/modal";
-import type { IQuickActionProps } from "../list/list-view-types";
-import type { MenuItemFactoryProps } from "./helper";
-import { useModuleIssueMenuItems } from "./helper";
+import {ArchiveIssueModal} from "../../archive-issue-modal";
+import {DeleteIssueModal} from "../../delete-issue-modal";
+import {CreateUpdateIssueModal} from "../../issue-modal/modal";
+import type {IQuickActionProps} from "../list/list-view-types";
+import type {MenuItemFactoryProps} from "./helper";
+import {useModuleIssueMenuItems} from "./helper";
 
 export const ModuleIssueQuickActions = observer(function ModuleIssueQuickActions(props: IQuickActionProps) {
   const {
@@ -49,18 +49,28 @@ export const ModuleIssueQuickActions = observer(function ModuleIssueQuickActions
   const [archiveIssueModal, setArchiveIssueModal] = useState(false);
   const [duplicateWorkItemModal, setDuplicateWorkItemModal] = useState(false);
   // router
-  const { workspaceSlug, moduleId } = useParams();
+  const {workspaceSlug, moduleId} = useParams();
   // store hooks
-  const { issuesFilter } = useIssues(EIssuesStoreType.MODULE);
-  const { allowPermissions } = useUserPermissions();
-  const { getStateById } = useProjectState();
-  const { getProjectIdentifierById } = useProject();
+  const {issuesFilter} = useIssues(EIssuesStoreType.MODULE);
+  const {allowPermissions} = useUserPermissions();
+  const {getStateById} = useProjectState();
+  const {getProjectIdentifierById} = useProject();
   // derived values
   const stateDetails = getStateById(issue.state_id);
   const projectIdentifier = getProjectIdentifierById(issue?.project_id);
   // auth
   const isEditingAllowed =
-    allowPermissions([EUserPermissions.ADMIN, EUserPermissions.MEMBER], EUserPermissionsLevel.PROJECT) && !readOnly;
+    allowPermissions(
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
+      EUserPermissionsLevel.PROJECT,
+    ) && !readOnly;
   const isArchivingAllowed = handleArchive && isEditingAllowed;
   const isInArchivableGroup = !!stateDetails && ARCHIVABLE_STATE_GROUPS.includes(stateDetails?.group);
   const isDeletingAllowed = isEditingAllowed;
@@ -73,7 +83,7 @@ export const ModuleIssueQuickActions = observer(function ModuleIssueQuickActions
       name: `${issue.name} (copy)`,
       sourceIssueId: issue.id,
     },
-    ["id"]
+    ["id"],
   );
 
   // Menu items and modals using helper
@@ -147,7 +157,10 @@ export const ModuleIssueQuickActions = observer(function ModuleIssueQuickActions
         />
       )}
 
-      <ContextMenu parentRef={parentRef} items={CONTEXT_MENU_ITEMS} />
+      <ContextMenu
+        parentRef={parentRef}
+        items={CONTEXT_MENU_ITEMS}
+      />
       <CustomMenu
         ellipsis
         placement={placements}
@@ -187,7 +200,7 @@ export const ModuleIssueQuickActions = observer(function ModuleIssueQuickActions
                   {
                     "text-placeholder": item.disabled,
                   },
-                  item.className
+                  item.className,
                 )}
               >
                 {item.nestedMenuItems.map((nestedItem) => (
@@ -201,7 +214,7 @@ export const ModuleIssueQuickActions = observer(function ModuleIssueQuickActions
                       {
                         "text-placeholder": nestedItem.disabled,
                       },
-                      nestedItem.className
+                      nestedItem.className,
                     )}
                     disabled={nestedItem.disabled}
                   >
@@ -236,7 +249,7 @@ export const ModuleIssueQuickActions = observer(function ModuleIssueQuickActions
                 {
                   "text-placeholder": item.disabled,
                 },
-                item.className
+                item.className,
               )}
               disabled={item.disabled}
             >

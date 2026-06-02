@@ -4,33 +4,32 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
-import { omit } from "lodash-es";
-import { observer } from "mobx-react";
-import { useParams } from "next/navigation";
-import { Ellipsis } from "lucide-react";
+import {omit} from "lodash-es";
+import {Ellipsis} from "lucide-react";
+import {observer} from "mobx-react";
+import {useParams} from "next/navigation";
+import {useState} from "react";
 // plane imports
-import { ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import { EUserProjectRoles } from "@plane/types";
-import type { TIssue } from "@plane/types";
-import { EIssuesStoreType } from "@plane/types";
-import { ContextMenu, CustomMenu } from "@plane/ui";
-import { cn } from "@plane/utils";
+import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import type {TIssue} from "@plane/types";
+import {EIssuesStoreType, EUserProjectRoles} from "@plane/types";
+import {ContextMenu, CustomMenu} from "@plane/ui";
+import {cn} from "@plane/utils";
 // hooks
-import { useIssues } from "@/hooks/store/use-issues";
-import { useProject } from "@/hooks/store/use-project";
-import { useProjectState } from "@/hooks/store/use-project-state";
-import { useUserPermissions } from "@/hooks/store/user";
+import {useIssues} from "@/hooks/store/use-issues";
+import {useProject} from "@/hooks/store/use-project";
+import {useProjectState} from "@/hooks/store/use-project-state";
+import {useUserPermissions} from "@/hooks/store/user";
 // plane-web components
-import { DuplicateWorkItemModal } from "@/plane-web/components/issues/issue-layouts/quick-action-dropdowns/duplicate-modal";
+import {DuplicateWorkItemModal} from "@/plane-web/components/issues/issue-layouts/quick-action-dropdowns/duplicate-modal";
 // helper
-import { ArchiveIssueModal } from "../../archive-issue-modal";
-import { DeleteIssueModal } from "../../delete-issue-modal";
-import { CreateUpdateIssueModal } from "../../issue-modal/modal";
-import type { IQuickActionProps } from "../list/list-view-types";
-import type { MenuItemFactoryProps } from "./helper";
-import { useWorkItemDetailMenuItems } from "./helper";
-import { IconButton } from "@plane/propel/icon-button";
+import {IconButton} from "@plane/propel/icon-button";
+import {ArchiveIssueModal} from "../../archive-issue-modal";
+import {DeleteIssueModal} from "../../delete-issue-modal";
+import {CreateUpdateIssueModal} from "../../issue-modal/modal";
+import type {IQuickActionProps} from "../list/list-view-types";
+import type {MenuItemFactoryProps} from "./helper";
+import {useWorkItemDetailMenuItems} from "./helper";
 
 type TWorkItemDetailQuickActionProps = IQuickActionProps & {
   toggleEditIssueModal?: (value: boolean) => void;
@@ -40,9 +39,7 @@ type TWorkItemDetailQuickActionProps = IQuickActionProps & {
   isPeekMode?: boolean;
 };
 
-export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickActions(
-  props: TWorkItemDetailQuickActionProps
-) {
+export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickActions(props: TWorkItemDetailQuickActionProps) {
   const {
     issue,
     handleDelete,
@@ -60,7 +57,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
     isPeekMode = false,
   } = props;
   // router
-  const { workspaceSlug } = useParams();
+  const {workspaceSlug} = useParams();
   // states
   const [createUpdateIssueModal, setCreateUpdateIssueModal] = useState(false);
   const [issueToEdit, setIssueToEdit] = useState<TIssue | undefined>(undefined);
@@ -68,10 +65,10 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
   const [archiveIssueModal, setArchiveIssueModal] = useState(false);
   const [duplicateWorkItemModal, setDuplicateWorkItemModal] = useState(false);
   // store hooks
-  const { allowPermissions } = useUserPermissions();
-  const { issuesFilter } = useIssues(EIssuesStoreType.PROJECT);
-  const { getStateById } = useProjectState();
-  const { getProjectIdentifierById } = useProject();
+  const {allowPermissions} = useUserPermissions();
+  const {issuesFilter} = useIssues(EIssuesStoreType.PROJECT);
+  const {getStateById} = useProjectState();
+  const {getProjectIdentifierById} = useProject();
   // derived values
   const activeLayout = `${issuesFilter.issueFilters?.displayFilters?.layout} layout`;
   const stateDetails = getStateById(issue.state_id);
@@ -79,10 +76,17 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
   // auth — editing: ADMIN, MEMBER, GESTOR_PROJETO, TI, QUALIDADE
   const isEditingAllowed =
     allowPermissions(
-      [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
       EUserPermissionsLevel.PROJECT,
       workspaceSlug?.toString(),
-      issue.project_id ?? undefined
+      issue.project_id ?? undefined,
     ) && !readOnly;
 
   const isArchivingAllowed = !issue.archived_at && isEditingAllowed;
@@ -96,7 +100,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
       [EUserPermissions.ADMIN, EUserProjectRoles.GESTOR_PROJETO],
       EUserPermissionsLevel.PROJECT,
       workspaceSlug?.toString(),
-      issue.project_id ?? undefined
+      issue.project_id ?? undefined,
     );
 
   const duplicateIssuePayload = omit(
@@ -105,7 +109,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
       name: `${issue.name} (copy)`,
       sourceIssueId: issue.id,
     },
-    ["id"]
+    ["id"],
   );
 
   const customEditAction = () => {
@@ -246,11 +250,20 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
         />
       )}
 
-      <ContextMenu parentRef={parentRef} items={CONTEXT_MENU_ITEMS} />
+      <ContextMenu
+        parentRef={parentRef}
+        items={CONTEXT_MENU_ITEMS}
+      />
       <CustomMenu
         ellipsis
         placement={placements}
-        customButton={<IconButton size="lg" variant="secondary" icon={Ellipsis} />}
+        customButton={
+          <IconButton
+            size="lg"
+            variant="secondary"
+            icon={Ellipsis}
+          />
+        }
         portalElement={portalElement}
         menuItemsClassName="z-[14]"
         maxHeight="lg"
@@ -285,7 +298,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
                   {
                     "text-placeholder": item.disabled,
                   },
-                  item.className
+                  item.className,
                 )}
               >
                 {item.nestedMenuItems.map((nestedItem) => (
@@ -299,7 +312,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
                       {
                         "text-placeholder": nestedItem.disabled,
                       },
-                      nestedItem.className
+                      nestedItem.className,
                     )}
                     disabled={nestedItem.disabled}
                   >
@@ -334,7 +347,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
                 {
                   "text-placeholder": item.disabled,
                 },
-                item.className
+                item.className,
               )}
               disabled={item.disabled}
             >

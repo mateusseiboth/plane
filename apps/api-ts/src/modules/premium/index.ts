@@ -13,6 +13,7 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
+import { nextSequenceId } from "@utils/sequence";
 import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, getProjectOrFail } from "@utils/workspace";
 
 export const premiumModule = new Elysia()
@@ -121,9 +122,10 @@ export const premiumModule = new Elysia()
     const defaultState = await prisma.state.findFirst({ where: { projectId: project_id, isTriage: true, deletedAt: null } });
 
     const intakeIssue = await prisma.$transaction(async (tx) => {
+      const sequenceId = await nextSequenceId(tx, project_id);
       const issue = await tx.issue.create({
         data: {
-          projectId: project_id, workspaceId: ws.id, name: b.name ?? "Untitled",
+          projectId: project_id, workspaceId: ws.id, sequenceId, name: b.name ?? "Untitled",
           descriptionHtml: b.description_html ?? "<p></p>",
           descriptionStripped: (b.description_html ?? "").replace(/<[^>]+>/g, ""),
           stateId: defaultState?.id ?? null, priority: b.priority ?? "none",

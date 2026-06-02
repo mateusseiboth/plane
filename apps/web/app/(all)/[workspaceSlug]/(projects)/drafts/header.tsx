@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { observer } from "mobx-react";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 // ui
 import { Button } from "@plane/propel/button";
@@ -34,7 +34,7 @@ export const WorkspaceDraftHeader = observer(function WorkspaceDraftHeader() {
   const { t } = useTranslation();
   // check if user is authorized to create draft work item
   const isAuthorizedUser = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.WORKSPACE
   );
 

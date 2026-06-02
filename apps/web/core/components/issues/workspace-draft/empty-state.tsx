@@ -7,10 +7,10 @@
 import { Fragment, useState } from "react";
 // components
 import { observer } from "mobx-react";
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
-import { EIssuesStoreType, EUserWorkspaceRoles } from "@plane/types";
+import { EIssuesStoreType } from "@plane/types";
 import { CreateUpdateIssueModal } from "@/components/issues/issue-modal/modal";
 // constants
 import { useUserPermissions } from "@/hooks/store/user";
@@ -23,7 +23,7 @@ export const WorkspaceDraftEmptyState = observer(function WorkspaceDraftEmptySta
   const { allowPermissions } = useUserPermissions();
   // derived values
   const canPerformEmptyStateActions = allowPermissions(
-    [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.WORKSPACE
   );
 

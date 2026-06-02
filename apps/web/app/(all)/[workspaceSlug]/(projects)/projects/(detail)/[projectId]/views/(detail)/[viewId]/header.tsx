@@ -15,6 +15,7 @@ import {
   EUserPermissions,
   EUserPermissionsLevel,
   WORK_ITEM_TRACKER_ELEMENTS,
+  PROJECT_WORK_ROLES,
 } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { LockIcon, ViewsIcon } from "@plane/propel/icons";
@@ -102,7 +103,7 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
   const viewDetails = viewId ? getViewById(viewId.toString()) : null;
 
   const canUserCreateIssue = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
 

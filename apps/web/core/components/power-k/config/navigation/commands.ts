@@ -6,10 +6,10 @@
 
 import { BarChart2, Briefcase, FileText, Home, Inbox, Layers, PenSquare, Settings } from "lucide-react";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
 import { ArchiveIcon, UserActivityIcon, LayersIcon, ContrastIcon, DiceIcon, Intake } from "@plane/propel/icons";
 import type { ICycle, IModule, IPartialProject, IProjectView, IWorkspace } from "@plane/types";
-import { EUserProjectRoles, EUserWorkspaceRoles } from "@plane/types";
+
 // components
 import type { TPowerKCommandConfig, TPowerKContext } from "@/components/power-k/core/types";
 import { handlePowerKNavigate } from "@/components/power-k/utils/navigation";
@@ -60,13 +60,13 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
   // derived values
   const hasWorkspaceMemberLevelPermissions = (ctx: TPowerKContext) =>
     allowPermissions(
-      [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+      PROJECT_VIEW_ROLES,
       EUserPermissionsLevel.WORKSPACE,
       ctx.params.workspaceSlug?.toString()
     );
   const hasProjectMemberLevelPermissions = (ctx: TPowerKContext) =>
     allowPermissions(
-      [EUserProjectRoles.ADMIN, EUserProjectRoles.MEMBER],
+      PROJECT_VIEW_ROLES,
       EUserPermissionsLevel.PROJECT,
       ctx.params.workspaceSlug?.toString(),
       ctx.params.projectId?.toString()

@@ -4,8 +4,10 @@
  * See the LICENSE file for details.
  */
 
+import { KeyRound } from "lucide-react";
 import { observer } from "mobx-react";
 import Link from "next/link";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { Disclosure } from "@headlessui/react";
@@ -19,6 +21,8 @@ import type { IUser, IWorkspaceMember } from "@plane/types";
 import { CustomSelect, PopoverMenu } from "@plane/ui";
 // helpers
 import { getFileURL } from "@plane/utils";
+// components
+import { ResetMemberPasswordModal } from "@/components/workspace/reset-member-password-modal";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
@@ -44,12 +48,28 @@ type AccountTypeProps = {
 
 export function NameColumn(props: NameProps) {
   const { rowData, workspaceSlug, isAdmin, currentUser, setRemoveMemberModal } = props;
+  // states
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   // derived values
   const { avatar_url, display_name, email, first_name, id, last_name } = rowData.member;
   const isSuspended = rowData.is_active === false;
+  const isCurrentUser = id === currentUser?.id;
+  // Admins can reset other members' passwords; the remove/leave action stays for
+  // admins (any row) and for the current user (their own row).
+  const canResetPassword = isAdmin && !isCurrentUser && !isSuspended;
+  const menuActions: ("reset-password" | "remove")[] = [];
+  if (canResetPassword) menuActions.push("reset-password");
+  if (isAdmin || isCurrentUser) menuActions.push("remove");
 
   return (
-    <Disclosure>
+    <>
+      <ResetMemberPasswordModal
+        isOpen={isResetPasswordOpen}
+        onClose={() => setIsResetPasswordOpen(false)}
+        workspaceSlug={workspaceSlug}
+        userDetails={{ id, display_name: display_name || `${first_name} ${last_name}`.trim() || email || "" }}
+      />
+      <Disclosure>
       {() => (
         <div className="group relative">
           <div className="flex w-72 items-center justify-between gap-x-4 gap-y-2">
@@ -80,35 +100,48 @@ export function NameColumn(props: NameProps) {
               </span>
             </div>
 
-            {!isSuspended && (isAdmin || id === currentUser?.id) && (
+            {menuActions.length > 0 && (
               <PopoverMenu
-                data={[""]}
+                data={menuActions}
                 keyExtractor={(item) => item}
                 popoverClassName="justify-end"
                 buttonClassName="outline-none	origin-center rotate-90 size-8 aspect-square flex-shrink-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity"
-                render={() => (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    className="flex cursor-pointer items-center gap-x-3"
-                    onClick={() => setRemoveMemberModal(rowData)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setRemoveMemberModal(rowData);
-                      }
-                    }}
-                    data-ph-element={MEMBER_TRACKER_ELEMENTS.WORKSPACE_MEMBER_TABLE_CONTEXT_MENU}
-                  >
-                    <TrashIcon className="size-3.5 align-middle" /> {id === currentUser?.id ? "Leave " : "Remove "}
-                  </div>
-                )}
+                render={(action) => {
+                  const handle = () =>
+                    action === "reset-password" ? setIsResetPasswordOpen(true) : setRemoveMemberModal(rowData);
+                  return (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="flex cursor-pointer items-center gap-x-3"
+                      onClick={handle}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handle();
+                        }
+                      }}
+                      data-ph-element={MEMBER_TRACKER_ELEMENTS.WORKSPACE_MEMBER_TABLE_CONTEXT_MENU}
+                    >
+                      {action === "reset-password" ? (
+                        <>
+                          <KeyRound className="size-3.5 align-middle" /> Redefinir senha
+                        </>
+                      ) : (
+                        <>
+                          <TrashIcon className="size-3.5 align-middle" /> {isCurrentUser ? "Leave " : "Remove "}
+                        </>
+                      )}
+                    </div>
+                  );
+                }}
               />
             )}
           </div>
         </div>
       )}
-    </Disclosure>
+      </Disclosure>
+    </>
   );
 }
 

@@ -9,7 +9,7 @@ import { isNil } from "lodash-es";
 import { observer } from "mobx-react";
 import { Bell, BellOff } from "lucide-react";
 // plane-i18n
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 // UI
 import { Button } from "@plane/propel/button";
@@ -43,7 +43,7 @@ export const IssueSubscription = observer(function IssueSubscription(props: TIss
 
   const isSubscribed = getSubscriptionByIssueId(issueId);
   const isEditable = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_VIEW_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

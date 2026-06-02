@@ -93,7 +93,14 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
   const groupedIssueIds = issues?.groupedIssueIds as TGroupedIssues | undefined;
   // auth
   const isEditingAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
     EUserPermissionsLevel.PROJECT
   );
   const { enableInlineEditing, enableQuickAdd, enableIssueCreation } = issues?.viewFlags || {};

@@ -22,7 +22,14 @@ export const CalendarLayout = observer(function CalendarLayout() {
   // derived values
   const canEditPropertiesBasedOnProject = (projectId: string) =>
     allowPermissions(
-      [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
       EUserPermissionsLevel.PROJECT,
       workspaceSlug?.toString(),
       projectId

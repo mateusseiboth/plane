@@ -19,7 +19,7 @@ import {
   Users,
 } from "lucide-react";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { LinkIcon, TrashIcon, ContrastIcon, DiceIcon, DoubleCircleIcon } from "@plane/propel/icons";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
@@ -79,7 +79,7 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
   // permission
   const isEditingAllowed =
     allowPermissions(
-      [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
       workspaceSlug?.toString(),
       entityDetails?.project_id ?? undefined

@@ -1,11 +1,12 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
+import {Prisma} from "@prisma/client";
 import {applyIssueFilters, normalizeFilters} from "@utils/filters";
 import {paginate} from "@utils/pagination";
+import {nextSequenceId} from "@utils/sequence";
 import {COMMENT_FTS_DOC_C, ensureSearchIndexes, ISSUE_FTS_DOC_I, PT_FTS_CONFIG} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue} from "@utils/serialize";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
-import {Prisma} from "@prisma/client";
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
 
@@ -574,7 +575,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       prisma.issue.findMany({
         where: {workspaceId: ws.id, deletedAt: null, OR: [{name: {contains: q, mode: "insensitive"}}, {legacyTicketNumber: {contains: q}}]},
         select: {
-          id: true, name: true, sequenceId: true, priority: true, legacyTicketNumber: true,
+          id: true,
+          name: true,
+          sequenceId: true,
+          priority: true,
+          legacyTicketNumber: true,
           project: {select: {id: true, identifier: true}},
           state: {select: {group: true}},
         },
@@ -589,8 +594,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return {
       results: {
         issue: issues.map((i: any) => ({
-          id: i.id, name: i.name, sequence_id: i.sequenceId,
-          project_id: i.project?.id, project__identifier: i.project?.identifier,
+          id: i.id,
+          name: i.name,
+          sequence_id: i.sequenceId,
+          project_id: i.project?.id,
+          project__identifier: i.project?.identifier,
           workspace__slug: ws.slug,
           legacy_ticket_number: i.legacyTicketNumber ?? null,
           is_intake: i.state?.group === "triage",
@@ -690,8 +698,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       }),
     ]);
 
-    const toProject = (r: IssueRow) =>
-      r.project_id ? {id: r.project_id, identifier: r.project_identifier, name: r.project_name} : null;
+    const toProject = (r: IssueRow) => (r.project_id ? {id: r.project_id, identifier: r.project_identifier, name: r.project_name} : null);
 
     const intakes = issueRows.filter((r) => r.state_group === "triage");
     const workItems = issueRows.filter((r) => r.state_group !== "triage");
@@ -847,7 +854,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     }
     const b = body as any;
     const data: any = {};
-    if (b.role !== undefined) data.role = b.role;
+    if (b.role !== undefined) data.role = parseInt(b.role, 10);
     return prisma.workspaceMember.updateMany({where: {workspaceId: ws.id, memberId: pk}, data});
   })
 
@@ -864,6 +871,44 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     });
     set.status = 204;
     return null;
+  })
+
+  // Admin-only: reset another member's password to a known value. Clears
+  // isPasswordAutoset so the seeder won't overwrite it on the next restart, and
+  // echoes the password back so the admin can hand it to the user.
+  .post("/:slug/members/:pk/reset-password/", async ({params: {slug, pk}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const caller = await requireWorkspaceWriter(ws.id, user.id);
+    if (caller.role < 20) {
+      set.status = 403;
+      return {detail: "Apenas administradores podem redefinir senhas."};
+    }
+    const target = await prisma.workspaceMember.findFirst({
+      where: {workspaceId: ws.id, memberId: pk, deletedAt: null},
+      select: {member: {select: {id: true, isInstanceAdmin: true}}},
+    });
+    if (!target?.member) {
+      set.status = 404;
+      return {detail: "Membro não encontrado."};
+    }
+    // A workspace admin must not reset an instance admin's password (only the
+    // instance admin themselves can change it, via account settings).
+    if (target.member.isInstanceAdmin && target.member.id !== user.id) {
+      set.status = 403;
+      return {detail: "Não é possível redefinir a senha de um administrador da instância."};
+    }
+    const b = (body as any) ?? {};
+    const newPassword = typeof b.password === "string" && b.password.trim().length > 0 ? b.password : "teste";
+    if (newPassword.length < 4) {
+      set.status = 400;
+      return {detail: "A senha precisa ter ao menos 4 caracteres."};
+    }
+    const hash = await Bun.password.hash(newPassword, {algorithm: "bcrypt", cost: 12});
+    await prisma.user.update({
+      where: {id: pk},
+      data: {password: hash, isPasswordAutoset: false, isActive: true},
+    });
+    return {detail: "Senha redefinida com sucesso.", password: newPassword};
   })
 
   .post("/:slug/members/leave/", async ({params: {slug}, user, set}) => {
@@ -1150,10 +1195,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       return {detail: "Project not found."};
     }
 
-    const maxSeq = await prisma.issue.aggregate({where: {projectId: draft.projectId}, _max: {sequenceId: true}});
-    const sequenceId = (maxSeq._max.sequenceId ?? 0) + 1;
-
     const issue = await prisma.$transaction(async (tx) => {
+      const sequenceId = await nextSequenceId(tx, draft.projectId);
       const i = await tx.issue.create({
         data: {
           projectId: draft.projectId,
@@ -1877,12 +1920,26 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       for (const i of calIssues as any[]) {
         const key = i.targetDate ? new Date(i.targetDate).toISOString().split("T")[0] : "none";
         if (!results[key]) {
-          results[key] = {results: [], total_results: 0, next_cursor: `${perPage}:1:0`, prev_cursor: `${perPage}:0:1`, next_page_results: false, prev_page_results: false};
+          results[key] = {
+            results: [],
+            total_results: 0,
+            next_cursor: `${perPage}:1:0`,
+            prev_cursor: `${perPage}:0:1`,
+            next_page_results: false,
+            prev_page_results: false,
+          };
         }
         results[key].results.push(serializeIssue(i));
         results[key].total_results++;
       }
-      return {total_count: calIssues.length, results, next_cursor: null, prev_cursor: null, next_page_results: false, prev_page_results: false};
+      return {
+        total_count: calIssues.length,
+        results,
+        next_cursor: null,
+        prev_cursor: null,
+        next_page_results: false,
+        prev_page_results: false,
+      };
     }
 
     const SUPPORTED_GROUP_BY = ["state_id", "priority", "state__group", "project_id"];

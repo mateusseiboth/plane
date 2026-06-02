@@ -2,6 +2,7 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
+import { nextSequenceId } from "@utils/sequence";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import { notifyQualityOfIntake } from "@utils/notifications";
 
@@ -543,9 +544,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = (body as any).issue ?? body as any;
     const triageState = await findTriageState(project_id);
+    const sequenceId = await nextSequenceId(prisma, project_id);
     const issue = await prisma.issue.create({
       data: {
-        projectId: project_id, workspaceId: ws.id,
+        projectId: project_id, workspaceId: ws.id, sequenceId,
         name: b.name ?? "Novo chamado",
         stateId: triageState?.id ?? null,
         priority: b.priority ?? "none",

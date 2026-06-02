@@ -4,44 +4,51 @@
  * See the LICENSE file for details.
  */
 
-import { observer } from "mobx-react";
-import { useParams, useSearchParams } from "next/navigation";
+import {observer} from "mobx-react";
+import {useParams, useSearchParams} from "next/navigation";
 // components
-import { EUserPermissionsLevel, MODULE_TRACKER_ELEMENTS } from "@plane/constants";
-import { useTranslation } from "@plane/i18n";
-import { EmptyStateDetailed } from "@plane/propel/empty-state";
-import { EUserProjectRoles } from "@plane/types";
-import { ContentWrapper, Row, ERowVariant } from "@plane/ui";
+import {EUserPermissionsLevel, MODULE_TRACKER_ELEMENTS} from "@plane/constants";
+import {useTranslation} from "@plane/i18n";
+import {EmptyStateDetailed} from "@plane/propel/empty-state";
+import {EUserProjectRoles} from "@plane/types";
+import {ContentWrapper, ERowVariant, Row} from "@plane/ui";
 // components
-import { ListLayout } from "@/components/core/list";
-import { ModuleCardItem, ModuleListItem, ModulePeekOverview, ModulesListGanttChartView } from "@/components/modules";
-import { CycleModuleBoardLayoutLoader } from "@/components/ui/loader/cycle-module-board-loader";
-import { CycleModuleListLayoutLoader } from "@/components/ui/loader/cycle-module-list-loader";
-import { GanttLayoutLoader } from "@/components/ui/loader/layouts/gantt-layout-loader";
+import {ListLayout} from "@/components/core/list";
+import {ModuleCardItem, ModuleListItem, ModulePeekOverview, ModulesListGanttChartView} from "@/components/modules";
+import {CycleModuleBoardLayoutLoader} from "@/components/ui/loader/cycle-module-board-loader";
+import {CycleModuleListLayoutLoader} from "@/components/ui/loader/cycle-module-list-loader";
+import {GanttLayoutLoader} from "@/components/ui/loader/layouts/gantt-layout-loader";
 // hooks
-import { useCommandPalette } from "@/hooks/store/use-command-palette";
-import { useModule } from "@/hooks/store/use-module";
-import { useModuleFilter } from "@/hooks/store/use-module-filter";
-import { useUserPermissions } from "@/hooks/store/user";
+import {useCommandPalette} from "@/hooks/store/use-command-palette";
+import {useModule} from "@/hooks/store/use-module";
+import {useModuleFilter} from "@/hooks/store/use-module-filter";
+import {useUserPermissions} from "@/hooks/store/user";
 
 export const ModulesListView = observer(function ModulesListView() {
   // router
-  const { workspaceSlug, projectId } = useParams();
+  const {workspaceSlug, projectId} = useParams();
   const searchParams = useSearchParams();
   const peekModule = searchParams.get("peekModule");
   // plane hooks
-  const { t } = useTranslation();
+  const {t} = useTranslation();
   // store hooks
-  const { toggleCreateModuleModal } = useCommandPalette();
-  const { getProjectModuleIds, getFilteredModuleIds, loader } = useModule();
-  const { currentProjectDisplayFilters: displayFilters } = useModuleFilter();
-  const { allowPermissions } = useUserPermissions();
+  const {toggleCreateModuleModal} = useCommandPalette();
+  const {getProjectModuleIds, getFilteredModuleIds, loader} = useModule();
+  const {currentProjectDisplayFilters: displayFilters} = useModuleFilter();
+  const {allowPermissions} = useUserPermissions();
   // derived values
   const projectModuleIds = projectId ? getProjectModuleIds(projectId.toString()) : undefined;
   const filteredModuleIds = projectId ? getFilteredModuleIds(projectId.toString()) : undefined;
   const canPerformEmptyStateActions = allowPermissions(
-    [EUserProjectRoles.ADMIN, EUserProjectRoles.MEMBER],
-    EUserPermissionsLevel.PROJECT
+    [
+      EUserProjectRoles.ADMIN,
+      EUserProjectRoles.GESTOR_PROJETO,
+      EUserProjectRoles.MEMBER,
+      EUserProjectRoles.TI,
+      EUserProjectRoles.QUALIDADE,
+      EUserProjectRoles.ATENDIMENTO,
+    ],
+    EUserPermissionsLevel.PROJECT,
   );
 
   if (loader || !projectModuleIds || !filteredModuleIds)
@@ -86,20 +93,24 @@ export const ModulesListView = observer(function ModulesListView() {
         {displayFilters?.layout === "list" && (
           <ListLayout>
             {filteredModuleIds.map((moduleId) => (
-              <ModuleListItem key={moduleId} moduleId={moduleId} />
+              <ModuleListItem
+                key={moduleId}
+                moduleId={moduleId}
+              />
             ))}
           </ListLayout>
         )}
         {displayFilters?.layout === "board" && (
           <Row
             className={`grid size-full grid-cols-1 gap-6 overflow-y-auto py-page-y ${
-              peekModule
-                ? "3xl:grid-cols-3 lg:grid-cols-1 xl:grid-cols-2"
-                : "3xl:grid-cols-4 lg:grid-cols-2 xl:grid-cols-3"
+              peekModule ? "3xl:grid-cols-3 lg:grid-cols-1 xl:grid-cols-2" : "3xl:grid-cols-4 lg:grid-cols-2 xl:grid-cols-3"
             } vertical-scrollbar scrollbar-lg auto-rows-max transition-all`}
           >
             {filteredModuleIds.map((moduleId) => (
-              <ModuleCardItem key={moduleId} moduleId={moduleId} />
+              <ModuleCardItem
+                key={moduleId}
+                moduleId={moduleId}
+              />
             ))}
           </Row>
         )}
@@ -109,7 +120,10 @@ export const ModulesListView = observer(function ModulesListView() {
           </div>
         )}
         <div className="flex-shrink-0">
-          <ModulePeekOverview projectId={projectId?.toString() ?? ""} workspaceSlug={workspaceSlug?.toString() ?? ""} />
+          <ModulePeekOverview
+            projectId={projectId?.toString() ?? ""}
+            workspaceSlug={workspaceSlug?.toString() ?? ""}
+          />
         </div>
       </div>
     </ContentWrapper>

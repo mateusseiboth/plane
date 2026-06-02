@@ -4,19 +4,19 @@
  * See the LICENSE file for details.
  */
 
-import { observer } from "mobx-react";
+import {observer} from "mobx-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import { useTranslation } from "@plane/i18n";
-import { CloseIcon } from "@plane/propel/icons";
-import type { TCycleFilters } from "@plane/types";
-import { Tag } from "@plane/ui";
-import { replaceUnderscoreIfSnakeCase } from "@plane/utils";
+import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {useTranslation} from "@plane/i18n";
+import {CloseIcon} from "@plane/propel/icons";
+import type {TCycleFilters} from "@plane/types";
+import {Tag} from "@plane/ui";
+import {replaceUnderscoreIfSnakeCase} from "@plane/utils";
 // hooks
-import { useUserPermissions } from "@/hooks/store/user";
+import {useUserPermissions} from "@/hooks/store/user";
 // local imports
-import { AppliedDateFilters } from "./date";
-import { AppliedStatusFilters } from "./status";
+import {AppliedDateFilters} from "./date";
+import {AppliedStatusFilters} from "./status";
 
 type Props = {
   appliedFilters: TCycleFilters;
@@ -28,10 +28,10 @@ type Props = {
 const DATE_FILTERS = ["start_date", "end_date"];
 
 export const CycleAppliedFiltersList = observer(function CycleAppliedFiltersList(props: Props) {
-  const { appliedFilters, handleClearAllFilters, handleRemoveFilter, alwaysAllowEditing } = props;
+  const {appliedFilters, handleClearAllFilters, handleRemoveFilter, alwaysAllowEditing} = props;
   // store hooks
-  const { allowPermissions } = useUserPermissions();
-  const { t } = useTranslation();
+  const {allowPermissions} = useUserPermissions();
+  const {t} = useTranslation();
 
   if (!appliedFilters) return null;
 
@@ -39,7 +39,17 @@ export const CycleAppliedFiltersList = observer(function CycleAppliedFiltersList
 
   const isEditingAllowed =
     alwaysAllowEditing ||
-    allowPermissions([EUserPermissions.ADMIN, EUserPermissions.MEMBER], EUserPermissionsLevel.PROJECT);
+    allowPermissions(
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
+      EUserPermissionsLevel.PROJECT,
+    );
 
   return (
     <div className="flex flex-wrap items-stretch gap-2 bg-surface-1">
@@ -73,7 +83,11 @@ export const CycleAppliedFiltersList = observer(function CycleAppliedFiltersList
                   className="grid place-items-center text-tertiary hover:text-secondary"
                   onClick={() => handleRemoveFilter(filterKey, null)}
                 >
-                  <CloseIcon height={12} width={12} strokeWidth={2} />
+                  <CloseIcon
+                    height={12}
+                    width={12}
+                    strokeWidth={2}
+                  />
                 </button>
               )}
             </div>
@@ -81,10 +95,17 @@ export const CycleAppliedFiltersList = observer(function CycleAppliedFiltersList
         );
       })}
       {isEditingAllowed && (
-        <button type="button" onClick={handleClearAllFilters}>
+        <button
+          type="button"
+          onClick={handleClearAllFilters}
+        >
           <Tag>
             {t("common.clear_all")}
-            <CloseIcon height={12} width={12} strokeWidth={2} />
+            <CloseIcon
+              height={12}
+              width={12}
+              strokeWidth={2}
+            />
           </Tag>
         </button>
       )}

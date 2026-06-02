@@ -4,24 +4,24 @@
  * See the LICENSE file for details.
  */
 
-import React, { useCallback } from "react";
-import { observer } from "mobx-react";
+import {observer} from "mobx-react";
+import {useCallback} from "react";
 // plane constants
-import { ALL_ISSUES, EIssueFilterType, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import type { IIssueDisplayFilterOptions } from "@plane/types";
-import { EIssuesStoreType, EIssueLayoutTypes } from "@plane/types";
+import {ALL_ISSUES, EIssueFilterType, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import type {IIssueDisplayFilterOptions} from "@plane/types";
+import {EIssueLayoutTypes, EIssuesStoreType} from "@plane/types";
 // components
-import { AllIssueQuickActions } from "@/components/issues/issue-layouts/quick-action-dropdowns";
-import { SpreadsheetLayoutLoader } from "@/components/ui/loader/layouts/spreadsheet-layout-loader";
+import {AllIssueQuickActions} from "@/components/issues/issue-layouts/quick-action-dropdowns";
+import {SpreadsheetLayoutLoader} from "@/components/ui/loader/layouts/spreadsheet-layout-loader";
 // hooks
-import { useIssues } from "@/hooks/store/use-issues";
-import { useUserPermissions } from "@/hooks/store/user";
-import { useIssuesActions } from "@/hooks/use-issues-actions";
-import { useWorkspaceIssueProperties } from "@/hooks/use-workspace-issue-properties";
+import {useIssues} from "@/hooks/store/use-issues";
+import {useUserPermissions} from "@/hooks/store/user";
+import {useIssuesActions} from "@/hooks/use-issues-actions";
+import {useWorkspaceIssueProperties} from "@/hooks/use-workspace-issue-properties";
 // store
-import { IssueLayoutHOC } from "../../issue-layout-HOC";
-import type { TRenderQuickActions } from "../../list/list-view-types";
-import { SpreadsheetView } from "../spreadsheet-view";
+import {IssueLayoutHOC} from "../../issue-layout-HOC";
+import type {TRenderQuickActions} from "../../list/list-view-types";
+import {SpreadsheetView} from "../spreadsheet-view";
 
 type Props = {
   isDefaultView: boolean;
@@ -38,18 +38,18 @@ type Props = {
 };
 
 export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRoot(props: Props) {
-  const { isLoading = false, workspaceSlug, globalViewId, fetchNextPages, issuesLoading } = props;
+  const {isLoading = false, workspaceSlug, globalViewId, fetchNextPages, issuesLoading} = props;
 
   // Custom hooks
   useWorkspaceIssueProperties(workspaceSlug);
 
   // Store hooks
   const {
-    issuesFilter: { filters, updateFilters },
-    issues: { getIssueLoader, getPaginationData, groupedIssueIds },
+    issuesFilter: {filters, updateFilters},
+    issues: {getIssueLoader, getPaginationData, groupedIssueIds},
   } = useIssues(EIssuesStoreType.GLOBAL);
-  const { updateIssue, removeIssue, archiveIssue } = useIssuesActions(EIssuesStoreType.GLOBAL);
-  const { allowPermissions } = useUserPermissions();
+  const {updateIssue, removeIssue, archiveIssue} = useIssuesActions(EIssuesStoreType.GLOBAL);
+  const {allowPermissions} = useUserPermissions();
 
   // Derived values
   const issueFilters = globalViewId ? filters?.[globalViewId.toString()] : undefined;
@@ -59,13 +59,20 @@ export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRo
     (projectId: string | undefined) => {
       if (!projectId) return false;
       return allowPermissions(
-        [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+        [
+          EUserPermissions.ADMIN,
+          EUserPermissions.GESTOR_PROJETO,
+          EUserPermissions.MEMBER,
+          EUserPermissions.TI,
+          EUserPermissions.QUALIDADE,
+          EUserPermissions.ATENDIMENTO,
+        ],
         EUserPermissionsLevel.PROJECT,
         workspaceSlug.toString(),
-        projectId
+        projectId,
       );
     },
-    [allowPermissions, workspaceSlug]
+    [allowPermissions, workspaceSlug],
   );
 
   // Display filters handler
@@ -77,16 +84,16 @@ export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRo
         workspaceSlug.toString(),
         undefined,
         EIssueFilterType.DISPLAY_FILTERS,
-        { ...updatedDisplayFilter },
-        globalViewId.toString()
+        {...updatedDisplayFilter},
+        globalViewId.toString(),
       );
     },
-    [updateFilters, workspaceSlug, globalViewId]
+    [updateFilters, workspaceSlug, globalViewId],
   );
 
   // Quick actions renderer
   const renderQuickActions: TRenderQuickActions = useCallback(
-    ({ issue, parentRef, customActionButton, placement, portalElement }) => (
+    ({issue, parentRef, customActionButton, placement, portalElement}) => (
       <AllIssueQuickActions
         parentRef={parentRef}
         customActionButton={customActionButton}
@@ -99,7 +106,7 @@ export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRo
         placements={placement}
       />
     ),
-    [canEditProperties, removeIssue, updateIssue, archiveIssue]
+    [canEditProperties, removeIssue, updateIssue, archiveIssue],
   );
 
   // Loading state

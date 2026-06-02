@@ -4,25 +4,25 @@
  * See the LICENSE file for details.
  */
 
-import { useEffect } from "react";
-import { observer } from "mobx-react";
-import { Controller, useForm } from "react-hook-form";
-import { ArrowRight } from "lucide-react";
+import {ArrowRight} from "lucide-react";
+import {observer} from "mobx-react";
+import {useEffect} from "react";
+import {Controller, useForm} from "react-hook-form";
 // Plane Imports
-import { CYCLE_STATUS, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import { useTranslation } from "@plane/i18n";
-import { ChevronRightIcon } from "@plane/propel/icons";
-import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import type { ICycle } from "@plane/types";
-import { getDate, renderFormattedPayloadDate } from "@plane/utils";
+import {CYCLE_STATUS, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {useTranslation} from "@plane/i18n";
+import {ChevronRightIcon} from "@plane/propel/icons";
+import {TOAST_TYPE, setToast} from "@plane/propel/toast";
+import type {ICycle} from "@plane/types";
+import {getDate, renderFormattedPayloadDate} from "@plane/utils";
 // components
-import { DateRangeDropdown } from "@/components/dropdowns/date-range";
+import {DateRangeDropdown} from "@/components/dropdowns/date-range";
 // hooks
-import { useCycle } from "@/hooks/store/use-cycle";
-import { useUserPermissions } from "@/hooks/store/user";
-import { useTimeZoneConverter } from "@/hooks/use-timezone-converter";
+import {useCycle} from "@/hooks/store/use-cycle";
+import {useUserPermissions} from "@/hooks/store/user";
+import {useTimeZoneConverter} from "@/hooks/use-timezone-converter";
 // services
-import { CycleService } from "@/services/cycle.service";
+import {CycleService} from "@/services/cycle.service";
 
 type Props = {
   workspaceSlug: string;
@@ -40,18 +40,18 @@ const defaultValues: Partial<ICycle> = {
 const cycleService = new CycleService();
 
 export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Props) {
-  const { workspaceSlug, projectId, cycleDetails, handleClose, isArchived = false } = props;
+  const {workspaceSlug, projectId, cycleDetails, handleClose, isArchived = false} = props;
   // hooks
-  const { allowPermissions } = useUserPermissions();
-  const { updateCycleDetails } = useCycle();
-  const { t } = useTranslation();
-  const { renderFormattedDateInUserTimezone, getProjectUTCOffset } = useTimeZoneConverter(projectId);
+  const {allowPermissions} = useUserPermissions();
+  const {updateCycleDetails} = useCycle();
+  const {t} = useTranslation();
+  const {renderFormattedDateInUserTimezone, getProjectUTCOffset} = useTimeZoneConverter(projectId);
 
   // derived values
   const projectUTCOffset = getProjectUTCOffset();
 
   // form info
-  const { control, reset } = useForm({
+  const {control, reset} = useForm({
     defaultValues,
   });
 
@@ -115,8 +115,15 @@ export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Pr
   };
 
   const isEditingAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.PROJECT
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
+    EUserPermissionsLevel.PROJECT,
   );
 
   return (
@@ -150,12 +157,12 @@ export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Pr
         <Controller
           control={control}
           name="start_date"
-          render={({ field: { value: startDateValue, onChange: onChangeStartDate } }) => (
+          render={({field: {value: startDateValue, onChange: onChangeStartDate}}) => (
             <div className="flex items-center gap-2">
               <Controller
                 control={control}
                 name="end_date"
-                render={({ field: { value: endDateValue, onChange: onChangeEndDate } }) => (
+                render={({field: {value: endDateValue, onChange: onChangeEndDate}}) => (
                   <DateRangeDropdown
                     className="h-7"
                     buttonVariant="border-with-text"
@@ -191,9 +198,7 @@ export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Pr
                 )}
               />
               {projectUTCOffset && (
-                <span className="cursor-default rounded-md bg-layer-1 px-2 py-1 text-11 text-tertiary">
-                  {projectUTCOffset}
-                </span>
+                <span className="cursor-default rounded-md bg-layer-1 px-2 py-1 text-11 text-tertiary">{projectUTCOffset}</span>
               )}
             </div>
           )}

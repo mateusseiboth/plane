@@ -4,31 +4,31 @@
  * See the LICENSE file for details.
  */
 
-import React, { useEffect } from "react";
-import { observer } from "mobx-react";
-import { useParams, useLocation, Link, useNavigate } from "react-router";
-import { EUserPermissionsLevel, EUserPermissions } from "@plane/constants";
-import { useTranslation } from "@plane/i18n";
-import { TabNavigationList, TabNavigationItem } from "@plane/propel/tab-navigation";
-import type { EUserProjectRoles } from "@plane/types";
+import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {useTranslation} from "@plane/i18n";
+import {TabNavigationItem, TabNavigationList} from "@plane/propel/tab-navigation";
+import type {EUserProjectRoles} from "@plane/types";
+import {observer} from "mobx-react";
+import React, {useEffect} from "react";
+import {Link, useLocation, useNavigate, useParams} from "react-router";
 // hooks
-import { useIssueDetail } from "@/hooks/store/use-issue-detail";
-import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
+import {useIssueDetail} from "@/hooks/store/use-issue-detail";
+import {useProject} from "@/hooks/store/use-project";
+import {useUserPermissions} from "@/hooks/store/user";
 // plane web imports
-import { useNavigationItems } from "@/plane-web/components/navigations";
+import {useNavigationItems} from "@/plane-web/components/navigations";
 // local imports
-import { LeaveProjectModal } from "../project/leave-project-modal";
-import { PublishProjectModal } from "../project/publish-project/modal";
-import { ProjectActionsMenu } from "./project-actions-menu";
-import { ProjectHeader } from "./project-header";
-import { TabNavigationOverflowMenu } from "./tab-navigation-overflow-menu";
-import { DEFAULT_TAB_KEY } from "./tab-navigation-utils";
-import { TabNavigationVisibleItem } from "./tab-navigation-visible-item";
-import { useActiveTab } from "./use-active-tab";
-import { useProjectActions } from "./use-project-actions";
-import { useResponsiveTabLayout } from "./use-responsive-tab-layout";
-import { useTabPreferences } from "./use-tab-preferences";
+import {LeaveProjectModal} from "../project/leave-project-modal";
+import {PublishProjectModal} from "../project/publish-project/modal";
+import {ProjectActionsMenu} from "./project-actions-menu";
+import {ProjectHeader} from "./project-header";
+import {TabNavigationOverflowMenu} from "./tab-navigation-overflow-menu";
+import {DEFAULT_TAB_KEY} from "./tab-navigation-utils";
+import {TabNavigationVisibleItem} from "./tab-navigation-visible-item";
+import {useActiveTab} from "./use-active-tab";
+import {useProjectActions} from "./use-project-actions";
+import {useResponsiveTabLayout} from "./use-responsive-tab-layout";
+import {useTabPreferences} from "./use-tab-preferences";
 
 // Local type definition for navigation items with app-specific fields
 export type TNavigationItem = {
@@ -48,30 +48,25 @@ type TTabNavigationRootProps = {
 };
 
 export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTabNavigationRootProps) {
-  const { workspaceSlug, projectId } = props;
-  const { workItem: workItemIdentifierFromRoute } = useParams();
+  const {workspaceSlug, projectId} = props;
+  const {workItem: workItemIdentifierFromRoute} = useParams();
   const location = useLocation();
   const pathname = location.pathname;
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const {t} = useTranslation();
 
   // Store hooks
-  const { getPartialProjectById } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const {getPartialProjectById} = useProject();
+  const {allowPermissions} = useUserPermissions();
   const {
-    issue: { getIssueIdByIdentifier, getIssueById },
+    issue: {getIssueIdByIdentifier, getIssueById},
   } = useIssueDetail();
 
   // Tab preferences hook
-  const { tabPreferences, handleToggleDefaultTab, handleHideTab, handleShowTab } = useTabPreferences(
-    workspaceSlug,
-    projectId
-  );
+  const {tabPreferences, handleToggleDefaultTab, handleHideTab, handleShowTab} = useTabPreferences(workspaceSlug, projectId);
 
   // Derived values
-  const workItemId = workItemIdentifierFromRoute
-    ? getIssueIdByIdentifier(workItemIdentifierFromRoute?.toString())
-    : undefined;
+  const workItemId = workItemIdentifierFromRoute ? getIssueIdByIdentifier(workItemIdentifierFromRoute?.toString()) : undefined;
   const workItem = workItemId ? getIssueById(workItemId) : undefined;
   const project = getPartialProjectById(projectId);
 
@@ -84,7 +79,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
   });
 
   // Active tab hook
-  const { isActive, activeItem } = useActiveTab({
+  const {isActive, activeItem} = useActiveTab({
     navigationItems,
     pathname,
     workItemId,
@@ -93,23 +88,15 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
   });
 
   // Project actions hook
-  const {
-    publishModalOpen,
-    leaveProjectModalOpen,
-    handleLeaveProject,
-    handleCopyText,
-    handlePublishModal,
-    handleLeaveProjectModal,
-  } = useProjectActions({
-    workspaceSlug,
-    projectId,
-    activeItem,
-  });
+  const {publishModalOpen, leaveProjectModalOpen, handleLeaveProject, handleCopyText, handlePublishModal, handleLeaveProjectModal} =
+    useProjectActions({
+      workspaceSlug,
+      projectId,
+      activeItem,
+    });
 
   // Filter and sort navigation items
-  const allNavigationItems = navigationItems
-    .filter((item) => item.shouldRender)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const allNavigationItems = navigationItems.filter((item) => item.shouldRender).sort((a, b) => a.sortOrder - b.sortOrder);
 
   // Split items into two categories:
   // 1. visibleNavigationItems: Items NOT user-hidden (may still overflow due to space)
@@ -118,7 +105,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
   const hiddenNavigationItems = allNavigationItems.filter((item) => tabPreferences.hiddenTabs.includes(item.key));
 
   // Responsive tab layout hook
-  const { visibleItems, overflowItems, hasOverflow, itemRefs, containerRef } = useResponsiveTabLayout({
+  const {visibleItems, overflowItems, hasOverflow, itemRefs, containerRef} = useResponsiveTabLayout({
     visibleNavigationItems,
     hiddenNavigationItems,
     isActive,
@@ -137,7 +124,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
       const targetItem = defaultTabItem || allNavigationItems.find((item) => item.key === DEFAULT_TAB_KEY);
 
       if (targetItem) {
-        navigate(targetItem.href, { replace: true });
+        navigate(targetItem.href, {replace: true});
       }
     }
   }, [pathname, workspaceSlug, projectId, tabPreferences.defaultTab, allNavigationItems, navigate]);
@@ -146,23 +133,29 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
   if (!project) return null;
 
   // Permission checks
-  const isAdmin = allowPermissions(
-    [EUserPermissions.ADMIN],
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug.toString(),
-    project?.id
-  );
+  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug.toString(), project?.id);
 
   const isAuthorized = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
     EUserPermissionsLevel.PROJECT,
     workspaceSlug.toString(),
-    project?.id
+    project?.id,
   );
 
   return (
     <>
-      <PublishProjectModal isOpen={publishModalOpen} projectId={projectId} onClose={() => handlePublishModal(false)} />
+      <PublishProjectModal
+        isOpen={publishModalOpen}
+        projectId={projectId}
+        onClose={() => handlePublishModal(false)}
+      />
       <LeaveProjectModal
         project={project}
         isOpen={leaveProjectModalOpen}
@@ -172,7 +165,10 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
       {/* container for the tab navigation */}
       <div className="flex size-full items-center gap-3 overflow-hidden">
         <div className="flex shrink-0 items-center gap-2">
-          <ProjectHeader workspaceSlug={workspaceSlug} projectId={projectId} />
+          <ProjectHeader
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+          />
           <div className="shrink-0">
             <ProjectActionsMenu
               workspaceSlug={workspaceSlug}
@@ -188,7 +184,10 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
 
         <div className="h-5 w-1 shrink-0 border-l border-subtle" />
 
-        <div ref={containerRef} className="flex h-full min-w-0 flex-1 items-center overflow-hidden">
+        <div
+          ref={containerRef}
+          className="flex h-full min-w-0 flex-1 items-center overflow-hidden"
+        >
           <TabNavigationList className="h-full">
             {/* Render visible tab items */}
             {visibleItems.map((item) => {

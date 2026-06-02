@@ -4,42 +4,42 @@
  * See the LICENSE file for details.
  */
 
-import type { ReactNode } from "react";
-import { observer } from "mobx-react";
+import {observer} from "mobx-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import {useParams} from "next/navigation";
+import type {ReactNode} from "react";
 import useSWR from "swr";
 // ui
-import { LogOut } from "lucide-react";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import { Button, getButtonStyling } from "@plane/propel/button";
-import { PlaneLogo } from "@plane/propel/icons";
-import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import { Tooltip } from "@plane/propel/tooltip";
-import { cn } from "@plane/utils";
+import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {Button, getButtonStyling} from "@plane/propel/button";
+import {PlaneLogo} from "@plane/propel/icons";
+import {TOAST_TYPE, setToast} from "@plane/propel/toast";
+import {Tooltip} from "@plane/propel/tooltip";
+import {cn} from "@plane/utils";
+import {LogOut} from "lucide-react";
 // assets
 import WorkSpaceNotAvailable from "@/app/assets/workspace/workspace-not-available.png?url";
 // components
-import { LogoSpinner } from "@/components/common/logo-spinner";
+import {LogoSpinner} from "@/components/common/logo-spinner";
 // constants
 import {
-  WORKSPACE_MEMBERS,
-  WORKSPACE_PARTIAL_PROJECTS,
-  WORKSPACE_MEMBER_ME_INFORMATION,
-  WORKSPACE_PROJECTS_ROLES_INFORMATION,
   WORKSPACE_FAVORITE,
-  WORKSPACE_STATES,
-  WORKSPACE_SIDEBAR_PREFERENCES,
+  WORKSPACE_MEMBERS,
+  WORKSPACE_MEMBER_ME_INFORMATION,
+  WORKSPACE_PARTIAL_PROJECTS,
+  WORKSPACE_PROJECTS_ROLES_INFORMATION,
   WORKSPACE_PROJECT_NAVIGATION_PREFERENCES,
+  WORKSPACE_SIDEBAR_PREFERENCES,
+  WORKSPACE_STATES,
 } from "@/constants/fetch-keys";
 // hooks
-import { useFavorite } from "@/hooks/store/use-favorite";
-import { useMember } from "@/hooks/store/use-member";
-import { useProject } from "@/hooks/store/use-project";
-import { useProjectState } from "@/hooks/store/use-project-state";
-import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
-import { usePlatformOS } from "@/hooks/use-platform-os";
+import {useFavorite} from "@/hooks/store/use-favorite";
+import {useMember} from "@/hooks/store/use-member";
+import {useProject} from "@/hooks/store/use-project";
+import {useProjectState} from "@/hooks/store/use-project-state";
+import {useWorkspace} from "@/hooks/store/use-workspace";
+import {useUser, useUserPermissions} from "@/hooks/store/user";
+import {usePlatformOS} from "@/hooks/use-platform-os";
 
 interface IWorkspaceAuthWrapper {
   children: ReactNode;
@@ -47,84 +47,85 @@ interface IWorkspaceAuthWrapper {
 }
 
 export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props: IWorkspaceAuthWrapper) {
-  const { children, isLoading: isParentLoading = false } = props;
+  const {children, isLoading: isParentLoading = false} = props;
   // router params
-  const { workspaceSlug } = useParams();
+  const {workspaceSlug} = useParams();
   // store hooks
-  const { signOut, data: currentUser } = useUser();
-  const { fetchPartialProjects } = useProject();
-  const { fetchFavorite } = useFavorite();
+  const {signOut, data: currentUser} = useUser();
+  const {fetchPartialProjects} = useProject();
+  const {fetchFavorite} = useFavorite();
   const {
-    workspace: { fetchWorkspaceMembers },
+    workspace: {fetchWorkspaceMembers},
   } = useMember();
-  const { workspaces, fetchSidebarNavigationPreferences, fetchProjectNavigationPreferences } = useWorkspace();
-  const { isMobile } = usePlatformOS();
-  const { loader, workspaceInfoBySlug, fetchUserWorkspaceInfo, fetchUserProjectPermissions, allowPermissions } =
-    useUserPermissions();
-  const { fetchWorkspaceStates } = useProjectState();
+  const {workspaces, fetchSidebarNavigationPreferences, fetchProjectNavigationPreferences} = useWorkspace();
+  const {isMobile} = usePlatformOS();
+  const {loader, workspaceInfoBySlug, fetchUserWorkspaceInfo, fetchUserProjectPermissions, allowPermissions} = useUserPermissions();
+  const {fetchWorkspaceStates} = useProjectState();
   // derived values
   const canPerformWorkspaceMemberActions = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.WORKSPACE
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
+    EUserPermissionsLevel.WORKSPACE,
   );
   const allWorkspaces = workspaces ? Object.values(workspaces) : undefined;
-  const currentWorkspace =
-    (allWorkspaces && allWorkspaces.find((workspace) => workspace?.slug === workspaceSlug)) || undefined;
+  const currentWorkspace = (allWorkspaces && allWorkspaces.find((workspace) => workspace?.slug === workspaceSlug)) || undefined;
   const currentWorkspaceInfo = workspaceSlug && workspaceInfoBySlug(workspaceSlug.toString());
 
   // fetching user workspace information
   useSWR(
     workspaceSlug && currentWorkspace ? WORKSPACE_MEMBER_ME_INFORMATION(workspaceSlug.toString()) : null,
     workspaceSlug && currentWorkspace ? () => fetchUserWorkspaceInfo(workspaceSlug.toString()) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
   useSWR(
     workspaceSlug && currentWorkspace ? WORKSPACE_PROJECTS_ROLES_INFORMATION(workspaceSlug.toString()) : null,
     workspaceSlug && currentWorkspace ? () => fetchUserProjectPermissions(workspaceSlug.toString()) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
 
   // fetching workspace projects
   useSWR(
     workspaceSlug && currentWorkspace ? WORKSPACE_PARTIAL_PROJECTS(workspaceSlug.toString()) : null,
     workspaceSlug && currentWorkspace ? () => fetchPartialProjects(workspaceSlug.toString()) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
   // fetch workspace members
   useSWR(
     workspaceSlug && currentWorkspace ? WORKSPACE_MEMBERS(workspaceSlug.toString()) : null,
     workspaceSlug && currentWorkspace ? () => fetchWorkspaceMembers(workspaceSlug.toString()) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
   // fetch workspace favorite
   useSWR(
-    workspaceSlug && currentWorkspace && canPerformWorkspaceMemberActions
-      ? WORKSPACE_FAVORITE(workspaceSlug.toString())
-      : null,
-    workspaceSlug && currentWorkspace && canPerformWorkspaceMemberActions
-      ? () => fetchFavorite(workspaceSlug.toString())
-      : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    workspaceSlug && currentWorkspace && canPerformWorkspaceMemberActions ? WORKSPACE_FAVORITE(workspaceSlug.toString()) : null,
+    workspaceSlug && currentWorkspace && canPerformWorkspaceMemberActions ? () => fetchFavorite(workspaceSlug.toString()) : null,
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
   // fetch workspace states
   useSWR(
     workspaceSlug ? WORKSPACE_STATES(workspaceSlug.toString()) : null,
     workspaceSlug ? () => fetchWorkspaceStates(workspaceSlug.toString()) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
 
   // fetch workspace sidebar preferences
   useSWR(
     workspaceSlug ? WORKSPACE_SIDEBAR_PREFERENCES(workspaceSlug.toString()) : null,
     workspaceSlug ? () => fetchSidebarNavigationPreferences(workspaceSlug.toString()) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
 
   // fetch workspace project navigation preferences
   useSWR(
     workspaceSlug ? WORKSPACE_PROJECT_NAVIGATION_PREFERENCES(workspaceSlug.toString()) : null,
     workspaceSlug ? () => fetchProjectNavigationPreferences(workspaceSlug.toString()) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    {revalidateIfStale: false, revalidateOnFocus: false},
   );
 
   const handleSignOut = async () => {
@@ -133,7 +134,7 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
         type: TOAST_TYPE.ERROR,
         title: "Error!",
         message: "Failed to sign out. Please try again.",
-      })
+      }),
     );
   };
 
@@ -163,7 +164,12 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
                 className="relative flex h-6 w-6 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-sm hover:bg-layer-1"
                 onClick={handleSignOut}
               >
-                <Tooltip tooltipContent={"Sign out"} position="top" className="ml-2" isMobile={isMobile}>
+                <Tooltip
+                  tooltipContent={"Sign out"}
+                  position="top"
+                  className="ml-2"
+                  isMobile={isMobile}
+                >
                   <LogOut size={14} />
                 </Tooltip>
               </div>
@@ -171,7 +177,11 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
           </div>
           <div className="relative flex h-full w-full flex-grow flex-col items-center justify-center space-y-3">
             <div className="relative flex-shrink-0">
-              <img src={WorkSpaceNotAvailable} className="h-[220px] object-contain object-center" alt="Plane logo" />
+              <img
+                src={WorkSpaceNotAvailable}
+                className="h-[220px] object-contain object-center"
+                alt="Plane logo"
+              />
             </div>
             <h3 className="text-center text-16 font-semibold">Workspace not found</h3>
             <p className="text-center text-13 text-secondary">
@@ -179,17 +189,26 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
             </p>
             <div className="flex items-center justify-center gap-2 pt-4">
               {allWorkspaces && allWorkspaces.length > 0 && (
-                <Link href="/" className={cn(getButtonStyling("primary", "base"))}>
+                <Link
+                  href="/"
+                  className={cn(getButtonStyling("primary", "base"))}
+                >
                   Go Home
                 </Link>
               )}
               {allWorkspaces?.length > 0 && (
-                <Link href="/settings/profile/general/" className={cn(getButtonStyling("secondary", "base"))}>
+                <Link
+                  href="/settings/profile/general/"
+                  className={cn(getButtonStyling("secondary", "base"))}
+                >
                   Visit Profile
                 </Link>
               )}
               {allWorkspaces && allWorkspaces.length === 0 && (
-                <Link href="/create-workspace/" className={cn(getButtonStyling("secondary", "base"))}>
+                <Link
+                  href="/create-workspace/"
+                  className={cn(getButtonStyling("secondary", "base"))}
+                >
                   Create new workspace
                 </Link>
               )}
@@ -211,8 +230,8 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
             <div className="space-y-2">
               <h3 className="text-16 font-semibold">Not Authorized!</h3>
               <p className="mx-auto w-1/2 text-13 text-secondary">
-                You{"'"}re not a member of this workspace. Please contact the workspace admin to get an invitation or
-                check your pending invitations.
+                You{"'"}re not a member of this workspace. Please contact the workspace admin to get an invitation or check your pending
+                invitations.
               </p>
             </div>
             <div className="flex items-center justify-center gap-2">

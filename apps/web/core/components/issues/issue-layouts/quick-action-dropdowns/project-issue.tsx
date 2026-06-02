@@ -4,30 +4,30 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
-import { omit } from "lodash-es";
-import { observer } from "mobx-react";
-import { useParams } from "next/navigation";
+import {omit} from "lodash-es";
+import {observer} from "mobx-react";
+import {useParams} from "next/navigation";
+import {useState} from "react";
 // plane imports
-import { ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import type { TIssue } from "@plane/types";
-import { EIssuesStoreType } from "@plane/types";
-import { ContextMenu, CustomMenu } from "@plane/ui";
-import { cn } from "@plane/utils";
+import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import type {TIssue} from "@plane/types";
+import {EIssuesStoreType} from "@plane/types";
+import {ContextMenu, CustomMenu} from "@plane/ui";
+import {cn} from "@plane/utils";
 // hooks
-import { useIssues } from "@/hooks/store/use-issues";
-import { useProject } from "@/hooks/store/use-project";
-import { useProjectState } from "@/hooks/store/use-project-state";
-import { useUserPermissions } from "@/hooks/store/user";
+import {useIssues} from "@/hooks/store/use-issues";
+import {useProject} from "@/hooks/store/use-project";
+import {useProjectState} from "@/hooks/store/use-project-state";
+import {useUserPermissions} from "@/hooks/store/user";
 // plane-web imports
-import { DuplicateWorkItemModal } from "@/plane-web/components/issues/issue-layouts/quick-action-dropdowns/duplicate-modal";
+import {DuplicateWorkItemModal} from "@/plane-web/components/issues/issue-layouts/quick-action-dropdowns/duplicate-modal";
 // helper
-import { ArchiveIssueModal } from "../../archive-issue-modal";
-import { DeleteIssueModal } from "../../delete-issue-modal";
-import { CreateUpdateIssueModal } from "../../issue-modal/modal";
-import type { IQuickActionProps } from "../list/list-view-types";
-import type { MenuItemFactoryProps } from "./helper";
-import { useProjectIssueMenuItems } from "./helper";
+import {ArchiveIssueModal} from "../../archive-issue-modal";
+import {DeleteIssueModal} from "../../delete-issue-modal";
+import {CreateUpdateIssueModal} from "../../issue-modal/modal";
+import type {IQuickActionProps} from "../list/list-view-types";
+import type {MenuItemFactoryProps} from "./helper";
+import {useProjectIssueMenuItems} from "./helper";
 
 export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActions(props: IQuickActionProps) {
   const {
@@ -42,7 +42,7 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
     parentRef,
   } = props;
   // router
-  const { workspaceSlug } = useParams();
+  const {workspaceSlug} = useParams();
   // states
   const [createUpdateIssueModal, setCreateUpdateIssueModal] = useState(false);
   const [issueToEdit, setIssueToEdit] = useState<TIssue | undefined>(undefined);
@@ -50,10 +50,10 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
   const [archiveIssueModal, setArchiveIssueModal] = useState(false);
   const [duplicateWorkItemModal, setDuplicateWorkItemModal] = useState(false);
   // store hooks
-  const { allowPermissions } = useUserPermissions();
-  const { issuesFilter } = useIssues(EIssuesStoreType.PROJECT);
-  const { getStateById } = useProjectState();
-  const { getProjectIdentifierById } = useProject();
+  const {allowPermissions} = useUserPermissions();
+  const {issuesFilter} = useIssues(EIssuesStoreType.PROJECT);
+  const {getStateById} = useProjectState();
+  const {getProjectIdentifierById} = useProject();
   // derived values
   const activeLayout = `${issuesFilter.issueFilters?.displayFilters?.layout} layout`;
   const stateDetails = getStateById(issue.state_id);
@@ -61,10 +61,17 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
   // auth
   const isEditingAllowed =
     allowPermissions(
-      [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
       EUserPermissionsLevel.PROJECT,
       workspaceSlug?.toString(),
-      issue.project_id ?? undefined
+      issue.project_id ?? undefined,
     ) && !readOnly;
   const isArchivingAllowed = handleArchive && isEditingAllowed;
   const isInArchivableGroup = !!stateDetails && ARCHIVABLE_STATE_GROUPS.includes(stateDetails?.group);
@@ -76,7 +83,7 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
       name: `${issue.name} (copy)`,
       sourceIssueId: issue.id,
     },
-    ["id"]
+    ["id"],
   );
 
   // Menu items and modals using helper
@@ -149,7 +156,10 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
         />
       )}
 
-      <ContextMenu parentRef={parentRef} items={CONTEXT_MENU_ITEMS} />
+      <ContextMenu
+        parentRef={parentRef}
+        items={CONTEXT_MENU_ITEMS}
+      />
       <CustomMenu
         ellipsis
         placement={placements}
@@ -188,7 +198,7 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
                   {
                     "text-placeholder": item.disabled,
                   },
-                  item.className
+                  item.className,
                 )}
               >
                 {item.nestedMenuItems.map((nestedItem) => (
@@ -202,7 +212,7 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
                       {
                         "text-placeholder": nestedItem.disabled,
                       },
-                      nestedItem.className
+                      nestedItem.className,
                     )}
                     disabled={nestedItem.disabled}
                   >
@@ -237,7 +247,7 @@ export const ProjectIssueQuickActions = observer(function ProjectIssueQuickActio
                 {
                   "text-placeholder": item.disabled,
                 },
-                item.className
+                item.className,
               )}
               disabled={item.disabled}
             >

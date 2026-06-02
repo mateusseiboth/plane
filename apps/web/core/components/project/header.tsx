@@ -7,7 +7,7 @@
 import { observer } from "mobx-react";
 import { usePathname } from "next/navigation";
 // i18n
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_TRACKER_ELEMENTS } from "@plane/constants";
+import { EUserPermissionsLevel, PROJECT_TRACKER_ELEMENTS, PROJECT_CREATE_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 // ui
 import { Button } from "@plane/propel/button";
@@ -33,7 +33,7 @@ export const ProjectsBaseHeader = observer(function ProjectsBaseHeader() {
   const pathname = usePathname();
   // auth
   const isAuthorizedUser = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    PROJECT_CREATE_ROLES,
     EUserPermissionsLevel.WORKSPACE
   );
   const isArchived = pathname.includes("/archives");

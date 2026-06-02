@@ -56,7 +56,14 @@ export const ViewListItemAction = observer(function ViewListItemAction(props: Pr
 
   // derived values
   const isEditingAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
     EUserPermissionsLevel.PROJECT
   );
 

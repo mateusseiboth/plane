@@ -4,22 +4,22 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
-import { observer } from "mobx-react";
-import { useParams } from "next/navigation";
+import {observer} from "mobx-react";
+import {useParams} from "next/navigation";
+import {useState} from "react";
 // ui
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
-import { EIssuesStoreType } from "@plane/types";
-import { ContextMenu, CustomMenu } from "@plane/ui";
-import { cn } from "@plane/utils";
+import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {EIssuesStoreType} from "@plane/types";
+import {ContextMenu, CustomMenu} from "@plane/ui";
+import {cn} from "@plane/utils";
 // hooks
-import { useIssues } from "@/hooks/store/use-issues";
-import { useUserPermissions } from "@/hooks/store/user";
+import {useIssues} from "@/hooks/store/use-issues";
+import {useUserPermissions} from "@/hooks/store/user";
 // local imports
-import { DeleteIssueModal } from "../../delete-issue-modal";
-import type { IQuickActionProps } from "../list/list-view-types";
-import type { MenuItemFactoryProps } from "./helper";
-import { useArchivedIssueMenuItems } from "./helper";
+import {DeleteIssueModal} from "../../delete-issue-modal";
+import type {IQuickActionProps} from "../list/list-view-types";
+import type {MenuItemFactoryProps} from "./helper";
+import {useArchivedIssueMenuItems} from "./helper";
 
 export const ArchivedIssueQuickActions = observer(function ArchivedIssueQuickActions(props: IQuickActionProps) {
   const {
@@ -35,18 +35,39 @@ export const ArchivedIssueQuickActions = observer(function ArchivedIssueQuickAct
   // states
   const [deleteIssueModal, setDeleteIssueModal] = useState(false);
   // router
-  const { workspaceSlug } = useParams();
+  const {workspaceSlug} = useParams();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const {allowPermissions} = useUserPermissions();
 
-  const { issuesFilter } = useIssues(EIssuesStoreType.ARCHIVED);
+  const {issuesFilter} = useIssues(EIssuesStoreType.ARCHIVED);
   // derived values
   const activeLayout = `${issuesFilter.issueFilters?.displayFilters?.layout} layout`;
   // auth
   const isEditingAllowed =
-    allowPermissions([EUserPermissions.ADMIN, EUserPermissions.MEMBER], EUserPermissionsLevel.PROJECT) && !readOnly;
+    allowPermissions(
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
+      EUserPermissionsLevel.PROJECT,
+    ) && !readOnly;
   const isRestoringAllowed =
-    handleRestore && allowPermissions([EUserPermissions.ADMIN, EUserPermissions.MEMBER], EUserPermissionsLevel.PROJECT);
+    handleRestore &&
+    allowPermissions(
+      [
+        EUserPermissions.ADMIN,
+        EUserPermissions.GESTOR_PROJETO,
+        EUserPermissions.MEMBER,
+        EUserPermissions.TI,
+        EUserPermissions.QUALIDADE,
+        EUserPermissions.ATENDIMENTO,
+      ],
+      EUserPermissionsLevel.PROJECT,
+    );
 
   // Menu items and modals using helper
   const menuItemProps: MenuItemFactoryProps = {
@@ -84,7 +105,10 @@ export const ArchivedIssueQuickActions = observer(function ArchivedIssueQuickAct
         onSubmit={handleDelete}
       />
 
-      <ContextMenu parentRef={parentRef} items={CONTEXT_MENU_ITEMS} />
+      <ContextMenu
+        parentRef={parentRef}
+        items={CONTEXT_MENU_ITEMS}
+      />
       <CustomMenu
         ellipsis
         customButton={customActionButton}
@@ -108,7 +132,7 @@ export const ArchivedIssueQuickActions = observer(function ArchivedIssueQuickAct
                 {
                   "text-placeholder": item.disabled,
                 },
-                item.className
+                item.className,
               )}
               disabled={item.disabled}
             >

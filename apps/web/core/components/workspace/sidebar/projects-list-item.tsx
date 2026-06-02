@@ -4,54 +4,50 @@
  * See the LICENSE file for details.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
-import { draggable, dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import { pointerOutsideOfPreview } from "@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview";
-import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
-import { attachInstruction, extractInstruction } from "@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item";
-import { observer } from "mobx-react";
-import { useParams, useRouter } from "next/navigation";
-import { createRoot } from "react-dom/client";
+import {attachInstruction, extractInstruction} from "@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item";
+import {combine} from "@atlaskit/pragmatic-drag-and-drop/combine";
+import {draggable, dropTargetForElements} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import {pointerOutsideOfPreview} from "@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview";
+import {setCustomNativeDragPreview} from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
+import {Disclosure, Transition} from "@headlessui/react";
+import {LogOut, MoreHorizontal, Settings, Share2} from "lucide-react";
+import {observer} from "mobx-react";
+import {useParams, useRouter} from "next/navigation";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {createRoot} from "react-dom/client";
 import scrollIntoView from "smooth-scroll-into-view-if-needed";
-import { Settings, Share2, LogOut, MoreHorizontal } from "lucide-react";
-import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS } from "@plane/constants";
-import { useOutsideClickDetector } from "@plane/hooks";
-import { useTranslation } from "@plane/i18n";
-import { Logo } from "@plane/propel/emoji-icon-picker";
-import { LinkIcon, ArchiveIcon, ChevronRightIcon } from "@plane/propel/icons";
-import { IconButton } from "@plane/propel/icon-button";
-import { Tooltip } from "@plane/propel/tooltip";
-import { CustomMenu, DropIndicator, DragHandle, ControlLink } from "@plane/ui";
-import { cn } from "@plane/utils";
+import {EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS} from "@plane/constants";
+import {useOutsideClickDetector} from "@plane/hooks";
+import {useTranslation} from "@plane/i18n";
+import {Logo} from "@plane/propel/emoji-icon-picker";
+import {IconButton} from "@plane/propel/icon-button";
+import {ArchiveIcon, ChevronRightIcon, LinkIcon} from "@plane/propel/icons";
+import {Tooltip} from "@plane/propel/tooltip";
+import {ControlLink, CustomMenu, DragHandle, DropIndicator} from "@plane/ui";
+import {cn} from "@plane/utils";
 // components
-import { DEFAULT_TAB_KEY, getTabUrl } from "@/components/navigation/tab-navigation-utils";
-import { useTabPreferences } from "@/components/navigation/use-tab-preferences";
-import { LeaveProjectModal } from "@/components/project/leave-project-modal";
-import { PublishProjectModal } from "@/components/project/publish-project/modal";
+import {DEFAULT_TAB_KEY, getTabUrl} from "@/components/navigation/tab-navigation-utils";
+import {useTabPreferences} from "@/components/navigation/use-tab-preferences";
+import {LeaveProjectModal} from "@/components/project/leave-project-modal";
+import {PublishProjectModal} from "@/components/project/publish-project/modal";
 // hooks
-import { useAppTheme } from "@/hooks/store/use-app-theme";
-import { useCommandPalette } from "@/hooks/store/use-command-palette";
-import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
-import { useProjectNavigationPreferences } from "@/hooks/use-navigation-preferences";
-import { usePlatformOS } from "@/hooks/use-platform-os";
+import {useAppTheme} from "@/hooks/store/use-app-theme";
+import {useCommandPalette} from "@/hooks/store/use-command-palette";
+import {useProject} from "@/hooks/store/use-project";
+import {useUserPermissions} from "@/hooks/store/user";
+import {useProjectNavigationPreferences} from "@/hooks/use-navigation-preferences";
+import {usePlatformOS} from "@/hooks/use-platform-os";
 // plane web imports
-import { useNavigationItems } from "@/plane-web/components/navigations";
-import { ProjectNavigationRoot } from "@/plane-web/components/sidebar";
+import {useNavigationItems} from "@/plane-web/components/navigations";
+import {ProjectNavigationRoot} from "@/plane-web/components/sidebar";
 // local imports
-import { HIGHLIGHT_CLASS, highlightIssueOnDrop } from "../../issues/issue-layouts/utils";
+import {HIGHLIGHT_CLASS, highlightIssueOnDrop} from "../../issues/issue-layouts/utils";
 
 type Props = {
   projectId: string;
   handleCopyText: () => void;
-  handleOnProjectDrop?: (
-    sourceId: string | undefined,
-    destinationId: string | undefined,
-    shouldDropAtEnd: boolean
-  ) => void;
+  handleOnProjectDrop?: (sourceId: string | undefined, destinationId: string | undefined, shouldDropAtEnd: boolean) => void;
   projectListType: "JOINED" | "FAVORITES";
   disableDrag?: boolean;
   disableDrop?: boolean;
@@ -71,13 +67,13 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
     renderInExtendedSidebar = false,
   } = props;
   // store hooks
-  const { t } = useTranslation();
-  const { getPartialProjectById } = useProject();
-  const { isMobile } = usePlatformOS();
-  const { allowPermissions } = useUserPermissions();
-  const { getIsProjectListOpen, toggleProjectListOpen } = useCommandPalette();
-  const { preferences: projectPreferences } = useProjectNavigationPreferences();
-  const { isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar, toggleAnySidebarDropdown } = useAppTheme();
+  const {t} = useTranslation();
+  const {getPartialProjectById} = useProject();
+  const {isMobile} = usePlatformOS();
+  const {allowPermissions} = useUserPermissions();
+  const {getIsProjectListOpen, toggleProjectListOpen} = useCommandPalette();
+  const {preferences: projectPreferences} = useProjectNavigationPreferences();
+  const {isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar, toggleAnySidebarDropdown} = useAppTheme();
 
   // states
   const [leaveProjectModalOpen, setLeaveProjectModal] = useState(false);
@@ -91,7 +87,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
   const projectRef = useRef<HTMLDivElement | null>(null);
   const dragHandleRef = useRef<HTMLButtonElement | null>(null);
   // router
-  const { workspaceSlug, projectId: URLProjectId } = useParams();
+  const {workspaceSlug, projectId: URLProjectId} = useParams();
   const router = useRouter();
   // derived values
   const project = getPartialProjectById(projectId);
@@ -106,29 +102,28 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
   const availableTabKeys = navigationItems.map((item) => item.key);
 
   // Get preferences from hook
-  const { tabPreferences } = useTabPreferences(workspaceSlug.toString(), projectId);
+  const {tabPreferences} = useTabPreferences(workspaceSlug.toString(), projectId);
   const defaultTabKey = tabPreferences.defaultTab;
   // Validate that the default tab is available
   const validatedDefaultTabKey = availableTabKeys.includes(defaultTabKey) ? defaultTabKey : DEFAULT_TAB_KEY;
   const defaultTabUrl = project ? getTabUrl(workspaceSlug.toString(), project.id, validatedDefaultTabKey) : "";
 
   // toggle project list open
-  const setIsProjectListOpen = useCallback(
-    (value: boolean) => toggleProjectListOpen(projectId, value),
-    [projectId, toggleProjectListOpen]
-  );
+  const setIsProjectListOpen = useCallback((value: boolean) => toggleProjectListOpen(projectId, value), [projectId, toggleProjectListOpen]);
   // auth
-  const isAdmin = allowPermissions(
-    [EUserPermissions.ADMIN],
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug.toString(),
-    project?.id
-  );
+  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug.toString(), project?.id);
   const isAuthorized = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
     EUserPermissionsLevel.PROJECT,
     workspaceSlug.toString(),
-    project?.id
+    project?.id,
   );
 
   const handleLeaveProject = () => {
@@ -146,26 +141,24 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
         element,
         canDrag: () => !disableDrag,
         dragHandle: dragHandleElement ?? undefined,
-        getInitialData: () => ({ id: projectId, dragInstanceId: "PROJECTS" }),
+        getInitialData: () => ({id: projectId, dragInstanceId: "PROJECTS"}),
         onDragStart: () => {
           setIsDragging(true);
         },
         onDrop: () => {
           setIsDragging(false);
         },
-        onGenerateDragPreview: ({ nativeSetDragImage }) => {
+        onGenerateDragPreview: ({nativeSetDragImage}) => {
           // Add a custom drag image
           setCustomNativeDragPreview({
-            getOffset: pointerOutsideOfPreview({ x: "0px", y: "0px" }),
-            render: ({ container }) => {
+            getOffset: pointerOutsideOfPreview({x: "0px", y: "0px"}),
+            render: ({container}) => {
               const root = createRoot(container);
               root.render(
                 <div className="flex items-center rounded-sm bg-surface-1 p-1 pr-2 text-13">
-                  <div className="grid size-4 flex-shrink-0 place-items-center">
-                    {project && <Logo logo={project?.logo_props} />}
-                  </div>
+                  <div className="grid size-4 flex-shrink-0 place-items-center">{project && <Logo logo={project?.logo_props} />}</div>
                   <p className="truncate text-secondary">{project?.name}</p>
-                </div>
+                </div>,
               );
               return () => root.unmount();
             },
@@ -175,10 +168,9 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
       }),
       dropTargetForElements({
         element,
-        canDrop: ({ source }) =>
-          !disableDrop && source?.data?.id !== projectId && source?.data?.dragInstanceId === "PROJECTS",
-        getData: ({ input, element }) => {
-          const data = { id: projectId };
+        canDrop: ({source}) => !disableDrop && source?.data?.id !== projectId && source?.data?.dragInstanceId === "PROJECTS",
+        getData: ({input, element}) => {
+          const data = {id: projectId};
 
           // attach instruction for last in list
           return attachInstruction(data, {
@@ -189,21 +181,17 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
             mode: isLastChild ? "last-in-group" : "standard",
           });
         },
-        onDrag: ({ self }) => {
+        onDrag: ({self}) => {
           const extractedInstruction = extractInstruction(self?.data)?.type;
           // check if the highlight is to be shown above or below
           setInstruction(
-            extractedInstruction
-              ? extractedInstruction === "reorder-below" && isLastChild
-                ? "DRAG_BELOW"
-                : "DRAG_OVER"
-              : undefined
+            extractedInstruction ? (extractedInstruction === "reorder-below" && isLastChild ? "DRAG_BELOW" : "DRAG_OVER") : undefined,
           );
         },
         onDragLeave: () => {
           setInstruction(undefined);
         },
-        onDrop: ({ self, source }) => {
+        onDrop: ({self, source}) => {
           setInstruction(undefined);
           const extractedInstruction = extractInstruction(self?.data)?.type;
           const currentInstruction = extractedInstruction
@@ -220,7 +208,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
 
           highlightIssueOnDrop(`sidebar-${sourceId}-${projectListType}`);
         },
-      })
+      }),
     );
   }, [projectId, isLastChild, projectListType, handleOnProjectDrop]);
 
@@ -278,9 +266,21 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
 
   return (
     <>
-      <PublishProjectModal isOpen={publishModalOpen} projectId={projectId} onClose={() => setPublishModal(false)} />
-      <LeaveProjectModal project={project} isOpen={leaveProjectModalOpen} onClose={() => setLeaveProjectModal(false)} />
-      <Disclosure key={`${project.id}_${URLProjectId}`} defaultOpen={isProjectListOpen} as="div">
+      <PublishProjectModal
+        isOpen={publishModalOpen}
+        projectId={projectId}
+        onClose={() => setPublishModal(false)}
+      />
+      <LeaveProjectModal
+        project={project}
+        isOpen={leaveProjectModalOpen}
+        onClose={() => setLeaveProjectModal(false)}
+      />
+      <Disclosure
+        key={`${project.id}_${URLProjectId}`}
+        defaultOpen={isProjectListOpen}
+        as="div"
+      >
         <div
           id={`sidebar-${projectId}-${projectListType}`}
           className={cn("relative", {
@@ -288,23 +288,24 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
           })}
           ref={projectRef}
         >
-          <DropIndicator classNames="absolute top-0" isVisible={instruction === "DRAG_OVER"} />
+          <DropIndicator
+            classNames="absolute top-0"
+            isVisible={instruction === "DRAG_OVER"}
+          />
           <div
             className={cn(
               "group/project-item relative flex w-full items-center rounded-md px-2 py-1.5 text-primary hover:bg-layer-transparent-hover",
               {
                 "bg-surface-2": isMenuActive,
                 "bg-layer-transparent-active": shouldHighlightProject,
-              }
+              },
             )}
             id={`${project?.id}`}
           >
             {!disableDrag && (
               <Tooltip
                 isMobile={isMobile}
-                tooltipContent={
-                  project.sort_order === null ? t("join_the_project_to_rearrange") : t("drag_to_rearrange")
-                }
+                tooltipContent={project.sort_order === null ? t("join_the_project_to_rearrange") : t("drag_to_rearrange")}
                 position="top-end"
                 disabled={isDragging}
               >
@@ -316,7 +317,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
                       "cursor-not-allowed opacity-60": project.sort_order === null,
                       "cursor-grabbing": isDragging,
                       flex: isMenuActive || renderInExtendedSidebar,
-                    }
+                    },
                   )}
                   ref={dragHandleRef}
                 >
@@ -325,7 +326,11 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
               </Tooltip>
             )}
             <>
-              <ControlLink href={defaultTabUrl} className="flex flex-grow truncate" onClick={handleItemClick}>
+              <ControlLink
+                href={defaultTabUrl}
+                className="flex flex-grow truncate"
+                onClick={handleItemClick}
+              >
                 {isAccordionMode ? (
                   <Disclosure.Button
                     as="button"
@@ -338,14 +343,20 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
                     }
                   >
                     <div className="grid size-4 flex-shrink-0 place-items-center">
-                      <Logo logo={project.logo_props} size={16} />
+                      <Logo
+                        logo={project.logo_props}
+                        size={16}
+                      />
                     </div>
                     <p className="truncate text-13 font-medium text-secondary">{project.name}</p>
                   </Disclosure.Button>
                 ) : (
                   <div className="flex w-full flex-grow items-center gap-1.5 text-left select-none">
                     <div className="grid size-4 flex-shrink-0 place-items-center">
-                      <Logo logo={project.logo_props} size={16} />
+                      <Logo
+                        logo={project.logo_props}
+                        size={16}
+                      />
                     </div>
                     <p className="truncate text-13 font-medium text-secondary">{project.name}</p>
                   </div>
@@ -367,7 +378,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
                     "pointer-events-none flex-shrink-0 opacity-0 group-hover/project-item:pointer-events-auto group-hover/project-item:opacity-100",
                     {
                       "pointer-events-auto opacity-100": isMenuActive,
-                    }
+                    },
                   )}
                   customButtonClassName="grid place-items-center"
                   placement="bottom-start"
@@ -459,7 +470,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
                     aria-label={t(
                       isProjectListOpen
                         ? "aria_labels.projects_sidebar.close_project_menu"
-                        : "aria_labels.projects_sidebar.open_project_menu"
+                        : "aria_labels.projects_sidebar.open_project_menu",
                     )}
                   />
                 )}
@@ -477,9 +488,15 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
               leaveTo="transform scale-95 opacity-0"
             >
               {isProjectListOpen && (
-                <Disclosure.Panel as="div" className="relative mt-1 mb-1.5 flex flex-col gap-0.5 pl-6">
+                <Disclosure.Panel
+                  as="div"
+                  className="relative mt-1 mb-1.5 flex flex-col gap-0.5 pl-6"
+                >
                   <div className="absolute top-0 bottom-1 left-[15px] w-[1px] bg-layer-3" />
-                  <ProjectNavigationRoot workspaceSlug={workspaceSlug.toString()} projectId={projectId.toString()} />
+                  <ProjectNavigationRoot
+                    workspaceSlug={workspaceSlug.toString()}
+                    projectId={projectId.toString()}
+                  />
                 </Disclosure.Panel>
               )}
             </Transition>

@@ -49,7 +49,14 @@ export const CycleQuickActions = observer(function CycleQuickActions(props: Prop
   const cycleDetails = getCycleById(cycleId);
   // auth
   const isEditingAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

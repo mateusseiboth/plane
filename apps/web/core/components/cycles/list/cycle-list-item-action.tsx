@@ -97,7 +97,14 @@ export const CycleListItemAction = observer(function CycleListItemAction(props: 
   const projectUTCOffset = getProjectUTCOffset();
 
   const isEditingAllowed = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [
+      EUserPermissions.ADMIN,
+      EUserPermissions.GESTOR_PROJETO,
+      EUserPermissions.MEMBER,
+      EUserPermissions.TI,
+      EUserPermissions.QUALIDADE,
+      EUserPermissions.ATENDIMENTO,
+    ],
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

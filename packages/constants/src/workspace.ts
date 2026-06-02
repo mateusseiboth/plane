@@ -4,8 +4,8 @@
  * See the LICENSE file for details.
  */
 
-import type { TStaticViewTypes, IWorkspaceSearchResults } from "@plane/types";
-import { EUserWorkspaceRoles } from "@plane/types";
+import type {IWorkspaceSearchResults, TStaticViewTypes} from "@plane/types";
+import {EUserWorkspaceRoles} from "@plane/types";
 
 export const ORGANIZATION_SIZE: string[] = ["Just myself", "2-10", "11-50", "51-200", "201-500", "500+"];
 
@@ -78,11 +78,11 @@ export const RESTRICTED_URLS: string[] = [
 ];
 
 export const ROLE = {
-  5:  "Visualizador",  // GUEST
-  6:  "Atendimento",   // ATENDIMENTO
-  8:  "Qualidade",     // QUALIDADE
-  12: "TI",           // TI
-  15: "Membro",       // MEMBER
+  5: "Visualizador", // GUEST
+  6: "Atendimento", // ATENDIMENTO
+  8: "Qualidade", // QUALIDADE
+  12: "TI", // TI
+  15: "Membro", // MEMBER
   18: "Gestor de Projeto", // GESTOR_PROJETO
   20: "Administrador", // ADMIN
 } as Record<number, string>;
@@ -92,9 +92,25 @@ export const ROLE_DETAILS = {
     i18n_title: "role_details.guest.title",
     i18n_description: "role_details.guest.description",
   },
+  [EUserWorkspaceRoles.ATENDIMENTO]: {
+    i18n_title: "role_details.atendimento.title",
+    i18n_description: "role_details.atendimento.description",
+  },
+  [EUserWorkspaceRoles.QUALIDADE]: {
+    i18n_title: "role_details.qualidade.title",
+    i18n_description: "role_details.qualidade.description",
+  },
+  [EUserWorkspaceRoles.TI]: {
+    i18n_title: "role_details.ti.title",
+    i18n_description: "role_details.ti.description",
+  },
   [EUserWorkspaceRoles.MEMBER]: {
     i18n_title: "role_details.member.title",
     i18n_description: "role_details.member.description",
+  },
+  [EUserWorkspaceRoles.GESTOR_PROJETO]: {
+    i18n_title: "role_details.gestor_projeto.title",
+    i18n_description: "role_details.gestor_projeto.description",
   },
   [EUserWorkspaceRoles.ADMIN]: {
     i18n_title: "role_details.admin.title",
@@ -119,7 +135,7 @@ export const USER_ROLES = [
     value: "Freelancer / Consultant",
     i18n_label: "user_roles.freelancer_or_consultant",
   },
-  { value: "Marketing / Growth", i18n_label: "user_roles.marketing_or_growth" },
+  {value: "Marketing / Growth", i18n_label: "user_roles.marketing_or_growth"},
   {
     value: "Sales / Business Development",
     i18n_label: "user_roles.sales_or_business_development",
@@ -132,8 +148,8 @@ export const USER_ROLES = [
     value: "Student / Professor",
     i18n_label: "user_roles.student_or_professor",
   },
-  { value: "Human Resources", i18n_label: "user_roles.human_resources" },
-  { value: "Other", i18n_label: "user_roles.other" },
+  {value: "Human Resources", i18n_label: "user_roles.human_resources"},
+  {value: "Other", i18n_label: "user_roles.other"},
 ];
 
 export const IMPORTERS_LIST = [
@@ -207,28 +223,58 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     key: "views",
     labelTranslationKey: "views",
     href: `/workspace-views/all-issues/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   "all-work-items": {
     key: "all-work-items",
     labelTranslationKey: "sidebar.all_work_items",
     href: `/workspace-views/all-issues/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   "global-intake": {
     key: "global-intake",
     labelTranslationKey: "sidebar.global_intake",
     href: `/global-intake/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
-  "visits": {
+  visits: {
     key: "visits",
     labelTranslationKey: "sidebar.technical_visits",
     href: `/visits/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   analytics: {
@@ -249,7 +295,14 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     key: "archives",
     labelTranslationKey: "archives",
     href: `/projects/archives/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
 };
@@ -269,42 +322,88 @@ export const WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS: Record<string, IWorkspac
     key: "home",
     labelTranslationKey: "home.title",
     href: `/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
     highlight: (pathname: string, url: string) => pathname === url,
   },
   inbox: {
     key: "inbox",
     labelTranslationKey: "notification.label",
     href: `/notifications/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   "your-work": {
     key: "your_work",
     labelTranslationKey: "your_work",
     href: `/profile/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   stickies: {
     key: "stickies",
     labelTranslationKey: "sidebar.stickies",
     href: `/stickies/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   drafts: {
     key: "drafts",
     labelTranslationKey: "drafts",
     href: `/drafts/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+    ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   projects: {
     key: "projects",
     labelTranslationKey: "projects",
     href: `/projects/`,
-    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
     highlight: (pathname: string, url: string) => pathname === url,
   },
 };

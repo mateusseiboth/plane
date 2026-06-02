@@ -130,6 +130,32 @@ services:
     ports:
       - "3001:3000"
 
+  # On-demand password reset. Does NOT run on a normal `docker compose up` (gated
+  # behind the "tools" profile). Run it explicitly:
+  #   RESET_EMAIL=fulano@empresa.com RESET_PASSWORD=novaSenha \
+  #     docker compose -f docker-compose-local.yml --profile tools run --rm password-reset
+  #   # or reset everyone back to the default:
+  #   RESET_ALL=true docker compose -f docker-compose-local.yml --profile tools run --rm password-reset
+  password-reset:
+    build:
+      context: ./apps/api-ts
+      dockerfile: Dockerfile
+    restart: "no"
+    profiles: ["tools"]
+    networks:
+      - dev_env
+    command: ["bun", "run", "scripts/reset-password.ts"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
+      RESET_EMAIL: ${RESET_EMAIL:-}
+      RESET_ALL: ${RESET_ALL:-false}
+      RESET_PASSWORD: ${RESET_PASSWORD:-teste}
+      INCLUDE_ADMINS: ${INCLUDE_ADMINS:-false}
+      KEEP_AUTOSET: ${KEEP_AUTOSET:-false}
+      DRY_RUN: ${DRY_RUN:-false}
+    depends_on:
+      - plane-db
+
   sac-migrator:
     build:
       context: ./apps/api-ts
@@ -140,12 +166,12 @@ services:
     command: ["bun", "run", "scripts/migrate-sac.ts"]
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
-      MYSQL_HOST: ${MYSQL_HOST:-localhost}
+      MYSQL_HOST: ${MYSQL_HOST:-10.1.2.32}
       MYSQL_PORT: ${MYSQL_PORT:-3306}
       MYSQL_USER: ${MYSQL_USER:-developer}
-      MYSQL_PASS: ${MYSQL_PASS:-local}
-      MYSQL_DB: ${MYSQL_DB:-local}
-      WORKSPACE_SLUG: ${WORKSPACE_SLUG}
+      MYSQL_PASS: ${MYSQL_PASS:-qualitydev}
+      MYSQL_DB: ${MYSQL_DB:-quality_site_dev}
+      WORKSPACE_SLUG: ${WORKSPACE_SLUG:-quality}
       DRY_RUN: ${DRY_RUN:-false}
       BATCH_SIZE: ${BATCH_SIZE:-100}
       LIMIT_RECORDS: ${LIMIT_RECORDS:-0}

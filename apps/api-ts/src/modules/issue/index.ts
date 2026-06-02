@@ -7,6 +7,7 @@ import {diffChange, recordActivities, type ActivityChange} from "@utils/activity
 import {applyIssueFilters, normalizeFilters} from "@utils/filters";
 import {canTransition, resolveRole, visibleStateIds} from "@utils/permission-checks";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
+import {nextSequenceId} from "@utils/sequence";
 import {computeTargetDate} from "@utils/sla";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
@@ -182,10 +183,15 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     });
 
     const issue = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Per-project sequence number (e.g. CONTAB-12). Computed inside the
+      // transaction so concurrent creates don't both read the same max.
+      const sequenceId = await nextSequenceId(tx, project_id);
+
       const created = await tx.issue.create({
         data: {
           projectId: project_id,
           workspaceId: ws.id,
+          sequenceId,
           name: b.name,
           descriptionHtml: b.description_html ?? "<p></p>",
           descriptionStripped: (b.description_html ?? "").replace(/<[^>]+>/g, ""),

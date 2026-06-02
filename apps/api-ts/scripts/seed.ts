@@ -137,19 +137,21 @@ async function main() {
       `${norm.intakesCreated} intake(s), ${norm.labelsCreated} label(s)`
   );
 
-  // 3d. Reset imported users (auto-set password, non-admin) to the default password
-  // so logins are predictable. Runs without MySQL — fixes existing imported users.
+  // 3d. Give imported users that NEVER set their own password the default one, so
+  // first logins are predictable. The seeder runs on every `docker compose up`, so
+  // this MUST only touch users still flagged isPasswordAutoset — otherwise a
+  // password set by the user (or reset by an admin, which clears the flag) would be
+  // clobbered back to the default on the next restart ("a senha não fica").
   const importedHash = await Bun.password.hash(DEFAULT_USER_PASSWORD, {algorithm: "bcrypt", cost: 12});
   const pwReset = await prisma.user.updateMany({
     where: {
       isInstanceAdmin: false,
       deletedAt: null,
-      // imported users are flagged isPasswordAutoset and/or have a `sac_<id>` username
-      OR: [{isPasswordAutoset: true}, {username: {startsWith: "sac_"}}],
+      isPasswordAutoset: true,
     },
-    data: {password: importedHash, isActive: true, isEmailVerified: true, isPasswordAutoset: true},
+    data: {password: importedHash, isActive: true, isEmailVerified: true},
   });
-  log(`✅  Imported users reset to default password "${DEFAULT_USER_PASSWORD}": ${pwReset.count} user(s)`);
+  log(`✅  Auto-set (never-changed) users primed with default password "${DEFAULT_USER_PASSWORD}": ${pwReset.count} user(s)`);
 
   // Projects are created by the SAC migration script (one per sistema).
   // Seed does not create projects — run scripts/migrate-sac.ts after seeding.

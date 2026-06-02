@@ -804,6 +804,22 @@
       "title": "Convidado",
       "description": "Membros externos de organizações podem ser convidados como convidados."
     },
+    "atendimento": {
+      "title": "Atendimento",
+      "description": "Abre chamados (intake) e acompanha o andamento; não cria nem move work items diretamente."
+    },
+    "qualidade": {
+      "title": "Qualidade",
+      "description": "Permissões próximas às do administrador para o trabalho do projeto (work items, ciclos, módulos, páginas e intake); não altera a configuração do projeto."
+    },
+    "ti": {
+      "title": "TI",
+      "description": "Permissões próximas às do administrador para o trabalho do projeto (work items, ciclos, módulos, páginas e intake); não altera a configuração do projeto."
+    },
+    "gestor_projeto": {
+      "title": "Gestor de Projeto",
+      "description": "Gerencia o projeto, incluindo sua configuração (estados, etiquetas e membros)."
+    },
     "member": {
       "title": "Membro",
       "description": "Capacidade de ler, escrever, editar e excluir entidades dentro de projetos, ciclos e módulos"
