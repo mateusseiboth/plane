@@ -135,6 +135,10 @@ export const coreRoutes: RouteConfigEntry[] = [
         route(":workspaceSlug/visits", "./(all)/[workspaceSlug]/(projects)/visits/page.tsx"),
         route(":workspaceSlug/visits/:visitId", "./(all)/[workspaceSlug]/(projects)/visits/[visitId]/page.tsx"),
 
+        // Chat / Atendimento (plugin)
+        route(":workspaceSlug/chat", "./(all)/[workspaceSlug]/(projects)/chat/page.tsx"),
+        route(":workspaceSlug/chat-view/:protocol", "./(all)/[workspaceSlug]/(projects)/chat-view/[protocol]/page.tsx"),
+
         // Management Reports
         route(":workspaceSlug/reports", "./(all)/[workspaceSlug]/(projects)/reports/page.tsx"),
         route(":workspaceSlug/reports/:reportId", "./(all)/[workspaceSlug]/(projects)/reports/[reportId]/page.tsx"),
@@ -334,6 +338,11 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/integrations-custom",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/integrations-custom/page.tsx"
           ),
+          route(
+            ":workspaceSlug/settings/storage",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/storage/page.tsx"
+          ),
+          route(":workspaceSlug/settings/chat", "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/chat/page.tsx"),
         ]),
 
         // --------------------------------------------------------------------

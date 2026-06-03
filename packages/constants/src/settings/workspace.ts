@@ -104,6 +104,13 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/storage/`,
   },
+  chat: {
+    key: "chat",
+    i18n_label: "workspace_settings.settings.chat.title",
+    href: `/settings/chat`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/chat/`,
+  },
 };
 
 export const WORKSPACE_SETTINGS_ACCESS = Object.fromEntries(
@@ -120,6 +127,7 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     // WORKSPACE_SETTINGS["billing-and-plans"], // Not implemented yet
     WORKSPACE_SETTINGS["export"],
     WORKSPACE_SETTINGS["storage"],
+    WORKSPACE_SETTINGS["chat"],
   ].filter(Boolean) as TWorkspaceSettingsItem[],
   [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [],
   [WORKSPACE_SETTINGS_CATEGORY.DEVELOPER]: [

@@ -277,6 +277,20 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  chat: {
+    key: "chat",
+    labelTranslationKey: "sidebar.chat",
+    href: `/chat/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+    ],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   analytics: {
     key: "analytics",
     labelTranslationKey: "analytics",
@@ -311,6 +325,7 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["all-work-items"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["global-intake"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["visits"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["chat"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["reports"],

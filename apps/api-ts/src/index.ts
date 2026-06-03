@@ -186,8 +186,11 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)
-  .use(widgetSdkGatewayModule)
+  // pluginRegistryModule (serves /plugins/active etc.) MUST be mounted before the
+  // SDK gateways — their global widget-auth hook would otherwise leak onto it and
+  // make /plugins/active demand an X-Widget-Id header.
   .use(pluginRegistryModule)
+  .use(widgetSdkGatewayModule)
   .use(pluginSdkGatewayModule);
 
 // ── Compose into root app ────────────────────────────────────────────────────

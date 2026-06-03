@@ -516,6 +516,10 @@
       "storage": {
         "title": "Armazenamento",
         "heading": "Armazenamento"
+      },
+      "chat": {
+        "title": "Atendimento (Chat)",
+        "heading": "Atendimento (Chat)"
       }
     },
     "empty_state": {

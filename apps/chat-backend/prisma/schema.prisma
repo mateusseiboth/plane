@@ -1,0 +1,236 @@
+// Chat backend schema. Decoupled from the Plane schema: it references Plane
+// userId / workspaceId as plain strings (no FK) so it can run against its own
+// database. All tables are prefixed chat_* so sharing the Plane Postgres is safe.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Contacts ────────────────────────────────────────────────────────────────
+model Contact {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @map("workspace_id")
+  name        String?
+  phone       String? // E.164 for WhatsApp contacts
+  email       String?
+  extra       Json          @default("{}")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  sessions    ChatSession[]
+
+  @@unique([workspaceId, phone])
+  @@index([workspaceId])
+  @@map("chat_contacts")
+}
+
+// ── Sessions / messages ───────────────────────────────────────────────────────
+model ChatSession {
+  id                 String        @id @default(uuid()) @db.Uuid
+  protocol           String        @unique
+  channel            String // "whatsapp" | "native"
+  workspaceId        String        @map("workspace_id")
+  contactId          String?       @map("contact_id") @db.Uuid
+  contact            Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  clientBrowserId    String?       @map("client_browser_id")
+  clientName         String?       @map("client_name")
+  clientPhone        String?       @map("client_phone")
+  status             String        @default("bot") // "bot" | "queued" | "active" | "closed"
+  queueId            String?       @map("queue_id") @db.Uuid
+  assignedAttendantId String?      @map("assigned_attendant_id")
+  currentFlowId      String?       @map("current_flow_id") @db.Uuid
+  flowState          Json          @default("{}") @map("flow_state")
+  botState           String        @default("new") @map("bot_state") // new | awaiting_name | confirm_contact | menu | in_flow | done
+  lastClientMessageAt DateTime?    @map("last_client_message_at")
+  lastAttendantMessageAt DateTime? @map("last_attendant_message_at")
+  idlePromptedAt     DateTime?     @map("idle_prompted_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  closedAt           DateTime?     @map("closed_at")
+  closedById         String?       @map("closed_by_id")
+  messages           ChatMessage[]
+  readStates         ChatReadState[]
+
+  @@index([workspaceId, status])
+  @@index([assignedAttendantId])
+  @@index([clientBrowserId])
+  @@index([clientPhone])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id           String      @id @default(uuid()) @db.Uuid
+  sessionId    String      @map("session_id") @db.Uuid
+  session      ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender       String // "client" | "bot" | "attendant" | "system"
+  senderUserId String?     @map("sender_user_id")
+  senderName   String?     @map("sender_name")
+  type         String      @default("text") // text | image | video | audio | file | event
+  text         String?
+  mediaKey     String?     @map("media_key")
+  mediaMime    String?     @map("media_mime")
+  mediaName    String?     @map("media_name")
+  replyToId    String?     @map("reply_to_id") @db.Uuid
+  editedAt     DateTime?   @map("edited_at")
+  deletedAt    DateTime?   @map("deleted_at")
+  externalId   String?     @map("external_id") // provider message id (dedup)
+  status       String      @default("sent") // sent | delivered | read
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@index([sessionId, createdAt])
+  @@index([externalId])
+  @@map("chat_messages")
+}
+
+model ChatReadState {
+  id                String      @id @default(uuid()) @db.Uuid
+  sessionId         String      @map("session_id") @db.Uuid
+  session           ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId            String      @map("user_id")
+  lastReadMessageId String?     @map("last_read_message_id")
+  lastReadAt        DateTime    @default(now()) @map("last_read_at")
+
+  @@unique([sessionId, userId])
+  @@map("chat_read_states")
+}
+
+// ── Queues / routing ──────────────────────────────────────────────────────────
+model Queue {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @map("workspace_id")
+  name        String
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  members     QueueMember[]
+
+  @@index([workspaceId])
+  @@map("chat_queues")
+}
+
+model QueueMember {
+  id      String @id @default(uuid()) @db.Uuid
+  queueId String @map("queue_id") @db.Uuid
+  queue   Queue  @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  userId  String @map("user_id")
+
+  @@unique([queueId, userId])
+  @@map("chat_queue_members")
+}
+
+// ── Attendant schedules / breaks ──────────────────────────────────────────────
+model AttendantSchedule {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id")
+  userId      String @map("user_id")
+  weekday     Int // 0=Sun .. 6=Sat
+  startTime   String @map("start_time") // "HH:MM"
+  endTime     String @map("end_time")
+
+  @@index([workspaceId, userId])
+  @@map("chat_attendant_schedules")
+}
+
+model AttendantBreak {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id")
+  userId      String @map("user_id")
+  weekday     Int
+  startTime   String @map("start_time")
+  endTime     String @map("end_time")
+
+  @@index([workspaceId, userId])
+  @@map("chat_attendant_breaks")
+}
+
+// Per-attendant runtime status. isInvisible (set by an admin) keeps an online
+// attendant from receiving routed chats while still connected.
+model AttendantStatus {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  isInvisible Boolean  @default(false) @map("is_invisible")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, userId])
+  @@map("chat_attendant_status")
+}
+
+// ── Bot configuration / flows ─────────────────────────────────────────────────
+model BotConfig {
+  workspaceId          String   @id @map("workspace_id")
+  welcomeMessage       String   @default("Olá! Bem-vindo ao atendimento.") @map("welcome_message")
+  menuHeader           String   @default("Escolha uma opção:") @map("menu_header")
+  noAttendantsMessage  String   @default("No momento não há atendentes disponíveis. Assim que possível retornaremos.") @map("no_attendants_message")
+  askNameMessage       String   @default("Para começarmos, qual é o seu nome?") @map("ask_name_message")
+  confirmContactMessage String  @default("Você é {name}?") @map("confirm_contact_message")
+  idlePromptMessage    String   @default("Você ainda precisa de ajuda?") @map("idle_prompt_message")
+  idleCloseMessage     String   @default("Atendimento encerrado por inatividade. Protocolo: {protocol}") @map("idle_close_message")
+  closedMessage        String   @default("Atendimento encerrado. Protocolo: {protocol}") @map("closed_message")
+  outsideHoursMessage  String   @default("Estamos fora do horário de atendimento no momento. Retornaremos assim que possível.") @map("outside_hours_message")
+  // Company-wide business hours / breaks (not per-attendant):
+  //   businessHours: [{ weekday: 0-6, start: "HH:MM", end: "HH:MM" }]
+  businessHours        Json     @default("[]") @map("business_hours")
+  businessBreaks       Json     @default("[]") @map("business_breaks")
+  routingAlpha         Float    @default(1) @map("routing_alpha") // weight of active chats
+  routingBeta          Float    @default(0.5) @map("routing_beta") // weight of today's count
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("chat_bot_config")
+}
+
+model BotMenuOption {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id")
+  order       Int      @default(0)
+  key         String // "1", "2", ...
+  label       String
+  action      String // "queue" | "flow" | "message"
+  queueId     String?  @map("queue_id") @db.Uuid
+  flowId      String?  @map("flow_id") @db.Uuid
+  message     String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([workspaceId])
+  @@map("chat_bot_menu_options")
+}
+
+model BotFlow {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id")
+  name        String
+  isActive    Boolean  @default(true) @map("is_active")
+  // steps: [{ type: "message"|"ask"|"queue"|"close", text?, saveAs?, queueId? }, ...]
+  steps       Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([workspaceId])
+  @@map("chat_bot_flows")
+}
+
+// ── WhatsApp provider config (per workspace) ──────────────────────────────────
+model ProviderConfig {
+  workspaceId  String   @id @map("workspace_id")
+  provider     String   @default("zapi") // zapi | meta | ...
+  instanceId   String?  @map("instance_id")
+  token        String?
+  clientToken  String?  @map("client_token")
+  baseUrl      String?  @map("base_url")
+  isActive     Boolean  @default(false) @map("is_active")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("chat_provider_config")
+}
+
+// Daily counter used both for protocol numbering and routing stats.
+model ProtocolCounter {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id")
+  day         String // "YYYYMMDD"
+  seq         Int    @default(0)
+
+  @@unique([workspaceId, day])
+  @@map("chat_protocol_counters")
+}

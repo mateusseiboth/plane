@@ -1,5 +1,6 @@
 services:
   plane-redis:
+    container_name: plane-plane-redis
     image: valkey/valkey:7.2.11-alpine
     restart: unless-stopped
     networks:
@@ -10,6 +11,7 @@ services:
       - "6379:6379"
 
   plane-db:
+    container_name: plane-plane-db
     image: postgres:15.7-alpine
     restart: unless-stopped
     networks:
@@ -26,6 +28,7 @@ services:
       - "5432:5432"
 
   plane-minio:
+    container_name: plane-plane-minio
     image: minio/minio
     restart: unless-stopped
     networks:
@@ -49,6 +52,7 @@ services:
       - "9090:9090"
 
   db-migrate:
+    container_name: plane-db-migrate
     build:
       context: ./apps/api-ts
       dockerfile: Dockerfile.dev
@@ -62,6 +66,7 @@ services:
       - plane-db
 
   seeder:
+    container_name: plane-seeder
     build:
       context: ./apps/api-ts
       dockerfile: Dockerfile
@@ -82,6 +87,7 @@ services:
       - plane-db
 
   api-ts:
+    container_name: plane-api-ts
     build:
       context: ./apps/api-ts
       dockerfile: Dockerfile.dev
@@ -100,7 +106,58 @@ services:
     ports:
       - "8001:8001"
 
+  # ── Chat plugin backend (own service, shares the Plane DB by default) ──────
+  chat-migrate:
+    container_name: plane-chat-migrate
+    build:
+      context: ./apps/chat-backend
+      dockerfile: Dockerfile
+    restart: "no"
+    networks:
+      - dev_env
+    command: ["bun", "run", "scripts/migrate.ts"]
+    environment:
+      # Shares the Plane Postgres (chat_* tables). Set CHAT_DATABASE_URL only to
+      # point the chat plugin at a separate database.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
+    depends_on:
+      - plane-db
+
+  chat-backend:
+    container_name: plane-chat-backend
+    build:
+      context: ./apps/chat-backend
+      dockerfile: Dockerfile
+    # Hot-reload: source files are mounted so code changes are picked up
+    # automatically without rebuilding the container (bun --watch fully restarts
+    # the process on any file change, which is safer for a WS server).
+    command: ["bun", "run", "--watch", "src/index.ts"]
+    volumes:
+      - ./apps/chat-backend/src:/app/src
+    restart: unless-stopped
+    networks:
+      - dev_env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
+      CHAT_PORT: 8002
+      JWT_SECRET: ${SECRET_KEY:-plane-jwt-secret}
+      NODE_ENV: development
+      # Public base for media links forwarded to WhatsApp (Z-API needs a URL).
+      CHAT_PUBLIC_URL: ${CHAT_PUBLIC_URL:-http://localhost/chat-api}
+      # Optional S3 for chat media (else local disk):
+      CHAT_S3_ENDPOINT: ${CHAT_S3_ENDPOINT:-}
+      CHAT_S3_REGION: ${CHAT_S3_REGION:-}
+      CHAT_S3_BUCKET: ${CHAT_S3_BUCKET:-}
+      CHAT_S3_ACCESS_KEY: ${CHAT_S3_ACCESS_KEY:-}
+      CHAT_S3_SECRET_KEY: ${CHAT_S3_SECRET_KEY:-}
+    depends_on:
+      - plane-db
+      - chat-migrate
+    ports:
+      - "8002:8002"
+
   proxy:
+    container_name: plane-proxy
     build:
       context: ./apps/proxy-ts
       dockerfile: Dockerfile
@@ -110,10 +167,12 @@ services:
     depends_on:
       - api-ts
       - web
+      - chat-backend
     ports:
       - "80:80"
 
   web:
+    container_name: plane-web
     build:
       context: ./apps/web
       dockerfile: Dockerfile.web.local
@@ -124,6 +183,7 @@ services:
       - "3000:3000"
 
   admin:
+    container_name: plane-admin
     build:
       context: ./apps/admin
       dockerfile: Dockerfile.admin.local
@@ -140,6 +200,7 @@ services:
   #   # or reset everyone back to the default:
   #   RESET_ALL=true docker compose -f docker-compose-local.yml --profile tools run --rm password-reset
   password-reset:
+    container_name: plane-password-reset
     build:
       context: ./apps/api-ts
       dockerfile: Dockerfile
@@ -160,6 +221,7 @@ services:
       - plane-db
 
   sac-migrator:
+    container_name: plane-sac-migrator
     build:
       context: ./apps/api-ts
       dockerfile: Dockerfile

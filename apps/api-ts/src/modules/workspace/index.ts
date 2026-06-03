@@ -187,6 +187,24 @@ async function workspaceDto(ws: any, memberRole?: number) {
   };
 }
 
+// The Sticky DB columns (title/description/color) differ from the frontend
+// TSticky field names (name/description_html/background_color). Map both ways so
+// edits persist and reload correctly.
+function serializeSticky(s: any) {
+  return {
+    id: s.id,
+    name: s.title ?? "",
+    description: undefined,
+    description_html: s.description ?? "<p></p>",
+    background_color: s.color,
+    sort_order: s.sortOrder,
+    logo_props: undefined,
+    workspace: s.workspaceId,
+    created_at: s.createdAt?.toISOString?.() ?? s.createdAt,
+    updated_at: s.updatedAt?.toISOString?.() ?? s.updatedAt,
+  };
+}
+
 export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .use(authPlugin)
 
@@ -359,6 +377,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       query: (skip, take) => prisma.sticky.findMany({where, skip, take, orderBy: {sortOrder: "asc"}}),
       count: () => prisma.sticky.count({where}),
       cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializeSticky),
     });
   })
 
@@ -367,10 +386,17 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
     const sticky = await prisma.sticky.create({
-      data: {workspaceId: ws.id, ownerId: user.id, title: b.title ?? "", description: b.description ?? null, color: b.color ?? "#ffffff"},
+      data: {
+        workspaceId: ws.id,
+        ownerId: user.id,
+        title: b.name ?? b.title ?? "",
+        description: b.description_html ?? (typeof b.description === "string" ? b.description : null),
+        color: b.background_color ?? b.color ?? "#ffffff",
+        ...(b.sort_order !== undefined ? {sortOrder: b.sort_order} : {}),
+      },
     });
     set.status = 201;
-    return sticky;
+    return serializeSticky(sticky);
   })
 
   .patch("/:slug/stickies/:sticky_id/", async ({params: {slug, sticky_id}, body, user}) => {
@@ -378,11 +404,15 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
     const data: any = {};
+    if (b.name !== undefined) data.title = b.name;
     if (b.title !== undefined) data.title = b.title;
-    if (b.description !== undefined) data.description = b.description;
+    if (b.description_html !== undefined) data.description = b.description_html;
+    else if (typeof b.description === "string") data.description = b.description;
+    if (b.background_color !== undefined) data.color = b.background_color;
     if (b.color !== undefined) data.color = b.color;
     if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
-    return prisma.sticky.update({where: {id: sticky_id}, data});
+    const updated = await prisma.sticky.update({where: {id: sticky_id}, data});
+    return serializeSticky(updated);
   })
 
   .delete("/:slug/stickies/:sticky_id/", async ({params: {slug, sticky_id}, user, set}) => {
@@ -987,6 +1017,44 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     await prisma.instance.update({where: {id: instance.id}, data: {configurations}});
     invalidateStorageCache();
     return {detail: "Configuração de armazenamento salva.", provider, is_configured: provider === "s3"};
+  })
+
+  // ── Chat plugin config (enable + plugin API/WS URL) ───────────────────────
+  // Stored on Instance.configurations.chat. The chat plugin is shipped
+  // installed-but-disabled; enabling it here points the UI at the chat backend.
+  .get("/:slug/chat-config/", async ({params: {slug}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const instance = await prisma.instance.findFirst({select: {configurations: true}});
+    const cfg = ((instance?.configurations as any)?.chat ?? {}) as any;
+    return {
+      enabled: Boolean(cfg.enabled),
+      api_url: cfg.api_url ?? "",
+      ws_url: cfg.ws_url ?? "",
+    };
+  })
+  .patch("/:slug/chat-config/", async ({params: {slug}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const caller = await requireWorkspaceMember(ws.id, user.id);
+    if (caller.role < 20) {
+      set.status = 403;
+      return {detail: "Apenas administradores podem alterar a configuração do chat."};
+    }
+    const b = (body as any) ?? {};
+    const instance = await prisma.instance.findFirst();
+    if (!instance) {
+      set.status = 400;
+      return {detail: "Instância não configurada."};
+    }
+    const configurations = (instance.configurations as any) ?? {};
+    const current = (configurations.chat ?? {}) as any;
+    configurations.chat = {
+      enabled: b.enabled !== undefined ? Boolean(b.enabled) : Boolean(current.enabled),
+      api_url: b.api_url !== undefined ? String(b.api_url).trim() : (current.api_url ?? ""),
+      ws_url: b.ws_url !== undefined ? String(b.ws_url).trim() : (current.ws_url ?? ""),
+    };
+    await prisma.instance.update({where: {id: instance.id}, data: {configurations}});
+    return {detail: "Configuração do chat salva.", ...configurations.chat};
   })
 
   .get("/:slug/workspace-members/me/", async ({params: {slug}, user, set}) => {
@@ -1642,16 +1710,50 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Sidebar preferences ───────────────────────────────────────────────────────
 
+  // Per-user sidebar navigation preferences (pinned items + order), persisted in
+  // a WorkspaceSetting keyed by user. Map shape: { [key]: {key, is_pinned, sort_order} }.
   .get("/:slug/sidebar-preferences/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return {};
+    const setting = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: `sidebar_prefs:${user.id}`}});
+    return (setting?.value as any) ?? {};
   })
 
   .patch("/:slug/sidebar-preferences/", async ({params: {slug}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return {detail: "Preferences updated."};
+    const settingKey = `sidebar_prefs:${user.id}`;
+    const existing = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: settingKey}});
+    const map: Record<string, any> = (existing?.value as any) ?? {};
+    // Bulk: an array of {key, is_pinned, sort_order}.
+    const items = Array.isArray(body) ? body : [];
+    for (const it of items as any[]) {
+      if (!it?.key) continue;
+      map[it.key] = {...map[it.key], key: it.key, is_pinned: it.is_pinned, sort_order: it.sort_order};
+    }
+    await prisma.workspaceSetting.upsert({
+      where: {workspaceId_key: {workspaceId: ws.id, key: settingKey}},
+      create: {workspaceId: ws.id, key: settingKey, value: map},
+      update: {value: map},
+    });
+    return map;
+  })
+
+  .patch("/:slug/sidebar-preferences/:key/", async ({params: {slug, key}, body, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const settingKey = `sidebar_prefs:${user.id}`;
+    const existing = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: settingKey}});
+    const map: Record<string, any> = (existing?.value as any) ?? {};
+    const b = (body as any) ?? {};
+    const item = {...map[key], key, ...(b.is_pinned !== undefined ? {is_pinned: b.is_pinned} : {}), ...(b.sort_order !== undefined ? {sort_order: b.sort_order} : {})};
+    map[key] = item;
+    await prisma.workspaceSetting.upsert({
+      where: {workspaceId_key: {workspaceId: ws.id, key: settingKey}},
+      create: {workspaceId: ws.id, key: settingKey, value: map},
+      update: {value: map},
+    });
+    return item;
   })
 
   // ── User-favorites (alias for /favorites/ — Django uses this path) ───────────

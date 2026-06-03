@@ -72,6 +72,34 @@ export const getSlashCommandFilteredSections =
             command: ({ editor, range }) => setText(editor, range),
           },
           {
+            // Insert a clickable link to a chat (atendimento) by its protocol.
+            commandKey: "chat-link",
+            key: "chat-link",
+            title: "Inserir chat",
+            description: "Link para a conversa de atendimento completa.",
+            searchTerms: ["chat", "atendimento", "conversa", "protocolo"],
+            icon: <MessageSquareText className="size-3.5" />,
+            command: ({ editor, range }: CommandProps) => {
+              if (typeof window === "undefined") return;
+              const slug = window.location.pathname.split("/").filter(Boolean)[0] ?? "";
+              const protocol = window.prompt("Protocolo do chat (ex.: 20260603-0001):")?.trim();
+              if (!protocol) {
+                editor.chain().focus().deleteRange(range).run();
+                return;
+              }
+              const href = `/${slug}/chat-view/${protocol}`;
+              editor
+                .chain()
+                .focus()
+                .deleteRange(range)
+                .insertContent([
+                  { type: "text", text: `Chat #${protocol}`, marks: [{ type: "link", attrs: { href } }] },
+                  { type: "text", text: " " },
+                ])
+                .run();
+            },
+          },
+          {
             commandKey: "h1",
             key: "h1",
             title: "Heading 1",

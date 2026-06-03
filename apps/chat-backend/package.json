@@ -1,0 +1,27 @@
+{
+  "name": "@plane/chat-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "bun run scripts/migrate.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.2.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "7",
+    "elysia": "^1.2.25",
+    "jose": "^5.10.0",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.20.0",
+    "prisma": "7",
+    "typescript": "^5.8.3"
+  },
+  "trustedDependencies": ["@prisma/client", "prisma"]
+}

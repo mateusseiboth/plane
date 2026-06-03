@@ -516,6 +516,10 @@
       "storage": {
         "title": "Storage",
         "heading": "Storage"
+      },
+      "chat": {
+        "title": "Chat",
+        "heading": "Chat"
       }
     },
     "empty_state": {
