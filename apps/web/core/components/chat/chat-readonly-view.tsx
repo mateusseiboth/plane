@@ -47,28 +47,36 @@ export function ChatReadOnlyView({ protocol }: { protocol: string }) {
       </header>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto bg-layer-1 p-4">
         {messages.map((m) => {
-          if (m.deleted_at) return null;
           const mine = m.sender === "attendant";
           const url = mediaUrl(m.media_key, m.media_mime);
+          const deleted = !!m.deleted_at;
           return (
             <div
               key={m.id}
               className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
-                mine ? "self-end bg-primary text-on-color" : m.sender === "system" ? "self-center bg-transparent text-11 text-secondary" : "self-start bg-surface-2"
+                deleted
+                  ? "self-start border border-dashed border-subtle bg-transparent italic text-tertiary"
+                  : mine
+                    ? "self-end bg-primary text-on-color"
+                    : m.sender === "system"
+                      ? "self-center bg-transparent text-11 text-secondary"
+                      : "self-start bg-surface-2"
               }`}
             >
               {(m.sender_name || m.sender) && m.sender !== "system" && (
                 <div className="mb-0.5 text-10 opacity-60">{m.sender_name || m.sender}</div>
               )}
-              {url && m.type === "image" && <img src={url} className="max-w-full rounded" alt={m.media_name ?? ""} />}
-              {url && m.type === "video" && <video src={url} controls className="max-w-full rounded" />}
-              {url && m.type === "audio" && <audio src={url} controls />}
-              {url && m.type === "file" && (
+              {!deleted && url && m.type === "image" && <img src={url} className="max-w-full rounded" alt={m.media_name ?? ""} />}
+              {!deleted && url && m.type === "video" && <video src={url} controls className="max-w-full rounded" />}
+              {!deleted && url && m.type === "audio" && <audio src={url} controls />}
+              {!deleted && url && m.type === "file" && (
                 <a href={url} target="_blank" rel="noreferrer" className="underline">
                   {m.media_name || "Arquivo"}
                 </a>
               )}
-              {m.text && <span className="whitespace-pre-wrap break-words">{m.text}</span>}
+              {m.text && <span className={`whitespace-pre-wrap wrap-break-word ${deleted ? "line-through" : ""}`}>{m.text}</span>}
+              {deleted && <span className="ml-2 text-10 not-italic">(apagada)</span>}
+              {!deleted && m.edited_at && <span className="ml-1 text-10 opacity-60">(editado)</span>}
             </div>
           );
         })}

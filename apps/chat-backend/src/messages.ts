@@ -19,7 +19,16 @@ export type SendArgs = {
   externalId?: string | null;
 };
 
-export function serializeMessage(m: any) {
+/**
+ * Serialize a message for transport.
+ *  - `full` (staff view): keeps the original text/media of deleted messages and
+ *    exposes the edit history. Clients (full=false) get a redacted payload:
+ *    deleted → text/media null; edit history is never sent.
+ */
+export function serializeMessage(m: any, opts: { full?: boolean } = {}) {
+  const full = opts.full ?? false;
+  const deleted = !!m.deletedAt;
+  const redact = deleted && !full;
   return {
     id: m.id,
     session_id: m.sessionId,
@@ -27,12 +36,13 @@ export function serializeMessage(m: any) {
     sender_user_id: m.senderUserId ?? null,
     sender_name: m.senderName ?? null,
     type: m.type,
-    text: m.deletedAt ? null : m.text,
-    media_key: m.deletedAt ? null : m.mediaKey,
+    text: redact ? null : m.text,
+    media_key: redact ? null : m.mediaKey,
     media_mime: m.mediaMime,
     media_name: m.mediaName,
     reply_to_id: m.replyToId ?? null,
     edited_at: m.editedAt ?? null,
+    edit_history: full ? (m.editHistory ?? []) : undefined,
     deleted_at: m.deletedAt ?? null,
     status: m.status,
     created_at: m.createdAt,
@@ -76,11 +86,15 @@ export async function persistAndBroadcast(args: SendArgs) {
   return message;
 }
 
+/** Edit: staff see the full new text + history; clients see the new text only. */
 export function broadcastMessageEdit(sessionId: string, message: any) {
-  sendToSession(sessionId, { type: "message.edit", message: serializeMessage(message) });
+  sendToSession(sessionId, { type: "message.edit", message: serializeMessage(message, { full: true }) }, "attendant");
+  sendToSession(sessionId, { type: "message.edit", message: serializeMessage(message, { full: false }) }, "client");
 }
-export function broadcastMessageDelete(sessionId: string, messageId: string) {
-  sendToSession(sessionId, { type: "message.delete", message_id: messageId });
+/** Delete: staff keep the original (struck-through); clients see it redacted. */
+export function broadcastMessageDelete(sessionId: string, message: any) {
+  sendToSession(sessionId, { type: "message.delete", message: serializeMessage(message, { full: true }) }, "attendant");
+  sendToSession(sessionId, { type: "message.delete", message_id: message.id }, "client");
 }
 
 export { sendToSession, sendToUser, sendToWorkspace };

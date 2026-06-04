@@ -135,19 +135,42 @@ export const userModule = new Elysia({ prefix: "/users" })
   // ── Settings ──────────────────────────────────────────────────────────────────
 
   .get("/me/settings/", async ({ user }) => {
+    // The frontend (IUserSettings / AuthenticationWrapper) reads
+    // `workspace.last_workspace_slug || workspace.fallback_workspace_slug` to
+    // decide where to land after login. If the nested `workspace` object is
+    // missing it falls back to `/create-workspace`, so we must populate it.
     const lastMembership = await prisma.workspaceMember.findFirst({
       where: { memberId: user.id, isActive: true, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      select: { workspaceId: true },
+      include: { workspace: { select: { id: true, slug: true, name: true, logo: true } } },
     });
+    // Oldest active membership acts as the fallback when no "last" is recorded.
+    const fallbackMembership = await prisma.workspaceMember.findFirst({
+      where: { memberId: user.id, isActive: true, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+      include: { workspace: { select: { id: true, slug: true } } },
+    });
+    const invites = await prisma.workspaceMemberInvite.count({
+      where: { email: user.email, accepted: false },
+    });
+    const last = lastMembership?.workspace;
+    const fallback = fallbackMembership?.workspace;
     return {
       id: user.id,
       email: user.email,
       display_name: user.displayName,
       user_timezone: user.userTimezone,
-      last_workspace_id: lastMembership?.workspaceId ?? null,
       is_instance_admin: user.isInstanceAdmin,
       is_superuser: user.isSuperuser,
+      workspace: {
+        last_workspace_id: last?.id ?? null,
+        last_workspace_slug: last?.slug ?? null,
+        last_workspace_name: last?.name ?? null,
+        last_workspace_logo: last?.logo ?? null,
+        fallback_workspace_id: fallback?.id ?? null,
+        fallback_workspace_slug: fallback?.slug ?? null,
+        invites,
+      },
     };
   })
 

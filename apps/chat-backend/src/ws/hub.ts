@@ -89,8 +89,22 @@ function sendVia(ids: Set<string> | undefined, payload: unknown) {
   }
 }
 
-export function sendToSession(sessionId: string, payload: unknown) {
-  sendVia(bySession.get(sessionId), payload);
+export function sendToSession(sessionId: string, payload: unknown, kind?: SocketKind) {
+  if (!kind) return sendVia(bySession.get(sessionId), payload);
+  // Role-filtered fan-out (e.g. clients get a redacted edit/delete, staff get the
+  // full original). Only delivers to sockets of the requested kind.
+  const ids = bySession.get(sessionId);
+  if (!ids) return;
+  for (const id of ids) {
+    const rec = sockets.get(id);
+    if (rec && rec.kind === kind) {
+      try {
+        rec.send(payload);
+      } catch {
+        /* dead socket */
+      }
+    }
+  }
 }
 export function sendToUser(userId: string, payload: unknown) {
   sendVia(byUser.get(userId), payload);

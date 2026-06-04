@@ -16,13 +16,18 @@ import {
   Loader2,
   Mail,
   MessageSquare,
+  History,
   Mic,
   Paperclip,
+  Pencil,
   Phone,
   Plus,
   Search,
   SendHorizontal,
   Settings2,
+  Star,
+  Trash2,
+  Users,
   X,
 } from "lucide-react";
 // plane imports
@@ -34,9 +39,23 @@ import { useUser, useUserPermissions } from "@/hooks/store/user";
 // services
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
-import { ChatService, chatApi, type ChatMessage, type ChatSession } from "@/services/chat.service";
+import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
 
 const chatService = new ChatService();
+
+// Desktop notification on inbound messages (best-effort; ignored if blocked).
+function notifyDesktop(title: string, body: string) {
+  try {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const n = new Notification(title, { body, icon: "/favicon.ico", tag: "plane-chat" });
+    n.onclick = () => {
+      window.focus();
+      n.close();
+    };
+  } catch {
+    /* ignore */
+  }
+}
 
 function playAlert() {
   try {
@@ -287,6 +306,98 @@ function NewChatModal({
   );
 }
 
+// ── Transfer chat modal (admin / manager only) ───────────────────
+function TransferModal({
+  slug,
+  api,
+  session,
+  onTransferred,
+  onClose,
+}: {
+  slug: string;
+  api: ReturnType<typeof chatApi>;
+  session: ChatSession;
+  onTransferred: () => void;
+  onClose: () => void;
+}) {
+  const [attendants, setAttendants] = useState<ChatAttendant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .attendants(slug)
+      .then((r) => setAttendants(r.results.filter((a) => a.user_id !== session.assigned_attendant_id)))
+      .catch(() => setAttendants([]))
+      .finally(() => setLoading(false));
+  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const transfer = async (toUserId: string) => {
+    setBusy(true);
+    try {
+      await api.transfer(slug, session.id, toUserId);
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Atendimento transferido", message: "O cliente foi notificado." });
+      onTransferred();
+    } catch (e: any) {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Não foi possível transferir." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="relative mx-4 w-full max-w-md rounded-2xl border border-subtle bg-surface-1 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-subtle px-5 py-4">
+          <div>
+            <h2 className="text-sm font-semibold text-primary">Transferir atendimento</h2>
+            <p className="mt-0.5 text-12 text-secondary">#{session.protocol} — escolha o atendente</p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-secondary hover:bg-layer-2 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-80 overflow-y-auto p-3">
+          {loading && (
+            <div className="flex items-center justify-center gap-2 py-8 text-13 text-secondary">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando atendentes…
+            </div>
+          )}
+          {!loading && attendants.length === 0 && (
+            <p className="py-8 text-center text-13 text-tertiary">Nenhum outro atendente disponível.</p>
+          )}
+          {!loading &&
+            attendants.map((a) => (
+              <button
+                key={a.user_id}
+                disabled={busy}
+                onClick={() => transfer(a.user_id)}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-layer-1 transition-colors disabled:opacity-50"
+              >
+                <div className="relative">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
+                    {(a.name?.[0] ?? "?").toUpperCase()}
+                  </div>
+                  {a.online && (
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-1 bg-green-500" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-13 font-medium text-primary">{a.name}</div>
+                  <div className="text-11 text-tertiary">{a.online ? "Online" : "Offline"}</div>
+                </div>
+              </button>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const AttendantChatApp = observer(function AttendantChatApp() {
   const { workspaceSlug } = useParams();
   const slug = workspaceSlug?.toString() ?? "";
@@ -303,6 +414,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [showConfig, setShowConfig] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [intakeProjectId, setIntakeProjectId] = useState("");
   const [search, setSearch] = useState("");
 
@@ -314,6 +426,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [draft, setDraft] = useState("");
   const [slaSessions, setSlaSessions] = useState<Set<string>>(new Set());
   const [recording, setRecording] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -352,12 +467,28 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   // refs so the WS handler always sees the latest active session / refresher
   const activeRef = useRef<string | null>(null);
   const refreshSessionsRef = useRef<typeof refreshSessions>();
+  const sessionsRef = useRef<ChatSession[]>([]);
   useEffect(() => {
     activeRef.current = activeId;
   }, [activeId]);
   useEffect(() => {
     refreshSessionsRef.current = refreshSessions;
   }, [refreshSessions]);
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
+
+  // Ask once for desktop-notification permission so inbound messages can alert
+  // the attendant even when this tab is in the background.
+  useEffect(() => {
+    try {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        void Notification.requestPermission();
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // Load config + connect the single attendant WebSocket.
   useEffect(() => {
@@ -419,7 +550,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             if (msg.type === "ping") return ws?.send(JSON.stringify({ type: "pong" }));
 
             if (msg.type === "message.new") {
-              if (msg.message.session_id === activeRef.current) {
+              const isActive = msg.message.session_id === activeRef.current;
+              if (isActive) {
                 // Replace temp optimistic message if text/sender match
                 setMessages((prev) => {
                   const idx = prev.findIndex(
@@ -439,15 +571,35 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   )
                 );
               }
+              // Desktop notification for inbound client messages when the tab is
+              // not focused or the message isn't in the open conversation.
+              if (msg.message.sender === "client" && (document.hidden || !isActive)) {
+                playAlert();
+                const sess = sessionsRef.current.find((s) => s.id === msg.message.session_id);
+                const who = sess?.client_name || sess?.client_phone || "Visitante";
+                const preview =
+                  msg.message.text ||
+                  (msg.message.type === "image"
+                    ? "📷 Imagem"
+                    : msg.message.type === "audio"
+                      ? "🎤 Áudio"
+                      : msg.message.type === "file"
+                        ? "📎 Arquivo"
+                        : "Nova mensagem");
+                notifyDesktop(`Nova mensagem — ${who}`, preview);
+              }
               return;
             }
 
             if (msg.type === "message.edit")
               return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
             if (msg.type === "message.delete")
+              // Staff receive the full message (deleted_at + original text kept).
               return setMessages((prev) =>
                 prev.map((m) =>
-                  m.id === msg.message_id ? { ...m, deleted_at: new Date().toISOString(), text: null } : m
+                  m.id === (msg.message?.id ?? msg.message_id)
+                    ? msg.message ?? { ...m, deleted_at: new Date().toISOString(), text: null }
+                    : m
                 )
               );
 
@@ -455,13 +607,18 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               msg.type === "session.activity" ||
               msg.type === "session.assigned" ||
               msg.type === "session.queued" ||
-              msg.type === "session.closed"
+              msg.type === "session.closed" ||
+              msg.type === "session.transferred"
             ) {
               void refreshSessionsRef.current?.();
               if (msg.type === "session.closed" && msg.session_id === activeRef.current) {
                 setSessions((prev) =>
                   prev.map((s) => (s.id === msg.session_id ? { ...s, status: "closed" } : s))
                 );
+              }
+              if (msg.type === "session.transferred") {
+                playAlert();
+                notifyDesktop("Atendimento transferido", "Um atendimento foi transferido para você.");
               }
               return;
             }
@@ -528,6 +685,22 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
       n.delete(activeId);
       return n;
     });
+  };
+
+  const startEdit = (m: ChatMessage) => {
+    setEditingId(m.id);
+    setEditingText(m.text ?? "");
+  };
+  const saveEdit = () => {
+    if (!editingId) return;
+    const text = editingText.trim();
+    if (text) send({ type: "agent.edit", message_id: editingId, text });
+    setEditingId(null);
+    setEditingText("");
+  };
+  const deleteMessage = (m: ChatMessage) => {
+    if (!window.confirm("Apagar esta mensagem? O cliente verá 'mensagem apagada'.")) return;
+    send({ type: "agent.delete", message_id: m.id });
   };
 
   const assign = () => activeId && send({ type: "agent.assign", session_id: activeId });
@@ -863,6 +1036,16 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                     Criar
                   </button>
                 )}
+                {isManager && activeSession.status !== "closed" && activeSession.status !== "bot" && (
+                  <button
+                    onClick={() => setShowTransfer(true)}
+                    className="flex items-center gap-1 rounded-md border border-subtle px-2.5 py-1.5 text-12 text-secondary hover:bg-layer-1 transition-colors"
+                    title="Transferir atendimento"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Transferir
+                  </button>
+                )}
                 {activeSession.status === "active" && (
                   <button
                     onClick={closeChat}
@@ -895,7 +1078,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             {/* Messages */}
             <div className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-4">
               {messages.map((m) => {
-                if (m.deleted_at) return null;
                 const mine = m.sender === "attendant";
                 const url = api?.mediaUrl(m.media_key, m.media_mime);
                 const isTemp = m.id.startsWith("temp-");
@@ -910,48 +1092,147 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   );
                 }
 
+                // Deleted: clients see "mensagem apagada"; managers keep the original
+                // (struck-through) for audit, regular attendants see the placeholder.
+                if (m.deleted_at) {
+                  const showOriginal = isManager && m.text;
+                  return (
+                    <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} items-end gap-2`}>
+                      {!mine && <SessionAvatar name={m.sender_name ?? null} phone={null} size="sm" />}
+                      <div className={`flex max-w-[70%] flex-col ${mine ? "items-end" : "items-start"}`}>
+                        {!mine && m.sender_name && <span className="mb-1 text-11 text-secondary">{m.sender_name}</span>}
+                        <div className="flex items-center gap-2 rounded-2xl border border-dashed border-subtle bg-layer-2 px-4 py-2 text-sm italic text-tertiary">
+                          {showOriginal ? (
+                            <>
+                              <span className="line-through">{m.text}</span>
+                              <span className="not-italic rounded-full bg-layer-1 px-1.5 py-0.5 text-10 font-medium text-secondary">
+                                apagada
+                              </span>
+                            </>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              <Trash2 className="h-3 w-3" /> Mensagem apagada
+                            </span>
+                          )}
+                        </div>
+                        <div className={`mt-1 text-10 text-tertiary ${mine ? "text-right" : ""}`}>{formatTime(m.created_at)}</div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                const editing = editingId === m.id;
+                const canEdit = mine && !isTemp && m.type === "text";
+
                 return (
-                  <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} items-end gap-2`}>
-                    {!mine && (
-                      <SessionAvatar name={m.sender_name ?? null} phone={null} size="sm" />
+                  <div key={m.id} className={`group flex ${mine ? "justify-end" : "justify-start"} items-end gap-2`}>
+                    {!mine && <SessionAvatar name={m.sender_name ?? null} phone={null} size="sm" />}
+                    {/* Hover actions (own text messages) */}
+                    {canEdit && !editing && (
+                      <div className="mb-1 flex items-center gap-0.5 self-end opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          onClick={() => startEdit(m)}
+                          className="rounded p-1 text-tertiary hover:bg-layer-2 hover:text-primary"
+                          title="Editar mensagem"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteMessage(m)}
+                          className="rounded p-1 text-tertiary hover:bg-danger-subtle hover:text-danger-primary"
+                          title="Apagar mensagem"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     )}
                     <div className={`flex max-w-[70%] flex-col ${mine ? "items-end" : "items-start"}`}>
                       {!mine && m.sender_name && (
                         <span className="mb-1 text-11 text-secondary">{m.sender_name}</span>
                       )}
-                      <div
-                        className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                          mine
-                            ? `rounded-br-sm bg-primary text-on-color ${isTemp ? "opacity-70" : ""}`
-                            : "rounded-bl-sm border border-subtle bg-surface-1 text-primary"
-                        }`}
-                      >
-                        {url && m.type === "image" && (
-                          <img src={url} className="mb-1 max-w-full rounded-xl" alt={m.media_name ?? ""} />
-                        )}
-                        {url && m.type === "video" && (
-                          <video src={url} controls className="mb-1 max-w-full rounded-xl" />
-                        )}
-                        {url && m.type === "audio" && <audio src={url} controls className="mb-1 max-w-full" />}
-                        {url && m.type === "file" && (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1.5 text-sm underline"
-                          >
-                            <Paperclip className="h-3.5 w-3.5 shrink-0" />
-                            {m.media_name || "Arquivo"}
-                          </a>
-                        )}
-                        {m.text && (
-                          <span className="whitespace-pre-wrap text-sm wrap-break-word">{m.text}</span>
-                        )}
-                      </div>
+                      {editing ? (
+                        <div className="flex w-72 flex-col gap-1.5 rounded-2xl border border-primary/40 bg-surface-1 p-2">
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                saveEdit();
+                              }
+                              if (e.key === "Escape") setEditingId(null);
+                            }}
+                            rows={2}
+                            autoFocus
+                            className="resize-none rounded-lg bg-layer-2 px-3 py-2 text-sm text-primary outline-none"
+                          />
+                          <div className="flex justify-end gap-1.5">
+                            <button onClick={() => setEditingId(null)} className="rounded-md px-2.5 py-1 text-12 text-secondary hover:bg-layer-2">
+                              Cancelar
+                            </button>
+                            <button onClick={saveEdit} className="rounded-md bg-primary px-2.5 py-1 text-12 font-medium text-on-color hover:bg-primary/90">
+                              Salvar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+                            mine
+                              ? `rounded-br-sm bg-primary text-on-color ${isTemp ? "opacity-70" : ""}`
+                              : "rounded-bl-sm border border-subtle bg-surface-1 text-primary"
+                          }`}
+                        >
+                          {url && m.type === "image" && (
+                            <img src={url} className="mb-1 max-w-full rounded-xl" alt={m.media_name ?? ""} />
+                          )}
+                          {url && m.type === "video" && (
+                            <video src={url} controls className="mb-1 max-w-full rounded-xl" />
+                          )}
+                          {url && m.type === "audio" && <audio src={url} controls className="mb-1 max-w-full" />}
+                          {url && m.type === "file" && (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 text-sm underline"
+                            >
+                              <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                              {m.media_name || "Arquivo"}
+                            </a>
+                          )}
+                          {m.text && (
+                            <span className="whitespace-pre-wrap text-sm wrap-break-word">{m.text}</span>
+                          )}
+                        </div>
+                      )}
                       <div className={`mt-1 flex items-center gap-1 text-10 text-tertiary ${mine ? "flex-row-reverse" : ""}`}>
                         <span>{formatTime(m.created_at)}</span>
                         {mine && !isTemp && <CheckCheck className="h-3 w-3" />}
+                        {m.edited_at && <span className="italic">· editado</span>}
+                        {isManager && (m.edit_history?.length ?? 0) > 0 && (
+                          <button
+                            onClick={() => setHistoryFor(historyFor === m.id ? null : m.id)}
+                            className="flex items-center gap-0.5 underline hover:text-secondary"
+                          >
+                            <History className="h-2.5 w-2.5" /> {m.edit_history!.length} versão(ões)
+                          </button>
+                        )}
                       </div>
+                      {/* Edit history (managers) */}
+                      {historyFor === m.id && (m.edit_history?.length ?? 0) > 0 && (
+                        <div className="mt-1 w-72 rounded-lg border border-subtle bg-layer-2 p-2 text-11 text-secondary">
+                          <div className="mb-1 font-semibold text-tertiary">Versões anteriores</div>
+                          <div className="flex flex-col gap-1">
+                            {m.edit_history!.map((h, i) => (
+                              <div key={i} className="border-t border-subtle pt-1 first:border-t-0 first:pt-0">
+                                <span className="whitespace-pre-wrap">{h.text || "(vazio)"}</span>
+                                <span className="ml-1 text-10 text-tertiary">— {formatTime(h.edited_at)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1088,6 +1369,27 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
           </div>
 
+          {/* Satisfaction rating (after the survey) */}
+          {activeSession.rating_score != null && (
+            <div className="border-b border-subtle p-4">
+              <div className="mb-2 text-11 font-semibold uppercase tracking-wider text-tertiary">Avaliação</div>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className={`h-4 w-4 ${n <= (activeSession.rating_score ?? 0) ? "fill-amber-400 text-amber-400" : "text-tertiary"}`}
+                  />
+                ))}
+                <span className="ml-1 text-13 font-medium text-primary">{activeSession.rating_score}/5</span>
+              </div>
+              {activeSession.rating_comment && (
+                <p className="mt-2 rounded-lg bg-layer-2 px-3 py-2 text-12 text-secondary italic">
+                  “{activeSession.rating_comment}”
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Quick actions */}
           <div className="p-4">
             <div className="mb-2 text-11 font-semibold uppercase tracking-wider text-tertiary">Ações rápidas</div>
@@ -1133,6 +1435,20 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             openSession(sessionId);
           }}
           onClose={() => setShowNewChat(false)}
+        />
+      )}
+
+      {/* ── Transfer modal ───────────────────────────────────────────── */}
+      {showTransfer && api && activeSession && (
+        <TransferModal
+          slug={slug}
+          api={api}
+          session={activeSession}
+          onTransferred={async () => {
+            setShowTransfer(false);
+            await refreshSessions();
+          }}
+          onClose={() => setShowTransfer(false)}
         />
       )}
     </div>

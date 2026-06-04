@@ -11,6 +11,9 @@ import { routeQueuedSession, drainQueuesForWorkspace } from "@/queue/router";
 import { getProvider } from "@/providers/provider";
 import { saveMedia, serveMedia } from "@/storage";
 import { startTimers } from "@/timers";
+import { requestRating, handleRatingReply, submitRating, randomDog } from "@/rating";
+import { attendantName } from "@/users";
+import { ratingsReport, slaReport } from "@/reports";
 import {
   register,
   unregister,
@@ -18,6 +21,7 @@ import {
   markPong,
   startHeartbeat,
   sendToSession,
+  sendToUser,
   sendToWorkspace,
   emitPresence,
   connectedUserIds,
@@ -42,6 +46,9 @@ function serializeSession(s: any) {
     assigned_attendant_id: s.assignedAttendantId ?? null,
     last_client_message_at: s.lastClientMessageAt ?? null,
     last_attendant_message_at: s.lastAttendantMessageAt ?? null,
+    rating_score: s.ratingScore ?? null,
+    rating_comment: s.ratingComment ?? null,
+    rating_state: s.ratingState ?? null,
     created_at: s.createdAt,
     closed_at: s.closedAt ?? null,
   };
@@ -60,7 +67,24 @@ async function closeSession(sessionId: string, closedById?: string | null) {
     type: "event",
     text: (cfg?.closedMessage ?? "Atendimento encerrado. Protocolo: {protocol}").replace("{protocol}", s.protocol),
   });
+  // Ask the client to rate the service (WhatsApp message / native form).
+  await requestRating(s).catch((e) => console.error("[requestRating]", e));
   return s;
+}
+
+// Workspace role >= 15 (admin / project manager). `slug` is the Plane workspace slug.
+async function isWorkspaceManager(slug: string, userId: string): Promise<boolean> {
+  try {
+    const rows = (await prisma.$queryRaw`
+      SELECT wm.role FROM workspace_members wm
+      JOIN workspaces w ON w.id = wm.workspace_id
+      WHERE w.slug = ${slug} AND wm.member_id::text = ${userId}
+        AND wm.deleted_at IS NULL AND wm.is_active = true
+      LIMIT 1`) as Array<{ role: number }>;
+    return Number(rows[0]?.role ?? 0) >= 15;
+  } catch {
+    return false;
+  }
 }
 
 // ── WebSocket dispatch ──────────────────────────────────────────────────────────
@@ -136,15 +160,23 @@ async function onWsMessage(ctx: { id: string; userId?: string; sessionId?: strin
     return sendToSession(sessionId, { type: "typing", who: "attendant", session_id: sessionId });
   }
   if (type === "agent.edit" && msg.message_id) {
+    const existing = await prisma.chatMessage.findUnique({ where: { id: msg.message_id } });
+    if (!existing) return;
+    // Preserve the prior version so admins can audit the edit trail.
+    const history = Array.isArray(existing.editHistory) ? (existing.editHistory as any[]) : [];
     const updated = await prisma.chatMessage.update({
       where: { id: msg.message_id },
-      data: { text: msg.text ?? "", editedAt: new Date() },
+      data: {
+        text: msg.text ?? "",
+        editedAt: new Date(),
+        editHistory: [...history, { text: existing.text ?? "", edited_at: (existing.editedAt ?? existing.createdAt).toISOString() }],
+      },
     });
     return broadcastMessageEdit(updated.sessionId, updated);
   }
   if (type === "agent.delete" && msg.message_id) {
     const deleted = await prisma.chatMessage.update({ where: { id: msg.message_id }, data: { deletedAt: new Date() } });
-    return broadcastMessageDelete(deleted.sessionId, deleted.id);
+    return broadcastMessageDelete(deleted.sessionId, deleted);
   }
   if (type === "agent.read" && sessionId) {
     await prisma.chatReadState.upsert({
@@ -236,11 +268,12 @@ const app = new Elysia()
 
   // ── History (no-reload load); client (token) or attendant (cookie) ──
   .get("/sessions/:id/messages/", async ({ params: { id }, query, headers }) => {
-    const authed = await authorizeSessionAccess(id, query, headers as any);
-    if (!authed) return new Response(JSON.stringify({ detail: "Forbidden." }), { status: 403 });
+    const role = await authorizeSessionAccess(id, query, headers as any);
+    if (!role) return new Response(JSON.stringify({ detail: "Forbidden." }), { status: 403 });
+    const full = role === "attendant"; // staff see deleted originals + edit history
     const messages = await prisma.chatMessage.findMany({ where: { sessionId: id }, orderBy: { createdAt: "asc" } });
     const session = await prisma.chatSession.findUnique({ where: { id }, include: { contact: true } });
-    return { session: session ? serializeSession(session) : null, results: messages.map(serializeMessage) };
+    return { session: session ? serializeSession(session) : null, results: messages.map((m) => serializeMessage(m, { full })) };
   })
 
   // ── Read-only public view of a chat (for the editor chat-embed link) ──
@@ -248,7 +281,8 @@ const app = new Elysia()
     const session = await prisma.chatSession.findUnique({ where: { protocol }, include: { contact: true } });
     if (!session) return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
     const messages = await prisma.chatMessage.findMany({ where: { sessionId: session.id }, orderBy: { createdAt: "asc" } });
-    return { session: serializeSession(session), results: messages.map(serializeMessage) };
+    // Staff transcript (shared via copy-link): show deleted originals + history.
+    return { session: serializeSession(session), results: messages.map((m) => serializeMessage(m, { full: true })) };
   })
 
   // ── Attendant: list sessions for a workspace ──
@@ -353,6 +387,35 @@ const app = new Elysia()
     return { totals: { active, queued, bot, closed_today: closedToday }, online, attendants };
   })
 
+  // ── Reports: attendant ratings + ranking (admin/manager only) ──
+  .get("/workspaces/:slug/reports/ratings/", async ({ params: { slug }, headers, set }) => {
+    const user = await resolveAttendant(headers);
+    if (!user) {
+      set.status = 401;
+      return { detail: "Not authenticated." };
+    }
+    if (!(await isWorkspaceManager(slug, user.id))) {
+      set.status = 403;
+      return { detail: "Apenas administradores ou gestores." };
+    }
+    return ratingsReport(slug);
+  })
+
+  // ── Reports: SLA (first-response / resolution times) ──
+  .get("/workspaces/:slug/reports/sla/", async ({ params: { slug }, query, headers, set }) => {
+    const user = await resolveAttendant(headers);
+    if (!user) {
+      set.status = 401;
+      return { detail: "Not authenticated." };
+    }
+    if (!(await isWorkspaceManager(slug, user.id))) {
+      set.status = 403;
+      return { detail: "Apenas administradores ou gestores." };
+    }
+    const days = Math.min(365, Math.max(1, Number((query as any)?.days) || 30));
+    return slaReport(slug, days);
+  })
+
   // ── Attendant: start a new WhatsApp chat from a contact ──
   .post("/workspaces/:slug/sessions/whatsapp/", async ({ params: { slug }, body, headers, set }) => {
     const user = await resolveAttendant(headers as any);
@@ -386,6 +449,92 @@ const app = new Elysia()
     return serializeSession(session);
   })
 
+  // ── Attendants of a workspace (for the transfer picker) ──
+  // Transfer targets are restricted to admins / project managers (role >= 15),
+  // matching who is allowed to perform the transfer.
+  .get("/workspaces/:slug/attendants/", async ({ params: { slug }, headers, set }) => {
+    const user = await resolveAttendant(headers);
+    if (!user) {
+      set.status = 401;
+      return { detail: "Not authenticated." };
+    }
+    let members: Array<{ id: string; name: string }> = [];
+    try {
+      const rows = (await prisma.$queryRaw`
+        SELECT u.id::text AS id,
+               COALESCE(NULLIF(u.display_name, ''), NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS name
+        FROM workspace_members wm
+        JOIN workspaces w ON w.id = wm.workspace_id
+        JOIN users u ON u.id = wm.member_id
+        WHERE w.slug = ${slug} AND wm.deleted_at IS NULL AND wm.is_active = true
+          AND wm.role >= 15
+        ORDER BY name ASC`) as Array<{ id: string; name: string }>;
+      members = rows;
+    } catch (e) {
+      console.error("[attendants]", e);
+    }
+    const online = new Set(connectedUserIds(slug));
+    return {
+      results: members.map((m) => ({ user_id: m.id, name: m.name ?? "Atendente", online: online.has(m.id) })),
+    };
+  })
+
+  // ── Transfer a session to another attendant (admin/manager only) ──
+  .post("/workspaces/:slug/sessions/:id/transfer/", async ({ params: { slug, id }, body, headers, set }) => {
+    const user = await resolveAttendant(headers);
+    if (!user) {
+      set.status = 401;
+      return { detail: "Not authenticated." };
+    }
+    // Only admins / project managers (workspace role >= 15) may transfer.
+    let isManager = false;
+    try {
+      const rows = (await prisma.$queryRaw`
+        SELECT wm.role FROM workspace_members wm
+        JOIN workspaces w ON w.id = wm.workspace_id
+        WHERE w.slug = ${slug} AND wm.member_id::text = ${user.id}
+          AND wm.deleted_at IS NULL AND wm.is_active = true
+        LIMIT 1`) as Array<{ role: number }>;
+      isManager = Number(rows[0]?.role ?? 0) >= 15;
+    } catch { isManager = false; }
+    if (!isManager) {
+      set.status = 403;
+      return { detail: "Apenas administradores ou gestores podem transferir atendimentos." };
+    }
+
+    const toUserId = String((body as any)?.to_user_id ?? "");
+    if (!toUserId) {
+      set.status = 400;
+      return { detail: "to_user_id é obrigatório." };
+    }
+    const session = await prisma.chatSession.findFirst({ where: { id, workspaceId: slug } });
+    if (!session) {
+      set.status = 404;
+      return { detail: "Atendimento não encontrado." };
+    }
+
+    const updated = await prisma.chatSession.update({
+      where: { id },
+      data: { assignedAttendantId: toUserId, status: "active" },
+    });
+    const toName = await attendantName(toUserId);
+
+    // Internal trail (visible to attendants) + a friendly note to the client.
+    await persistAndBroadcast({ sessionId: id, sender: "system", type: "event", text: `Atendimento transferido para ${toName}.` });
+    await deliverOutbound(updated as any, {
+      sender: "system",
+      type: "event",
+      text: `Você foi transferido(a) para o atendente ${toName}, que dará continuidade ao seu atendimento.`,
+    });
+
+    // Let the target attendant (and the whole workspace) know live.
+    sendToUser(toUserId, { type: "session.transferred", session_id: id, to_user_id: toUserId });
+    sendToWorkspace(slug, { type: "session.activity", session_id: id });
+    sendToSession(id, { type: "session.assigned", session_id: id, attendant_id: toUserId });
+
+    return serializeSession(updated);
+  })
+
   // ── Media upload / serve ──
   .post("/sessions/:id/upload/", async ({ params: { id }, request, set }) => {
     const form = await request.formData();
@@ -404,6 +553,26 @@ const app = new Elysia()
     return res ?? new Response("Not found", { status: 404 });
   })
 
+  // ── Rating: native client form submits its score + comment here ──
+  .post("/sessions/:id/rate/", async ({ params: { id }, query, headers, body, set }) => {
+    const authed = await authorizeSessionAccess(id, query, headers as any);
+    if (!authed) {
+      set.status = 403;
+      return { detail: "Forbidden." };
+    }
+    const b = (body as any) ?? {};
+    const score = Number(b.score);
+    if (!Number.isFinite(score) || score < 1 || score > 5) {
+      set.status = 400;
+      return { detail: "score must be between 1 and 5." };
+    }
+    const session = await submitRating(id, score, b.comment ?? null);
+    return { ok: true, rating_score: session.ratingScore, rating_comment: session.ratingComment };
+  })
+
+  // ── Random dog (delightful little touch for the rating screen) ──
+  .get("/random-dog/", async () => (await randomDog()) ?? { url: null })
+
   // ── Z-API webhook ──
   .post("/providers/zapi/webhook/:slug/", async ({ params: { slug }, body }) => {
     const resolved = await getProvider(slug);
@@ -421,8 +590,18 @@ const app = new Elysia()
     let contact = await prisma.contact.findFirst({ where: { workspaceId: slug, phone: inbound.phone } });
     if (!contact) contact = await prisma.contact.create({ data: { workspaceId: slug, phone: inbound.phone, name: inbound.senderName ?? null } });
 
+    // Match an open session, OR a just-closed one still awaiting a satisfaction
+    // rating (so the client's "5"/comment reply continues the survey instead of
+    // spawning a fresh bot conversation).
     let session = await prisma.chatSession.findFirst({
-      where: { workspaceId: slug, clientPhone: inbound.phone, status: { not: "closed" } },
+      where: {
+        workspaceId: slug,
+        clientPhone: inbound.phone,
+        OR: [
+          { status: { not: "closed" } },
+          { status: "closed", ratingState: { in: ["awaiting_score", "awaiting_comment"] } },
+        ],
+      },
       orderBy: { createdAt: "desc" },
     });
     let isNew = false;
@@ -455,6 +634,12 @@ const app = new Elysia()
       // Note: WhatsApp media URLs are external; the attendant UI renders them directly.
       mediaKey: inbound.mediaUrl ? `ext:${inbound.mediaUrl}` : null,
     });
+    // A closed session awaiting a satisfaction rating: feed the reply to the
+    // survey state machine instead of restarting the bot.
+    if (session.status === "closed" && session.ratingState && session.ratingState !== "done") {
+      await handleRatingReply(session, inbound.text ?? "");
+      return { ok: true };
+    }
     if (session.status !== "active") {
       if (isNew) await startBot(session.id);
       else await handleInboundClient(session.id, inbound.text ?? "");
@@ -579,13 +764,17 @@ startTimers();
 console.log(`💬 chat-backend listening on :${PORT}`);
 
 // ── auth helper for history endpoint ──
-async function authorizeSessionAccess(sessionId: string, query: any, headers: Record<string, string | undefined>): Promise<boolean> {
+async function authorizeSessionAccess(
+  sessionId: string,
+  query: any,
+  headers: Record<string, string | undefined>
+): Promise<"client" | "attendant" | null> {
   if (query?.token) {
     const claims = await verifyClientToken(query.token);
-    if (claims?.sessionId === sessionId) return true;
+    if (claims?.sessionId === sessionId) return "client";
   }
   const user = await resolveAttendant(headers);
-  return Boolean(user);
+  return user ? "attendant" : null;
 }
 
 export type App = typeof app;

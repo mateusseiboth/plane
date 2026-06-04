@@ -6,6 +6,7 @@
 
 import prisma from "@db";
 import { deliverOutbound } from "@/outbound";
+import { requestRating } from "@/rating";
 import { sendToSession, sendToUser } from "@/ws/hub";
 
 const TEN_MIN = 10 * 60 * 1000;
@@ -55,6 +56,7 @@ async function checkIdle() {
         type: "event",
         text: render(cfg?.idleCloseMessage ?? "Atendimento encerrado por inatividade. Protocolo: {protocol}", { protocol: s.protocol }),
       });
+      await requestRating(s as any).catch((e) => console.error("[requestRating]", e));
     }
   }
 }

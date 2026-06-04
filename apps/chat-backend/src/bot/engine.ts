@@ -7,6 +7,7 @@ import prisma from "@db";
 import { deliverOutbound } from "@/outbound";
 import { isWithinBusinessHours } from "@/presence";
 import { routeQueuedSession } from "@/queue/router";
+import { requestRating } from "@/rating";
 import { sendToSession, sendToWorkspace } from "@/ws/hub";
 
 type FlowStep =
@@ -116,6 +117,7 @@ async function closeByBot(session: any) {
   await prisma.chatSession.update({ where: { id: session.id }, data: { status: "closed", botState: "done", closedAt: new Date() } });
   sendToSession(session.id, { type: "session.closed", session_id: session.id, protocol: session.protocol });
   await deliverOutbound(session, { sender: "system", type: "event", text: render(cfg.closedMessage, { protocol: session.protocol }) });
+  await requestRating(session).catch((e) => console.error("[requestRating]", e));
 }
 
 /** Process a client message. No-op if an attendant is already active. */

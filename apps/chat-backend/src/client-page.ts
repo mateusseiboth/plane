@@ -158,6 +158,8 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
   border-radius:999px;padding:5px 14px;
 }
 .sender-name{font-size:11px;font-weight:600;color:var(--brand);margin-bottom:4px;margin-left:4px}
+.bubble.deleted{font-style:italic;color:var(--txt3);background:transparent;border:1px dashed var(--border);box-shadow:none}
+.ts .edited{font-style:italic;opacity:.8}
 .ts{font-size:10.5px;color:var(--txt3);margin-top:4px;padding:0 4px;display:flex;align-items:center;gap:4px}
 .out .ts{justify-content:flex-end}
 .check{opacity:.6}
@@ -219,6 +221,36 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
   box-shadow:0 4px 14px rgba(79,70,229,.4);
 }
 #restart:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(79,70,229,.5)}
+
+/* ── Rating form ──────────────────────────────────────────────── */
+#rating-view,#done-view{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:300px}
+.stars{display:flex;gap:6px}
+.stars button{
+  background:none;border:none;cursor:pointer;
+  font-size:38px;line-height:1;padding:0;
+  color:var(--border);transition:transform .1s,color .12s;
+}
+.stars button:hover{transform:scale(1.15)}
+.stars button.on{color:#fbbf24}
+#rating-comment{
+  width:100%;border:1.5px solid var(--border);border-radius:14px;
+  padding:10px 14px;font-size:14px;font-family:inherit;line-height:1.4;
+  background:var(--bg);color:var(--txt);resize:none;outline:none;
+  transition:border-color .15s;
+}
+#rating-comment:focus{border-color:var(--brand)}
+#rating-submit{
+  width:100%;border:none;border-radius:14px;padding:13px 24px;
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;
+  box-shadow:0 4px 14px rgba(79,70,229,.4);
+}
+#rating-submit:hover:not(:disabled){transform:translateY(-1px)}
+#rating-submit:disabled{opacity:.45;cursor:default;box-shadow:none}
+.link-btn{background:none;border:none;color:var(--txt2);font-size:13px;cursor:pointer;text-decoration:underline}
+.link-btn:hover{color:var(--txt)}
+#dog{max-width:240px;max-height:200px;width:auto;border-radius:18px;box-shadow:var(--shadow);object-fit:cover}
+#dog:not([src]),#dog[src=""]{display:none}
 
 /* ── Footer / input ───────────────────────────────────────────── */
 #footer{
@@ -292,13 +324,36 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
 
   <!-- Ended -->
   <div id="ended">
-    <div class="ended-icon">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    <!-- Rating form (shown first if not yet rated) -->
+    <div id="rating-view" style="display:none">
+      <div class="ended-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+      </div>
+      <h2>Como foi o atendimento?</h2>
+      <p>Sua avaliação nos ajuda a melhorar. Dê uma nota de 1 a 5.</p>
+      <div class="stars" id="stars">
+        <button type="button" data-v="1">★</button>
+        <button type="button" data-v="2">★</button>
+        <button type="button" data-v="3">★</button>
+        <button type="button" data-v="4">★</button>
+        <button type="button" data-v="5">★</button>
+      </div>
+      <textarea id="rating-comment" placeholder="Deixe um comentário (opcional)…" rows="3"></textarea>
+      <button id="rating-submit" disabled>Enviar avaliação</button>
+      <button id="rating-skip" class="link-btn">Pular</button>
     </div>
-    <h2>Atendimento encerrado</h2>
-    <p>Obrigado pelo contato! Caso precise de mais ajuda, inicie um novo atendimento.</p>
-    <div class="proto-badge" id="ended-proto"></div>
-    <button id="restart">Iniciar novo atendimento</button>
+
+    <!-- Thank-you / closed view (with a cute dog 🐶) -->
+    <div id="done-view" style="display:none">
+      <img id="dog" alt="Um cachorro fofo para alegrar o seu dia" />
+      <div class="ended-icon">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2>Atendimento encerrado</h2>
+      <p>Obrigado pelo contato! Caso precise de mais ajuda, inicie um novo atendimento.</p>
+      <div class="proto-badge" id="ended-proto"></div>
+      <button id="restart">Iniciar novo atendimento</button>
+    </div>
   </div>
 
   <!-- Input -->
@@ -325,7 +380,10 @@ const WORKSPACE = params.get("workspace");
 const API = (params.get("api") || (location.origin + "/chat-api")).replace(/\\/$/, "");
 // Default WS goes directly to backend port 8002, bypassing the nginx proxy.
 // Pass ?ws= to override for production (e.g. wss://your-domain/chat-ws).
-const WS  = params.get("ws")  || ("ws://" + location.hostname + ":8002/ws");
+// Match the page scheme so https pages use wss:// (browsers block mixed ws://).
+const wsScheme = location.protocol === "https:" ? "wss" : "ws";
+let WS = params.get("ws") || (wsScheme + "://" + location.hostname + ":8002/ws");
+if (location.protocol === "https:" && WS.startsWith("ws://")) WS = "wss://" + WS.slice(5);
 const LS_KEY = "chat_bid_" + WORKSPACE;
 
 const $ = id => document.getElementById(id);
@@ -367,17 +425,13 @@ msgs.addEventListener("scroll", () => {
   if (atBottom) $("unread-bar").classList.remove("on");
 });
 
-// ── Render a message ──────────────────────────────────────────────
-function renderMessage(m) {
-  if (m.deleted_at) return;
-
+// ── Build a message row element (deleted/edited aware) ─────────────
+function buildRow(m) {
   if (m.sender === "system") {
     const r = document.createElement("div");
-    r.className = "row sys";
+    r.className = "row sys"; r.dataset.id = m.id;
     r.appendChild(Object.assign(document.createElement("div"), { className: "bubble", textContent: m.text || "" }));
-    msgs.appendChild(r);
-    scrollToBottom();
-    return;
+    return r;
   }
 
   const isOut = m.sender === "client";
@@ -385,18 +439,24 @@ function renderMessage(m) {
   r.className = "row " + (isOut ? "out" : (m.sender === "bot" ? "bot" : "in"));
   r.dataset.id = m.id;
 
-  // Sender avatar + name for attendant
-  if (!isOut && m.sender === "attendant") {
-    if (m.sender_name) {
-      const sn = document.createElement("div");
-      sn.className = "sender-name";
-      sn.textContent = m.sender_name;
-      r.appendChild(sn);
-    }
+  // Sender name for attendant
+  if (!isOut && m.sender === "attendant" && m.sender_name) {
+    const sn = document.createElement("div");
+    sn.className = "sender-name";
+    sn.textContent = m.sender_name;
+    r.appendChild(sn);
   }
 
   const b = document.createElement("div");
   b.className = "bubble";
+
+  // Deleted → the client only ever sees a redacted placeholder.
+  if (m.deleted_at) {
+    b.classList.add("deleted");
+    b.textContent = "🚫 Mensagem apagada";
+    r.appendChild(b);
+    return r;
+  }
 
   const url = mediaUrl(m.media_key, m.media_mime);
   if (url && m.type === "image") {
@@ -426,24 +486,39 @@ function renderMessage(m) {
   }
   r.appendChild(b);
 
-  // Timestamp
+  // Timestamp (+ edited marker, + delivery check for own messages)
   if (m.created_at) {
     const ts = document.createElement("div");
     ts.className = "ts";
     ts.innerHTML = '<span>' + fmt(m.created_at) + '</span>';
-    if (isOut) {
-      ts.innerHTML += '<span class="check" title="Enviado">✓✓</span>';
-    }
+    if (m.edited_at) ts.innerHTML += '<span class="edited">· editado</span>';
+    if (isOut) ts.innerHTML += '<span class="check" title="Enviado">✓✓</span>';
     r.appendChild(ts);
   }
+  return r;
+}
 
-  // Notify if user is scrolled up
-  if (!atBottom) {
-    $("unread-bar").classList.add("on");
-  }
-
-  msgs.appendChild(r);
+// ── Render a message (replaces an existing row in place on edit/delete) ─
+function renderMessage(m) {
+  const existing = msgs.querySelector('[data-id="' + (window.CSS && CSS.escape ? CSS.escape(m.id) : m.id) + '"]');
+  const row = buildRow(m);
+  if (existing) { existing.replaceWith(row); return; }
+  msgs.appendChild(row);
+  if (!atBottom) $("unread-bar").classList.add("on");
   scrollToBottom();
+}
+
+// Redact a message the attendant deleted (client only gets the id).
+function redactMessage(id) {
+  const r = msgs.querySelector('[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+  if (!r) return;
+  const b = r.querySelector(".bubble");
+  if (!b) return;
+  b.classList.add("deleted");
+  b.innerHTML = "";
+  b.textContent = "🚫 Mensagem apagada";
+  const ts = r.querySelector(".ts");
+  if (ts) ts.remove();
 }
 
 // ── Set header ────────────────────────────────────────────────────
@@ -454,15 +529,61 @@ function setHeader(name, sub) {
   if (sub) $("hsub").textContent = sub;
 }
 
-// ── Show ended screen ─────────────────────────────────────────────
-function showEnded() {
+// ── Show ended screen (rating first, then thank-you + dog) ────────
+let chosenScore = 0;
+
+function showEnded(alreadyRated) {
   $("footer").style.display = "none";
   msgs.style.display = "none";
   $("typing").style.display = "none";
   $("unread-bar").style.display = "none";
   $("ended-proto").textContent = protocol ? "Protocolo " + protocol : "";
   $("ended").style.display = "flex";
+  if (alreadyRated) showDone();
+  else { $("rating-view").style.display = "flex"; $("done-view").style.display = "none"; }
 }
+
+function showDone() {
+  $("rating-view").style.display = "none";
+  $("done-view").style.display = "flex";
+  loadDog();
+}
+
+// ── Random dog 🐶 ──────────────────────────────────────────────────
+async function loadDog() {
+  try {
+    const d = await (await fetch(API + "/random-dog/")).json();
+    if (d && d.url) $("dog").src = d.url;
+  } catch { /* no dog today */ }
+}
+
+// ── Rating interactions ───────────────────────────────────────────
+function paintStars(v) {
+  [...$("stars").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.v) <= v));
+}
+[...$("stars").children].forEach((b) => {
+  b.addEventListener("mouseenter", () => paintStars(Number(b.dataset.v)));
+  b.addEventListener("click", () => {
+    chosenScore = Number(b.dataset.v);
+    paintStars(chosenScore);
+    $("rating-submit").disabled = false;
+  });
+});
+$("stars").addEventListener("mouseleave", () => paintStars(chosenScore));
+
+$("rating-submit").onclick = async () => {
+  if (!chosenScore || !sessionId) return;
+  $("rating-submit").disabled = true;
+  try {
+    await fetch(API + "/sessions/" + sessionId + "/rate/?token=" + encodeURIComponent(token), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ score: chosenScore, comment: $("rating-comment").value.trim() || null }),
+    });
+  } catch { /* ignore — still thank the client */ }
+  showDone();
+};
+$("rating-skip").onclick = () => showDone();
 
 // ── Start session ─────────────────────────────────────────────────
 async function start() {
@@ -482,7 +603,10 @@ async function start() {
     (hist.results || []).forEach(renderMessage);
 
     if (hist.session) {
-      if (hist.session.status === "closed") { showEnded(); return; }
+      if (hist.session.status === "closed") {
+        showEnded(hist.session.rating_score != null || hist.session.rating_state === "done");
+        return;
+      }
       if (hist.session.client_name) setHeader(null, "Protocolo " + protocol);
       if (hist.session.assigned_attendant_id) $("hsub").textContent = "Em atendimento · Protocolo " + protocol;
     }
@@ -500,6 +624,8 @@ function connect() {
     const m = JSON.parse(ev.data);
     if (m.type === "ping") { ws.send(JSON.stringify({ type: "pong" })); return; }
     if (m.type === "message.new") { $("typing").classList.remove("on"); renderMessage(m.message); return; }
+    if (m.type === "message.edit") { renderMessage(m.message); return; }
+    if (m.type === "message.delete") { redactMessage(m.message_id); return; }
     if (m.type === "typing" && m.who === "attendant") {
       $("typing").classList.add("on");
       scrollToBottom();

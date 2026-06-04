@@ -4,6 +4,7 @@
 
 import { persistAndBroadcast, type SendArgs } from "@/messages";
 import { getProvider } from "@/providers/provider";
+import { attendantName } from "@/users";
 
 const PUBLIC_URL = (process.env.CHAT_PUBLIC_URL || "").replace(/\/$/, "");
 
@@ -15,7 +16,18 @@ export type ChatSessionLike = {
 };
 
 export async function deliverOutbound(session: ChatSessionLike, args: Omit<SendArgs, "sessionId">) {
-  const message = await persistAndBroadcast({ ...args, sessionId: session.id });
+  // Every attendant message MUST carry the attendant's name. Native renders it as
+  // a label (sender_name); WhatsApp has no such UI, so we prefix the body inline
+  // as "*Name*:\n<text>" (single asterisks = bold on WhatsApp).
+  let senderName = args.senderName ?? null;
+  let whatsappText = args.text ?? null;
+  if (args.sender === "attendant" && args.senderUserId) {
+    const name = await attendantName(args.senderUserId);
+    senderName = senderName ?? name;
+    if (whatsappText) whatsappText = `*${name}*:\n${whatsappText}`;
+  }
+
+  const message = await persistAndBroadcast({ ...args, senderName, sessionId: session.id });
 
   if (session.channel === "whatsapp" && session.clientPhone) {
     try {
@@ -29,8 +41,8 @@ export async function deliverOutbound(session: ChatSessionLike, args: Omit<SendA
             name: message.mediaName || undefined,
             type: message.type,
           });
-        } else if (message.text) {
-          await resolved.provider.sendText(session.clientPhone, message.text);
+        } else if (whatsappText) {
+          await resolved.provider.sendText(session.clientPhone, whatsappText);
         }
       }
     } catch (e) {
