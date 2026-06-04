@@ -1,6 +1,17 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { pluginService, type IPlugin, type IActivePlugin } from "@/services/plugin.service";
 
+// G5 — sidebar items registered at runtime by a plugin via navigation.addSidebarItem.
+export type RuntimeSidebarItem = {
+  pluginId: string;
+  pluginSlug?: string;
+  id: string;
+  label: string;
+  icon?: string;
+  page: string;
+  order?: number;
+};
+
 export class PluginStore {
   plugins: IPlugin[] = [];
   activePlugins: IActivePlugin[] = [];
@@ -8,9 +19,21 @@ export class PluginStore {
   isUploading = false;
   hasFetchedActive = false;
   error: string | null = null;
+  /** Keyed by `${pluginId}:${item.id}`. */
+  runtimeSidebar: Record<string, RuntimeSidebarItem> = {};
 
   constructor() {
     makeAutoObservable(this);
+  }
+
+  addRuntimeSidebarItem(item: RuntimeSidebarItem) {
+    this.runtimeSidebar = { ...this.runtimeSidebar, [`${item.pluginId}:${item.id}`]: item };
+  }
+
+  removeRuntimeSidebarItem(pluginId: string, id: string) {
+    const next = { ...this.runtimeSidebar };
+    delete next[`${pluginId}:${id}`];
+    this.runtimeSidebar = next;
   }
 
   async fetchPlugins(filters?: { name?: string; author?: string; status?: string }) {

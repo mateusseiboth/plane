@@ -1687,3 +1687,36 @@ model PluginVersion {
   @@index([pluginId])
   @@map("plugin_versions")
 }
+
+// G1 — per-plugin instance configuration. Generic: any plugin declares a
+// `configSchema` in its manifest and persists values here, isolated by scope
+// (instance-wide, or per-workspace). Secret fields are stored but never returned
+// in clear by the gateway.
+model PluginConfig {
+  id          String   @id @default(uuid()) @db.Uuid
+  pluginId    String   @map("plugin_id") @db.Uuid
+  scope       String   @default("workspace") // instance | workspace
+  scopeId     String?  @map("scope_id") // workspaceId when scope=workspace; null for instance
+  value       Json     @default("{}")
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  @@unique([pluginId, scope, scopeId])
+  @@index([pluginId])
+  @@map("plugin_configs")
+}
+
+// G2 — custom permission grants. The plugin declares `definedPermissions` in its
+// manifest; admins grant them to a role (workspace role number) or a specific user.
+model PluginPermissionGrant {
+  id          String   @id @default(uuid()) @db.Uuid
+  pluginId    String   @map("plugin_id") @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  subjectType String   @map("subject_type") // role | user
+  subjectId   String   @map("subject_id") // role number (as text) or user uuid
+  permission  String
+  createdAt   DateTime @default(now()) @map("created_at")
+  @@unique([pluginId, workspaceId, subjectType, subjectId, permission])
+  @@index([pluginId, workspaceId])
+  @@map("plugin_permission_grants")
+}

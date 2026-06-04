@@ -6,6 +6,7 @@ import { widgetStorage } from "@utils/widget-storage";
 import { extractWidgetZip } from "@utils/widget-zip";
 import { validateManifest } from "@utils/widget-manifest";
 import { checkRateLimit } from "@utils/rate-limiter";
+import { requireUploader } from "@utils/registry-access";
 
 function auditLog(action: string, userId: string, widgetId?: string, meta?: Record<string, unknown>) {
   console.log(JSON.stringify({
@@ -64,7 +65,8 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
 
   // ── Upload widget (multipart ZIP) ────────────────────────────────────────────
   .post("/", async ({ body, user, set, request }) => {
-    requireInstanceAdmin(user, set);
+    // Admins de instância, superusuários e usuários do grupo TI podem enviar.
+    await requireUploader(user, set);
 
     // Rate limit: 5 uploads per minute per user
     const ip = request.headers.get("x-forwarded-for") ?? user.id;
@@ -106,7 +108,8 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
           entryFile: entryFilename,
           manifest: rawManifest as any,
           permissions: manifest.permissions,
-          status: "PENDING_APPROVAL",
+          // Uploads por admin/TI já entram ativos (sem aprovação).
+          status: "ACTIVE",
           storageKey,
           createdById: user.id,
         },

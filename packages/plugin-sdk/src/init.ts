@@ -12,6 +12,9 @@ import { notificationsApi } from "./api/notifications";
 import { uiApi } from "./api/ui";
 import { navigationApi } from "./api/navigation";
 import { pagesApi } from "./api/pages";
+import { configApi } from "./api/config";
+import { permissionsApi } from "./api/permissions";
+import { backendApi } from "./api/backend";
 import type { SDKInitOptions } from "./types";
 
 export interface PluginSDKInstance {
@@ -27,6 +30,12 @@ export interface PluginSDKInstance {
   ui: typeof uiApi;
   navigation: typeof navigationApi;
   pages: typeof pagesApi;
+  /** G1 — per-instance plugin configuration. */
+  config: typeof configApi;
+  /** G2 — custom plugin permissions (RBAC). */
+  permissions: typeof permissionsApi;
+  /** G3 — authenticated channel to the plugin's own backend. */
+  backend: typeof backendApi;
 }
 
 declare global {
@@ -53,6 +62,9 @@ export function initializeSDK(options: SDKInitOptions): PluginSDKInstance {
     ui: uiApi,
     navigation: navigationApi,
     pages: pagesApi,
+    config: configApi,
+    permissions: permissionsApi,
+    backend: backendApi,
   };
 
   if (typeof window !== "undefined") {

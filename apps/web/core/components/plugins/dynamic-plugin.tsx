@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState, type ComponentType } from "react";
 import { initializeSDK } from "@mateusseiboth/plugins-aviao";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
+import { PluginUiBridge } from "@/components/plugins/plugin-ui-bridge";
+import { loadPluginModule } from "@/lib/plugin-module-runtime";
 import { pluginRegistry } from "@/services/plugin-registry.service";
 import type { IPlugin } from "@/services/plugin.service";
 
@@ -18,7 +20,7 @@ type PluginModule = Record<string, unknown>;
 
 type State =
   | { phase: "loading" }
-  | { phase: "ready"; Component: ComponentType<Record<string, unknown>>; title: string }
+  | { phase: "ready"; Component: ComponentType<Record<string, unknown>>; title: string; slug: string }
   | { phase: "error"; message: string };
 
 export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, props = {} }) => {
@@ -67,7 +69,8 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
         initializeSDK({ baseUrl: window.location.origin, pluginId });
 
         const url = pluginRegistry.resolveAssetUrl(plugin);
-        const mod = (await loadModule(url)) as PluginModule;
+        // Carrega o bundle compartilhando o React do host (hooks funcionam).
+        const mod = (await loadPluginModule(url)) as PluginModule;
 
         if (cancelled) return;
 
@@ -76,7 +79,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
           throw new Error(`Plugin bundle must export "${exportName}" as a React component.`);
         }
 
-        setState({ phase: "ready", Component: candidate as ComponentType<Record<string, unknown>>, title });
+        setState({ phase: "ready", Component: candidate as ComponentType<Record<string, unknown>>, title, slug: plugin.slug });
       } catch (e: any) {
         if (!cancelled) setState({ phase: "error", message: e?.message ?? "Failed to load plugin." });
       }
@@ -96,34 +99,14 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
       <PluginErrorBoundary pluginId={pluginId}>
         <Component {...props} />
       </PluginErrorBoundary>
+      {/* G5 — host bridge for SDK modal/drawer/confirm + navigation. */}
+      <PluginUiBridge pluginId={pluginId} pluginSlug={state.slug} />
     </React.Suspense>
   );
 };
 
-// ── Load the plugin bundle via an ESM script tag ──────────────────────────────
-
-function loadModule(url: string): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const callbackName = `__plugin_cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    (window as any)[callbackName] = (mod: unknown) => {
-      delete (window as any)[callbackName];
-      resolve(mod);
-    };
-
-    const script = document.createElement("script");
-    script.type = "module";
-    script.textContent = `
-      import * as mod from ${JSON.stringify(url)};
-      window[${JSON.stringify(callbackName)}](mod);
-    `;
-    script.onerror = () => {
-      delete (window as any)[callbackName];
-      reject(new Error(`Failed to load plugin bundle: ${url}`));
-    };
-    document.head.appendChild(script);
-    script.addEventListener("load", () => script.remove(), { once: true });
-  });
-}
+// O carregamento do bundle (com compartilhamento do React do host) vive em
+// @/lib/plugin-module-runtime → loadPluginModule.
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 

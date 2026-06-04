@@ -1,6 +1,7 @@
 "use client";
 
 import { useWidgets } from "@/hooks/use-widgets";
+import { useCanManageExtensions } from "@/hooks/use-extensions-access";
 import type { IWidget } from "@/services/widget.service";
 import { observer } from "mobx-react";
 import React, { useState } from "react";
@@ -9,6 +10,7 @@ import { WidgetList } from "./widget-list";
 import { WidgetUploadModal } from "./widget-upload-modal";
 
 export const WidgetAdminPage: React.FC = observer(() => {
+  const canManage = useCanManageExtensions();
   const {
     widgets,
     isLoading,
@@ -31,6 +33,14 @@ export const WidgetAdminPage: React.FC = observer(() => {
     const matchStatus = !statusFilter || w.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  if (!canManage) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-neutral-500 dark:text-neutral-400">
+        Você não tem permissão para gerenciar widgets. Apenas administradores da instância ou usuários do grupo TI.
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -96,7 +106,9 @@ export const WidgetAdminPage: React.FC = observer(() => {
       <WidgetUploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
-        onUpload={uploadWidget}
+        onUpload={async (file) => {
+          await uploadWidget(file);
+        }}
         isUploading={isUploading}
       />
 

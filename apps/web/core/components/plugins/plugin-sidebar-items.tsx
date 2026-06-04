@@ -16,6 +16,8 @@ import { Puzzle } from "lucide-react";
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 // hooks
 import { useActivePlugins } from "@/hooks/use-plugins";
+// store
+import { pluginStore } from "@/store/plugin.store";
 
 function resolveIcon(name?: string): React.ComponentType<{ className?: string }> {
   if (!name) return Puzzle;
@@ -32,7 +34,12 @@ export const PluginSidebarItems = observer(function PluginSidebarItems() {
   const pathname = usePathname();
   const { activePlugins } = useActivePlugins();
 
+  // Runtime items registered via navigation.addSidebarItem (G5). Observed so the
+  // sidebar updates live when a plugin registers/removes an item.
+  const runtimeSidebar = pluginStore.runtimeSidebar;
+
   const items = useMemo(() => {
+    const slugById = new Map(activePlugins.map((p) => [p.id, p.slug]));
     const collected = activePlugins.flatMap((plugin) =>
       (plugin.contributions?.sidebar ?? []).map((item) => ({
         key: `${plugin.id}:${item.id}`,
@@ -43,8 +50,22 @@ export const PluginSidebarItems = observer(function PluginSidebarItems() {
         match: `/${workspaceSlug}/plugins/${plugin.slug}`,
       }))
     );
+    for (const it of Object.values(runtimeSidebar)) {
+      const slug = it.pluginSlug ?? slugById.get(it.pluginId);
+      if (!slug) continue;
+      const key = `${it.pluginId}:${it.id}`;
+      if (collected.some((c) => c.key === key)) continue; // manifest item wins
+      collected.push({
+        key,
+        label: it.label,
+        icon: it.icon,
+        order: it.order ?? 0,
+        href: `/${workspaceSlug}/plugins/${slug}?page=${encodeURIComponent(it.page)}`,
+        match: `/${workspaceSlug}/plugins/${slug}`,
+      });
+    }
     return collected.sort((a, b) => a.order - b.order);
-  }, [activePlugins, workspaceSlug]);
+  }, [activePlugins, workspaceSlug, runtimeSidebar]);
 
   if (!workspaceSlug || items.length === 0) return null;
 

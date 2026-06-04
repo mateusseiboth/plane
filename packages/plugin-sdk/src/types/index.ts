@@ -130,6 +130,16 @@ export interface Entity {
   state: string | null;
   workspace_id: string;
   created_at: string;
+  // G4 — external identifiers. `external_refs` maps a field key → value so the
+  // plugin resolves the entity by an admin-configured key (no hardcoding).
+  cnpj?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  is_active?: boolean | null;
+  legacy_id?: number | null;
+  external_source?: string | null;
+  external_id?: string | null;
+  external_refs?: Record<string, string>;
 }
 
 export interface EntityFilters {
@@ -195,4 +205,46 @@ export interface PageDefinition {
 export interface PluginContributions {
   sidebar: SidebarItem[];
   pages: PageDefinition[];
+}
+
+// ── G1: Instance configuration ──────────────────────────────────────────────
+
+export type ConfigScope = "workspace" | "instance";
+
+export type PluginConfigFieldType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "select"
+  | "headers" // list of { key, value } pairs
+  | "secret"; // write-only; never returned in clear
+
+export interface PluginConfigField {
+  key: string;
+  label: string;
+  type: PluginConfigFieldType;
+  group?: string;
+  description?: string;
+  secret?: boolean;
+  default?: unknown;
+  options?: { label: string; value: string }[];
+  required?: boolean;
+}
+
+// ── G2: Custom permissions ──────────────────────────────────────────────────
+
+export interface DefinedPermission {
+  /** Namespaced key, e.g. "backup.view". Must be prefixed by the plugin slug/ns. */
+  key: string;
+  label: string;
+  description?: string;
+}
+
+// ── G3: Plugin backend declaration ──────────────────────────────────────────
+
+export interface PluginBackendManifest {
+  /** Internal base URL of the plugin's own backend (server-to-server). */
+  baseUrl: string;
+  /** Optional health path used by the host for readiness checks. */
+  healthPath?: string;
 }

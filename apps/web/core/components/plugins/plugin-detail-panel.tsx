@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { PluginSettingsForm } from "@/components/plugins/plugin-settings-form";
 import type { IPlugin } from "@/services/plugin.service";
 
 interface PluginDetailPanelProps {
@@ -80,6 +81,10 @@ export const PluginDetailPanel: React.FC<PluginDetailPanelProps> = ({ plugin, on
               ))}
             </ul>
           )}
+        </Section>
+
+        <Section title="Configurações">
+          <PluginSettingsForm pluginId={plugin.id} />
         </Section>
 
         <Section title="Manifest (raw)">

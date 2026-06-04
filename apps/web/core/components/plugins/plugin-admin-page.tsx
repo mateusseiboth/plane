@@ -3,12 +3,14 @@
 import React, { useState } from "react";
 import { observer } from "mobx-react";
 import { usePlugins } from "@/hooks/use-plugins";
+import { useCanManageExtensions } from "@/hooks/use-extensions-access";
 import { PluginList } from "./plugin-list";
 import { PluginUploadModal } from "./plugin-upload-modal";
 import { PluginDetailPanel } from "./plugin-detail-panel";
 import type { IPlugin } from "@/services/plugin.service";
 
 export const PluginAdminPage: React.FC = observer(() => {
+  const canManage = useCanManageExtensions();
   const {
     plugins,
     isLoading,
@@ -31,6 +33,14 @@ export const PluginAdminPage: React.FC = observer(() => {
     const matchStatus = !statusFilter || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  if (!canManage) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-neutral-500 dark:text-neutral-400">
+        Você não tem permissão para gerenciar plugins. Apenas administradores da instância ou usuários do grupo TI.
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">

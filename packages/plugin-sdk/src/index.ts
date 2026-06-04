@@ -14,6 +14,13 @@ export { notificationsApi } from "./api/notifications";
 export { uiApi } from "./api/ui";
 export { navigationApi } from "./api/navigation";
 export { pagesApi } from "./api/pages";
+export { configApi } from "./api/config";
+export { permissionsApi } from "./api/permissions";
+export { backendApi } from "./api/backend";
+
+// Low-level HTTP (for advanced plugin use / future APIs)
+export { sdkRequest, sdkFetchRaw } from "./http";
+export type { SdkRequestOptions } from "./http";
 
 // React Hooks
 export {
@@ -57,4 +64,9 @@ export type {
   PageDefinition,
   PluginContributions,
   SDKInitOptions,
+  ConfigScope,
+  PluginConfigField,
+  PluginConfigFieldType,
+  DefinedPermission,
+  PluginBackendManifest,
 } from "./types";

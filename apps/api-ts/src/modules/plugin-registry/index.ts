@@ -6,6 +6,7 @@ import { pluginStorage } from "@utils/plugin-storage";
 import { extractPluginZip } from "@utils/plugin-zip";
 import { validatePluginManifest } from "@utils/plugin-manifest";
 import { checkRateLimit } from "@utils/rate-limiter";
+import { requireUploader } from "@utils/registry-access";
 
 function auditLog(action: string, userId: string, pluginId?: string, meta?: Record<string, unknown>) {
   console.log(JSON.stringify({
@@ -76,7 +77,8 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
 
   // ── Upload plugin (multipart ZIP) ────────────────────────────────────────────
   .post("/", async ({ body, user, set, request }) => {
-    requireInstanceAdmin(user, set);
+    // Admins de instância, superusuários e usuários do grupo TI podem enviar.
+    await requireUploader(user, set);
 
     // Rate limit: 5 uploads per minute per user
     const ip = request.headers.get("x-forwarded-for") ?? user.id;
@@ -125,7 +127,8 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
           manifest: rawManifest as any,
           permissions: manifest.permissions,
           contributions: manifest.contributions as any,
-          status: "PENDING_APPROVAL",
+          // Uploads por admin/TI já entram ativos (sem aprovação).
+          status: "ACTIVE",
           storageKey,
           createdById: user.id,
         },

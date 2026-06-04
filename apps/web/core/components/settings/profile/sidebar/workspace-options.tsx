@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { CirclePlus, Mails } from "lucide-react";
+import { Blocks, CirclePlus, Mails, Puzzle } from "lucide-react";
 import { observer } from "mobx-react";
 // plane imports
 import { useTranslation } from "@plane/i18n";
@@ -12,11 +12,14 @@ import { useTranslation } from "@plane/i18n";
 import { SettingsSidebarItem } from "@/components/settings/sidebar/item";
 import { WorkspaceLogo } from "@/components/workspace/logo";
 // hooks
+import { useCanManageExtensions } from "@/hooks/use-extensions-access";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 
 export const ProfileSettingsSidebarWorkspaceOptions = observer(function ProfileSettingsSidebarWorkspaceOptions() {
   // store hooks
   const { workspaces } = useWorkspace();
+  // extensions access (admin de instância ou TI)
+  const canManageExtensions = useCanManageExtensions();
   // translation
   const { t } = useTranslation();
 
@@ -50,6 +53,15 @@ export const ProfileSettingsSidebarWorkspaceOptions = observer(function ProfileS
             isActive={false}
           />
         </div>
+
+        {/* Extensões (admin de instância ou grupo TI) */}
+        {canManageExtensions && (
+          <div className="mt-1.5">
+            <div className="p-2 text-caption-md-medium text-tertiary capitalize">Extensões</div>
+            <SettingsSidebarItem as="link" href="/settings/plugins/" icon={Puzzle} label="Plugins" isActive={false} />
+            <SettingsSidebarItem as="link" href="/settings/widgets/" icon={Blocks} label="Widgets" isActive={false} />
+          </div>
+        )}
       </div>
     </div>
   );
