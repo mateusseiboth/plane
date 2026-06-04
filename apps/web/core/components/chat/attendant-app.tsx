@@ -34,8 +34,11 @@ import {
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // hooks
+import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useProject } from "@/hooks/store/use-project";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
+// components
+import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-button";
 // services
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
@@ -404,6 +407,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const { data: currentUser } = useUser();
   const { allowPermissions } = useUserPermissions();
   const { joinedProjectIds, getProjectById } = useProject();
+  const { sidebarCollapsed } = useAppTheme();
 
   const isManager = allowPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.GESTOR_PROJETO],
@@ -844,6 +848,11 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
         {/* Sidebar header */}
         <div className="flex items-center justify-between border-b border-subtle px-4 py-3">
           <div className="flex items-center gap-2">
+            {sidebarCollapsed && (
+              <div className="shrink-0">
+                <AppSidebarToggleButton />
+              </div>
+            )}
             <MessageSquare className="h-4.5 w-4.5 text-primary" />
             <span className="text-sm font-semibold text-primary">Atendimentos</span>
           </div>

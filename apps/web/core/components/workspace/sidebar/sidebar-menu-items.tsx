@@ -6,7 +6,9 @@
 
 import React, { useMemo } from "react";
 import { observer } from "mobx-react";
-import { Ellipsis } from "lucide-react";
+import Link from "next/link";
+import { useParams, usePathname } from "next/navigation";
+import { Ellipsis, LayoutDashboard, Puzzle } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
 import {
@@ -14,7 +16,9 @@ import {
   WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS,
   WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS,
   WORKSPACE_SIDEBAR_STATIC_PINNED_NAVIGATION_ITEMS_LINKS,
+  EUserPermissionsLevel,
 } from "@plane/constants";
+import { EUserWorkspaceRoles } from "@plane/types";
 import { useTranslation } from "@plane/i18n";
 import { ChevronRightIcon } from "@plane/propel/icons";
 import { cn } from "@plane/utils";
@@ -22,6 +26,7 @@ import { cn } from "@plane/utils";
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 // store hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
+import { useUserPermissions } from "@/hooks/store/user";
 import useLocalStorage from "@/hooks/use-local-storage";
 import {
   usePersonalNavigationPreferences,
@@ -38,12 +43,20 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
     "is_workspace_menu_open",
     true
   );
+  const { workspaceSlug } = useParams();
+  const pathname = usePathname();
 
   // store hooks
   const { isExtendedSidebarOpened, toggleExtendedSidebar } = useAppTheme();
+  const { allowPermissions } = useUserPermissions();
   // hooks
   const { preferences: personalPreferences } = usePersonalNavigationPreferences();
   const { preferences: workspacePreferences } = useWorkspaceNavigationPreferences();
+
+  const canAccessExtensions = allowPermissions(
+    [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.GESTOR_PROJETO, EUserWorkspaceRoles.TI],
+    EUserPermissionsLevel.WORKSPACE
+  );
   // translation
   const { t } = useTranslation();
 
@@ -157,6 +170,26 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
                   <SidebarItem key={`dynamic_${_index}`} item={item} />
                 ))}
                 <PluginSidebarItems />
+                {canAccessExtensions && (
+                  <>
+                    <Link href={`/${workspaceSlug}/plugins`}>
+                      <SidebarNavItem isActive={pathname?.startsWith(`/${workspaceSlug}/plugins`) ?? false}>
+                        <div className="flex w-full items-center gap-1.5 truncate">
+                          <Puzzle className="size-4 flex-shrink-0" />
+                          <span className="truncate text-13 font-medium">Plugin Store</span>
+                        </div>
+                      </SidebarNavItem>
+                    </Link>
+                    <Link href={`/${workspaceSlug}/developers/widgets`}>
+                      <SidebarNavItem isActive={pathname?.startsWith(`/${workspaceSlug}/developers`) ?? false}>
+                        <div className="flex w-full items-center gap-1.5 truncate">
+                          <LayoutDashboard className="size-4 flex-shrink-0" />
+                          <span className="truncate text-13 font-medium">Widgets</span>
+                        </div>
+                      </SidebarNavItem>
+                    </Link>
+                  </>
+                )}
                 <SidebarNavItem>
                   <button
                     type="button"

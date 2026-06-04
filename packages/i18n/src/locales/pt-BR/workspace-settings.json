@@ -520,6 +520,14 @@
       "chat": {
         "title": "Atendimento (Chat)",
         "heading": "Atendimento (Chat)"
+      },
+      "plugins": {
+        "title": "Plugins",
+        "heading": "Plugins"
+      },
+      "widgets": {
+        "title": "Widgets",
+        "heading": "Widgets"
       }
     },
     "empty_state": {
