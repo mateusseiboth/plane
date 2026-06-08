@@ -225,6 +225,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
       "11. NÃO comece com 'Aqui está', 'Segue', 'Claro' ou qualquer introdução; comece direto com o texto melhorado.",
       "12. Se o texto for muito curto (1-2 frases), corrija e melhore a clareza; você pode expandir com explicações úteis se fizer sentido.",
       "13. Use HTML para formatação (negrito <strong>, listas <ul>/<ol>, parágrafos <p>); NÃO use Markdown.",
+      "14. Você pode adicionar contexto adicional, referências a comentários anteriores e informações complementares relevantes; sempre sinalize claramente quando fizer essas adições.",
       "CONTEXTO (use apenas para entender o assunto, NÃO inclua no resultado):",
       "- Este texto é uma mensagem de um chamado (ticket de suporte) da empresa.",
     ];
@@ -253,7 +254,9 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
     const truncatedText = plainText.slice(0, Math.max(200, remaining));
     const userMessage =
       `Melhore o seguinte texto: corrija erros ortográficos/gramaticais e melhore a clareza e o profissionalismo, ` +
-      `mantendo o mesmo significado e idioma. Retorne APENAS o texto melhorado em HTML, sem explicações:\n\n${truncatedText}`;
+      `mantendo o mesmo significado e idioma. Adapte o resultado como um comentário apropriado para adicionar ao chamado. ` +
+      `Considere que o conteúdo do usuário pode incluir contexto adicional e referências a comentários anteriores; use-os para ajustar tom e detalhes e você PODE adicionar referências/contexto sinalizados quando relevante. ` +
+      `Retorne APENAS o texto melhorado em HTML, sem explicações:\n\n${truncatedText}`;
 
     try {
       const improved = await chatComplete(
