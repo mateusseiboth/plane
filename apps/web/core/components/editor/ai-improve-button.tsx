@@ -15,6 +15,12 @@ export type AiContext = {
   issue_title?: string;
   /** Project / system name */
   project_name?: string;
+  /** Current state / status label (e.g. "Em progresso") */
+  status?: string;
+  /** Priority label (e.g. "Alta") */
+  priority?: string;
+  /** Assignee display names */
+  assignees?: string[];
   /**
    * Previous comments on the work item, stripped of HTML, most recent first.
    * The backend limits these to stay within the token budget.

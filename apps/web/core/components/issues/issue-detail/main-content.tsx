@@ -18,6 +18,7 @@ import { DescriptionInput } from "@/components/editor/rich-text/description-inpu
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
+import { useProjectState } from "@/hooks/store/use-project-state";
 import { useUser } from "@/hooks/store/user";
 import useReloadConfirmations from "@/hooks/use-reload-confirmation";
 import useSize from "@/hooks/use-window-size";
@@ -65,6 +66,7 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
     peekIssue,
   } = useIssueDetail();
   const { getProjectById } = useProject();
+  const { getStateById } = useProjectState();
   const { setShowAlert } = useReloadConfirmations(isSubmitting === "submitting");
   // derived values
   const projectDetails = getProjectById(projectId);
@@ -101,6 +103,11 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
   const aiContext = {
     issue_title: issue.name,
     project_name: projectDetails?.name,
+    status: getStateById(issue.state_id)?.name,
+    priority: issue.priority && issue.priority !== "none" ? issue.priority : undefined,
+    assignees: (issue.assignee_ids ?? [])
+      .map((id: string) => getUserDetails(id)?.display_name)
+      .filter((n): n is string => !!n),
     previous_comments: recentComments,
   };
 

@@ -30,12 +30,21 @@ const PROVIDER_TYPES = [
   { value: "custom", label: "Personalizado (compatível OpenAI)", defaultUrl: "", defaultModel: "", needsKey: false },
 ];
 
-const EMPTY_FORM = { name: "", provider_type: "ollama", base_url: "", api_key: "", default_model: "", timeout_secs: 30, is_active: true, is_default: false };
+const RESPONSE_FORMATS = [
+  { value: "openai", label: "OpenAI — choices[].message.content" },
+  { value: "ollama", label: "Ollama — message.content / response" },
+  { value: "anthropic", label: "Anthropic — content[].text" },
+  { value: "text", label: "Texto puro / outro" },
+];
+
+const EMPTY_FORM = { name: "", provider_type: "ollama", base_url: "", api_key: "", default_model: "", timeout_secs: 30, is_active: true, is_default: false, response_format: "openai" };
 
 // ── Provider Form Modal ───────────────────────────────────────────────────────
 
 function ProviderModal({ initial, onSave, onClose }: { initial?: any; onSave: (data: any) => void; onClose: () => void }) {
-  const [form, setForm] = useState(initial ?? EMPTY_FORM);
+  // On edit, merge over EMPTY_FORM so every field is present, and start the API key
+  // blank (the backend never returns the secret; a blank key keeps the existing one).
+  const [form, setForm] = useState(initial ? { ...EMPTY_FORM, ...initial, api_key: "" } : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   const providerMeta = PROVIDER_TYPES.find(p => p.value === form.provider_type);
@@ -75,9 +84,23 @@ function ProviderModal({ initial, onSave, onClose }: { initial?: any; onSave: (d
 
           <div>
             <label className="mb-1 block text-12 font-medium text-secondary">URL Base</label>
-            <input className="w-full rounded-lg border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary font-mono text-13" value={form.base_url} onChange={e => setForm((f: any) => ({...f, base_url: e.target.value}))} placeholder={providerMeta?.defaultUrl ?? "http://localhost:11434"} />
-            <p className="mt-1 text-11 text-tertiary">Endereço da API. Para Ollama local: <code>http://localhost:11434</code></p>
+            <input className="w-full rounded-lg border border-subtle bg-surface-2 px-3 py-2 font-mono text-13 outline-none focus:border-accent-primary" value={form.base_url} onChange={e => setForm((f: any) => ({...f, base_url: e.target.value}))} placeholder={form.provider_type === "custom" ? "https://ia.exemplo.com/api/ai/proxy" : (providerMeta?.defaultUrl ?? "http://localhost:11434")} />
+            {form.provider_type === "custom" ? (
+              <p className="mt-1 text-11 text-tertiary">URL <strong>exata</strong> do endpoint — usada como você digitou (sem acrescentar <code>/v1/chat/completions</code>). Recebe o corpo no formato OpenAI: <code>{`{ model, messages, temperature, max_tokens }`}</code>.</p>
+            ) : (
+              <p className="mt-1 text-11 text-tertiary">Endereço da API. Para Ollama local: <code>http://localhost:11434</code></p>
+            )}
           </div>
+
+          {form.provider_type === "custom" && (
+            <div>
+              <label className="mb-1 block text-12 font-medium text-secondary">Formato da resposta</label>
+              <select className="w-full rounded-lg border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary" value={form.response_format} onChange={e => setForm((f: any) => ({...f, response_format: e.target.value}))}>
+                {RESPONSE_FORMATS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+              <p className="mt-1 text-11 text-tertiary">Como ler a resposta do seu proxy/modelo.</p>
+            </div>
+          )}
 
           {providerMeta?.needsKey !== false && (
             <div>
@@ -138,8 +161,11 @@ function AiSettingsPage() {
 
   const handleSave = async (data: any) => {
     try {
+      // Don't send an empty api_key on edit — it would otherwise wipe the stored one.
+      const payload = { ...data };
+      if (modal.provider && !payload.api_key) delete payload.api_key;
       if (modal.provider) {
-        const updated = await aiService.update(slug, modal.provider.id, data);
+        const updated = await aiService.update(slug, modal.provider.id, payload);
         setProviders(p => p.map(x => x.id === updated.id ? updated : x));
       } else {
         const created = await aiService.create(slug, data);
@@ -192,7 +218,7 @@ function AiSettingsPage() {
         )}
         <div className="space-y-3">
           {providers.map((p) => {
-            const meta = PROVIDER_TYPES.find(t => t.value === p.providerType);
+            const meta = PROVIDER_TYPES.find(t => t.value === p.provider_type);
             return (
               <div key={p.id} className={cn("rounded-xl border p-4 transition-all", p.is_default ? "border-accent-primary/50 bg-accent-primary/5" : "border-subtle bg-surface-1")}>
                 <div className="flex items-start justify-between gap-3">
@@ -209,10 +235,10 @@ function AiSettingsPage() {
                       )}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-12 text-secondary">
-                      <span className="font-medium">{meta?.label ?? p.providerType}</span>
-                      {p.baseUrl && <span className="font-mono">{p.baseUrl}</span>}
-                      {p.defaultModel && <span>Modelo: <span className="font-mono">{p.defaultModel}</span></span>}
-                      {p.apiKey && <span className="text-green-600">API Key configurada</span>}
+                      <span className="font-medium">{meta?.label ?? p.provider_type}</span>
+                      {p.base_url && <span className="font-mono">{p.base_url}</span>}
+                      {p.default_model && <span>Modelo: <span className="font-mono">{p.default_model}</span></span>}
+                      {p.has_api_key && <span className="text-green-600">API Key configurada</span>}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
