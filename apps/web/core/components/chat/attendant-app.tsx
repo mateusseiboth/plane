@@ -7,7 +7,7 @@
 "use client";
 
 import { observer } from "mobx-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -403,6 +403,7 @@ function TransferModal({
 
 export const AttendantChatApp = observer(function AttendantChatApp() {
   const { workspaceSlug } = useParams();
+  const router = useRouter();
   const slug = workspaceSlug?.toString() ?? "";
   const { data: currentUser } = useUser();
   const { allowPermissions } = useUserPermissions();
@@ -439,6 +440,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [draft, setDraft] = useState("");
   const [slaSessions, setSlaSessions] = useState<Set<string>>(new Set());
   const [recording, setRecording] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [historyFor, setHistoryFor] = useState<string | null>(null);
@@ -781,18 +783,24 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
       setToast({ type: TOAST_TYPE.ERROR, title: "Selecione um projeto", message: "Escolha o projeto para o intake." });
       return;
     }
+    const who = activeSession.client_name || activeSession.client_phone || "Visitante";
     try {
       const res = await fetch(`/api/workspaces/${slug}/projects/${intakeProjectId}/inbox-issues/`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `Chat #${activeSession.protocol} — ${activeSession.client_name || activeSession.client_phone || "Visitante"}`,
-          description_html: `<p>Atendimento via chat. <a href="${chatUrl}">Ver conversa completa</a> (protocolo ${activeSession.protocol}).</p>`,
+          name: `Chat #${activeSession.protocol} — ${who}`,
+          description_html: `<p><strong>Atendimento via chat</strong> — ${who} (protocolo ${activeSession.protocol}).</p><p><a href="${chatUrl}">Ver conversa completa</a></p>`,
         }),
       });
       if (!res.ok) throw await res.json().catch(() => ({}));
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Intake criado", message: `Protocolo ${activeSession.protocol}` });
+      const data = await res.json().catch(() => ({}));
+      const inboxIssueId = data?.id ?? data?.issue?.id;
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Intake criado", message: "Abrindo o chamado para você complementar…" });
+      // Redirect to the created intake so the attendant can complete + dispatch it.
+      if (inboxIssueId)
+        router.push(`/${slug}/projects/${intakeProjectId}/intake?currentTab=open&inboxIssueId=${inboxIssueId}`);
     } catch (e: any) {
       setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Não foi possível criar o intake." });
     }
@@ -1179,8 +1187,33 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               </div>
             )}
 
-            {/* Messages */}
-            <div className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-4">
+            {/* Messages (drag a file anywhere here to send it) */}
+            <div
+              className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-4"
+              onDragOver={(e) => {
+                if (activeSession.status === "closed") return;
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={(e) => {
+                // Ignore leave events bubbling from children.
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setDragOver(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                if (activeSession.status === "closed") return;
+                const f = e.dataTransfer?.files?.[0];
+                if (f) uploadFile(f);
+              }}
+            >
+              {dragOver && (
+                <div className="pointer-events-none absolute inset-2 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary bg-primary/10 text-primary backdrop-blur-sm">
+                  <Paperclip className="h-7 w-7" />
+                  <span className="text-13 font-medium">Solte para enviar</span>
+                </div>
+              )}
               {messages.map((m) => {
                 const mine = m.sender === "attendant";
                 const url = api?.mediaUrl(m.media_key, m.media_mime);

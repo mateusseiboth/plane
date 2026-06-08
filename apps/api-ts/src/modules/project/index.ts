@@ -553,12 +553,22 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         stateId: triageState?.id ?? null,
         priority: b.priority ?? "none",
         isDraft: false, createdById: user.id,
+        ...(b.description_html !== undefined
+          ? {descriptionHtml: b.description_html, descriptionStripped: String(b.description_html).replace(/<[^>]+>/g, "")}
+          : {}),
         ...(b.entity_id ? {entityId: b.entity_id} : {}),
       },
     });
     const intake = await findOrCreateIntake(project_id, ws.id);
     await prisma.intakeIssue.create({
       data: {intakeId: intake.id, issueId: issue.id, workspaceId: ws.id, projectId: project_id, status: -2, source: "in-app"},
+    });
+    // Auto-assign the creator (+ any explicit assignee_ids), mirroring issue create.
+    const assigneeIds: string[] = b.assignee_ids ?? b.assignees ?? [];
+    const assigneeSet = new Set<string>([user.id, ...assigneeIds]);
+    await prisma.issueAssignee.createMany({
+      data: Array.from(assigneeSet).map((uid) => ({issueId: issue.id, assigneeId: uid, workspaceId: ws.id, projectId: project_id})),
+      skipDuplicates: true,
     });
     // D3: notify Quality-team members of the project that a new intake was opened
     await notifyQualityOfIntake({workspaceId: ws.id, projectId: project_id, issueId: issue.id, actorId: user.id, issueName: issue.name});
