@@ -41,11 +41,19 @@ model ChatSession {
   status             String        @default("bot") // "bot" | "queued" | "active" | "closed"
   queueId            String?       @map("queue_id") @db.Uuid
   assignedAttendantId String?      @map("assigned_attendant_id")
+  // Native widget: the "system" (Plane project) the client needs help with, and an
+  // optional attendant the client asked for directly (route-to if available).
+  projectId          String?       @map("project_id") @db.Uuid
+  projectIdentifier  String?       @map("project_identifier")
+  projectName        String?       @map("project_name")
+  requestedAttendantId String?     @map("requested_attendant_id")
   currentFlowId      String?       @map("current_flow_id") @db.Uuid
   flowState          Json          @default("{}") @map("flow_state")
   botState           String        @default("new") @map("bot_state") // new | awaiting_name | confirm_contact | menu | in_flow | done
   lastClientMessageAt DateTime?    @map("last_client_message_at")
   lastAttendantMessageAt DateTime? @map("last_attendant_message_at")
+  // Read receipts: how far the native client has read (blue double-check).
+  clientLastReadAt   DateTime?     @map("client_last_read_at")
   idlePromptedAt     DateTime?     @map("idle_prompted_at")
   // Post-service satisfaction survey (1..5 + free comment).
   ratingScore        Int?          @map("rating_score")

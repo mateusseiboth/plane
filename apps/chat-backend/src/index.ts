@@ -4,10 +4,11 @@ import { randomUUID } from "crypto";
 import prisma from "@db";
 import { resolveAttendant, signClientToken, verifyClientToken, signWsTicket, verifyWsTicket } from "@/auth";
 import { nextProtocol } from "@/protocol";
-import { handleInboundClient, startBot } from "@/bot/engine";
+import { handleInboundClient, startBot, startNativeSession } from "@/bot/engine";
+import { availableAttendants } from "@/presence";
 import { deliverOutbound } from "@/outbound";
 import { persistAndBroadcast, serializeMessage, broadcastMessageEdit, broadcastMessageDelete } from "@/messages";
-import { routeQueuedSession, drainQueuesForWorkspace } from "@/queue/router";
+import { routeQueuedSession, drainQueuesForWorkspace, assignSessionToAttendant } from "@/queue/router";
 import { getProvider } from "@/providers/provider";
 import { saveMedia, serveMedia } from "@/storage";
 import { startTimers } from "@/timers";
@@ -44,14 +45,42 @@ function serializeSession(s: any) {
     status: s.status,
     queue_id: s.queueId ?? null,
     assigned_attendant_id: s.assignedAttendantId ?? null,
+    requested_attendant_id: s.requestedAttendantId ?? null,
+    project_id: s.projectId ?? null,
+    project_identifier: s.projectIdentifier ?? null,
+    project_name: s.projectName ?? null,
     last_client_message_at: s.lastClientMessageAt ?? null,
     last_attendant_message_at: s.lastAttendantMessageAt ?? null,
+    client_last_read_at: s.clientLastReadAt ?? null,
     rating_score: s.ratingScore ?? null,
     rating_comment: s.ratingComment ?? null,
     rating_state: s.ratingState ?? null,
     created_at: s.createdAt,
     closed_at: s.closedAt ?? null,
   };
+}
+
+// Resolve the client-chosen "system" to a Plane project (by uuid or identifier).
+// `slug` is the Plane workspace slug (chat uses it as workspaceId).
+async function resolveProject(
+  slug: string,
+  projectId?: string | null,
+  identifier?: string | null
+): Promise<{ id: string; identifier: string; name: string } | null> {
+  if (!projectId && !identifier) return null;
+  try {
+    const rows = (await prisma.$queryRaw`
+      SELECT p.id::text AS id, p.identifier, p.name
+      FROM projects p JOIN workspaces w ON w.id = p.workspace_id
+      WHERE w.slug = ${slug} AND p.deleted_at IS NULL
+        AND (${projectId ?? null}::text IS NOT NULL AND p.id::text = ${projectId ?? null}
+             OR ${identifier ?? null}::text IS NOT NULL AND UPPER(p.identifier) = UPPER(${identifier ?? null}))
+      LIMIT 1`) as Array<{ id: string; identifier: string; name: string }>;
+    return rows[0] ?? null;
+  } catch (e) {
+    console.error("[resolveProject]", e);
+    return null;
+  }
 }
 
 async function closeSession(sessionId: string, closedById?: string | null) {
@@ -117,7 +146,17 @@ async function onWsMessage(ctx: { id: string; userId?: string; sessionId?: strin
     return;
   }
   if (type === "client.typing" && ctx.sessionId) {
-    return sendToSession(ctx.sessionId, { type: "typing", who: "client", session_id: ctx.sessionId });
+    return sendToSession(ctx.sessionId, { type: "typing", who: "client", session_id: ctx.sessionId }, "attendant");
+  }
+  if (type === "client.read" && ctx.sessionId) {
+    // Client has read up to now → record it and tell the attendant (blue checks).
+    const at = new Date();
+    await prisma.chatSession.update({ where: { id: ctx.sessionId }, data: { clientLastReadAt: at } }).catch(() => {});
+    return sendToSession(
+      ctx.sessionId,
+      { type: "read.receipt", who: "client", session_id: ctx.sessionId, at: at.toISOString() },
+      "attendant"
+    );
   }
   if (type === "client.end" && ctx.sessionId) {
     return void closeSession(ctx.sessionId, null);
@@ -131,14 +170,8 @@ async function onWsMessage(ctx: { id: string; userId?: string; sessionId?: strin
     return;
   }
   if (type === "agent.assign" && sessionId) {
-    const s = await prisma.chatSession.update({
-      where: { id: sessionId },
-      data: { assignedAttendantId: ctx.userId, status: "active" },
-    });
     attachSession(ctx.id, sessionId);
-    sendToSession(sessionId, { type: "session.assigned", session_id: sessionId, attendant_id: ctx.userId });
-    sendToWorkspace(s.workspaceId, { type: "session.activity", session_id: sessionId });
-    await persistAndBroadcast({ sessionId, sender: "system", type: "event", text: "Atendimento iniciado." });
+    await assignSessionToAttendant(sessionId, ctx.userId);
     return;
   }
   if (type === "agent.message" && sessionId) {
@@ -230,6 +263,57 @@ const app = new Elysia()
     return clientPage();
   })
 
+  // ── Client (native widget): resolve an already-open session for this browser ──
+  // Lets the widget skip the pre-chat form on reload / return visits.
+  .get("/sessions/active/", async ({ query }) => {
+    const q = (query as any) ?? {};
+    if (!q.workspace || !q.browser_id) return { session: null };
+    const session = await prisma.chatSession.findFirst({
+      where: { workspaceId: q.workspace, clientBrowserId: q.browser_id, status: { not: "closed" } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!session) return { session: null };
+    const token = await signClientToken(session.id, q.browser_id);
+    return { token, browser_id: q.browser_id, session: serializeSession(session) };
+  })
+
+  // ── Public (token-less) lookups for the native pre-chat form ──
+  // The "system" the client needs help with is a Plane project (e.g. SIART). The
+  // widget can also be deep-linked with ?system=<identifier> / ?attendant=<id>.
+  .get("/workspaces/:slug/public/projects/", async ({ params: { slug } }) => {
+    try {
+      const rows = (await prisma.$queryRaw`
+        SELECT p.id::text AS id, p.identifier, p.name
+        FROM projects p JOIN workspaces w ON w.id = p.workspace_id
+        WHERE w.slug = ${slug} AND p.deleted_at IS NULL
+        ORDER BY p.name ASC`) as Array<{ id: string; identifier: string; name: string }>;
+      return { results: rows };
+    } catch (e) {
+      console.error("[public/projects]", e);
+      return { results: [] };
+    }
+  })
+  .get("/workspaces/:slug/public/attendants/", async ({ params: { slug } }) => {
+    let members: Array<{ id: string; name: string }> = [];
+    try {
+      members = (await prisma.$queryRaw`
+        SELECT u.id::text AS id,
+               COALESCE(NULLIF(u.display_name, ''), NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS name
+        FROM workspace_members wm
+        JOIN workspaces w ON w.id = wm.workspace_id
+        JOIN users u ON u.id = wm.member_id
+        WHERE w.slug = ${slug} AND wm.deleted_at IS NULL AND wm.is_active = true
+          AND wm.role >= 15
+        ORDER BY name ASC`) as Array<{ id: string; name: string }>;
+    } catch (e) {
+      console.error("[public/attendants]", e);
+    }
+    const onlineIds = new Set(await availableAttendants(slug, members.map((m) => m.id)));
+    return {
+      results: members.map((m) => ({ user_id: m.id, name: m.name ?? "Atendente", online: onlineIds.has(m.id) })),
+    };
+  })
+
   // ── Client: start a session ──
   .post("/sessions/", async ({ body, set }) => {
     const b = (body as any) ?? {};
@@ -245,20 +329,27 @@ const app = new Elysia()
       orderBy: { createdAt: "desc" },
     });
     if (!session) {
+      // Resolve the chosen "system" → a Plane project (by id or identifier).
+      const project = await resolveProject(b.workspace_id, b.project_id, b.system);
+      const requestedAttendantId = b.attendant_id ? String(b.attendant_id) : null;
       const protocol = await nextProtocol(b.workspace_id);
       session = await prisma.chatSession.create({
         data: {
           workspaceId: b.workspace_id,
           channel: "native",
           clientBrowserId: browserId,
-          clientName: b.name ?? null,
+          clientName: (b.name ? String(b.name).slice(0, 120) : null) || null,
+          projectId: project?.id ?? null,
+          projectIdentifier: project?.identifier ?? null,
+          projectName: project?.name ?? null,
+          requestedAttendantId,
           protocol,
           status: "bot",
-          botState: "new",
+          botState: "done",
         },
       });
-      // Kick off the bot greeting.
-      startBot(session.id).catch((e) => console.error("[startBot]", e));
+      // Native pre-chat: greet + route directly to the chosen attendant or queue.
+      startNativeSession(session.id, { attendantId: requestedAttendantId }).catch((e) => console.error("[startNativeSession]", e));
     }
 
     const token = await signClientToken(session.id, browserId);
@@ -295,10 +386,10 @@ const app = new Elysia()
     const status = (query as any).status as string | undefined;
 
     // Role-based visibility:
-    //   Admin/Manager (role >= 15): see all sessions
-    //   Regular attendant: see only their own active sessions + all queued sessions
-    //     (queued = waiting to be assigned; attendant can assume them)
-    let isManager = false;
+    //   ONLY workspace admins (role >= 20) see the bot + queue and unassigned chats.
+    //   Everyone else (managers included) sees ONLY chats assigned to them and never
+    //   anything still in "bot" or "queued".
+    let role = 20;
     try {
       const rows = (await prisma.$queryRaw`
         SELECT wm.role FROM workspace_members wm
@@ -306,20 +397,21 @@ const app = new Elysia()
         WHERE w.slug = ${slug} AND wm.member_id::text = ${user.id}
           AND wm.deleted_at IS NULL AND wm.is_active = true
         LIMIT 1`) as Array<{ role: number }>;
-      isManager = Number(rows[0]?.role ?? 0) >= 15;
-    } catch { isManager = true; } // DB unavailable → allow all
+      role = Number(rows[0]?.role ?? 0);
+    } catch { role = 20; } // DB unavailable → allow all (degenerate case)
+    const isAdmin = role >= 20;
 
-    let whereFilter: any = { workspaceId: slug };
-    if (status) {
-      whereFilter.status = { in: status.split(",") };
-    } else if (!isManager) {
-      // Regular attendant: own active sessions OR any queued session
+    const requested = status ? status.split(",") : null;
+    let whereFilter: any;
+    if (isAdmin) {
+      whereFilter = { workspaceId: slug, ...(requested ? { status: { in: requested } } : {}) };
+    } else {
+      // Own chats only; bot/queued are never visible to non-admins.
+      const allowed = (requested ?? []).filter((s) => s !== "bot" && s !== "queued");
       whereFilter = {
         workspaceId: slug,
-        OR: [
-          { assignedAttendantId: user.id },
-          { status: "queued" },
-        ],
+        assignedAttendantId: user.id,
+        status: requested ? { in: allowed } : { notIn: ["bot", "queued"] },
       };
     }
 

@@ -16,8 +16,10 @@ set -euo pipefail
 COMPOSE="docker compose -f docker-compose-local.yml"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-# Long-running services (everything except the one-shot db-migrate/seeder/sac-migrator).
-APP_SERVICES="plane-db plane-redis plane-minio api-ts web admin proxy"
+# Long-running services (everything except the one-shot db-migrate/seeder/sac-migrator
+# and chat-migrate). chat-backend is listed so its image is rebuilt + recreated here,
+# instead of silently coming up from a stale cached image as a proxy dependency.
+APP_SERVICES="plane-db plane-redis plane-minio api-ts web admin proxy chat-backend"
 
 RESET=false
 for arg in "$@"; do
@@ -45,8 +47,8 @@ pnpm turbo build --filter=web... --filter=admin...
 ok "Web + Admin apps built"
 
 # ── 3. Build Docker images ────────────────────────────────────────────────────
-log "Building Docker images (web, admin, api-ts, proxy, db-migrate, seeder)..."
-$COMPOSE build web admin api-ts proxy db-migrate seeder
+log "Building Docker images (web, admin, api-ts, proxy, db-migrate, seeder, chat)..."
+$COMPOSE build web admin api-ts proxy db-migrate seeder chat-backend chat-migrate
 ok "Docker images built"
 
 # ── 4. Optional reset (wipe the database + volumes) ─────────────────────────────
@@ -84,6 +86,11 @@ bunx prisma migrate resolve --applied 20260601000000_add_plugins && \
 bunx prisma migrate deploy"
 fi
 ok "Database migrations applied"
+
+# ── 7b. Run chat plugin migrations (idempotent SQL in chat_migrations) ──────────
+log "Running chat plugin migrations..."
+$COMPOSE run --rm chat-migrate || err "Chat migrations failed. Check: $COMPOSE logs chat-migrate"
+ok "Chat migrations applied"
 
 # ── 8. Run seeder (idempotent: admin + workspace + roles + project defaults) ────
 log "Running seeder..."

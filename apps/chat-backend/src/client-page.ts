@@ -251,6 +251,68 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
 .link-btn:hover{color:var(--txt)}
 #dog{max-width:240px;max-height:200px;width:auto;border-radius:18px;box-shadow:var(--shadow);object-fit:cover}
 #dog:not([src]),#dog[src=""]{display:none}
+.dog-loading{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  width:240px;height:160px;justify-content:center;
+  border-radius:18px;background:var(--bg);border:1px solid var(--border);
+  color:var(--txt3);font-size:12px;
+}
+.dog-loading .spin{
+  width:30px;height:30px;border-radius:50%;
+  border:3px solid var(--border);border-top-color:var(--brand);
+  animation:dogspin .8s linear infinite;
+}
+@keyframes dogspin{to{transform:rotate(360deg)}}
+
+/* ── Pre-chat form ────────────────────────────────────────────────── */
+#prechat{display:none;flex:1;flex-direction:column;overflow-y:auto;padding:26px 22px;gap:18px}
+#prechat.on{display:flex}
+#prechat .pc-head{display:flex;flex-direction:column;gap:6px;text-align:center;align-items:center}
+#prechat .pc-icon{
+  width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  display:grid;place-items:center;margin-bottom:4px;
+  box-shadow:0 8px 24px rgba(79,70,229,.35);
+}
+#prechat .pc-icon svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#prechat h2{font-size:18px;font-weight:700;color:var(--txt)}
+#prechat p.pc-sub{font-size:13px;color:var(--txt2);line-height:1.5;max-width:280px}
+.pc-field{display:flex;flex-direction:column;gap:6px}
+.pc-field label{font-size:12px;font-weight:600;color:var(--txt2)}
+.pc-field input,.pc-field select{
+  width:100%;border:1.5px solid var(--border);border-radius:12px;
+  padding:11px 14px;font-size:14px;font-family:inherit;
+  background:var(--bg);color:var(--txt);outline:none;transition:border-color .15s;
+}
+.pc-field input:focus,.pc-field select:focus{border-color:var(--brand)}
+.pc-att-list{display:flex;flex-direction:column;gap:8px}
+.pc-att{
+  display:flex;align-items:center;gap:10px;width:100%;
+  border:1.5px solid var(--border);border-radius:12px;padding:9px 12px;
+  background:var(--bg);color:var(--txt);cursor:pointer;text-align:left;
+  font-size:14px;transition:.15s;
+}
+.pc-att:hover{border-color:var(--brand)}
+.pc-att.sel{border-color:var(--brand);background:var(--brand-light)}
+@media(prefers-color-scheme:dark){.pc-att.sel{background:rgba(79,70,229,.18)}}
+.pc-att .pc-ava{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center;
+}
+.pc-att .pc-meta{flex:1;min-width:0}
+.pc-att .pc-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-att .pc-st{font-size:11px;color:var(--txt3);display:flex;align-items:center;gap:5px}
+.pc-att .pc-st .dot{width:7px;height:7px;border-radius:50%;background:#9ca3af}
+.pc-att .pc-st.online .dot{background:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,.3)}
+#pc-submit{
+  margin-top:4px;border:none;border-radius:14px;padding:13px 24px;
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:.15s;
+  box-shadow:0 4px 14px rgba(79,70,229,.4);
+}
+#pc-submit:hover:not(:disabled){transform:translateY(-1px)}
+#pc-submit:disabled{opacity:.5;cursor:default;box-shadow:none}
 
 /* ── Footer / input ───────────────────────────────────────────── */
 #footer{
@@ -318,6 +380,34 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
 
   <div id="unread-bar" onclick="scrollToBottom()">↓ Nova mensagem</div>
 
+  <!-- Pre-chat form (native widget) -->
+  <div id="prechat">
+    <div class="pc-head">
+      <div class="pc-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      </div>
+      <h2>Iniciar atendimento</h2>
+      <p class="pc-sub">Preencha os dados abaixo para começarmos.</p>
+    </div>
+
+    <div class="pc-field">
+      <label for="pc-name">Seu nome</label>
+      <input id="pc-name" type="text" placeholder="Como podemos te chamar?" autocomplete="name" />
+    </div>
+
+    <div class="pc-field" id="pc-project-field">
+      <label for="pc-project">Sistema / projeto</label>
+      <select id="pc-project"><option value="">Selecione…</option></select>
+    </div>
+
+    <div class="pc-field" id="pc-att-field">
+      <label>Atendente (opcional)</label>
+      <div class="pc-att-list" id="pc-att-list"></div>
+    </div>
+
+    <button id="pc-submit">Iniciar atendimento</button>
+  </div>
+
   <!-- Messages -->
   <div id="msgs"></div>
   <div id="typing" aria-label="digitando"><i></i><i></i><i></i></div>
@@ -345,6 +435,7 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
 
     <!-- Thank-you / closed view (with a cute dog 🐶) -->
     <div id="done-view" style="display:none">
+      <div id="dog-loading" class="dog-loading"><div class="spin"></div><span>Buscando um cachorro fofo…</span></div>
       <img id="dog" alt="Um cachorro fofo para alegrar o seu dia" />
       <div class="ended-icon">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
@@ -378,11 +469,13 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
 const params = new URLSearchParams(location.search);
 const WORKSPACE = params.get("workspace");
 const API = (params.get("api") || (location.origin + "/chat-api")).replace(/\\/$/, "");
-// Default WS goes directly to backend port 8002, bypassing the nginx proxy.
-// Pass ?ws= to override for production (e.g. wss://your-domain/chat-ws).
-// Match the page scheme so https pages use wss:// (browsers block mixed ws://).
+// On localhost dev, the WS goes directly to backend port 8002 (nginx WS proxying
+// can loop on the Upgrade). Behind a real domain, :8002 isn't exposed, so go
+// through the proxy at /chat-ws. ?ws= overrides. Match the page scheme so https
+// pages use wss:// (browsers block mixed ws://).
 const wsScheme = location.protocol === "https:" ? "wss" : "ws";
-let WS = params.get("ws") || (wsScheme + "://" + location.hostname + ":8002/ws");
+const isLocalHost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+let WS = params.get("ws") || (isLocalHost ? wsScheme + "://" + location.hostname + ":8002/ws" : wsScheme + "://" + location.host + "/chat-ws");
 if (location.protocol === "https:" && WS.startsWith("ws://")) WS = "wss://" + WS.slice(5);
 const LS_KEY = "chat_bid_" + WORKSPACE;
 
@@ -537,6 +630,13 @@ function showEnded(alreadyRated) {
   msgs.style.display = "none";
   $("typing").style.display = "none";
   $("unread-bar").style.display = "none";
+  $("prechat").classList.remove("on");
+  // The chat is over — hide the "Encerrar" action so it can't be triggered again,
+  // and reflect the ended state in the header.
+  $("hend").style.display = "none";
+  $("hsub").textContent = "Atendimento encerrado";
+  const dot = document.querySelector(".dot-online");
+  if (dot) dot.style.background = "var(--txt3)";
   $("ended-proto").textContent = protocol ? "Protocolo " + protocol : "";
   $("ended").style.display = "flex";
   if (alreadyRated) showDone();
@@ -551,10 +651,23 @@ function showDone() {
 
 // ── Random dog 🐶 ──────────────────────────────────────────────────
 async function loadDog() {
+  const img = $("dog");
+  const loader = $("dog-loading");
+  const hideLoader = () => { if (loader) loader.style.display = "none"; };
+  if (loader) loader.style.display = "flex";
+  img.removeAttribute("src");
   try {
     const d = await (await fetch(API + "/random-dog/")).json();
-    if (d && d.url) $("dog").src = d.url;
-  } catch { /* no dog today */ }
+    if (d && d.url) {
+      img.onload = hideLoader;
+      img.onerror = hideLoader;
+      img.src = d.url;
+    } else {
+      hideLoader();
+    }
+  } catch {
+    hideLoader(); // no dog today
+  }
 }
 
 // ── Rating interactions ───────────────────────────────────────────
@@ -585,19 +698,129 @@ $("rating-submit").onclick = async () => {
 };
 $("rating-skip").onclick = () => showDone();
 
-// ── Start session ─────────────────────────────────────────────────
-async function start() {
+// ── Pre-chat (native): collect name + system (project) + attendant ─────────
+// URL pre-fills any of these: ?name=, ?system=<project identifier> | ?project=<id>,
+// ?attendant=<user id> (so the consuming system can inject the logged-in user).
+const PREFILL = {
+  name: params.get("name") || "",
+  system: params.get("system") || "",   // project identifier (e.g. SIART)
+  project: params.get("project") || "", // project uuid (alternative to system)
+  attendant: params.get("attendant") || "",
+};
+let pcAttendant = ""; // selected attendant id ("" = any available)
+
+function showChat() {
+  $("prechat").classList.remove("on");
+  $("ended").style.display = "none";
+  msgs.style.display = "";
+  $("footer").style.display = "";
+  $("hend").style.display = "";
+}
+
+async function showPrechat() {
+  $("prechat").classList.add("on");
+  msgs.style.display = "none";
+  $("footer").style.display = "none";
+  $("ended").style.display = "none";
+  $("pc-name").value = PREFILL.name;
+  pcAttendant = PREFILL.attendant;
+
+  // Systems = Plane projects.
+  try {
+    const r = await (await fetch(API + "/workspaces/" + encodeURIComponent(WORKSPACE) + "/public/projects/")).json();
+    const sel = $("pc-project");
+    (r.results || []).forEach((p) => {
+      const o = document.createElement("option");
+      o.value = p.id;
+      o.dataset.identifier = p.identifier || "";
+      o.textContent = p.name + (p.identifier ? " (" + p.identifier + ")" : "");
+      sel.appendChild(o);
+    });
+    if (PREFILL.project) sel.value = PREFILL.project;
+    else if (PREFILL.system) {
+      const match = [...sel.options].find((o) => (o.dataset.identifier || "").toUpperCase() === PREFILL.system.toUpperCase());
+      if (match) sel.value = match.value;
+    }
+    if (sel.options.length <= 1) $("pc-project-field").style.display = "none";
+  } catch { $("pc-project-field").style.display = "none"; }
+
+  // Attendants the client may route to directly.
+  try {
+    const r = await (await fetch(API + "/workspaces/" + encodeURIComponent(WORKSPACE) + "/public/attendants/")).json();
+    const list = $("pc-att-list");
+    list.innerHTML = "";
+    const atts = (r.results || []).slice().sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
+    if (!atts.length) { $("pc-att-field").style.display = "none"; return; }
+
+    const mkBtn = (id, name, online, any) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pc-att" + (pcAttendant === id ? " sel" : "");
+      b.dataset.id = id;
+      const ava = any ? "★" : esc((name[0] || "?").toUpperCase());
+      const st = any ? "" : '<div class="pc-st ' + (online ? "online" : "") + '"><span class="dot"></span>' + (online ? "Online" : "Offline") + "</div>";
+      b.innerHTML = '<div class="pc-ava">' + ava + '</div><div class="pc-meta"><div class="pc-name">' + esc(name) + "</div>" + st + "</div>";
+      b.onclick = () => {
+        pcAttendant = id;
+        [...list.children].forEach((c) => c.classList.toggle("sel", c.dataset.id === id));
+      };
+      return b;
+    };
+    list.appendChild(mkBtn("", "Qualquer atendente disponível", false, true));
+    atts.forEach((a) => list.appendChild(mkBtn(a.user_id, a.name, a.online, false)));
+    if (!pcAttendant && !list.querySelector(".pc-att.sel")) list.firstChild.classList.add("sel");
+  } catch { $("pc-att-field").style.display = "none"; }
+}
+
+function syncUrl(name, sel) {
+  try {
+    const u = new URL(location.href);
+    if (name) u.searchParams.set("name", name);
+    const ident = sel && sel.selectedOptions[0] ? (sel.selectedOptions[0].dataset.identifier || "") : "";
+    if (ident) u.searchParams.set("system", ident);
+    if (pcAttendant) u.searchParams.set("attendant", pcAttendant); else u.searchParams.delete("attendant");
+    history.replaceState(null, "", u.toString());
+  } catch { /* non-blocking */ }
+}
+
+$("pc-submit").onclick = async () => {
+  const name = $("pc-name").value.trim();
+  const sel = $("pc-project");
+  const projectId = sel ? sel.value : "";
+  if ($("pc-project-field").style.display !== "none" && !projectId) {
+    sel.focus();
+    sel.style.borderColor = "#ef4444";
+    return;
+  }
+  $("pc-submit").disabled = true;
   try {
     const res = await fetch(API + "/sessions/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspace_id: WORKSPACE, browser_id: browserId() }),
+      body: JSON.stringify({
+        workspace_id: WORKSPACE,
+        browser_id: browserId(),
+        name: name || null,
+        project_id: projectId || null,
+        attendant_id: pcAttendant || null,
+      }),
     });
     if (!res.ok) throw new Error("Falha ao iniciar sessão (" + res.status + ")");
     const data = await res.json();
-    token = data.token; sessionId = data.session.id; protocol = data.session.protocol;
-    setHeader(null, "Protocolo " + protocol);
+    syncUrl(name, sel);
+    await resumeSession(data);
+  } catch {
+    $("pc-submit").disabled = false;
+    alert("Não foi possível iniciar o atendimento. Tente novamente.");
+  }
+};
 
+// ── Resume an existing/just-created session: load history + connect ─────────
+async function resumeSession(data) {
+  token = data.token; sessionId = data.session.id; protocol = data.session.protocol;
+  showChat();
+  setHeader(null, "Protocolo " + protocol);
+  try {
     const hist = await (await fetch(API + "/sessions/" + sessionId + "/messages/?token=" + encodeURIComponent(token))).json();
     msgs.innerHTML = "";
     (hist.results || []).forEach(renderMessage);
@@ -607,23 +830,46 @@ async function start() {
         showEnded(hist.session.rating_score != null || hist.session.rating_state === "done");
         return;
       }
-      if (hist.session.client_name) setHeader(null, "Protocolo " + protocol);
       if (hist.session.assigned_attendant_id) $("hsub").textContent = "Em atendimento · Protocolo " + protocol;
     }
     connect();
-  } catch(e) {
+  } catch {
     msgs.innerHTML = '<div style="padding:24px;text-align:center;color:var(--txt2);font-size:13px">Não foi possível conectar ao suporte. Por favor, tente novamente.</div>';
   }
 }
+
+// ── Boot: resume an open session for this browser, else show the pre-chat form ─
+async function start() {
+  try {
+    const r = await (await fetch(API + "/sessions/active/?workspace=" + encodeURIComponent(WORKSPACE) + "&browser_id=" + encodeURIComponent(browserId()))).json();
+    if (r && r.session) { await resumeSession(r); return; }
+  } catch { /* fall through to the pre-chat form */ }
+  await showPrechat();
+}
+
+// Tell the server we've read the conversation (→ attendant sees blue checks).
+function sendRead() {
+  if (document.visibilityState === "visible") sendWs({ type: "client.read" });
+}
+// Re-confirm reads when the client returns to the tab.
+document.addEventListener("visibilitychange", sendRead);
 
 // ── WebSocket ─────────────────────────────────────────────────────
 function connect() {
   ws = new WebSocket(WS + "?token=" + encodeURIComponent(token));
 
+  ws.onopen = () => sendRead();
+
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
     if (m.type === "ping") { ws.send(JSON.stringify({ type: "pong" })); return; }
-    if (m.type === "message.new") { $("typing").classList.remove("on"); renderMessage(m.message); return; }
+    if (m.type === "message.new") {
+      $("typing").classList.remove("on");
+      renderMessage(m.message);
+      // An attendant/bot message arrived and we're looking → mark read immediately.
+      if (m.message && m.message.sender !== "client") sendRead();
+      return;
+    }
     if (m.type === "message.edit") { renderMessage(m.message); return; }
     if (m.type === "message.delete") { redactMessage(m.message_id); return; }
     if (m.type === "typing" && m.who === "attendant") {
@@ -707,8 +953,11 @@ $("mic").onclick = async () => {
 };
 
 // ── End / restart ─────────────────────────────────────────────────
+let ended = false;
 $("hend").onclick = () => {
+  if (ended) return;
   if (!confirm("Deseja encerrar o atendimento?")) return;
+  ended = true;
   sendWs({ type: "client.end" });
   localStorage.removeItem(LS_KEY);
   showEnded();

@@ -421,6 +421,15 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [showTransfer, setShowTransfer] = useState(false);
   const [intakeProjectId, setIntakeProjectId] = useState("");
   const [search, setSearch] = useState("");
+  // Which status tab is selected (always one — clear visual indication of where you are).
+  const [listFilter, setListFilter] = useState<string>("active");
+  // Sessions freshly assigned to me that I haven't opened yet (new-arrival highlight).
+  const [newAssigned, setNewAssigned] = useState<Set<string>>(new Set());
+  // The open client is typing right now (auto-clears after a few seconds).
+  const [clientTyping, setClientTyping] = useState(false);
+  // Timestamp the open client has read up to → my messages before it show blue checks.
+  const [clientReadAt, setClientReadAt] = useState<string | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [config, setConfig] = useState<{ api_url: string; ws_url: string; enabled: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -459,11 +468,19 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     async (id: string) => {
       if (!api) return;
       setActiveId(id);
-      const { results } = await api.history(id);
+      setClientTyping(false);
+      const { results, session } = await api.history(id);
       setMessages(results);
+      setClientReadAt(session?.client_last_read_at ?? null);
       wsRef.current?.send(JSON.stringify({ type: "agent.open", session_id: id }));
       wsRef.current?.send(JSON.stringify({ type: "agent.read", session_id: id }));
       setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, unread: 0 } : s)));
+      setNewAssigned((prev) => {
+        if (!prev.has(id)) return prev;
+        const n = new Set(prev);
+        n.delete(id);
+        return n;
+      });
     },
     [api]
   );
@@ -553,8 +570,24 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             const msg = JSON.parse(ev.data);
             if (msg.type === "ping") return ws?.send(JSON.stringify({ type: "pong" }));
 
+            // Client is typing in the open conversation → show the indicator.
+            if (msg.type === "typing" && msg.who === "client") {
+              if (msg.session_id === activeRef.current) {
+                setClientTyping(true);
+                if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+                typingTimerRef.current = setTimeout(() => setClientTyping(false), 3000);
+              }
+              return;
+            }
+            // Client read up to msg.at → my earlier messages turn blue.
+            if (msg.type === "read.receipt" && msg.who === "client") {
+              if (msg.session_id === activeRef.current && msg.at) setClientReadAt(msg.at);
+              return;
+            }
+
             if (msg.type === "message.new") {
               const isActive = msg.message.session_id === activeRef.current;
+              if (isActive && msg.message.sender === "client") setClientTyping(false);
               if (isActive) {
                 // Replace temp optimistic message if text/sender match
                 setMessages((prev) => {
@@ -607,9 +640,27 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 )
               );
 
+            // A chat became assigned to me (direct route / queue pickup). The
+            // backend only delivers session.assigned to the chosen attendant (or to
+            // whoever has it open), so treat it as a new, unread arrival: bump the
+            // unread badge, beep, and notify on the desktop when the tab is hidden.
+            if (msg.type === "session.assigned") {
+              void refreshSessionsRef.current?.();
+              const sid = msg.session_id;
+              if (sid && sid !== activeRef.current) {
+                // Flag as a new arrival (survives the list refresh, which would
+                // otherwise reset the backend-computed unread count to 0).
+                setNewAssigned((prev) => new Set(prev).add(sid));
+                playAlert();
+                const sess = sessionsRef.current.find((s) => s.id === sid);
+                const who = sess?.client_name || sess?.client_phone || "Visitante";
+                notifyDesktop("Novo atendimento", `${who} iniciou um atendimento.`);
+              }
+              return;
+            }
+
             if (
               msg.type === "session.activity" ||
-              msg.type === "session.assigned" ||
               msg.type === "session.queued" ||
               msg.type === "session.closed" ||
               msg.type === "session.transferred"
@@ -784,16 +835,18 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   };
 
   const filteredSessions = useMemo(() => {
-    if (!search.trim()) return sessions;
+    // Exactly the selected tab's status (closed chats live only under "Encerrados").
+    const base = sessions.filter((s) => s.status === listFilter);
+    if (!search.trim()) return base;
     const q = search.trim().toLowerCase();
-    return sessions.filter(
+    return base.filter(
       (s) =>
         s.client_name?.toLowerCase().includes(q) ||
         s.client_phone?.toLowerCase().includes(q) ||
         s.protocol.toLowerCase().includes(q) ||
         s.last_message?.toLowerCase().includes(q)
     );
-  }, [sessions, search]);
+  }, [sessions, search, listFilter]);
 
   if (error)
     return (
@@ -898,41 +951,61 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
           </div>
         </div>
 
-        {/* Stats row */}
+        {/* Stats row — click a tab to filter; click again to clear (back to abertos). */}
         <div className="flex border-b border-subtle">
           {[
             { label: "Ativas", count: sessions.filter((s) => s.status === "active").length, status: "active" },
-            { label: "Na fila", count: sessions.filter((s) => s.status === "queued").length, status: "queued" },
-            { label: "Bot", count: sessions.filter((s) => s.status === "bot").length, status: "bot" },
-          ].map(({ label, count, status }) => (
-            <button
-              key={status}
-              onClick={() => setSearch("")}
-              className="flex flex-1 flex-col items-center gap-0.5 border-r border-subtle px-2 py-2 last:border-r-0 hover:bg-layer-1 transition-colors"
-            >
-              <span className="text-base font-semibold text-primary">{count}</span>
-              <span className="text-10 text-tertiary">{label}</span>
-            </button>
-          ))}
+            // "Na fila" and "Bot" are admin-only — regular attendants never see them.
+            ...(isAdmin
+              ? [
+                  { label: "Na fila", count: sessions.filter((s) => s.status === "queued").length, status: "queued" },
+                  { label: "Bot", count: sessions.filter((s) => s.status === "bot").length, status: "bot" },
+                ]
+              : []),
+            { label: "Encerrados", count: sessions.filter((s) => s.status === "closed").length, status: "closed" },
+          ].map(({ label, count, status }) => {
+            const selected = listFilter === status;
+            return (
+              <button
+                key={status}
+                onClick={() => setListFilter(status)}
+                className={`relative flex flex-1 flex-col items-center gap-0.5 border-r border-subtle px-2 py-2 last:border-r-0 transition-colors ${
+                  selected ? "bg-layer-1" : "hover:bg-layer-1"
+                }`}
+              >
+                <span className={`text-base font-semibold ${selected ? "text-primary" : "text-secondary"}`}>{count}</span>
+                <span className={`text-10 ${selected ? "font-semibold text-primary" : "text-tertiary"}`}>{label}</span>
+                {selected && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" />}
+              </button>
+            );
+          })}
         </div>
 
         {/* Session list */}
         <div className="flex-1 overflow-y-auto">
-          {filteredSessions.map((s) => (
+          {filteredSessions.map((s) => {
+            const isUnread = (s.unread ?? 0) > 0 || newAssigned.has(s.id);
+            return (
             <button
               key={s.id}
               onClick={() => openSession(s.id)}
-              className={`relative flex w-full items-start gap-3 border-b border-subtle px-3 py-3 text-left hover:bg-layer-1 transition-colors ${
-                activeId === s.id ? "bg-layer-1 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary" : ""
+              className={`relative flex w-full items-start gap-3 border-b border-subtle px-3 py-3 text-left transition-colors ${
+                activeId === s.id
+                  ? "bg-layer-1 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary"
+                  : isUnread
+                    ? "bg-indigo-50 hover:bg-indigo-100 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-indigo-500 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30"
+                    : "hover:bg-layer-1"
               }`}
             >
               <SessionAvatar name={s.client_name} phone={s.client_phone} size="sm" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-1">
-                  <span className="truncate text-13 font-medium text-primary">
+                  <span className={`truncate text-13 ${isUnread ? "font-bold text-primary" : "font-medium text-primary"}`}>
                     {s.client_name || s.client_phone || "Visitante"}
                   </span>
-                  <span className="shrink-0 text-10 text-tertiary">{formatDate(s.last_message_at)}</span>
+                  <span className={`shrink-0 text-10 ${isUnread ? "font-semibold text-indigo-600 dark:text-indigo-400" : "text-tertiary"}`}>
+                    {formatDate(s.last_message_at)}
+                  </span>
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span
@@ -946,19 +1019,33 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                       WA
                     </span>
                   )}
+                  {s.project_identifier && (
+                    <span className="rounded bg-indigo-100 px-1 py-0.5 text-9 font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                      {s.project_identifier}
+                    </span>
+                  )}
                   <span className="text-10 text-tertiary">#{s.protocol}</span>
                 </div>
-                <div className="mt-0.5 flex items-center justify-between">
-                  <span className="truncate text-12 text-tertiary">{s.last_message || "Sem mensagens"}</span>
-                  {!!s.unread && (
-                    <span className="ml-2 shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-10 font-semibold text-on-color">
+                <div className="mt-0.5 flex items-center justify-between gap-2">
+                  <span className={`truncate text-12 ${isUnread ? "font-medium text-secondary" : "text-tertiary"}`}>
+                    {s.last_message || "Sem mensagens"}
+                  </span>
+                  {(s.unread ?? 0) > 0 ? (
+                    <span className="ml-2 flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-11 font-bold text-white shadow-sm">
                       {s.unread}
                     </span>
+                  ) : (
+                    newAssigned.has(s.id) && (
+                      <span className="ml-2 flex h-5 shrink-0 items-center rounded-full bg-red-500 px-2 text-10 font-bold uppercase tracking-wide text-white shadow-sm">
+                        Novo
+                      </span>
+                    )
                   )}
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
           {filteredSessions.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-2 p-8 text-secondary">
               <MessageSquare className="h-8 w-8 opacity-30" />
@@ -1001,8 +1088,16 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                     <span className={`rounded-full px-1.5 py-0.5 text-10 font-medium ${statusBadgeCls(activeSession.status)}`}>
                       {statusLabel(activeSession.status)}
                     </span>
+                    {(activeSession.project_identifier || activeSession.project_name) && (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-10 font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        {activeSession.project_identifier || activeSession.project_name}
+                      </span>
+                    )}
                     {slaActive && (
                       <span className="text-11 font-medium text-danger-primary">· ⚠ Aguardando resposta</span>
+                    )}
+                    {clientTyping && (
+                      <span className="text-11 font-medium text-green-600 dark:text-green-400">· digitando…</span>
                     )}
                   </div>
                 </div>
@@ -1091,10 +1186,21 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 const url = api?.mediaUrl(m.media_key, m.media_mime);
                 const isTemp = m.id.startsWith("temp-");
 
-                if (m.sender === "system") {
+                // System events and bot/automated messages are centered (never on
+                // the client's side) so the attendant can tell them apart from what
+                // the visitor actually typed.
+                if (m.sender === "system" || m.sender === "bot") {
+                  const isBot = m.sender === "bot";
                   return (
                     <div key={m.id} className="flex justify-center py-1">
-                      <span className="rounded-full border border-subtle bg-surface-1 px-3 py-1 text-11 text-tertiary">
+                      <span
+                        className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-1.5 text-center text-11 ${
+                          isBot
+                            ? "border border-subtle bg-layer-2 text-secondary"
+                            : "border border-subtle bg-surface-1 text-tertiary"
+                        }`}
+                      >
+                        {isBot && <span className="mr-1">🤖</span>}
                         {m.text}
                       </span>
                     </div>
@@ -1132,6 +1238,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
                 const editing = editingId === m.id;
                 const canEdit = mine && !isTemp && m.type === "text";
+                // Read by the client? (my message is older than the client's read mark)
+                const readByClient =
+                  mine && !isTemp && !!clientReadAt && new Date(m.created_at).getTime() <= new Date(clientReadAt).getTime();
 
                 return (
                   <div key={m.id} className={`group flex ${mine ? "justify-end" : "justify-start"} items-end gap-2`}>
@@ -1188,7 +1297,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                         <div
                           className={`rounded-2xl px-4 py-2.5 shadow-sm ${
                             mine
-                              ? `rounded-br-sm bg-primary text-on-color ${isTemp ? "opacity-70" : ""}`
+                              ? `rounded-br-sm border border-indigo-600 bg-indigo-600 text-white ${isTemp ? "opacity-70" : ""}`
                               : "rounded-bl-sm border border-subtle bg-surface-1 text-primary"
                           }`}
                         >
@@ -1217,7 +1326,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                       )}
                       <div className={`mt-1 flex items-center gap-1 text-10 text-tertiary ${mine ? "flex-row-reverse" : ""}`}>
                         <span>{formatTime(m.created_at)}</span>
-                        {mine && !isTemp && <CheckCheck className="h-3 w-3" />}
+                        {mine && !isTemp && (
+                          <CheckCheck className={`h-3 w-3 ${readByClient ? "text-blue-500" : ""}`} />
+                        )}
                         {m.edited_at && <span className="italic">· editado</span>}
                         {isManager && (m.edit_history?.length ?? 0) > 0 && (
                           <button
@@ -1249,6 +1360,16 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               {messages.length === 0 && (
                 <div className="flex flex-1 items-center justify-center text-13 text-tertiary">
                   Sem mensagens ainda.
+                </div>
+              )}
+              {clientTyping && (
+                <div className="flex items-end gap-2">
+                  <SessionAvatar name={activeSession.client_name} phone={activeSession.client_phone} size="sm" />
+                  <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-subtle bg-surface-1 px-4 py-3">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-tertiary" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-tertiary [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-tertiary [animation-delay:300ms]" />
+                  </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -1365,6 +1486,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 <span className="text-tertiary">Canal</span>
                 <span className="text-primary capitalize">{activeSession.channel}</span>
               </div>
+              {(activeSession.project_name || activeSession.project_identifier) && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-tertiary">Sistema</span>
+                  <span className="truncate text-primary text-right">
+                    {activeSession.project_name || activeSession.project_identifier}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-tertiary">Protocolo</span>
                 <span className="font-mono text-primary">#{activeSession.protocol}</span>
@@ -1386,7 +1515,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star
                     key={n}
-                    className={`h-4 w-4 ${n <= (activeSession.rating_score ?? 0) ? "fill-amber-400 text-amber-400" : "text-tertiary"}`}
+                    className={`h-4 w-4 ${n <= (activeSession.rating_score ?? 0) ? "fill-current text-amber-400" : "text-tertiary"}`}
                   />
                 ))}
                 <span className="ml-1 text-13 font-medium text-primary">{activeSession.rating_score}/5</span>

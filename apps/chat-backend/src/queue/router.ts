@@ -9,6 +9,27 @@ import prisma from "@db";
 import { availableAttendants, isWithinBusinessHours } from "@/presence";
 import { persistAndBroadcast, sendToSession, sendToUser, sendToWorkspace } from "@/messages";
 import { connectedUserIds } from "@/ws/hub";
+import { attendantName } from "@/users";
+
+/**
+ * Assign a session to a specific attendant and announce it everywhere: the client
+ * (session.assigned), the attendant (so it appears as "theirs"), the workspace list,
+ * and a named system event ("<Atendente> iniciou o atendimento.") so everyone sees
+ * exactly who joined. Single source of truth for every assignment path (queue
+ * routing, manual "Assumir", direct native route, transfer notwithstanding).
+ */
+export async function assignSessionToAttendant(sessionId: string, userId: string) {
+  const session = await prisma.chatSession.update({
+    where: { id: sessionId },
+    data: { assignedAttendantId: userId, status: "active" },
+  });
+  const name = await attendantName(userId);
+  sendToUser(userId, { type: "session.assigned", session_id: sessionId });
+  sendToSession(sessionId, { type: "session.assigned", session_id: sessionId, attendant_id: userId });
+  sendToWorkspace(session.workspaceId, { type: "session.activity", session_id: sessionId });
+  await persistAndBroadcast({ sessionId, sender: "system", type: "event", text: `${name} iniciou o atendimento.` });
+  return session;
+}
 
 function startOfToday(): Date {
   const d = new Date();
@@ -79,15 +100,7 @@ export async function routeQueuedSession(sessionId: string): Promise<string | nu
   const chosen = roulettePick(weighted);
   if (!chosen) return null;
 
-  await prisma.chatSession.update({
-    where: { id: sessionId },
-    data: { assignedAttendantId: chosen, status: "active" },
-  });
-
-  sendToUser(chosen, { type: "session.assigned", session_id: sessionId });
-  sendToSession(sessionId, { type: "session.assigned", session_id: sessionId, attendant_id: chosen });
-  sendToWorkspace(session.workspaceId, { type: "session.activity", session_id: sessionId });
-  await persistAndBroadcast({ sessionId, sender: "system", type: "event", text: "Atendimento iniciado." });
+  await assignSessionToAttendant(sessionId, chosen);
   return chosen;
 }
 

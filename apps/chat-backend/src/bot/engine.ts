@@ -5,8 +5,8 @@
 
 import prisma from "@db";
 import { deliverOutbound } from "@/outbound";
-import { isWithinBusinessHours } from "@/presence";
-import { routeQueuedSession } from "@/queue/router";
+import { availableAttendants, isWithinBusinessHours } from "@/presence";
+import { routeQueuedSession, assignSessionToAttendant } from "@/queue/router";
 import { requestRating } from "@/rating";
 import { sendToSession, sendToWorkspace } from "@/ws/hub";
 
@@ -63,6 +63,37 @@ export async function startBot(sessionId: string) {
   } else {
     await sendBot(session, cfg.askNameMessage);
     await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "awaiting_name" } });
+  }
+}
+
+/**
+ * Native widget start. The name + "system" (project) + optional attendant are
+ * collected by the pre-chat form (no bot name/menu questions). We greet, then
+ * either route directly to the chosen attendant (if available right now) or fall
+ * back to the weighted queue. botState stays "done" so the bot never interferes.
+ */
+export async function startNativeSession(sessionId: string, opts: { attendantId?: string | null } = {}) {
+  const session = await prisma.chatSession.findUnique({ where: { id: sessionId } });
+  if (!session || session.status === "active" || session.status === "closed") return;
+  const cfg = await getConfig(session.workspaceId);
+  await sendBot(session, cfg.welcomeMessage);
+
+  // Direct route to the attendant the client asked for, if they're available now.
+  if (opts.attendantId) {
+    const [available] = await availableAttendants(session.workspaceId, [opts.attendantId]);
+    if (available) {
+      await assignSessionToAttendant(session.id, available);
+      return;
+    }
+  }
+
+  // Otherwise enqueue (no specific queue) + weighted routing.
+  await prisma.chatSession.update({ where: { id: session.id }, data: { status: "queued", botState: "done" } });
+  sendToWorkspace(session.workspaceId, { type: "session.queued", session_id: session.id });
+  const assigned = await routeQueuedSession(session.id);
+  if (!assigned) {
+    const open = await isWithinBusinessHours(session.workspaceId);
+    await sendBot(session, open ? cfg.noAttendantsMessage : cfg.outsideHoursMessage);
   }
 }
 
