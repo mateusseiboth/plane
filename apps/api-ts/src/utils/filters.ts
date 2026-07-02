@@ -117,11 +117,47 @@ export async function applyIssueFilters(
   if (filters.created_by?.length) where.createdById = {in: filters.created_by};
   if (filters.project?.length) where.projectId = where.projectId ? where.projectId : {in: filters.project};
   if (filters.assignees?.length) where.assignees = {some: {assigneeId: {in: filters.assignees}, deletedAt: null}};
-  if (filters.labels?.length) where.labels = {some: {labelId: {in: filters.labels}, deletedAt: null}};
   if (filters.mentions?.length) where.mentions = {some: {mentionedId: {in: filters.mentions}}};
+
+  // labels — workspace-level views deduplicate labels by name, so a single selected
+  // label id must match every same-named label across the workspace's projects.
+  if (filters.labels?.length) {
+    const labelIdSet = new Set<string>(filters.labels);
+    if (scope.workspaceId) {
+      const names = await prisma.label.findMany({
+        where: {id: {in: filters.labels}, deletedAt: null},
+        select: {name: true},
+        distinct: ["name"],
+      });
+      if (names.length) {
+        const sameName = await prisma.label.findMany({
+          where: {name: {in: names.map((l) => l.name)}, workspaceId: scope.workspaceId, deletedAt: null},
+          select: {id: true},
+        });
+        for (const l of sameName) labelIdSet.add(l.id);
+      }
+    }
+    where.labels = {some: {labelId: {in: [...labelIdSet]}, deletedAt: null}};
+  }
 
   // state ids — combine explicit state ids and state-group resolution
   const stateIdSet = new Set<string>(filters.state ?? []);
+  // Workspace-level views deduplicate states by name, so a single selected state id
+  // must match every same-named state across the workspace's projects.
+  if (scope.workspaceId && filters.state?.length) {
+    const names = await prisma.state.findMany({
+      where: {id: {in: filters.state}, deletedAt: null},
+      select: {name: true},
+      distinct: ["name"],
+    });
+    if (names.length) {
+      const sameName = await prisma.state.findMany({
+        where: {name: {in: names.map((s) => s.name)}, workspaceId: scope.workspaceId, deletedAt: null},
+        select: {id: true},
+      });
+      for (const s of sameName) stateIdSet.add(s.id);
+    }
+  }
   if (filters.state_group?.length) {
     const states = await prisma.state.findMany({
       where: {

@@ -6,7 +6,7 @@ import {paginate} from "@utils/pagination";
 import {nextSequenceId} from "@utils/sequence";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {COMMENT_FTS_DOC_C, ensureSearchIndexes, ISSUE_FTS_DOC_I, PT_FTS_CONFIG} from "@utils/search";
-import {ISSUE_INCLUDE, serializeIssue} from "@utils/serialize";
+import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel} from "@utils/serialize";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
@@ -1107,19 +1107,21 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/labels/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return prisma.label.findMany({
+    const labels = await prisma.label.findMany({
       where: {workspaceId: ws.id, deletedAt: null},
       orderBy: {name: "asc"},
     });
+    return labels.map(serializeLabel);
   })
 
   .get("/:slug/states/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return prisma.state.findMany({
+    const states = await prisma.state.findMany({
       where: {workspaceId: ws.id, deletedAt: null},
       orderBy: {sequence: "asc"},
     });
+    return states.map(serializeState);
   })
 
   // ── Workspace-level label SLA config ─────────────────────────────────────────

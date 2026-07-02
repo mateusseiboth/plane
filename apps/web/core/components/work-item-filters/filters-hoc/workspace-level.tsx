@@ -26,6 +26,20 @@ import { useUser, useUserPermissions } from "@/hooks/store/user";
 import { WorkItemFiltersHOC } from "./base";
 import type { TEnableSaveViewProps, TEnableUpdateViewProps, TSharedWorkItemFiltersHOCProps } from "./shared";
 
+/**
+ * Keeps the first id for each distinct name, preserving the incoming order.
+ * Returns undefined when the source list is not yet loaded so the filter stays
+ * disabled until options are available.
+ */
+const dedupeIdsByName = (items: { id: string; name: string }[] | undefined): string[] | undefined => {
+  if (!items) return undefined;
+  const idByName = new Map<string, string>();
+  for (const item of items) {
+    if (!idByName.has(item.name)) idByName.set(item.name, item.id);
+  }
+  return [...idByName.values()];
+};
+
 type TWorkspaceLevelWorkItemFiltersHOCProps = TSharedWorkItemFiltersHOCProps & {
   workspaceSlug: string;
 } & TEnableSaveViewProps &
@@ -46,12 +60,18 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
   const {
     workspace: { getWorkspaceMemberIds },
   } = useMember();
-  const { getWorkspaceLabelIds } = useLabel();
+  const { getWorkspaceLabels } = useLabel();
   const { workspaceStates } = useProjectState();
   // derived values
-  // Cross-project view: expose every state across the workspace so the State
-  // filter lists the actual states (Pendência, A fazer, Em análise, …).
-  const workspaceStateIds = useMemo(() => workspaceStates?.map((state) => state.id), [workspaceStates]);
+  // Cross-project view: states and labels are project-scoped, so the same name
+  // (e.g. "Triagem", "Pendências") repeats once per project. Deduplicate by name so
+  // each appears a single time; the backend expands the selected id to every
+  // same-named state/label across the workspace when filtering.
+  const workspaceStateIds = useMemo(() => dedupeIdsByName(workspaceStates), [workspaceStates]);
+  const workspaceLabelIds = useMemo(
+    () => dedupeIdsByName(getWorkspaceLabels(workspaceSlug)),
+    [getWorkspaceLabels, workspaceSlug]
+  );
   const hasWorkspaceMemberLevelPermissions = allowPermissions(
     PROJECT_WORK_ROLES,
     EUserPermissionsLevel.WORKSPACE,
@@ -194,7 +214,7 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
       <WorkItemFiltersHOC
         {...props}
         memberIds={getWorkspaceMemberIds(workspaceSlug)}
-        labelIds={getWorkspaceLabelIds(workspaceSlug)}
+        labelIds={workspaceLabelIds}
         projectIds={joinedProjectIds}
         stateIds={workspaceStateIds}
         saveViewOptions={saveViewOptions}

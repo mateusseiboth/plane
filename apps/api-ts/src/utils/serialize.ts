@@ -113,6 +113,40 @@ export function serializeComment(c: any): Record<string, unknown> {
   };
 }
 
+export function serializeState(s: any): Record<string, unknown> {
+  return {
+    id:           s.id,
+    name:         s.name,
+    color:        s.color,
+    group:        s.group,
+    description:  s.description ?? "",
+    sequence:     s.sequence,
+    default:      s.default,
+    slug:         s.slug,
+    order:        s.sequence,
+    project_id:   s.projectId,
+    workspace_id: s.workspaceId,
+    created_at:   isoDate(s.createdAt),
+    updated_at:   isoDate(s.updatedAt),
+  };
+}
+
+export function serializeLabel(l: any): Record<string, unknown> {
+  return {
+    id:           l.id,
+    name:         l.name,
+    color:        l.color ?? "",
+    description:  l.description ?? "",
+    parent:       l.parentId ?? null,
+    sla_hours:    l.slaHours ?? null,
+    sort_order:   l.sortOrder ?? 65535,
+    project_id:   l.projectId,
+    workspace_id: l.workspaceId,
+    created_at:   isoDate(l.createdAt),
+    updated_at:   isoDate(l.updatedAt),
+  };
+}
+
 export function serializeModule(mod: any): Record<string, unknown> {
   const totalIssues = mod._count?.moduleIssues ?? 0;
   return {
