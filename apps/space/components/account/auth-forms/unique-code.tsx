@@ -126,7 +126,7 @@ export function AuthUniqueCodeForm(props: TAuthUniqueCodeForm) {
         <div className="flex w-full items-center justify-between px-1 pt-1 text-11">
           <p className="flex items-center gap-1 font-medium text-success-primary">
             <CircleCheck height={12} width={12} />
-            Paste the code sent to your email
+            Cole o código enviado para o seu e-mail
           </p>
           <button
             type="button"

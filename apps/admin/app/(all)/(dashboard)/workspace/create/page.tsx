@@ -16,8 +16,8 @@ const WorkspaceCreatePage = observer(function WorkspaceCreatePage(_props: Route.
   return (
     <PageWrapper
       header={{
-        title: "Create a new workspace on this instance.",
-        description: "You will need to invite users from Workspace Settings after you create this workspace.",
+        title: "Crie um novo espaço de trabalho nesta instância.",
+        description: "Você precisará convidar usuários nas Configurações do espaço de trabalho após criá-lo.",
       }}
     >
       <WorkspaceCreateForm />
@@ -25,6 +25,6 @@ const WorkspaceCreatePage = observer(function WorkspaceCreatePage(_props: Route.
   );
 });
 
-export const meta: Route.MetaFunction = () => [{ title: "Create Workspace - God Mode" }];
+export const meta: Route.MetaFunction = () => [{ title: "Criar espaço de trabalho - God Mode" }];
 
 export default WorkspaceCreatePage;

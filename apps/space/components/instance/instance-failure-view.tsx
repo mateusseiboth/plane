@@ -23,16 +23,16 @@ export function InstanceFailureView() {
     <div className="relative container mx-auto flex h-screen items-center justify-center overflow-x-hidden overflow-y-auto px-5">
       <div className="relative w-auto max-w-2xl space-y-8 py-10">
         <div className="relative flex flex-col items-center justify-center space-y-4">
-          <img src={instanceImage} alt="Plane instance failure image" />
-          <h3 className="text-20 font-medium text-on-color">Unable to fetch instance details.</h3>
+          <img src={instanceImage} alt="Avião instance failure image" />
+          <h3 className="text-20 font-medium text-on-color">Não foi possível buscar os detalhes da instância.</h3>
           <p className="text-center text-14 font-medium">
-            We were unable to fetch the details of the instance. <br />
-            Fret not, it might just be a connectivity work items.
+            Não conseguimos buscar os detalhes da instância. <br />
+            Não se preocupe, pode ser apenas um problema de conexão.
           </p>
         </div>
         <div className="flex justify-center">
           <Button size="lg" onClick={handleRetry}>
-            Retry
+            Tentar novamente
           </Button>
         </div>
       </div>

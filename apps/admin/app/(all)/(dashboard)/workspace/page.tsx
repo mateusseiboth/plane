@@ -55,11 +55,11 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
     setPromiseToast(updateConfigPromise, {
       loading: "Saving configuration",
       success: {
-        title: "Success",
+        title: "Sucesso",
         message: () => "Configuration saved successfully",
       },
       error: {
-        title: "Error",
+        title: "Erro",
         message: () => "Failed to save configuration",
       },
     });
@@ -77,8 +77,8 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
   return (
     <PageWrapper
       header={{
-        title: "Workspaces on this instance",
-        description: "See all workspaces and control who can create them.",
+        title: "Espaços de trabalho nesta instância",
+        description: "Veja todos os espaços de trabalho e controle quem pode criá-los.",
       }}
     >
       <div className="space-y-3">
@@ -86,9 +86,9 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
           <div className={cn("flex w-full items-center gap-14 rounded-sm")}>
             <div className="flex grow items-center gap-4">
               <div className="grow">
-                <div className="pb-1 text-16 font-medium">Prevent anyone else from creating a workspace.</div>
+                <div className="pb-1 text-16 font-medium">Impedir que outras pessoas criem espaços de trabalho.</div>
                 <div className={cn("text-11 leading-5 font-regular text-tertiary")}>
-                  Toggling this on will let only you create workspaces. You will have to invite users to new workspaces.
+                  Ativar isto permitirá que apenas você crie espaços de trabalho. Você terá que convidar usuários para novos espaços.
                 </div>
               </div>
             </div>
@@ -119,7 +119,7 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
             <div className="flex items-center justify-between gap-2 pt-6">
               <div className="flex flex-col items-start gap-x-2">
                 <div className="flex items-center gap-2 text-16 font-medium">
-                  All workspaces on this instance <span className="text-tertiary">• {workspaceIds.length}</span>
+                  Todos os espaços de trabalho nesta instância <span className="text-tertiary">• {workspaceIds.length}</span>
                   {workspaceLoader && ["mutation", "pagination"].includes(workspaceLoader) && (
                     <LoaderIcon className="h-4 w-4 animate-spin" />
                   )}
@@ -131,7 +131,7 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
               </div>
               <div className="flex items-center gap-2">
                 <Link href="/workspace/create" className={getButtonStyling("primary", "base")}>
-                  Create workspace
+                  Criar espaço de trabalho
                 </Link>
               </div>
             </div>
@@ -167,6 +167,6 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
   );
 });
 
-export const meta: Route.MetaFunction = () => [{ title: "Workspace Management - God Mode" }];
+export const meta: Route.MetaFunction = () => [{ title: "Gerenciamento de espaços de trabalho - God Mode" }];
 
 export default WorkspaceManagementPage;

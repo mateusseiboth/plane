@@ -81,7 +81,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
       type: "text",
       label: "Sender's email address",
       description:
-        "This is the email address your users will see when getting emails from this instance. You will need to verify this address.",
+        "Este é o e-mail que seus usuários verão ao receber mensagens desta instância. Você precisará verificar este endereço.",
       placeholder: "no-reply@projectplane.so",
       error: Boolean(errors.EMAIL_FROM),
       required: true,
@@ -114,8 +114,8 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
       .then(() =>
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success",
-          message: "Email Settings updated successfully",
+          title: "Sucesso",
+          message: "Configurações de e-mail atualizadas com sucesso",
         })
       )
       .catch((err) => console.error(err));
@@ -163,7 +163,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
             />
           ))}
           <div className="flex flex-col gap-1">
-            <h4 className="text-13 text-tertiary">Email security</h4>
+            <h4 className="text-13 text-tertiary">Segurança de e-mail</h4>
             <CustomSelect
               value={emailSecurityKey}
               label={EMAIL_SECURITY_OPTIONS[emailSecurityKey]}
@@ -185,7 +185,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
               <div className="grow">
                 <div className="text-13 font-medium text-primary">Authentication</div>
                 <div className="text-11 font-regular text-tertiary">
-                  This is optional, but we recommend setting up a username and a password for your SMTP server.
+                  Isto é opcional, mas recomendamos configurar um usuário e uma senha para o seu servidor SMTP.
                 </div>
               </div>
             </div>
@@ -224,7 +224,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
           loading={isSubmitting}
           disabled={!isValid}
         >
-          Send test email
+          Enviar e-mail de teste
         </Button>
       </div>
     </div>

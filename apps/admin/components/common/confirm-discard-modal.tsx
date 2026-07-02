@@ -50,11 +50,11 @@ export function ConfirmDiscardModal(props: Props) {
                   <div className="sm:flex sm:items-start">
                     <div className="mt-3 text-center sm:mt-0 sm:text-left">
                       <Dialog.Title as="h3" className="text-16 leading-6 font-medium text-tertiary">
-                        You have unsaved changes
+                        Você tem alterações não salvas
                       </Dialog.Title>
                       <div className="mt-2">
                         <p className="text-13 text-placeholder">
-                          Changes you made will be lost if you go back. Do you wish to go back?
+                          As alterações feitas serão perdidas se você voltar. Deseja voltar?
                         </p>
                       </div>
                     </div>

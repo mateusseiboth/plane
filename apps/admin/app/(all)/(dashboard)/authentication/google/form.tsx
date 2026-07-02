@@ -58,7 +58,7 @@ export function InstanceGoogleConfigForm(props: Props) {
     {
       key: "GOOGLE_CLIENT_ID",
       type: "text",
-      label: "Client ID",
+      label: "ID do cliente",
       description: (
         <>
           Your client ID lives in your Google API Console.{" "}
@@ -80,7 +80,7 @@ export function InstanceGoogleConfigForm(props: Props) {
     {
       key: "GOOGLE_CLIENT_SECRET",
       type: "password",
-      label: "Client secret",
+      label: "Segredo do cliente",
       description: (
         <>
           Your client secret should also be in your Google API Console.{" "}
@@ -109,7 +109,7 @@ export function InstanceGoogleConfigForm(props: Props) {
   const GOOGLE_COMMON_SERVICE_DETAILS: TCopyField[] = [
     {
       key: "Origin_URL",
-      label: "Origin URL",
+      label: "URL de origem",
       url: originURL,
       description: (
         <p>
@@ -135,7 +135,7 @@ export function InstanceGoogleConfigForm(props: Props) {
       url: `${originURL}/auth/google/callback/`,
       description: (
         <p>
-          We will auto-generate this. Paste this into your <CodeBlock darkerShade>Authorized Redirect URI</CodeBlock>{" "}
+          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>Authorized Redirect URI</CodeBlock>{" "}
           field. For this OAuth client{" "}
           <a
             href="https://console.cloud.google.com/apis/credentials/oauthclient"
@@ -158,7 +158,7 @@ export function InstanceGoogleConfigForm(props: Props) {
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: "Done!",
-        message: "Your Google authentication is configured. You should test it now.",
+        message: "Sua autenticação do Google está configurada. Teste-a agora.",
       });
       reset({
         GOOGLE_CLIENT_ID: response.find((item) => item.key === "GOOGLE_CLIENT_ID")?.value,
@@ -187,7 +187,7 @@ export function InstanceGoogleConfigForm(props: Props) {
       <div className="flex flex-col gap-8">
         <div className="grid w-full grid-cols-2 gap-x-12 gap-y-8">
           <div className="col-span-2 flex flex-col gap-y-4 pt-1 md:col-span-1">
-            <div className="pt-2.5 text-18 font-medium">Google-provided details for Plane</div>
+            <div className="pt-2.5 text-18 font-medium">Google-provided details for Avião</div>
             {GOOGLE_FORM_FIELDS.map((field) => (
               <ControllerInput
                 key={field.key}
@@ -220,7 +220,7 @@ export function InstanceGoogleConfigForm(props: Props) {
             </div>
           </div>
           <div className="col-span-2 flex flex-col gap-y-6 md:col-span-1">
-            <div className="pt-2 text-18 font-medium">Plane-provided details for Google</div>
+            <div className="pt-2 text-18 font-medium">Avião-provided details for Google</div>
 
             <div className="flex flex-col gap-y-4">
               {/* common service details */}

@@ -49,7 +49,7 @@ const InstanceGitlabAuthenticationPage = observer(function InstanceGitlabAuthent
         message: () => `GitLab authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
-        title: "Error",
+        title: "Erro",
         message: () => "Failed to save configuration",
       },
     });
@@ -68,7 +68,7 @@ const InstanceGitlabAuthenticationPage = observer(function InstanceGitlabAuthent
       customHeader={
         <AuthenticationMethodCard
           name="GitLab"
-          description="Allow members to login or sign up to plane with their GitLab accounts."
+          description="Permita que membros entrem ou se cadastrem no Avião com suas contas do GitLab."
           icon={<img src={GitlabLogo} height={24} width={24} alt="GitLab Logo" />}
           config={
             <ToggleSwitch
@@ -104,6 +104,6 @@ const InstanceGitlabAuthenticationPage = observer(function InstanceGitlabAuthent
   );
 });
 
-export const meta: Route.MetaFunction = () => [{ title: "GitLab Authentication - God Mode" }];
+export const meta: Route.MetaFunction = () => [{ title: "Autenticação GitLab - God Mode" }];
 
 export default InstanceGitlabAuthenticationPage;

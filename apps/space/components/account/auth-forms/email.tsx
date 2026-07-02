@@ -82,7 +82,7 @@ export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailFo
           {email.length > 0 && (
             <button
               type="button"
-              aria-label="Clear email"
+              aria-label="Limpar e-mail"
               onClick={() => {
                 setEmail("");
                 inputRef.current?.focus();

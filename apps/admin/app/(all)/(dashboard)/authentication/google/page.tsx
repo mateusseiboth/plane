@@ -49,7 +49,7 @@ const InstanceGoogleAuthenticationPage = observer(function InstanceGoogleAuthent
         message: () => `Google authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
-        title: "Error",
+        title: "Erro",
         message: () => "Failed to save configuration",
       },
     });
@@ -68,8 +68,7 @@ const InstanceGoogleAuthenticationPage = observer(function InstanceGoogleAuthent
       customHeader={
         <AuthenticationMethodCard
           name="Google"
-          description="Allow members to login or sign up to plane with their Google
-            accounts."
+          description="Permita que membros entrem ou se cadastrem no Avião com suas contas do Google."
           icon={<img src={GoogleLogo} height={24} width={24} alt="Google Logo" />}
           config={
             <ToggleSwitch
@@ -105,6 +104,6 @@ const InstanceGoogleAuthenticationPage = observer(function InstanceGoogleAuthent
   );
 });
 
-export const meta: Route.MetaFunction = () => [{ title: "Google Authentication - God Mode" }];
+export const meta: Route.MetaFunction = () => [{ title: "Autenticação Google - God Mode" }];
 
 export default InstanceGoogleAuthenticationPage;

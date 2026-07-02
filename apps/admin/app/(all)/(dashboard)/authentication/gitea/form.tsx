@@ -58,7 +58,7 @@ export function InstanceGiteaConfigForm(props: Props) {
     {
       key: "GITEA_HOST",
       type: "text",
-      label: "Gitea Host",
+      label: "Host do Gitea",
       description: (
         <>Use the URL of your Gitea instance. For the official Gitea instance, use &quot;https://gitea.com&quot;.</>
       ),
@@ -69,7 +69,7 @@ export function InstanceGiteaConfigForm(props: Props) {
     {
       key: "GITEA_CLIENT_ID",
       type: "text",
-      label: "Client ID",
+      label: "ID do cliente",
       description: (
         <>
           You will get this from your{" "}
@@ -80,7 +80,7 @@ export function InstanceGiteaConfigForm(props: Props) {
             className="text-accent-primary hover:underline"
             rel="noreferrer"
           >
-            Gitea OAuth application settings.
+            Configurações da aplicação OAuth do Gitea.
           </a>
         </>
       ),
@@ -91,7 +91,7 @@ export function InstanceGiteaConfigForm(props: Props) {
     {
       key: "GITEA_CLIENT_SECRET",
       type: "password",
-      label: "Client secret",
+      label: "Segredo do cliente",
       description: (
         <>
           Your client secret is also found in your{" "}
@@ -102,7 +102,7 @@ export function InstanceGiteaConfigForm(props: Props) {
             className="text-accent-primary hover:underline"
             rel="noreferrer"
           >
-            Gitea OAuth application settings.
+            Configurações da aplicação OAuth do Gitea.
           </a>
         </>
       ),
@@ -124,7 +124,7 @@ export function InstanceGiteaConfigForm(props: Props) {
       url: `${originURL}/auth/gitea/callback/`,
       description: (
         <>
-          We will auto-generate this. Paste this into your <CodeBlock darkerShade>Authorized Callback URI</CodeBlock>{" "}
+          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>Authorized Callback URI</CodeBlock>{" "}
           field{" "}
           <a
             tabIndex={-1}
@@ -148,7 +148,7 @@ export function InstanceGiteaConfigForm(props: Props) {
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: "Done!",
-        message: "Your Gitea authentication is configured. You should test it now.",
+        message: "Sua autenticação do Gitea está configurada. Teste-a agora.",
       });
       reset({
         GITEA_HOST: response.find((item) => item.key === "GITEA_HOST")?.value,
@@ -178,7 +178,7 @@ export function InstanceGiteaConfigForm(props: Props) {
       <div className="flex flex-col gap-8">
         <div className="grid w-full grid-cols-2 gap-x-12 gap-y-8">
           <div className="col-span-2 flex flex-col gap-y-4 pt-1 md:col-span-1">
-            <div className="pt-2.5 text-18 font-medium">Gitea-provided details for Plane</div>
+            <div className="pt-2.5 text-18 font-medium">Gitea-provided details for Avião</div>
             {GITEA_FORM_FIELDS.map((field) => (
               <ControllerInput
                 key={field.key}
@@ -212,7 +212,7 @@ export function InstanceGiteaConfigForm(props: Props) {
           </div>
           <div className="col-span-2 md:col-span-1">
             <div className="flex flex-col gap-y-4 rounded-lg bg-layer-1 px-6 pt-1.5 pb-4">
-              <div className="pt-2 text-18 font-medium">Plane-provided details for Gitea</div>
+              <div className="pt-2 text-18 font-medium">Avião-provided details for Gitea</div>
               {GITEA_SERVICE_FIELD.map((field) => (
                 <CopyField key={field.key} label={field.label} url={field.url} description={field.description} />
               ))}

@@ -22,12 +22,12 @@ type TAuthHeaderDetails = {
 
 const Titles: TAuthHeaderDetails = {
   [EAuthModes.SIGN_IN]: {
-    header: "Sign in to upvote or comment",
+    header: "Entre para votar ou comentar",
     subHeader: "Contribute in nudging the features you want to get built.",
   },
   [EAuthModes.SIGN_UP]: {
-    header: "View, comment, and do more",
-    subHeader: "Sign up or log in to work with Plane work items and Pages.",
+    header: "Visualize, comente e faça mais",
+    subHeader: "Sign up or log in to work with Avião work items and Pages.",
   },
 };
 
@@ -40,7 +40,7 @@ export function AuthHeader(props: TAuthHeader) {
     }
 
     return {
-      header: "Comment or react to work items",
+      header: "Comente ou reaja aos itens de trabalho",
       subHeader: "Use plane to add your valuable inputs to features.",
     };
   };

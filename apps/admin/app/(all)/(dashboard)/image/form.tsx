@@ -41,8 +41,8 @@ export function InstanceImageConfigForm(props: IInstanceImageConfigForm) {
       .then(() =>
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success",
-          message: "Image Configuration Settings updated successfully",
+          title: "Sucesso",
+          message: "Configurações de imagem atualizadas com sucesso",
         })
       )
       .catch((err) => console.error(err));
@@ -55,7 +55,7 @@ export function InstanceImageConfigForm(props: IInstanceImageConfigForm) {
           control={control}
           type="password"
           name="UNSPLASH_ACCESS_KEY"
-          label="Access key from your Unsplash account"
+          label="Chave de acesso da sua conta Unsplash"
           description={
             <>
               You will find your access key in your Unsplash developer console.&nbsp;

@@ -34,14 +34,14 @@ const InstanceEmailPage = observer(function InstanceEmailPage(_props: Route.Comp
         await disableEmail();
         setIsSMTPEnabled(false);
         setToast({
-          title: "Email feature disabled",
-          message: "Email feature has been disabled",
+          title: "Recurso de e-mail desativado",
+          message: "O recurso de e-mail foi desativado",
           type: TOAST_TYPE.SUCCESS,
         });
       } catch (_error) {
         setToast({
-          title: "Error disabling email",
-          message: "Failed to disable email feature. Please try again.",
+          title: "Erro ao desativar o e-mail",
+          message: "Falha ao desativar o recurso de e-mail. Tente novamente.",
           type: TOAST_TYPE.ERROR,
         });
       } finally {
@@ -60,13 +60,13 @@ const InstanceEmailPage = observer(function InstanceEmailPage(_props: Route.Comp
   return (
     <PageWrapper
       header={{
-        title: "Secure emails from your own instance",
+        title: "E-mails seguros a partir da sua própria instância",
         description: (
           <>
-            Plane can send useful emails to you and your users from your own instance without talking to the Internet.
+            O Avião pode enviar e-mails úteis para você e seus usuários a partir da sua própria instância, sem acessar a Internet.
             <div className="text-13 font-regular text-tertiary">
               Set it up below and please test your settings before you save them.&nbsp;
-              <span className="text-danger-primary">Misconfigs can lead to email bounces and errors.</span>
+              <span className="text-danger-primary">Configurações incorretas podem causar falhas e erros no envio de e-mails.</span>
             </div>
           </>
         ),
@@ -98,6 +98,6 @@ const InstanceEmailPage = observer(function InstanceEmailPage(_props: Route.Comp
   );
 });
 
-export const meta: Route.MetaFunction = () => [{ title: "Email Settings - God Mode" }];
+export const meta: Route.MetaFunction = () => [{ title: "Configurações de e-mail - God Mode" }];
 
 export default InstanceEmailPage;

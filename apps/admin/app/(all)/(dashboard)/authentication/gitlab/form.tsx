@@ -71,7 +71,7 @@ export function InstanceGitlabConfigForm(props: Props) {
     {
       key: "GITLAB_CLIENT_ID",
       type: "text",
-      label: "Application ID",
+      label: "ID da aplicação",
       description: (
         <>
           Get this from your{" "}
@@ -82,7 +82,7 @@ export function InstanceGitlabConfigForm(props: Props) {
             className="text-accent-primary hover:underline"
             rel="noreferrer"
           >
-            GitLab OAuth application settings
+            Configurações da aplicação OAuth do GitLab
           </a>
           .
         </>
@@ -105,7 +105,7 @@ export function InstanceGitlabConfigForm(props: Props) {
             className="text-accent-primary hover:underline"
             rel="noreferrer"
           >
-            GitLab OAuth application settings
+            Configurações da aplicação OAuth do GitLab
           </a>
           .
         </>
@@ -124,11 +124,11 @@ export function InstanceGitlabConfigForm(props: Props) {
   const GITLAB_SERVICE_FIELD: TCopyField[] = [
     {
       key: "Callback_URL",
-      label: "Callback URL",
+      label: "URL de retorno (callback)",
       url: `${originURL}/auth/gitlab/callback/`,
       description: (
         <>
-          We will auto-generate this. Paste this into the <CodeBlock darkerShade>Redirect URI</CodeBlock> field of your{" "}
+          Geraremos isto automaticamente. Cole isto no <CodeBlock darkerShade>Redirect URI</CodeBlock> field of your{" "}
           <a
             tabIndex={-1}
             href="https://docs.gitlab.com/ee/integration/oauth_provider.html"
@@ -152,7 +152,7 @@ export function InstanceGitlabConfigForm(props: Props) {
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: "Done!",
-        message: "Your GitLab authentication is configured. You should test it now.",
+        message: "Sua autenticação do GitLab está configurada. Teste-a agora.",
       });
       reset({
         GITLAB_HOST: response.find((item) => item.key === "GITLAB_HOST")?.value,
@@ -182,7 +182,7 @@ export function InstanceGitlabConfigForm(props: Props) {
       <div className="flex flex-col gap-8">
         <div className="grid w-full grid-cols-2 gap-x-12 gap-y-8">
           <div className="col-span-2 flex flex-col gap-y-4 pt-1 md:col-span-1">
-            <div className="pt-2.5 text-18 font-medium">GitLab-provided details for Plane</div>
+            <div className="pt-2.5 text-18 font-medium">GitLab-provided details for Avião</div>
             {GITLAB_FORM_FIELDS.map((field) => (
               <ControllerInput
                 key={field.key}
@@ -216,7 +216,7 @@ export function InstanceGitlabConfigForm(props: Props) {
           </div>
           <div className="col-span-2 md:col-span-1">
             <div className="flex flex-col gap-y-4 rounded-lg bg-layer-3 px-6 pt-1.5 pb-4">
-              <div className="pt-2 text-18 font-medium">Plane-provided details for GitLab</div>
+              <div className="pt-2 text-18 font-medium">Avião-provided details for GitLab</div>
               {GITLAB_SERVICE_FIELD.map((field) => (
                 <CopyField key={field.key} label={field.label} url={field.url} description={field.description} />
               ))}

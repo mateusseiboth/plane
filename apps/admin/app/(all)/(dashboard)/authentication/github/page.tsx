@@ -55,7 +55,7 @@ const InstanceGithubAuthenticationPage = observer(function InstanceGithubAuthent
         message: () => `GitHub authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
-        title: "Error",
+        title: "Erro",
         message: () => "Failed to save configuration",
       },
     });
@@ -77,7 +77,7 @@ const InstanceGithubAuthenticationPage = observer(function InstanceGithubAuthent
       customHeader={
         <AuthenticationMethodCard
           name="GitHub"
-          description="Allow members to login or sign up to plane with their GitHub accounts."
+          description="Permita que membros entrem ou se cadastrem no Avião com suas contas do GitHub."
           icon={
             <img
               src={resolveGeneralTheme(resolvedTheme) === "dark" ? githubDarkModeImage : githubLightModeImage}
@@ -116,6 +116,6 @@ const InstanceGithubAuthenticationPage = observer(function InstanceGithubAuthent
   );
 });
 
-export const meta: Route.MetaFunction = () => [{ title: "GitHub Authentication - God Mode" }];
+export const meta: Route.MetaFunction = () => [{ title: "Autenticação GitHub - God Mode" }];
 
 export default InstanceGithubAuthenticationPage;

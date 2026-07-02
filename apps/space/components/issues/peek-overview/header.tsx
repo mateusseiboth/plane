@@ -54,8 +54,8 @@ export const PeekOverviewHeader = observer(function PeekOverviewHeader(props: Pr
     copyTextToClipboard(urlToCopy).then(() => {
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Link copied!",
-        message: "Work item link copied to clipboard.",
+        title: "Link copiado!",
+        message: "Link do item de trabalho copiado para a área de transferência.",
       });
     });
   };

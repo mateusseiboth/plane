@@ -214,7 +214,7 @@ export const CommentCard = observer(function CommentCard(props: Props) {
                         active ? "bg-layer-transparent-hover" : ""
                       }`}
                     >
-                      Delete
+                      Excluir
                     </button>
                   </div>
                 )}

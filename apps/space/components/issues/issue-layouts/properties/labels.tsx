@@ -21,7 +21,7 @@ export const IssueBlockLabels = observer(function IssueBlockLabels({ labelIds, s
 
   const labels = getLabelsByIds(labelIds);
 
-  const labelsString = labels.length > 0 ? labels.map((label) => label.name).join(", ") : "No Labels";
+  const labelsString = labels.length > 0 ? labels.map((label) => label.name).join(", ") : "Sem etiquetas";
 
   if (labels.length <= 0)
     return (
@@ -30,7 +30,7 @@ export const IssueBlockLabels = observer(function IssueBlockLabels({ labelIds, s
           className={`flex h-full items-center justify-center gap-2 rounded-sm border-[0.5px] border-strong px-2.5 py-1 text-11`}
         >
           <LabelPropertyIcon className="h-3.5 w-3.5" strokeWidth={2} />
-          {shouldShowLabel && <span>No Labels</span>}
+          {shouldShowLabel && <span>Sem etiquetas</span>}
         </div>
       </Tooltip>
     );

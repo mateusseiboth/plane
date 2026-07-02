@@ -114,7 +114,7 @@ export function InstanceSignInForm() {
       <div className="mt-10 flex w-full flex-grow flex-col items-center justify-center py-6">
         <div className="relative flex w-full max-w-[22.5rem] flex-col gap-6">
           <FormHeader
-            heading="Manage your Plane instance"
+            heading="Manage your Avião instance"
             subHeading="Configure instance-wide settings to secure your instance"
           />
           <form
@@ -162,7 +162,7 @@ export function InstanceSignInForm() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   inputSize="md"
-                  placeholder="Enter your password"
+                  placeholder="Insira sua senha"
                   value={formData.password}
                   onChange={(e) => handleFormChange("password", e.target.value)}
                   autoComplete="off"

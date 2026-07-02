@@ -47,7 +47,7 @@ const InstanceGiteaAuthenticationPage = observer(function InstanceGiteaAuthentic
         message: () => `Gitea authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
-        title: "Error",
+        title: "Erro",
         message: () => "Failed to save configuration",
       },
     });
@@ -69,7 +69,7 @@ const InstanceGiteaAuthenticationPage = observer(function InstanceGiteaAuthentic
       customHeader={
         <AuthenticationMethodCard
           name="Gitea"
-          description="Allow members to login or sign up to plane with their Gitea accounts."
+          description="Permita que membros entrem ou se cadastrem no Avião com suas contas do Gitea."
           icon={<img src={giteaLogo} height={24} width={24} alt="Gitea Logo" />}
           config={
             <ToggleSwitch
@@ -100,6 +100,6 @@ const InstanceGiteaAuthenticationPage = observer(function InstanceGiteaAuthentic
     </PageWrapper>
   );
 });
-export const meta: Route.MetaFunction = () => [{ title: "Gitea Authentication - God Mode" }];
+export const meta: Route.MetaFunction = () => [{ title: "Autenticação Gitea - God Mode" }];
 
 export default InstanceGiteaAuthenticationPage;

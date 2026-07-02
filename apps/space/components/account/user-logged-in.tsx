@@ -31,7 +31,7 @@ export const UserLoggedIn = observer(function UserLoggedIn() {
         <div className="text-center">
           <div className="mx-auto grid size-32 place-items-center rounded-full bg-layer-1 md:size-52">
             <div className="grid size-16 place-items-center md:size-32">
-              <img src={UserLoggedInImage} alt="User already logged in" className="h-full w-full object-cover" />
+              <img src={UserLoggedInImage} alt="Usuário já conectado" className="h-full w-full object-cover" />
             </div>
           </div>
           <h1 className="mt-8 text-18 font-semibold md:mt-12 md:text-24">Nice! Just one more step.</h1>

@@ -94,7 +94,7 @@ export function SendTestEmailModal(props: Props) {
               <Dialog.Panel className="relative w-full transform rounded-lg bg-surface-1 p-5 px-4 text-left shadow-raised-200 transition-all sm:max-w-xl">
                 <h3 className="text-16 leading-6 font-medium text-primary">
                   {sendEmailStep === ESendEmailSteps.SEND_EMAIL
-                    ? "Send test email"
+                    ? "Enviar e-mail de teste"
                     : sendEmailStep === ESendEmailSteps.SUCCESS
                       ? "Email send"
                       : "Failed"}{" "}
@@ -106,7 +106,7 @@ export function SendTestEmailModal(props: Props) {
                       type="email"
                       value={receiverEmail}
                       onChange={(e) => setReceiverEmail(e.target.value)}
-                      placeholder="Receiver email"
+                      placeholder="E-mail do destinatário"
                       className="w-full resize-none text-16"
                       tabIndex={1}
                     />
@@ -117,7 +117,7 @@ export function SendTestEmailModal(props: Props) {
                         We have sent the test email to {receiverEmail}. Please check your spam folder if you cannot find
                         it.
                       </p>
-                      <p>If you still cannot find it, recheck your SMTP configuration and trigger a new test email.</p>
+                      <p>Se ainda não encontrar, verifique novamente sua configuração de SMTP e envie um novo e-mail de teste.</p>
                     </div>
                   )}
                   {sendEmailStep === ESendEmailSteps.FAILED && <div className="text-13">{error}</div>}

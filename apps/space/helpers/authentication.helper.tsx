@@ -132,7 +132,7 @@ const errorCodeMessages: {
           className="font-medium underline underline-offset-4 transition-all hover:font-bold"
           to={`/sign-in${email ? `?email=${encodeURIComponent(email)}` : ``}`}
         >
-          Sign In
+          Entrar
         </Link>
         &nbsp;now.
       </div>
@@ -174,7 +174,7 @@ const errorCodeMessages: {
           className="font-medium underline underline-offset-4 transition-all hover:font-bold"
           to={`/${email ? `?email=${encodeURIComponent(email)}` : ``}`}
         >
-          Create one
+          Criar um
         </Link>
         &nbsp;to get started.
       </div>
@@ -318,7 +318,7 @@ const errorCodeMessages: {
       <div>
         Admin user already exists.&nbsp;
         <Link className="font-medium underline underline-offset-4 transition-all hover:font-bold" to={`/admin`}>
-          Sign In
+          Entrar
         </Link>
         &nbsp;now.
       </div>
@@ -330,7 +330,7 @@ const errorCodeMessages: {
       <div>
         Admin user does not exist.&nbsp;
         <Link className="font-medium underline underline-offset-4 transition-all hover:font-bold" to={`/admin`}>
-          Sign In
+          Entrar
         </Link>
         &nbsp;now.
       </div>

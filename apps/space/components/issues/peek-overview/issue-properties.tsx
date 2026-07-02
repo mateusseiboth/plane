@@ -54,8 +54,8 @@ export const PeekOverviewIssueProperties = observer(function PeekOverviewIssuePr
     copyTextToClipboard(urlToCopy).then(() => {
       setToast({
         type: TOAST_TYPE.INFO,
-        title: "Link copied!",
-        message: "Work item link copied to clipboard",
+        title: "Link copiado!",
+        message: "Link do item de trabalho copiado para a área de transferência",
       });
     });
   };

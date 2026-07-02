@@ -35,7 +35,7 @@ function ErrorPage() {
             Refresh
           </Button>
           {/* <Button variant="secondary" size="lg" onClick={() => {}}>
-            Sign out
+            Sair
           </Button> */}
         </div>
       </div>
