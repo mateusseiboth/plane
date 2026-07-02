@@ -35,7 +35,6 @@ export default function NotificationsScreen() {
       </View>
       <FlashList
         data={notifications.data ?? []}
-        estimatedItemSize={80}
         keyExtractor={(n) => n.id}
         contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 40 }}
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}

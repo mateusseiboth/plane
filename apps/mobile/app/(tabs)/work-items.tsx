@@ -1,5 +1,6 @@
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { RefreshControl, View } from "react-native";
 
@@ -98,7 +99,6 @@ export default function WorkItemsScreen() {
       ) : (
         <FlashList
           data={filtered}
-          estimatedItemSize={96}
           keyExtractor={(i) => i.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 120 }}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
@@ -126,7 +126,7 @@ export default function WorkItemsScreen() {
 
       {can("createWorkItem") && (
         <Fab onPress={() => router.push(`/work-item/new?projectId=${current.id}`)}>
-          <Text style={{ fontSize: 26, color: colors.onPrimary }}>＋</Text>
+          <Plus size={26} color={colors.onPrimary} />
         </Fab>
       )}
     </Screen>

@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 
@@ -91,7 +92,7 @@ export default function VisitsScreen() {
 
       {can("manageVisits") && (
         <Fab onPress={() => router.push("/visit/new")}>
-          <Text style={{ fontSize: 26, color: colors.onPrimary }}>＋</Text>
+          <Plus size={26} color={colors.onPrimary} />
         </Fab>
       )}
     </Screen>

@@ -24,6 +24,24 @@ import {
 
 const V1 = "/api/v1";
 
+// Project members come in the Django-legacy shape (`member` = user id,
+// `member__display_name`); normalize to the app's Member shape (id = user id).
+type ProjectMemberRow = {
+  id: string;
+  member: string;
+  member__display_name?: string;
+  member__avatar_url?: string | null;
+  role: number;
+};
+
+const toMember = (row: ProjectMemberRow): Member => ({
+  id: row.member,
+  member: row.id,
+  display_name: row.member__display_name,
+  avatar_url: row.member__avatar_url,
+  role: row.role,
+});
+
 export const endpoints = {
   auth: {
     signIn: (email: string, password: string) =>
@@ -49,7 +67,9 @@ export const endpoints = {
     states: (slug: string, projectId: string) =>
       api.get<State[]>(`${V1}/workspaces/${slug}/projects/${projectId}/states/`),
     members: (slug: string, projectId: string) =>
-      api.get<Member[]>(`${V1}/workspaces/${slug}/projects/${projectId}/members/`),
+      api
+        .get<ProjectMemberRow[]>(`${V1}/workspaces/${slug}/projects/${projectId}/members/`)
+        .then((rows) => rows.map(toMember)),
     labels: (slug: string, projectId: string) =>
       api.get<Label[]>(`${V1}/workspaces/${slug}/projects/${projectId}/labels/`),
   },
@@ -92,7 +112,8 @@ export const endpoints = {
   },
 
   entities: {
-    list: (slug: string) => api.get<Entity[]>(`${V1}/workspaces/${slug}/entities/`),
+    list: (slug: string) =>
+      api.get<Paginated<Entity>>(`${V1}/workspaces/${slug}/entities/`).then((r) => r.results ?? []),
     get: (slug: string, id: string) => api.get<Entity>(`${V1}/workspaces/${slug}/entities/${id}/`),
     create: (slug: string, body: Partial<Entity>) =>
       api.post<Entity>(`${V1}/workspaces/${slug}/entities/`, body),
@@ -102,7 +123,9 @@ export const endpoints = {
 
   visits: {
     list: (slug: string, params?: QueryParams) =>
-      api.get<TechnicalVisit[]>(`${V1}/workspaces/${slug}/technical-visits/`, { params }),
+      api
+        .get<Paginated<TechnicalVisit>>(`${V1}/workspaces/${slug}/technical-visits/`, { params })
+        .then((r) => r.results ?? []),
     get: (slug: string, id: string) =>
       api.get<TechnicalVisit>(`${V1}/workspaces/${slug}/technical-visits/${id}/`),
     create: (slug: string, body: Partial<TechnicalVisit>) =>
@@ -114,7 +137,8 @@ export const endpoints = {
   },
 
   pages: {
-    list: (slug: string) => api.get<WikiPage[]>(`${V1}/workspaces/${slug}/pages/`),
+    list: (slug: string) =>
+      api.get<Paginated<WikiPage>>(`${V1}/workspaces/${slug}/pages/`).then((r) => r.results ?? []),
     get: (slug: string, id: string) => api.get<WikiPage>(`${V1}/workspaces/${slug}/pages/${id}/`),
     create: (slug: string, body: Partial<WikiPage>) =>
       api.post<WikiPage>(`${V1}/workspaces/${slug}/pages/`, body),

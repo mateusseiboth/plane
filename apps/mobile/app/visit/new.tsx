@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { Check } from "lucide-react-native";
 import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 
@@ -115,7 +116,7 @@ export default function NewVisitScreen() {
                   justifyContent: "center",
                 }}
               >
-                {mot[m.key] ? <Text color={colors.onPrimary} weight="bold">✓</Text> : null}
+                {mot[m.key] ? <Check size={16} color={colors.onPrimary} /> : null}
               </View>
               <Text>{m.label}</Text>
             </Row>

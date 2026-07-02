@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { ChevronRight, Image as ImageIcon, Paperclip } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Alert, Pressable, RefreshControl, View } from "react-native";
 
@@ -34,7 +35,7 @@ function ActionRow({ label, value, onPress, disabled }: { label: string; value: 
         <Text variant="secondary">{label}</Text>
         <Row gap={6}>
           {value}
-          {!disabled ? <Text variant="tertiary">›</Text> : null}
+          {!disabled ? <ChevronRight size={16} color={colors.textTertiary} /> : null}
         </Row>
       </Row>
     </Pressable>
@@ -155,11 +156,13 @@ export default function WorkItemDetailScreen() {
 
       <Text variant="heading">Anexos</Text>
       <Row gap={spacing.sm}>
-        <Pressable onPress={pickImage} style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: spacing.md, alignItems: "center" }}>
-          <Text>🖼️ Imagem</Text>
+        <Pressable onPress={pickImage} style={{ flex: 1, flexDirection: "row", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: spacing.md, alignItems: "center" }}>
+          <ImageIcon size={16} color={colors.text} />
+          <Text>Imagem</Text>
         </Pressable>
-        <Pressable onPress={pickFile} style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: spacing.md, alignItems: "center" }}>
-          <Text>📎 Arquivo</Text>
+        <Pressable onPress={pickFile} style={{ flex: 1, flexDirection: "row", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: spacing.md, alignItems: "center" }}>
+          <Paperclip size={16} color={colors.text} />
+          <Text>Arquivo</Text>
         </Pressable>
       </Row>
 

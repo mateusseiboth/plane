@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { Bell, Building2, ChevronRight, FileText, LucideIcon, Search } from "lucide-react-native";
 import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 
@@ -11,16 +12,16 @@ import { usePermissions } from "@/permissions/usePermissions";
 import { ThemeMode, useTheme } from "@/theme";
 import { displayName } from "@/utils/format";
 
-function NavRow({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+function NavRow({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
   const { colors, spacing } = useTheme();
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ paddingVertical: spacing.md, backgroundColor: pressed ? colors.surfaceSunken : "transparent" })}>
       <Row align="space-between">
         <Row gap={spacing.sm}>
-          <Text style={{ fontSize: 18 }}>{icon}</Text>
+          <Icon size={18} color={colors.textSecondary} />
           <Text>{label}</Text>
         </Row>
-        <Text variant="tertiary">›</Text>
+        <ChevronRight size={16} color={colors.textTertiary} />
       </Row>
     </Pressable>
   );
@@ -71,20 +72,23 @@ export default function MoreScreen() {
         <Card>
           <Row align="space-between">
             <Text weight="medium">{activeWorkspace?.name ?? "—"}</Text>
-            <Text variant="tertiary">trocar ›</Text>
+            <Row gap={4}>
+              <Text variant="tertiary">trocar</Text>
+              <ChevronRight size={14} color={colors.textTertiary} />
+            </Row>
           </Row>
         </Card>
       </Pressable>
 
       <Text variant="heading">Navegação</Text>
       <Card style={{ paddingVertical: 0 }}>
-        <NavRow icon="🔍" label="Buscar" onPress={() => router.push("/search")} />
+        <NavRow icon={Search} label="Buscar" onPress={() => router.push("/search")} />
         <Divider />
-        <NavRow icon="🔔" label="Notificações" onPress={() => router.push("/notifications")} />
+        <NavRow icon={Bell} label="Notificações" onPress={() => router.push("/notifications")} />
         <Divider />
-        <NavRow icon="🏢" label="Entidades" onPress={() => router.push("/entities")} />
+        <NavRow icon={Building2} label="Entidades" onPress={() => router.push("/entities")} />
         <Divider />
-        <NavRow icon="📄" label="Wiki" onPress={() => router.push("/wiki")} />
+        <NavRow icon={FileText} label="Wiki" onPress={() => router.push("/wiki")} />
       </Card>
 
       <Text variant="heading">Sincronização</Text>

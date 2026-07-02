@@ -1,5 +1,7 @@
 import prisma from "@db";
+import {Prisma} from "@prisma/client/extension";
 import {authPlugin} from "@middleware/auth";
+import {paginate} from "@utils/pagination";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import Elysia from "elysia";
 
@@ -62,50 +64,136 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
   .get("/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
+    const q = query as any;
     const where: any = {workspaceId: ws.id, deletedAt: null};
-    if ((query as any).status !== undefined) where.status = Number((query as any).status);
-    if ((query as any).technician_id) where.technicianId = (query as any).technician_id;
-    if ((query as any).entity_id) where.entityId = (query as any).entity_id;
+    if (q.status !== undefined) where.status = Number(q.status);
+    if (q.technician_id) where.technicianId = q.technician_id;
+    if (q.entity_id) where.entityId = q.entity_id;
+    if (q.date_from) where.scheduledDate = {gte: new Date(q.date_from)};
+    if (q.date_to) where.scheduledDate = {...where.scheduledDate, lte: new Date(q.date_to)};
 
-    const visits = await prisma.technicalVisit.findMany({
-      where,
-      include: {entity: {select: {id: true, name: true}}},
-      orderBy: {scheduledDate: "desc"},
-      take: 100,
+    return paginate({
+      query: (skip, take) =>
+        prisma.technicalVisit.findMany({
+          where, skip, take,
+          include: {entity: {select: {id: true, name: true}}},
+          orderBy: [{scheduledDate: "desc"}, {createdAt: "desc"}],
+        }),
+      count: () => prisma.technicalVisit.count({where}),
+      cursor: q.cursor as string | undefined,
+      transform: (visits) => visits.map(serializeVisit),
     });
-    return {results: visits.map(serializeVisit), total_count: visits.length};
   })
 
   .post("/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const b = body as any;
-    const visit = await prisma.technicalVisit.create({
-      data: {
-        workspaceId: ws.id,
-        createdById: user.id,
-        technicianId: normalizeUuid(b.technician_id) ?? user.id,
-        technician2Id: normalizeUuid(b.technician2_id),
-        entityId: normalizeUuid(b.entity_id),
-        contacts: b.contacts ?? null,
-        city: b.city ?? null,
-        scheduledDate: b.scheduled_date ? new Date(b.scheduled_date) : null,
-        status: b.status ?? 0,
-        period: b.period ?? null,
-        motUpdate: b.mot_update ?? false,
-        motBugFix: b.mot_bug_fix ?? false,
-        motTraining: b.mot_training ?? false,
-        motImprovement: b.mot_improvement ?? false,
-        motCommercial: b.mot_commercial ?? false,
-        motOther: b.mot_other ?? false,
-        motOtherDescription: b.mot_other_description ?? null,
-        summary: b.summary ?? null,
-        conclusion: b.conclusion ?? null,
-      },
-      include: {entity: {select: {id: true, name: true}}},
+    // Accept both the current snake_case names and the Django-legacy aliases
+    // (`technician`, `technician_2`, `entity`) still sent by older clients.
+    const {issue_ids = [], ...b} = body as any;
+    const visit = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const v = await tx.technicalVisit.create({
+        data: {
+          workspaceId: ws.id,
+          createdById: user.id,
+          technicianId: normalizeUuid(b.technician_id ?? b.technician) ?? user.id,
+          technician2Id: normalizeUuid(b.technician2_id ?? b.technician_2),
+          entityId: normalizeUuid(b.entity_id ?? b.entity),
+          contacts: b.contacts ?? null,
+          city: b.city ?? null,
+          scheduledDate: b.scheduled_date ? new Date(b.scheduled_date) : null,
+          startedAt: b.started_at ? new Date(b.started_at) : null,
+          finishedAt: b.finished_at ? new Date(b.finished_at) : null,
+          status: b.status ?? 0,
+          period: b.period ?? null,
+          motUpdate: b.mot_update ?? false,
+          motBugFix: b.mot_bug_fix ?? false,
+          motTraining: b.mot_training ?? false,
+          motImprovement: b.mot_improvement ?? false,
+          motCommercial: b.mot_commercial ?? false,
+          motOther: b.mot_other ?? false,
+          motOtherDescription: b.mot_other_description ?? null,
+          summary: b.summary ?? null,
+          conclusion: b.conclusion ?? null,
+          visitNumber: b.visit_number ?? null,
+          legacyId: b.legacy_id ?? null,
+        },
+        include: {entity: {select: {id: true, name: true}}},
+      });
+      if (issue_ids.length) {
+        await tx.technicalVisitIssue.createMany({
+          data: issue_ids.map((id: string) => ({visitId: v.id, issueId: id})),
+        });
+      }
+      return v;
     });
     set.status = 201;
     return serializeVisit(visit);
+  })
+
+  // Registered before /:visit_id/ so "report" is never captured as a visit id.
+  .get("/report/", async ({params: {slug}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const q = query as any;
+    const where: any = {workspaceId: ws.id, deletedAt: null};
+    if (q.status !== undefined) where.status = Number(q.status);
+    if (q.entity_id) where.entityId = q.entity_id;
+    if (q.date_from) where.scheduledDate = {gte: new Date(q.date_from)};
+    if (q.date_to) where.scheduledDate = {...where.scheduledDate, lte: new Date(q.date_to)};
+
+    const [total, scheduled, completed] = await Promise.all([
+      prisma.technicalVisit.count({where}),
+      prisma.technicalVisit.count({where: {...where, status: 0}}),
+      prisma.technicalVisit.count({where: {...where, status: 1}}),
+    ]);
+
+    const [motUpdate, motBugFix, motTraining, motImprovement, motCommercial, motOther] = await Promise.all([
+      prisma.technicalVisit.count({where: {...where, motUpdate: true}}),
+      prisma.technicalVisit.count({where: {...where, motBugFix: true}}),
+      prisma.technicalVisit.count({where: {...where, motTraining: true}}),
+      prisma.technicalVisit.count({where: {...where, motImprovement: true}}),
+      prisma.technicalVisit.count({where: {...where, motCommercial: true}}),
+      prisma.technicalVisit.count({where: {...where, motOther: true}}),
+    ]);
+
+    const byEntity = await prisma.technicalVisit.groupBy({
+      by: ["entityId"],
+      where: {...where, entityId: {not: null}},
+      _count: {id: true},
+      orderBy: {_count: {id: "desc"}},
+      take: 20,
+    });
+
+    const byTechnician = await prisma.technicalVisit.groupBy({
+      by: ["technicianId"],
+      where: {...where, technicianId: {not: null}},
+      _count: {id: true},
+      orderBy: {_count: {id: "desc"}},
+      take: 20,
+    });
+
+    const completedVisits = await prisma.technicalVisit.findMany({
+      where: {...where, status: 1, startedAt: {not: null}, finishedAt: {not: null}},
+      select: {startedAt: true, finishedAt: true},
+    });
+
+    let avgDurationHours: number | null = null;
+    if (completedVisits.length > 0) {
+      const totalMs = completedVisits.reduce(
+        (acc: number, v: {startedAt: Date | null; finishedAt: Date | null}) =>
+          acc + (v.finishedAt!.getTime() - v.startedAt!.getTime()),
+        0,
+      );
+      avgDurationHours = Math.round(totalMs / completedVisits.length / 3_600_000 * 100) / 100;
+    }
+
+    return {
+      summary: {total, scheduled, completed, avg_duration_hours: avgDurationHours},
+      motivations: {update: motUpdate, bug_fix: motBugFix, training: motTraining, improvement: motImprovement, commercial: motCommercial, other: motOther},
+      by_entity: byEntity.map((r: any) => ({entity_id: r.entityId, count: r._count.id})),
+      by_technician: byTechnician.map((r: any) => ({technician_id: r.technicianId, count: r._count.id})),
+    };
   })
 
   .get("/:visit_id/", async ({params: {slug, visit_id}, user, set}) => {

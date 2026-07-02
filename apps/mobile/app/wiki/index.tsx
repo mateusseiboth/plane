@@ -1,5 +1,6 @@
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
+import { Lock } from "lucide-react-native";
 import React from "react";
 import { Pressable, RefreshControl, View } from "react-native";
 
@@ -24,7 +25,6 @@ export default function WikiScreen() {
     <Screen padded={false}>
       <FlashList
         data={pages.data ?? []}
-        estimatedItemSize={72}
         keyExtractor={(p) => p.id}
         contentContainerStyle={{ padding: spacing.lg }}
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
@@ -37,7 +37,7 @@ export default function WikiScreen() {
                 <Text weight="medium" numberOfLines={1} style={{ flex: 1 }}>
                   {item.name || "Sem título"}
                 </Text>
-                {item.is_locked ? <Text variant="tertiary">🔒</Text> : null}
+                {item.is_locked ? <Lock size={14} color={colors.textTertiary} /> : null}
               </Row>
               <Text variant="tertiary">Atualizada {relative(item.updated_at)}</Text>
             </Card>

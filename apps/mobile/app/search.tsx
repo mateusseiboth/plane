@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { Search } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 
@@ -75,7 +76,7 @@ export default function SearchScreen() {
     <Screen padded={false}>
       <View style={{ padding: spacing.lg, gap: spacing.sm }}>
         <Row gap={spacing.sm} style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: spacing.md }}>
-          <Text style={{ fontSize: 16 }}>🔍</Text>
+          <Search size={16} color={colors.textSecondary} />
           <Input
             value={query}
             onChangeText={setQuery}

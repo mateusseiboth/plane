@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { FileText, Inbox, LayoutGrid, LucideIcon, Plane, Search } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { Pressable, RefreshControl, View } from "react-native";
 
@@ -34,7 +35,7 @@ function StatCard({ label, value, tone, onPress }: { label: string; value: numbe
   );
 }
 
-function QuickAction({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+function QuickAction({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
   const { colors, radius, spacing } = useTheme();
   return (
     <Pressable
@@ -50,7 +51,7 @@ function QuickAction({ icon, label, onPress }: { icon: string; label: string; on
         minWidth: "44%",
       })}
     >
-      <Text style={{ fontSize: 24 }}>{icon}</Text>
+      <Icon size={24} color={colors.primary} />
       <Text weight="medium">{label}</Text>
     </Pressable>
   );
@@ -109,7 +110,7 @@ export default function HomeScreen() {
 
       <Pressable onPress={() => router.push("/search")}>
         <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-          <Text style={{ fontSize: 18 }}>🔍</Text>
+          <Search size={18} color={colors.textSecondary} />
           <Text variant="secondary">Buscar work items, intakes, chamados…</Text>
         </Card>
       </Pressable>
@@ -168,10 +169,10 @@ export default function HomeScreen() {
 
       <Text variant="heading" style={{ marginTop: spacing.sm }}>Acesso rápido</Text>
       <Row gap={spacing.md} style={{ flexWrap: "wrap" }}>
-        <QuickAction icon="◫" label="Work Items" onPress={() => router.push("/(tabs)/work-items")} />
-        <QuickAction icon="✉" label="Intake" onPress={() => router.push("/(tabs)/intake")} />
-        <QuickAction icon="✈" label="Visitas" onPress={() => router.push("/(tabs)/visits")} />
-        <QuickAction icon="📄" label="Wiki" onPress={() => router.push("/wiki")} />
+        <QuickAction icon={LayoutGrid} label="Work Items" onPress={() => router.push("/(tabs)/work-items")} />
+        <QuickAction icon={Inbox} label="Intake" onPress={() => router.push("/(tabs)/intake")} />
+        <QuickAction icon={Plane} label="Visitas" onPress={() => router.push("/(tabs)/visits")} />
+        <QuickAction icon={FileText} label="Wiki" onPress={() => router.push("/wiki")} />
       </Row>
 
       {syncing ? <Text variant="tertiary">Sincronizando…</Text> : null}

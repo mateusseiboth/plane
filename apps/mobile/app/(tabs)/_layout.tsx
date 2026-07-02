@@ -1,13 +1,9 @@
 import { Tabs } from "expo-router";
+import { Ellipsis, Home, Inbox, LayoutGrid, Plane } from "lucide-react-native";
 import React from "react";
-import { Text } from "react-native";
 
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useTheme } from "@/theme";
-
-function TabIcon({ icon, color }: { icon: string; color: string }) {
-  return <Text style={{ fontSize: 20, color }}>{icon}</Text>;
-}
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -26,23 +22,23 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "Início", tabBarIcon: ({ color }) => <TabIcon icon="⌂" color={color} /> }}
+        options={{ title: "Início", tabBarIcon: ({ color }) => <Home size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="work-items"
-        options={{ title: "Work Items", tabBarIcon: ({ color }) => <TabIcon icon="◫" color={color} /> }}
+        options={{ title: "Work Items", tabBarIcon: ({ color }) => <LayoutGrid size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="intake"
-        options={{ title: "Intake", tabBarIcon: ({ color }) => <TabIcon icon="✉" color={color} /> }}
+        options={{ title: "Intake", tabBarIcon: ({ color }) => <Inbox size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="visits"
-        options={{ title: "Visitas", tabBarIcon: ({ color }) => <TabIcon icon="✈" color={color} /> }}
+        options={{ title: "Visitas", tabBarIcon: ({ color }) => <Plane size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="more"
-        options={{ title: "Mais", tabBarIcon: ({ color }) => <TabIcon icon="⋯" color={color} /> }}
+        options={{ title: "Mais", tabBarIcon: ({ color }) => <Ellipsis size={22} color={color} /> }}
       />
     </Tabs>
   );

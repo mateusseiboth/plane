@@ -68,7 +68,7 @@ export function Screen({
 }) {
   const { colors, spacing } = useTheme();
   const inner = (
-    <View style={[padded && { padding: spacing.lg, gap: spacing.md }, style]}>{children}</View>
+    <View style={[{ flex: 1 }, padded && { padding: spacing.lg, gap: spacing.md }, style]}>{children}</View>
   );
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>

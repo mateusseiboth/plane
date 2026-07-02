@@ -1,10 +1,11 @@
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 import React from "react";
 import { RefreshControl, View } from "react-native";
 
 import { endpoints, WorkItem } from "@/api";
-import { EmptyState, Fab, Loading, ProjectPicker, Screen, Text, WorkItemRow } from "@/components";
+import { EmptyState, Fab, Loading, ProjectPicker, Screen, WorkItemRow } from "@/components";
 import { useAsync } from "@/hooks/useAsync";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { usePermissions } from "@/permissions/usePermissions";
@@ -43,7 +44,6 @@ export default function IntakeScreen() {
       ) : (
         <FlashList
           data={items.data ?? []}
-          estimatedItemSize={96}
           keyExtractor={(i) => i.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 80 }}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
@@ -68,7 +68,7 @@ export default function IntakeScreen() {
 
       {can("createIntake") && (
         <Fab onPress={() => router.push(`/intake/new?projectId=${current.id}`)}>
-          <Text style={{ fontSize: 26, color: colors.onPrimary }}>＋</Text>
+          <Plus size={26} color={colors.onPrimary} />
         </Fab>
       )}
     </Screen>

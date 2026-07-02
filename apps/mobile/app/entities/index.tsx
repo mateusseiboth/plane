@@ -43,7 +43,6 @@ export default function EntitiesScreen() {
       </View>
       <FlashList
         data={filtered}
-        estimatedItemSize={84}
         keyExtractor={(e) => e.id}
         contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 40 }}
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}

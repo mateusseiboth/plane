@@ -14,6 +14,7 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 
@@ -46,11 +47,11 @@ export function MonthCalendar({
     <View style={{ gap: spacing.sm }}>
       <Row align="space-between">
         <IconButton onPress={() => setMonth(subMonths(month, 1))}>
-          <Text variant="heading">‹</Text>
+          <ChevronLeft size={20} color={colors.text} />
         </IconButton>
         <Text weight="bold">{format(month, "MMMM yyyy")}</Text>
         <IconButton onPress={() => setMonth(addMonths(month, 1))}>
-          <Text variant="heading">›</Text>
+          <ChevronRight size={20} color={colors.text} />
         </IconButton>
       </Row>
       <Row>

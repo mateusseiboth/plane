@@ -3,6 +3,7 @@
  * brand asset — this is a simple typographic + glyph placeholder you can swap
  * for real artwork later.
  */
+import { Plane } from "lucide-react-native";
 import React from "react";
 import { View } from "react-native";
 
@@ -25,8 +26,8 @@ export function Logo({ size = "md", showWordmark = true }: { size?: "sm" | "md" 
           justifyContent: "center",
         }}
       >
-        {/* Paper-plane glyph as a placeholder mark */}
-        <Text style={{ fontSize: glyph, color: colors.onPrimary }}>✈</Text>
+        {/* Plane glyph as a placeholder mark */}
+        <Plane size={glyph} color={colors.onPrimary} />
       </View>
       {showWordmark && (
         <Text variant={size === "lg" ? "title" : "heading"} weight="bold">
