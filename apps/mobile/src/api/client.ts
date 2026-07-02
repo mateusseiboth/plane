@@ -10,10 +10,23 @@ import Constants from "expo-constants";
 
 const FALLBACK_URL = "http://localhost:8080";
 
+// User-provided server URL (login screen). Takes precedence over env/app.json.
+let baseUrlOverride: string | null = null;
+
+export function setBaseUrl(url: string | null) {
+  baseUrlOverride = url ? normalizeServerUrl(url) : null;
+}
+
+/** Trims, prefixes https:// when no scheme is given and strips trailing slashes. */
+export function normalizeServerUrl(url: string): string {
+  const trimmed = url.trim().replace(/\/+$/, "");
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export function resolveBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
   const fromExtra = (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl;
-  return (fromEnv || fromExtra || FALLBACK_URL).replace(/\/+$/, "");
+  return (baseUrlOverride || fromEnv || fromExtra || FALLBACK_URL).replace(/\/+$/, "");
 }
 
 export class ApiError extends Error {
@@ -84,7 +97,18 @@ async function request<T>(
     payload = JSON.stringify(body);
   }
 
-  const res = await fetch(url, { method, headers, body: payload, signal: opts.signal });
+  let res: Response;
+  try {
+    res = await fetch(url, { method, headers, body: payload, signal: opts.signal });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw e;
+    console.error(`[api] ${method} ${url} — network failure`, e);
+    throw new ApiError(
+      0,
+      `Não foi possível conectar a ${resolveBaseUrl()}. Verifique a URL do servidor e sua conexão.`,
+      e,
+    );
+  }
   const parsed = await parseBody(res);
 
   if (!res.ok) {
@@ -92,6 +116,7 @@ async function request<T>(
       (parsed && typeof parsed === "object" && "detail" in parsed
         ? String((parsed as { detail: unknown }).detail)
         : undefined) ?? `Request failed (${res.status})`;
+    console.error(`[api] ${method} ${url} — HTTP ${res.status}`, parsed);
     throw new ApiError(res.status, detail, parsed);
   }
   return parsed as T;

@@ -100,12 +100,42 @@ function authRedirect(set: any, location: string) {
   return null;
 }
 
+// API clients (mobile) send Accept: application/json; browser form POSTs send text/html.
+function wantsJson(headers: Record<string, string | undefined>): boolean {
+  return (headers["accept"] ?? "").includes("application/json");
+}
+
+function authUserDto(u: any, token: string) {
+  return {
+    id: u.id,
+    email: u.email,
+    first_name: u.firstName,
+    last_name: u.lastName,
+    display_name: u.displayName,
+    avatar_url: u.avatar,
+    is_instance_admin: u.isInstanceAdmin,
+    is_superuser: u.isSuperuser,
+    token,
+  };
+}
+
 // ── Shared sign-in logic ───────────────────────────────────────────────────────
-async function signIn(b: any, set: any) {
+async function signIn(b: any, set: any, json = false) {
   const next = safeNext(b?.next_path);
-  if (!b?.email || !b?.password) return authRedirect(set, `/?error_code=${AUTH_ERR.REQUIRED_SIGN_IN}`);
+  const jsonError = (status: number, detail: string) => {
+    set.status = status;
+    return { detail };
+  };
+  if (!b?.email || !b?.password) {
+    return json
+      ? jsonError(400, "Informe e-mail e senha.")
+      : authRedirect(set, `/?error_code=${AUTH_ERR.REQUIRED_SIGN_IN}`);
+  }
   const email = String(b.email).toLowerCase().trim();
-  const fail = () => authRedirect(set, `/?error_code=${AUTH_ERR.FAILED_SIGN_IN}&email=${encodeURIComponent(email)}`);
+  const fail = () =>
+    json
+      ? jsonError(403, "E-mail ou senha inválidos.")
+      : authRedirect(set, `/?error_code=${AUTH_ERR.FAILED_SIGN_IN}&email=${encodeURIComponent(email)}`);
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user?.password || !user.isActive) return fail();
   const valid = await Bun.password.verify(b.password, user.password);
@@ -113,7 +143,7 @@ async function signIn(b: any, set: any) {
 
   const token = await signToken(user.id, user.email);
   set.headers["Set-Cookie"] = setCookieHeader(token);
-  return authRedirect(set, next);
+  return json ? authUserDto(user, token) : authRedirect(set, next);
 }
 
 // ── Shared sign-up logic ───────────────────────────────────────────────────────
@@ -149,7 +179,7 @@ export const sessionAuthModule = new Elysia()
   .post("/auth/spaces/email-check/", async ({ body, set }) => emailCheck((body as any)?.email, set))
 
   // ── Sign-in / sign-up / sign-out ─────────────────────────────────────────────
-  .post("/auth/sign-in/", async ({ body, set }) => signIn(body, set))
+  .post("/auth/sign-in/", async ({ body, set, headers }) => signIn(body, set, wantsJson(headers)))
   .post("/auth/sign-up/", async ({ body, set }) => signUp(body, set))
   // The web app logs out by submitting a browser form to this endpoint, so we
   // must clear the cookie AND redirect (302) to the app root — a 204 would leave
@@ -162,7 +192,7 @@ export const sessionAuthModule = new Elysia()
   })
 
   // Spaces variants (same logic, different path prefix used by the spaces app)
-  .post("/auth/spaces/sign-in/", async ({ body, set }) => signIn(body, set))
+  .post("/auth/spaces/sign-in/", async ({ body, set, headers }) => signIn(body, set, wantsJson(headers)))
   .post("/auth/spaces/sign-up/", async ({ body, set }) => signUp(body, set))
   .post("/auth/spaces/sign-out/", ({ set }) => {
     set.headers["Set-Cookie"] = clearCookieHeader();

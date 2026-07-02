@@ -7,8 +7,9 @@ import { Button, Input, Logo, Screen, Text } from "@/components";
 import { useTheme } from "@/theme";
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, serverUrl } = useAuth();
   const { spacing, colors } = useTheme();
+  const [server, setServer] = useState(serverUrl);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,8 +19,9 @@ export default function LoginScreen() {
     setError(null);
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
+      await signIn(server, email.trim(), password);
     } catch (e) {
+      console.error("[login] sign-in failed", e);
       setError(e instanceof ApiError ? e.detail : "Não foi possível entrar. Tente novamente.");
     } finally {
       setLoading(false);
@@ -35,6 +37,17 @@ export default function LoginScreen() {
         </View>
 
         <View style={{ gap: spacing.md }}>
+          <View style={{ gap: spacing.xs }}>
+            <Text variant="caption">Servidor</Text>
+            <Input
+              value={server}
+              onChangeText={setServer}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              placeholder="https://aviao.suaempresa.com"
+            />
+          </View>
           <View style={{ gap: spacing.xs }}>
             <Text variant="caption">E-mail</Text>
             <Input
@@ -53,7 +66,7 @@ export default function LoginScreen() {
 
           {error ? <Text color={colors.danger}>{error}</Text> : null}
 
-          <Button title="Entrar" onPress={onSubmit} loading={loading} disabled={!email || !password} />
+          <Button title="Entrar" onPress={onSubmit} loading={loading} disabled={!server.trim() || !email || !password} />
         </View>
       </KeyboardAvoidingView>
     </Screen>

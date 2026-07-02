@@ -24,7 +24,7 @@ name **Avião** ("airplane" in Portuguese) is a nod to *Plane*; this app uses
 
 ## Architecture
 
-```
+```text
 app/                      expo-router routes
   _layout.tsx             providers + auth gate + Stack
   (auth)/login.tsx
@@ -60,6 +60,11 @@ npx expo start
 
 On a physical device set `EXPO_PUBLIC_API_URL` to your machine's LAN IP (e.g.
 `http://192.168.0.10:8080`), not `localhost`.
+
+The login screen also has a **Servidor** field: the URL typed there is persisted
+to AsyncStorage after a successful sign-in and takes precedence over
+`EXPO_PUBLIC_API_URL` / `app.json` on later launches (URLs without a scheme get
+`https://` prefixed).
 
 ## Notes / next steps
 

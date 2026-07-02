@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
-import { ApiError, endpoints, Me, setTokenGetter, Workspace } from "@/api";
-import { activeWorkspaceStore, tokenStore } from "./storage";
+import { ApiError, endpoints, Me, normalizeServerUrl, resolveBaseUrl, setBaseUrl, setTokenGetter, Workspace } from "@/api";
+import { activeWorkspaceStore, serverUrlStore, tokenStore } from "./storage";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -15,7 +15,9 @@ type AuthContextValue = {
   workspaceRole: number | null;
   /** projectId → role for the active workspace (granular SAC roles). */
   projectRoles: Record<string, number>;
-  signIn: (email: string, password: string) => Promise<void>;
+  /** Server base URL used by the api client (persisted after a successful sign-in). */
+  serverUrl: string;
+  signIn: (serverUrl: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   setActiveWorkspace: (slug: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -31,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(null);
   const [workspaceRole, setWorkspaceRole] = useState<number | null>(null);
   const [projectRoles, setProjectRoles] = useState<Record<string, number>>({});
+  const [serverUrl, setServerUrl] = useState<string>(resolveBaseUrl());
 
   // Keep the live token in a ref so the api client reads the latest value.
   const tokenRef = useRef<string | null>(null);
@@ -74,9 +77,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [loadWorkspaceRole],
   );
 
-  // Restore session on launch.
+  // Restore session on launch (server URL first so requests hit the right host).
   useEffect(() => {
     (async () => {
+      const savedUrl = await serverUrlStore.get();
+      if (savedUrl) {
+        setBaseUrl(savedUrl);
+        setServerUrl(resolveBaseUrl());
+      }
       const saved = await tokenStore.get();
       if (!saved) {
         setStatus("unauthenticated");
@@ -92,8 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [bootstrap]);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (server: string, email: string, password: string) => {
+      const url = normalizeServerUrl(server);
+      setBaseUrl(url);
       const res = await endpoints.auth.signIn(email, password);
+      if (!res?.token) {
+        throw new ApiError(0, "O servidor não retornou um token de acesso. Verifique a URL do servidor.", res);
+      }
+      await serverUrlStore.set(url);
+      setServerUrl(url);
       await tokenStore.set(res.token);
       await bootstrap(res.token);
     },
@@ -137,12 +152,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activeWorkspace,
       workspaceRole,
       projectRoles,
+      serverUrl,
       signIn,
       signOut,
       setActiveWorkspace,
       refresh,
     }),
-    [status, me, token, workspaces, activeWorkspace, workspaceRole, projectRoles, signIn, signOut, setActiveWorkspace, refresh],
+    [status, me, token, workspaces, activeWorkspace, workspaceRole, projectRoles, serverUrl, signIn, signOut, setActiveWorkspace, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
