@@ -63,15 +63,15 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
   const { getWorkspaceLabels } = useLabel();
   const { workspaceStates } = useProjectState();
   // derived values
+  // Read the observable data during render so the `observer` tracks it and this
+  // component re-renders once states/labels finish loading.
+  const workspaceLabels = getWorkspaceLabels(workspaceSlug);
   // Cross-project view: states and labels are project-scoped, so the same name
   // (e.g. "Triagem", "Pendências") repeats once per project. Deduplicate by name so
   // each appears a single time; the backend expands the selected id to every
   // same-named state/label across the workspace when filtering.
   const workspaceStateIds = useMemo(() => dedupeIdsByName(workspaceStates), [workspaceStates]);
-  const workspaceLabelIds = useMemo(
-    () => dedupeIdsByName(getWorkspaceLabels(workspaceSlug)),
-    [getWorkspaceLabels, workspaceSlug]
-  );
+  const workspaceLabelIds = useMemo(() => dedupeIdsByName(workspaceLabels), [workspaceLabels]);
   const hasWorkspaceMemberLevelPermissions = allowPermissions(
     PROJECT_WORK_ROLES,
     EUserPermissionsLevel.WORKSPACE,
