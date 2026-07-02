@@ -59,7 +59,7 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
   const columns = [
     {
       key: "Full Name",
-      content: "Full name",
+      content: "Nome completo",
       thClassName: "text-left",
       thRender: () => (
         <MemberHeaderColumn
@@ -80,7 +80,7 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
     },
     {
       key: "Display Name",
-      content: "Display name",
+      content: "Nome de exibição",
       thRender: () => (
         <MemberHeaderColumn
           property="display_name"
@@ -104,7 +104,7 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
     },
     {
       key: "Account Type",
-      content: "Account type",
+      content: "Tipo de conta",
       thRender: () => (
         <MemberHeaderColumn
           property="role"
@@ -123,7 +123,7 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
     },
     {
       key: "Joining Date",
-      content: "Joining date",
+      content: "Data de entrada",
       thRender: () => (
         <MemberHeaderColumn
           property="joining_date"

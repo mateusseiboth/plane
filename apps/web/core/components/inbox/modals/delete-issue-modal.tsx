@@ -77,7 +77,7 @@ export const DeleteInboxIssueModal = observer(function DeleteInboxIssueModal({
       // TODO: Need to translate the confirmation message
       content={
         <>
-          Are you sure you want to delete work item{" "}
+          Tem certeza de que deseja excluir o item de trabalho{" "}
           <span className="font-medium break-words text-primary">
             {projectDetails?.identifier}-{data?.sequence_id}
           </span>

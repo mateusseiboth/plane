@@ -110,8 +110,8 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
     } else {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "Editor is still processing changes. Please wait before proceeding.",
+        title: "Erro!",
+        message: "O editor ainda está processando alterações. Aguarde antes de continuar.",
       });
       event.preventDefault(); // Prevent default action if editor is not ready to discard
     }
@@ -142,8 +142,8 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
     if (!descriptionEditorRef.current?.isEditorReadyToDiscard()) {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "Editor is still processing changes. Please wait before proceeding.",
+        title: "Erro!",
+        message: "O editor ainda está processando alterações. Aguarde antes de continuar.",
       });
       return;
     }
@@ -178,7 +178,7 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
         setToast({
           type: TOAST_TYPE.SUCCESS,
           title: `Success!`,
-          message: "Work item created successfully.",
+          message: "Item de trabalho criado com sucesso.",
         });
       })
       .catch((error) => {
@@ -186,7 +186,7 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
         setToast({
           type: TOAST_TYPE.ERROR,
           title: `Error!`,
-          message: "Some error occurred. Please try again.",
+          message: "Ocorreu um erro. Tente novamente.",
         });
       });
     setFormSubmitting(false);
@@ -254,8 +254,8 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
                   } else {
                     setToast({
                       type: TOAST_TYPE.ERROR,
-                      title: "Error!",
-                      message: "Editor is still processing changes. Please wait before proceeding.",
+                      title: "Erro!",
+                      message: "O editor ainda está processando alterações. Aguarde antes de continuar.",
                     });
                   }
                 }}

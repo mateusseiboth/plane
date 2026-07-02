@@ -31,13 +31,13 @@ export function ProjectDetailsFormLoader() {
       </div>
       <div className="my-8 flex flex-col gap-8">
         <div className="flex flex-col gap-1">
-          <h4 className="text-13">Project name</h4>
+          <h4 className="text-13">Nome do projeto</h4>
           <Loader>
             <Loader.Item height="46px" width="100%" />
           </Loader>
         </div>
         <div className="flex flex-col gap-1">
-          <h4 className="text-13">Description</h4>
+          <h4 className="text-13">Descrição</h4>
           <Loader className="w-full">
             <Loader.Item height="102px" width="full" />
           </Loader>

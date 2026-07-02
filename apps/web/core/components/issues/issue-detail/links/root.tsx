@@ -52,16 +52,16 @@ export function IssueLinkRoot(props: TIssueLinkRoot) {
           if (!workspaceSlug || !projectId || !issueId) throw new Error("Missing required fields");
           await createLink(workspaceSlug, projectId, issueId, data);
           setToast({
-            message: "The link has been successfully created",
+            message: "O link foi criado com sucesso",
             type: TOAST_TYPE.SUCCESS,
-            title: "Link created",
+            title: "Link criado",
           });
           toggleIssueLinkModal(false);
         } catch (error: any) {
           setToast({
             message: error?.data?.error ?? "The link could not be created",
             type: TOAST_TYPE.ERROR,
-            title: "Link not created",
+            title: "Link não criado",
           });
           throw error;
         }
@@ -71,16 +71,16 @@ export function IssueLinkRoot(props: TIssueLinkRoot) {
           if (!workspaceSlug || !projectId || !issueId) throw new Error("Missing required fields");
           await updateLink(workspaceSlug, projectId, issueId, linkId, data);
           setToast({
-            message: "The link has been successfully updated",
+            message: "O link foi atualizado com sucesso",
             type: TOAST_TYPE.SUCCESS,
-            title: "Link updated",
+            title: "Link atualizado",
           });
           toggleIssueLinkModal(false);
         } catch (error) {
           setToast({
-            message: "The link could not be updated",
+            message: "Não foi possível atualizar o link",
             type: TOAST_TYPE.ERROR,
-            title: "Link not updated",
+            title: "Link não atualizado",
           });
           throw error;
         }
@@ -90,16 +90,16 @@ export function IssueLinkRoot(props: TIssueLinkRoot) {
           if (!workspaceSlug || !projectId || !issueId) throw new Error("Missing required fields");
           await removeLink(workspaceSlug, projectId, issueId, linkId);
           setToast({
-            message: "The link has been successfully removed",
+            message: "O link foi removido com sucesso",
             type: TOAST_TYPE.SUCCESS,
-            title: "Link removed",
+            title: "Link removido",
           });
           toggleIssueLinkModal(false);
         } catch {
           setToast({
-            message: "The link could not be removed",
+            message: "Não foi possível remover o link",
             type: TOAST_TYPE.ERROR,
-            title: "Link not removed",
+            title: "Link não removido",
           });
         }
       },

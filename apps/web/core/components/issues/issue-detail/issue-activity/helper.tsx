@@ -162,15 +162,15 @@ export const useWorkItemCommentOperations = (
           if (!workspaceSlug || !projectId || !commentId) throw new Error("Missing fields");
           await createCommentReaction(workspaceSlug, projectId, commentId, reaction);
           setToast({
-            title: "Success!",
+            title: "Sucesso!",
             type: TOAST_TYPE.SUCCESS,
-            message: "Reaction created successfully",
+            message: "Reação criada com sucesso",
           });
         } catch {
           setToast({
-            title: "Error!",
+            title: "Erro!",
             type: TOAST_TYPE.ERROR,
-            message: "Reaction creation failed",
+            message: "Falha ao criar reação",
           });
         }
       },
@@ -179,15 +179,15 @@ export const useWorkItemCommentOperations = (
           if (!workspaceSlug || !projectId || !commentId || !currentUser?.id) throw new Error("Missing fields");
           removeCommentReaction(workspaceSlug, projectId, commentId, reaction, currentUser.id);
           setToast({
-            title: "Success!",
+            title: "Sucesso!",
             type: TOAST_TYPE.SUCCESS,
-            message: "Reaction removed successfully",
+            message: "Reação removida com sucesso",
           });
         } catch {
           setToast({
-            title: "Error!",
+            title: "Erro!",
             type: TOAST_TYPE.ERROR,
-            message: "Reaction remove failed",
+            message: "Falha ao remover reação",
           });
         }
       },

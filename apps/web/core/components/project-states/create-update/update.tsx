@@ -35,8 +35,8 @@ export const StateUpdate = observer(function StateUpdate(props: TStateUpdate) {
       await updateStateCallback(state.id, formData);
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Success!",
-        message: "State updated successfully.",
+        title: "Sucesso!",
+        message: "Estado atualizado com sucesso.",
       });
       handleClose();
       return { status: "success" };
@@ -45,15 +45,15 @@ export const StateUpdate = observer(function StateUpdate(props: TStateUpdate) {
       if (errorStatus?.status === 400) {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Another state exists with the same name. Please try again with another name.",
+          title: "Erro!",
+          message: "Já existe outro estado com o mesmo nome. Tente novamente com outro nome.",
         });
         return { status: "already_exists" };
       } else {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "State could not be updated. Please try again.",
+          title: "Erro!",
+          message: "Não foi possível atualizar o estado. Tente novamente.",
         });
         return { status: "error" };
       }

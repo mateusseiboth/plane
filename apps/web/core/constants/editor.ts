@@ -153,7 +153,7 @@ const LIST_ITEMS: ToolbarMenuItem<"bulleted-list" | "numbered-list" | "to-do-lis
   {
     itemKey: "to-do-list",
     renderKey: "to-do-list",
-    name: "To-do list",
+    name: "Lista de tarefas",
     icon: ListTodo,
     shortcut: ["Cmd", "Shift", "9"],
     editors: ["lite", "document"],
@@ -200,7 +200,7 @@ export const TOOLBAR_ITEMS: {
   },
   sticky: {
     basic: BASIC_MARK_ITEMS.filter((item) => ["Bold", "Italic"].includes(item.name)),
-    list: LIST_ITEMS.filter((item) => ["To-do list"].includes(item.name)),
+    list: LIST_ITEMS.filter((item) => ["Lista de tarefas"].includes(item.name)),
   },
 };
 

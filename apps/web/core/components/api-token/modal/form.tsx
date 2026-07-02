@@ -90,8 +90,8 @@ export function CreateApiTokenForm(props: Props) {
     if (!neverExpires && (!data.expired_at || (data.expired_at === "custom" && !customDate)))
       return setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "Please select an expiration date.",
+        title: "Erro!",
+        message: "Selecione uma data de expiração.",
       });
 
     const payload: Partial<IApiToken> = {
@@ -192,7 +192,7 @@ export function CreateApiTokenForm(props: Props) {
                             ? "Custom date"
                             : selectedOption
                               ? selectedOption.label
-                              : "Set expiration date"}
+                              : "Definir data de expiração"}
                         </div>
                       }
                       value={value}
@@ -217,7 +217,7 @@ export function CreateApiTokenForm(props: Props) {
                     minDate={tomorrow}
                     icon={<Calendar className="h-3 w-3" />}
                     buttonVariant="border-with-text"
-                    placeholder="Set date"
+                    placeholder="Definir data"
                     disabled={neverExpires}
                   />
                 </div>

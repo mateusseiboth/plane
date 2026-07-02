@@ -79,11 +79,11 @@ export const PageOptionsDropdown = observer(function PageOptionsDropdown(props: 
             editorRef.copyMarkdownToClipboard();
             setToast({
               type: TOAST_TYPE.SUCCESS,
-              title: "Success!",
-              message: "Markdown copied to clipboard.",
+              title: "Sucesso!",
+              message: "Markdown copiado para a área de transferência.",
             });
           },
-          title: "Copy markdown",
+          title: "Copiar markdown",
           icon: Clipboard,
           shouldRender: true,
         },
@@ -98,14 +98,14 @@ export const PageOptionsDropdown = observer(function PageOptionsDropdown(props: 
             });
             router.push(updatedRoute);
           },
-          title: "Version history",
+          title: "Histórico de versões",
           icon: History,
           shouldRender: true,
         },
         {
           key: "export",
           action: () => setIsExportModalOpen(true),
-          title: "Export",
+          title: "Exportar",
           icon: ArrowUpToLine,
           shouldRender: true,
         },

@@ -22,7 +22,7 @@ export const FreePlanCard = observer(function FreePlanCard(props: FreePlanCardPr
       {isOnFreePlan && (
         <div className="px-3 py-2">
           <span className="rounded-sm border border-subtle-1 bg-layer-2 px-2 py-1 text-caption-md-medium text-tertiary">
-            Your plan
+            Seu plano
           </span>
         </div>
       )}

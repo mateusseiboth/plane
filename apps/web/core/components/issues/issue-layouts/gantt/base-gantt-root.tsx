@@ -122,7 +122,7 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
         setToast({
           type: TOAST_TYPE.ERROR,
           title: t("toast.error"),
-          message: "Error while updating work item dates, Please try again Later",
+          message: "Erro ao atualizar as datas do item de trabalho. Tente novamente mais tarde.",
         });
       }),
     [issues, projectId, workspaceSlug],

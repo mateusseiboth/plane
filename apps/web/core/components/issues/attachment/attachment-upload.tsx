@@ -64,7 +64,7 @@ export const IssueAttachmentUpload = observer(function IssueAttachmentUpload(pro
         ) : isLoading ? (
           <p className="text-center">Uploading...</p>
         ) : (
-          <p className="text-center">Click or drag a file here</p>
+          <p className="text-center">Clique ou arraste um arquivo aqui</p>
         )}
       </span>
     </div>

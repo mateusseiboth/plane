@@ -17,7 +17,7 @@ export const INDIVIDUAL_WEBHOOK_OPTIONS: {
   {
     key: "project",
     label: "Projects",
-    description: "Project created, updated, or deleted",
+    description: "Projeto criado, atualizado ou excluído",
   },
   {
     key: "cycle",
@@ -27,7 +27,7 @@ export const INDIVIDUAL_WEBHOOK_OPTIONS: {
   {
     key: "issue",
     label: "Work items",
-    description: "Work item created, updated, deleted, added to a cycle or module",
+    description: "Item de trabalho criado, atualizado, excluído, adicionado a um ciclo ou módulo",
   },
   {
     key: "module",
@@ -36,7 +36,7 @@ export const INDIVIDUAL_WEBHOOK_OPTIONS: {
   },
   {
     key: "issue_comment",
-    label: "Work item comments",
+    label: "Comentários do item de trabalho",
     description: "Comment posted, updated, or deleted",
   },
 ];

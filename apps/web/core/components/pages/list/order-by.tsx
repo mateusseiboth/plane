@@ -23,8 +23,8 @@ const PAGE_SORTING_KEY_OPTIONS: {
   label: string;
 }[] = [
   { key: "name", label: "Name" },
-  { key: "created_at", label: "Date created" },
-  { key: "updated_at", label: "Date modified" },
+  { key: "created_at", label: "Data de criação" },
+  { key: "updated_at", label: "Data de modificação" },
 ];
 
 export function PageOrderByDropdown(props: Props) {

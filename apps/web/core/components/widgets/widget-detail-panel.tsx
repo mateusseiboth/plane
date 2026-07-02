@@ -29,7 +29,7 @@ export const WidgetDetailPanel: React.FC<WidgetDetailPanelProps> = ({ widget, on
           <Row label="Author" value={widget.author} />
           <Row label="Status" value={widget.status} />
           <Row label="Entry file" value={widget.entry_file} mono />
-          {widget.description && <Row label="Description" value={widget.description} />}
+          {widget.description && <Row label="Descrição" value={widget.description} />}
         </Section>
 
         <Section title="Permissions">

@@ -78,7 +78,7 @@ export function ShortcutsModal(props: Props) {
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search for shortcuts"
+                        placeholder="Buscar atalhos"
                         className="w-full border-none bg-transparent py-1 text-11 text-secondary outline-none"
                         autoFocus
                         tabIndex={1}

@@ -38,8 +38,8 @@ export const StateCreate = observer(function StateCreate(props: TStateCreate) {
 
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Success!",
-        message: "State created successfully.",
+        title: "Sucesso!",
+        message: "Estado criado com sucesso.",
       });
       handleClose();
       return { status: "success" };
@@ -48,14 +48,14 @@ export const StateCreate = observer(function StateCreate(props: TStateCreate) {
       if (errorStatus?.status === 400) {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "State with that name already exists. Please try again with another name.",
+          title: "Erro!",
+          message: "Já existe um estado com esse nome. Tente novamente com outro nome.",
         });
         return { status: "already_exists" };
       } else {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
+          title: "Erro!",
           message: errorStatus.data.error ?? "State could not be created. Please try again.",
         });
         return { status: "error" };

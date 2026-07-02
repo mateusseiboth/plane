@@ -41,9 +41,9 @@ export const months: WeekMonthDataType[] = [
 
 export const quarters: WeekMonthDataType[] = [
   { key: 0, shortTitle: "Q1", title: "Jan - Mar", abbreviation: "Q1" },
-  { key: 1, shortTitle: "Q2", title: "Apr - Jun", abbreviation: "Q2" },
-  { key: 2, shortTitle: "Q3", title: "Jul - Sept", abbreviation: "Q3" },
-  { key: 3, shortTitle: "Q4", title: "Oct - Dec", abbreviation: "Q4" },
+  { key: 1, shortTitle: "Q2", title: "Abr - Jun", abbreviation: "Q2" },
+  { key: 2, shortTitle: "Q3", title: "Jul - Set", abbreviation: "Q3" },
+  { key: 3, shortTitle: "Q4", title: "Out - Dez", abbreviation: "Q4" },
 ];
 
 export const charCapitalize = (word: string) => `${word.charAt(0).toUpperCase()}${word.substring(1)}`;

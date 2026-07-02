@@ -37,7 +37,7 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
     ),
     path: (cycle: IWorkspaceDefaultSearchResult) =>
       `/${cycle?.workspace__slug}/projects/${cycle?.project_id}/cycles/${cycle?.id}`,
-    title: "Cycles",
+    title: "Ciclos",
   },
   issue: {
     itemName: (workItem: IWorkspaceIssueSearchResult) => (
@@ -58,7 +58,7 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
       workItem?.is_intake
         ? `/${workItem?.workspace__slug}/projects/${workItem?.project_id}/intake/?currentTab=open&inboxIssueId=${workItem?.id}`
         : `/${workItem?.workspace__slug}/projects/${workItem?.project_id}/issues/${workItem?.id}`,
-    title: "Work items",
+    title: "Itens de trabalho",
   },
   issue_view: {
     icon: Layers,
@@ -69,7 +69,7 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
     ),
     path: (view: IWorkspaceDefaultSearchResult) =>
       `/${view?.workspace__slug}/projects/${view?.project_id}/views/${view?.id}`,
-    title: "Views",
+    title: "Visualizações",
   },
   module: {
     icon: DiceIcon,
@@ -80,7 +80,7 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
     ),
     path: (module: IWorkspaceDefaultSearchResult) =>
       `/${module?.workspace__slug}/projects/${module?.project_id}/modules/${module?.id}`,
-    title: "Modules",
+    title: "Módulos",
   },
   page: {
     icon: FileText,
@@ -96,19 +96,19 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
         ? `/${page?.workspace__slug}/projects/${redirectProjectId}/pages/${page?.id}`
         : `/${page?.workspace__slug}/wiki/${page?.id}`;
     },
-    title: "Pages",
+    title: "Páginas",
   },
   project: {
     icon: Briefcase,
     itemName: (project: IWorkspaceProjectSearchResult) => project?.name,
     path: (project: IWorkspaceProjectSearchResult) => `/${project?.workspace__slug}/projects/${project?.id}/issues/`,
-    title: "Projects",
+    title: "Projetos",
   },
   workspace: {
     icon: LayoutGrid,
     itemName: (workspace: IWorkspaceSearchResult) => workspace?.name,
     path: (workspace: IWorkspaceSearchResult) => `/${workspace?.slug}/`,
-    title: "Workspaces",
+    title: "Espaços de trabalho",
   },
   ...SEARCH_RESULTS_GROUPS_MAP_EXTENDED,
 };

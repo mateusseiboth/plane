@@ -37,42 +37,42 @@ const TOUR_STEPS: {
 }[] = [
   {
     key: "work-items",
-    title: "Plan with work items",
+    title: "Planeje com itens de trabalho",
     description:
-      "The work item is the building block of the Plane. Most concepts in Plane are either associated with work items and their properties.",
+      "O item de trabalho é o bloco de construção do Avião. A maioria dos conceitos no Avião está associada a itens de trabalho e suas propriedades.",
     image: IssuesTour,
     nextStep: "cycles",
   },
   {
     key: "cycles",
-    title: "Move with cycles",
+    title: "Avance com ciclos",
     description:
-      "Cycles help you and your team to progress faster, similar to the sprints commonly used in agile development.",
+      "Os ciclos ajudam você e sua equipe a progredir mais rápido, de forma semelhante aos sprints comumente usados no desenvolvimento ágil.",
     image: CyclesTour,
     prevStep: "work-items",
     nextStep: "modules",
   },
   {
     key: "modules",
-    title: "Break into modules",
-    description: "Modules break your big thing into Projects or Features, to help you organize better.",
+    title: "Divida em módulos",
+    description: "Os módulos dividem sua grande entrega em Projetos ou Recursos, para ajudar você a se organizar melhor.",
     image: ModulesTour,
     prevStep: "cycles",
     nextStep: "views",
   },
   {
     key: "views",
-    title: "Views",
+    title: "Visualizações",
     description:
-      "Create custom filters to display only the work items that matter to you. Save and share your filters in just a few clicks.",
+      "Crie filtros personalizados para exibir apenas os itens de trabalho que importam para você. Salve e compartilhe seus filtros com apenas alguns cliques.",
     image: ViewsTour,
     prevStep: "modules",
     nextStep: "pages",
   },
   {
     key: "pages",
-    title: "Document with pages",
-    description: "Use Pages to quickly jot down work items when you're in a meeting or starting a day.",
+    title: "Documente com páginas",
+    description: "Use as Páginas para anotar rapidamente itens de trabalho quando estiver em uma reunião ou começando o dia.",
     image: PagesTour,
     prevStep: "views",
   },
@@ -99,11 +99,11 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
             </div>
             <div className="flex flex-col overflow-y-auto p-6">
               <h3 className="font-semibold sm:text-18">
-                Welcome to Avião, {currentUser?.first_name} {currentUser?.last_name}
+                Bem-vindo ao Avião, {currentUser?.first_name} {currentUser?.last_name}
               </h3>
               <p className="mt-3 text-13 text-secondary">
-                We{"'"}re glad that you decided to try out Plane. You can now manage your projects with ease. Get
-                started by creating a project.
+                Estamos felizes que você decidiu experimentar o Avião. Agora você pode gerenciar seus projetos com
+                facilidade. Comece criando um projeto.
               </p>
               <div className="flex h-full items-end">
                 <div className="mt-12 flex items-center gap-6">
@@ -113,7 +113,7 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
                       setStep("work-items");
                     }}
                   >
-                    Take a Product Tour
+                    Fazer um tour do produto
                   </Button>
                   <button
                     type="button"
@@ -122,7 +122,7 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
                       onComplete();
                     }}
                   >
-                    No thanks, I will explore it myself
+                    Não, obrigado. Vou explorar sozinho
                   </button>
                 </div>
               </div>
@@ -154,12 +154,12 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
                 <div className="flex items-center gap-4">
                   {currentStep?.prevStep && (
                     <Button variant="secondary" onClick={() => setStep(currentStep.prevStep ?? "welcome")}>
-                      Back
+                      Voltar
                     </Button>
                   )}
                   {currentStep?.nextStep && (
                     <Button variant="primary" onClick={() => setStep(currentStep.nextStep ?? "work-items")}>
-                      Next
+                      Próximo
                     </Button>
                   )}
                 </div>
@@ -171,7 +171,7 @@ export const TourRoot = observer(function TourRoot(props: TOnboardingTourProps) 
                       toggleCreateProjectModal(true);
                     }}
                   >
-                    Create your first project
+                    Crie seu primeiro projeto
                   </Button>
                 )}
               </div>

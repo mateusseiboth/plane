@@ -54,23 +54,23 @@ export function CreateUpdateModuleLinkModal(props: Props) {
         await createLink(payload);
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "Module link created successfully.",
+          title: "Sucesso!",
+          message: "Link do módulo criado com sucesso.",
         });
       } else {
         await updateLink(payload, data.id);
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "Module link updated successfully.",
+          title: "Sucesso!",
+          message: "Link do módulo atualizado com sucesso.",
         });
       }
       onClose();
     } catch (error: any) {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: error?.data?.error ?? "Some error occurred. Please try again.",
+        title: "Erro!",
+        message: error?.data?.error ?? "Ocorreu um erro. Tente novamente.",
       });
     }
   };
@@ -96,7 +96,7 @@ export function CreateUpdateModuleLinkModal(props: Props) {
                 control={control}
                 name="url"
                 rules={{
-                  required: "URL is required",
+                  required: "A URL é obrigatória",
                 }}
                 render={({ field: { value, onChange, ref } }) => (
                   <Input
@@ -106,7 +106,7 @@ export function CreateUpdateModuleLinkModal(props: Props) {
                     onChange={onChange}
                     ref={ref}
                     hasError={Boolean(errors.url)}
-                    placeholder="Type or paste a URL"
+                    placeholder="Digite ou cole uma URL"
                     className="w-full"
                   />
                 )}
@@ -128,7 +128,7 @@ export function CreateUpdateModuleLinkModal(props: Props) {
                     onChange={onChange}
                     ref={ref}
                     hasError={Boolean(errors.title)}
-                    placeholder="What you'd like to see this link as"
+                    placeholder="Como você gostaria de exibir este link"
                     className="w-full"
                   />
                 )}
@@ -138,7 +138,7 @@ export function CreateUpdateModuleLinkModal(props: Props) {
         </div>
         <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-subtle px-5 py-4">
           <Button variant="secondary" size="lg" onClick={onClose}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="primary" size="lg" type="submit" loading={isSubmitting}>
             {data ? (isSubmitting ? "Updating link" : "Update link") : isSubmitting ? "Adding link" : "Add link"}

@@ -130,8 +130,8 @@ export const useGanttResizable = (
       } catch {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error",
-          message: "Something went wrong while updating block dates",
+          title: "Erro",
+          message: "Algo deu errado ao atualizar as datas do bloco",
         });
       }
 

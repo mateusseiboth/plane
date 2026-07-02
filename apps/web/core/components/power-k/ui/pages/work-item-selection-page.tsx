@@ -115,10 +115,10 @@ export function WorkItemSelectionPage(props: Props) {
                 })
               );
             }}
-            emptyText="Search for issue id or issue title"
+            emptyText="Buscar por ID ou título do item"
           />
         ) : (
-          <div className="px-3 py-8 text-center text-13 text-tertiary">Search for issue id or issue title</div>
+          <div className="px-3 py-8 text-center text-13 text-tertiary">Buscar por ID ou título do item</div>
         )
       ) : issueResults.length > 0 ? (
         <CommandPaletteEntityList

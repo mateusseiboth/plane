@@ -30,14 +30,14 @@ export const useProjectActions = ({ workspaceSlug, projectId, activeItem }: UseP
       await copyUrlToClipboard(pathToCopy);
       setToast({
         type: TOAST_TYPE.INFO,
-        title: "Link copied!",
-        message: "Project link copied to clipboard.",
+        title: "Link copiado!",
+        message: "Link do projeto copiado para a área de transferência.",
       });
     } catch (_error) {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Copy failed",
-        message: "We couldn't copy the link. Please try again.",
+        title: "Falha ao copiar",
+        message: "Não foi possível copiar o link. Tente novamente.",
       });
     }
   }, [activeItem, projectId, workspaceSlug]);

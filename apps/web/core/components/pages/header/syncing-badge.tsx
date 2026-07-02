@@ -38,7 +38,7 @@ export function PageSyncingBadge({ syncStatus }: Props) {
     syncing: {
       label: "Syncing...",
       tooltipHeading: "Syncing...",
-      tooltipContent: "Your changes are being synced with the server. You can continue making changes.",
+      tooltipContent: "Suas alterações estão sendo sincronizadas com o servidor. Você pode continuar fazendo alterações.",
     },
     error: {
       label: "Connection lost",

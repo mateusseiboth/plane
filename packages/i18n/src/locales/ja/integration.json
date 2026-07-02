@@ -96,7 +96,7 @@
     "select_issue_sync_direction": "課題同期の方向を選択",
     "allow_bidirectional_sync": "双方向 - GitlabとPlane間で課題とコメントを双方向に同期",
     "allow_unidirectional_sync": "一方向 - GitlabからPlaneへのみ課題とコメントを同期",
-    "allow_unidirectional_sync_warning": "Gitlab Issueのデータがリンクされた Plane ワークアイテムのデータを置き換えます（Gitlab → Planeのみ）",
+    "allow_unidirectional_sync_warning": "Gitlab Issueのデータがリンクされた Avião ワークアイテムのデータを置き換えます（Gitlab → Planeのみ）",
     "remove_project_issue_sync": "このプロジェクト課題同期を削除",
     "remove_project_issue_sync_confirmation": "このプロジェクト課題同期を削除してもよろしいですか？",
     "ISSUE_OPEN": "課題オープン",

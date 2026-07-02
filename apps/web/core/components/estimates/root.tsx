@@ -74,7 +74,7 @@ export const EstimateRoot = observer(function EstimateRoot(props: TEstimateRoot)
               />
               {/* active estimates section */}
               <div className="mt-12 flex flex-col gap-y-4">
-                <SettingsHeading title="Estimates list" variant="h6" />
+                <SettingsHeading title="Lista de estimativas" variant="h6" />
                 <EstimateList
                   estimateIds={[currentActiveEstimateId]}
                   isAdmin={isAdmin}

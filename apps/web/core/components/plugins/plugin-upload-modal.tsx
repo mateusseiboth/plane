@@ -79,7 +79,7 @@ export const PluginUploadModal: React.FC<PluginUploadModalProps> = ({
           />
           <div className="text-3xl text-neutral-400">🔌</div>
           <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            {selectedFile ? selectedFile.name : "Drag & drop plugin.zip or click to browse"}
+            {selectedFile ? selectedFile.name : "Arraste e solte plugin.zip ou clique para procurar"}
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export const PluginUploadModal: React.FC<PluginUploadModalProps> = ({
             className="rounded-lg px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
             disabled={isUploading}
           >
-            Cancel
+            Cancelar
           </button>
           <button
             onClick={handleSubmit}

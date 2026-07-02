@@ -127,7 +127,7 @@ const InviteMemberInput = observer(function InviteMemberInput(props: InviteMembe
             rules={{
               pattern: {
                 value: emailRegex,
-                message: "Invalid Email ID",
+                message: "E-mail inválido",
               },
             }}
             render={({field: {value, onChange, ref}}) => (
@@ -276,15 +276,15 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
       .then(async () => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "Invitations sent successfully.",
+          title: "Sucesso!",
+          message: "Convites enviados com sucesso.",
         });
         await nextStep();
       })
       .catch((err) => {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
+          title: "Erro!",
           message: err?.error,
         });
       });
@@ -318,8 +318,8 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
       }}
     >
       <CommonOnboardingHeader
-        title="Invite your teammates"
-        description="Work in plane happens best with your team. Invite them now to use Plane to its potential."
+        title="Convide seus colegas de equipe"
+        description="Work in plane happens best with your team. Invite them now to use Avião to its potential."
       />
       <div className="w-full py-4 text-13">
         <div className="group relative mx-8 grid grid-cols-10 gap-4 py-2">
@@ -353,7 +353,7 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
             className="h-4 w-4"
             strokeWidth={2}
           />
-          Add another
+          Adicionar outro
         </button>
       </div>
       <div className="mx-auto flex w-full flex-col items-center justify-center gap-4 px-8 sm:px-2">
@@ -370,7 +370,7 @@ export const InviteTeamStep = observer(function InviteTeamStep(props: Props) {
               width="20px"
             />
           ) : (
-            "Continue"
+            "Continuar"
           )}
         </Button>
         <Button

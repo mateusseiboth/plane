@@ -42,8 +42,8 @@ export const ModulesLinksListItem = observer(function ModulesLinksListItem(props
     copyTextToClipboard(text).then(() =>
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Copied to clipboard",
-        message: "The URL has been successfully copied to your clipboard",
+        title: "Copiado para a área de transferência",
+        message: "A URL foi copiada para a área de transferência",
       })
     );
   };

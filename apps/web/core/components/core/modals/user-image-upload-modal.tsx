@@ -66,8 +66,8 @@ export const UserImageUploadModal = observer(function UserImageUploadModal(props
     } catch (error) {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: error?.toString() ?? "Something went wrong. Please try again.",
+        title: "Erro!",
+        message: error?.toString() ?? "Algo deu errado. Tente novamente.",
       });
       throw new Error("Error in uploading file.");
     } finally {
@@ -148,7 +148,7 @@ export const UserImageUploadModal = observer(function UserImageUploadModal(props
           </Button>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="lg" onClick={handleClose}>
-              Cancel
+              Cancelar
             </Button>
             <Button variant="primary" size="lg" onClick={handleSubmit} disabled={!image} loading={isImageUploading}>
               {isImageUploading ? "Uploading" : "Upload & Save"}

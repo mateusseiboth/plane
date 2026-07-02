@@ -33,7 +33,7 @@ export const PluginDetailPanel: React.FC<PluginDetailPanelProps> = ({ plugin, on
           <Row label="Author" value={plugin.author} />
           <Row label="Status" value={plugin.status} />
           <Row label="Entry file" value={plugin.entry_file} mono />
-          {plugin.description && <Row label="Description" value={plugin.description} />}
+          {plugin.description && <Row label="Descrição" value={plugin.description} />}
         </Section>
 
         <Section title="Permissions">

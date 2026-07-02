@@ -91,7 +91,7 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
             <div className="flex h-8 items-center gap-2">
               <div className="flex w-2/5 flex-shrink-0 items-center gap-1 text-13 text-tertiary">
                 <MembersPropertyIcon className="h-4 w-4 flex-shrink-0" />
-                <span>Assignees</span>
+                <span>Responsáveis</span>
               </div>
               <MemberDropdown
                 value={issue?.assignee_ids ?? []}
@@ -100,7 +100,7 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
                 }
                 disabled={!isEditable}
                 projectId={projectId?.toString() ?? ""}
-                placeholder="Add assignees"
+                placeholder="Adicionar responsáveis"
                 multiple
                 buttonVariant={
                   (issue?.assignee_ids || [])?.length > 0 ? "transparent-without-text" : "transparent-with-text"
@@ -119,7 +119,7 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
             <div className="flex h-8 items-center gap-2">
               <div className="flex w-2/5 flex-shrink-0 items-center gap-1 text-13 text-tertiary">
                 <PriorityPropertyIcon className="h-4 w-4 flex-shrink-0" />
-                <span>Priority</span>
+                <span>Prioridade</span>
               </div>
               <PriorityDropdown
                 value={issue?.priority}
@@ -141,10 +141,10 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
             <div className="flex h-8 items-center gap-2">
               <div className="flex w-2/5 flex-shrink-0 items-center gap-1 text-13 text-tertiary">
                 <DueDatePropertyIcon className="h-4 w-4 flex-shrink-0" />
-                <span>Due date</span>
+                <span>Data de vencimento</span>
               </div>
               <DateDropdown
-                placeholder="Add due date"
+                placeholder="Adicionar data de vencimento"
                 value={issue.target_date || null}
                 onChange={(val) =>
                   issue?.id &&
@@ -166,7 +166,7 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
             <div className="flex min-h-8 items-center gap-2">
               <div className="flex w-2/5 flex-shrink-0 items-center gap-1 text-13 text-tertiary">
                 <LabelPropertyIcon className="h-4 w-4 flex-shrink-0" />
-                <span>Labels</span>
+                <span>Etiquetas</span>
               </div>
               <div className="h-full min-h-8 w-3/5 flex-grow pt-1">
                 {issue?.id && (
@@ -189,7 +189,7 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
               <div className="flex min-h-8 gap-2">
                 <div className="flex w-2/5 flex-shrink-0 gap-1 pt-2 text-13 text-tertiary">
                   <DuplicatePropertyIcon className="h-4 w-4 flex-shrink-0" />
-                  <span>Duplicate of</span>
+                  <span>Duplicata de</span>
                 </div>
 
                 <ControlLink

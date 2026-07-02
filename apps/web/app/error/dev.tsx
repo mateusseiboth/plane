@@ -20,11 +20,11 @@ function ErrorActions({ onGoHome, onReload }: ErrorActionsProps) {
   return (
     <div className="flex gap-3 pt-2">
       <Button variant="primary" size="lg" onClick={onGoHome}>
-        Go to home
+        Ir para o início
       </Button>
       {onReload && (
         <Button variant="secondary" size="lg" onClick={onReload}>
-          Reload page
+          Recarregar página
         </Button>
       )}
     </div>
@@ -135,20 +135,20 @@ export function DevErrorComponent({ error, onGoHome, onReload }: DevErrorCompone
         <Banner
           variant="error"
           icon={<InfoFillIcon className="size-5" />}
-          title="Unknown Error"
+          title="Erro desconhecido"
           animationDuration={0}
         />
 
         <Card variant={ECardVariant.WITH_SHADOW} className="!p-6">
           <div className="space-y-4">
             <div>
-              <h2 className="mb-2 text-20 font-semibold text-primary">Unknown Error</h2>
+              <h2 className="mb-2 text-20 font-semibold text-primary">Erro desconhecido</h2>
               <div className="bg-subtle-1 h-px w-full" />
             </div>
 
             <div className="rounded-md bg-layer-1 p-4">
               <p className="text-13 text-secondary">
-                An unknown error occurred. Please try refreshing the page or contact support if the problem persists.
+                Ocorreu um erro desconhecido. Tente atualizar a página ou entre em contato com o suporte se o problema persistir.
               </p>
             </div>
 

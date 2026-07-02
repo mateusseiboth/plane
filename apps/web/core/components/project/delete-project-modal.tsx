@@ -43,7 +43,7 @@ export function DeleteProjectModal(props: DeleteProjectModal) {
     watch,
   } = useForm({ defaultValues });
 
-  const canDelete = watch("projectName") === project?.name && watch("confirmDelete") === "delete my project";
+  const canDelete = watch("projectName") === project?.name && watch("confirmDelete") === "excluir meu projeto";
 
   const handleClose = () => {
     const timer = setTimeout(() => {
@@ -63,14 +63,14 @@ export function DeleteProjectModal(props: DeleteProjectModal) {
       handleClose();
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Success!",
-        message: "Project deleted successfully.",
+        title: "Sucesso!",
+        message: "Projeto excluído com sucesso.",
       });
     } catch (_error) {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "Something went wrong. Please try again later.",
+        title: "Erro!",
+        message: "Algo deu errado. Tente novamente mais tarde.",
       });
     }
   };
@@ -83,18 +83,18 @@ export function DeleteProjectModal(props: DeleteProjectModal) {
             <AlertTriangle className="h-6 w-6 text-danger-primary" aria-hidden="true" />
           </span>
           <span className="flex items-center justify-start">
-            <h3 className="text-18 font-medium 2xl:text-20">Delete project</h3>
+            <h3 className="text-18 font-medium 2xl:text-20">Excluir projeto</h3>
           </span>
         </div>
         <span>
           <p className="text-13 leading-7 text-secondary">
-            Are you sure you want to delete project <span className="font-semibold break-words">{project?.name}</span>?
-            All of the data related to the project will be permanently removed. This action cannot be undone
+            Tem certeza de que deseja excluir o projeto <span className="font-semibold break-words">{project?.name}</span>?
+            Todos os dados relacionados ao projeto serão removidos permanentemente. Esta ação não pode ser desfeita.
           </p>
         </span>
         <div className="text-secondary">
           <p className="text-13 break-words">
-            Enter the project name <span className="font-medium text-primary">{project?.name}</span> to continue:
+            Insira o nome do projeto <span className="font-medium text-primary">{project?.name}</span> para continuar:
           </p>
           <Controller
             control={control}
@@ -108,7 +108,7 @@ export function DeleteProjectModal(props: DeleteProjectModal) {
                 onChange={onChange}
                 ref={ref}
                 hasError={Boolean(errors.projectName)}
-                placeholder="Project name"
+                placeholder="Nome do projeto"
                 className="mt-2 w-full"
                 autoComplete="off"
               />
@@ -117,7 +117,7 @@ export function DeleteProjectModal(props: DeleteProjectModal) {
         </div>
         <div className="text-secondary">
           <p className="text-13">
-            To confirm, type <span className="font-medium text-primary">delete my project</span> below:
+            Para confirmar, digite <span className="font-medium text-primary">excluir meu projeto</span> abaixo:
           </p>
           <Controller
             control={control}
@@ -131,7 +131,7 @@ export function DeleteProjectModal(props: DeleteProjectModal) {
                 onChange={onChange}
                 ref={ref}
                 hasError={Boolean(errors.confirmDelete)}
-                placeholder="Enter 'delete my project'"
+                placeholder="Digite 'excluir meu projeto'"
                 className="mt-2 w-full"
                 autoComplete="off"
               />
@@ -140,10 +140,10 @@ export function DeleteProjectModal(props: DeleteProjectModal) {
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="lg" onClick={handleClose}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="error-fill" size="lg" type="submit" disabled={!canDelete} loading={isSubmitting}>
-            {isSubmitting ? "Deleting" : "Delete project"}
+            {isSubmitting ? "Excluindo" : "Excluir projeto"}
           </Button>
         </div>
       </form>

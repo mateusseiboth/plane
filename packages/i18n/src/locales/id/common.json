@@ -244,7 +244,7 @@
   "full_changelog": "Changelog lengkap",
   "support": "Dukungan",
   "forum": "Forum",
-  "powered_by_plane_pages": "Ditenagai oleh Plane Pages",
+  "powered_by_plane_pages": "Ditenagai oleh Avião Pages",
   "please_select_at_least_one_invitation": "Silakan pilih setidaknya satu undangan.",
   "please_select_at_least_one_invitation_description": "Silakan pilih setidaknya satu undangan untuk bergabung dengan ruang kerja.",
   "we_see_that_someone_has_invited_you_to_join_a_workspace": "Kami melihat bahwa seseorang telah mengundang Anda untuk bergabung dengan ruang kerja",
@@ -439,6 +439,7 @@
     "assignees": "Penugas",
     "assignee": "Penugas",
     "created_by": "Dibuat oleh",
+    "subscriber": "Pelanggan",
     "none": "Tidak ada",
     "link": "Tautan",
     "estimates": "Perkiraan",
@@ -717,7 +718,14 @@
     "developer": "Developer",
     "work_structure": "Work structure",
     "execution": "Execution",
-    "administration": "Administration"
+    "administration": "Administration",
+    "save_view": "Save view",
+    "update_view": "Update view",
+    "invalid_filter": "Invalid filter",
+    "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
+    "all_filters_applied": "All filters applied",
+    "filter_configuration_error": "Filter configuration error",
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
   },
   "chart": {
     "x_axis": "Sumbu-X",
@@ -820,7 +828,7 @@
     "edited_by": "Disunting oleh"
   },
   "self_hosted_maintenance_message": {
-    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Plane tidak berhasil dimulai. Ini bisa karena satu atau lebih layanan Plane gagal untuk dimulai.",
+    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Avião tidak berhasil dimulai. Ini bisa karena satu atau lebih layanan Avião gagal untuk dimulai.",
     "choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure": "Pilih View Logs dari setup.sh dan log Docker untuk memastikan."
   },
   "customize_navigation": "Sesuaikan navigasi",

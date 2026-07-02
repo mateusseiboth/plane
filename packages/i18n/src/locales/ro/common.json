@@ -244,7 +244,7 @@
   "full_changelog": "Jurnal complet al modificărilor",
   "support": "Suport",
   "forum": "Forum",
-  "powered_by_plane_pages": "Oferit de Plane Documentație",
+  "powered_by_plane_pages": "Oferit de Avião Documentație",
   "please_select_at_least_one_invitation": "Te rugăm să selectezi cel puțin o invitație.",
   "please_select_at_least_one_invitation_description": "Te rugăm să selectezi cel puțin o invitație pentru a te alătura spațiului de lucru.",
   "we_see_that_someone_has_invited_you_to_join_a_workspace": "Se pare că cineva te-a invitat să te alături unui spațiu de lucru",
@@ -439,6 +439,7 @@
     "assignees": "Responsabili",
     "assignee": "Responsabil",
     "created_by": "Creat de",
+    "subscriber": "Abonat",
     "none": "Niciuna",
     "link": "Link",
     "estimates": "Estimări",
@@ -717,7 +718,14 @@
     "developer": "Developer",
     "work_structure": "Work structure",
     "execution": "Execution",
-    "administration": "Administration"
+    "administration": "Administration",
+    "save_view": "Save view",
+    "update_view": "Update view",
+    "invalid_filter": "Invalid filter",
+    "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
+    "all_filters_applied": "All filters applied",
+    "filter_configuration_error": "Filter configuration error",
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
   },
   "chart": {
     "x_axis": "axa-X",
@@ -820,7 +828,7 @@
     "edited_by": "Editat de"
   },
   "self_hosted_maintenance_message": {
-    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Plane nu a pornit. Aceasta ar putea fi din cauza că unul sau mai multe servicii Plane au eșuat să pornească.",
+    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Avião nu a pornit. Aceasta ar putea fi din cauza că unul sau mai multe servicii Avião au eșuat să pornească.",
     "choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure": "Alegeți View Logs din setup.sh și logurile Docker pentru a fi siguri."
   },
   "customize_navigation": "Personalizează navigarea",
@@ -832,7 +840,7 @@
   "pin": "Fixează",
   "unpin": "Anulează fixarea",
   "workspace_dashboards": "Dashboarduri",
-  "pi_chat": "Plane AI",
+  "pi_chat": "Avião AI",
   "in_app": "În-app",
   "forms": "Formulare",
   "milestones": "Jaloane",

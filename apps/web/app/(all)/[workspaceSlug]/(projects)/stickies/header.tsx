@@ -52,7 +52,7 @@ export const WorkspaceStickyHeader = observer(function WorkspaceStickyHeader() {
             }}
             loading={creatingSticky}
           >
-            Add sticky
+            Adicionar nota
           </Button>
         </Header.RightItem>
       </Header>

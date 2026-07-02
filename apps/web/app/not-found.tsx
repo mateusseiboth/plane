@@ -35,7 +35,7 @@ function PageNotFound() {
           <Link href="/">
             <span className="flex justify-center">
               <Button variant="secondary" size="lg">
-                Go to Home
+                Ir para o início
               </Button>
             </span>
           </Link>

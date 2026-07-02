@@ -75,12 +75,12 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
       },
       {
         key: "images",
-        title: "Images",
+        title: "Imagens",
         isEnabled: true,
       },
       {
         key: "upload",
-        title: "Upload",
+        title: "Enviar",
         isEnabled: true,
       },
     ],
@@ -142,7 +142,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
           setToast({
             message: error?.error ?? "The image could not be uploaded",
             type: TOAST_TYPE.ERROR,
-            title: "Image not uploaded",
+            title: "Imagem não enviada",
           });
         });
     } else {
@@ -163,7 +163,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
           setToast({
             message: error?.error ?? "The image could not be uploaded",
             type: TOAST_TYPE.ERROR,
-            title: "Image not uploaded",
+            title: "Imagem não enviada",
           });
         });
     }
@@ -233,7 +233,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
                               value={value}
                               onChange={(e) => setFormData({ ...formData, search: e.target.value })}
                               ref={ref}
-                              placeholder="Search for images"
+                              placeholder="Buscar imagens"
                               className="w-full text-13"
                             />
                           )}
@@ -351,7 +351,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
                           setImage(null);
                         }}
                       >
-                        Cancel
+                        Cancelar
                       </Button>
                       <Button
                         variant="primary"

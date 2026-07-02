@@ -82,7 +82,7 @@ export const CreateProjectForm = observer(function CreateProjectForm(props: TCre
           setToast({
             type: TOAST_TYPE.ERROR,
             title: t("toast.error"),
-            message: error instanceof Error ? error.message : "Failed to upload cover image",
+            message: error instanceof Error ? error.message : "Falha ao enviar a imagem de capa",
           });
           return Promise.reject(error);
         }

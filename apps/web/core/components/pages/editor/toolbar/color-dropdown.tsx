@@ -91,7 +91,7 @@ export const ColorDropdown = memo(function ColorDropdown(props: Props) {
               </div>
             </div>
             <div className="space-y-1.5">
-              <p className="text-11 font-semibold text-tertiary">Background colors</p>
+              <p className="text-11 font-semibold text-tertiary">Cores de fundo</p>
               <div className="flex items-center gap-2">
                 {COLORS_LIST.map((color) => (
                   <button

@@ -57,7 +57,7 @@ export function SelectMonthModal({ type, initialValues, isOpen, handleClose, han
                     control={control}
                     name="close_in"
                     rules={{
-                      required: "Select a month between 1 and 12.",
+                      required: "Selecione um mês entre 1 e 12.",
                       min: 1,
                       max: 12,
                     }}
@@ -71,7 +71,7 @@ export function SelectMonthModal({ type, initialValues, isOpen, handleClose, han
                           onChange={onChange}
                           ref={ref}
                           hasError={Boolean(errors.close_in)}
-                          placeholder="Enter Months"
+                          placeholder="Insira os meses"
                           className="w-full border-subtle"
                           min={1}
                           max={12}
@@ -82,7 +82,7 @@ export function SelectMonthModal({ type, initialValues, isOpen, handleClose, han
                   />
 
                   {errors.close_in && (
-                    <span className="px-1 text-13 text-danger-primary">Select a month between 1 and 12.</span>
+                    <span className="px-1 text-13 text-danger-primary">Selecione um mês entre 1 e 12.</span>
                   )}
                 </>
               ) : (
@@ -91,7 +91,7 @@ export function SelectMonthModal({ type, initialValues, isOpen, handleClose, han
                     control={control}
                     name="archive_in"
                     rules={{
-                      required: "Select a month between 1 and 12.",
+                      required: "Selecione um mês entre 1 e 12.",
                       min: 1,
                       max: 12,
                     }}
@@ -105,7 +105,7 @@ export function SelectMonthModal({ type, initialValues, isOpen, handleClose, han
                           onChange={onChange}
                           ref={ref}
                           hasError={Boolean(errors.archive_in)}
-                          placeholder="Enter Months"
+                          placeholder="Insira os meses"
                           className="w-full border-subtle"
                           min={1}
                           max={12}
@@ -115,7 +115,7 @@ export function SelectMonthModal({ type, initialValues, isOpen, handleClose, han
                     )}
                   />
                   {errors.archive_in && (
-                    <span className="px-1 text-13 text-danger-primary">Select a month between 1 and 12.</span>
+                    <span className="px-1 text-13 text-danger-primary">Selecione um mês entre 1 e 12.</span>
                   )}
                 </>
               )}
@@ -124,7 +124,7 @@ export function SelectMonthModal({ type, initialValues, isOpen, handleClose, han
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" size="lg" onClick={onClose}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="primary" size="lg" type="submit" loading={isSubmitting}>
             {isSubmitting ? "Submitting..." : "Submit"}

@@ -36,7 +36,7 @@ function WorkspaceViewsPage() {
             className="w-full bg-transparent !p-0 text-11 leading-5 text-secondary placeholder:text-placeholder focus:outline-none"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
+            placeholder="Pesquisar"
             mode="true-transparent"
           />
         </div>

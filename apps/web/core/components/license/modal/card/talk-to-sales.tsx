@@ -73,7 +73,7 @@ export const TalkToSalesCard = observer(function TalkToSalesCard(props: TalkToSa
       ) : (
         <div className="flex w-full flex-col items-center justify-center">
           <a href={href} target="_blank" className={cn(getButtonStyling("primary", "lg"), "w-56")} rel="noreferrer">
-            Talk to Sales
+            Falar com vendas
           </a>
           {isTrialAllowed && !isSelfHosted && (
             <div className="mt-4 h-4">

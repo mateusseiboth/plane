@@ -39,7 +39,7 @@ export function MyWorkItemsWidget({ workspaceSlug }: THomeWidgetProps) {
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-secondary" />
-          <span className="text-13 font-semibold">Meus Work Items</span>
+          <span className="text-13 font-semibold">Meus itens de trabalho</span>
         </div>
         <Link
           href={`/${workspaceSlug}/workspace-views/all-issues/`}

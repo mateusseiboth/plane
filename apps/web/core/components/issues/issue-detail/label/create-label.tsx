@@ -131,7 +131,7 @@ export function LabelCreate(props: ILabelCreate) {
             control={control}
             name="name"
             rules={{
-              required: "This is required",
+              required: "Este campo é obrigatório",
             }}
             render={({ field: { value, onChange, ref } }) => (
               <Input
@@ -142,7 +142,7 @@ export function LabelCreate(props: ILabelCreate) {
                 onChange={onChange}
                 ref={ref}
                 hasError={Boolean(errors.name)}
-                placeholder="Title"
+                placeholder="Título"
                 className="w-full px-1.5 py-1 text-11"
                 disabled={isSubmitting}
               />

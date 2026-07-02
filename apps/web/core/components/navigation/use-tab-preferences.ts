@@ -79,16 +79,16 @@ export const useTabPreferences = (workspaceSlug: string, projectId: string): TTa
       .then(() => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "Default tab updated successfully.",
+          title: "Sucesso!",
+          message: "Aba padrão atualizada com sucesso.",
         });
         return;
       })
       .catch(() => {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Failed to update default tab. Please try again later.",
+          title: "Erro!",
+          message: "Falha ao atualizar a aba padrão. Tente novamente mais tarde.",
         });
       });
   };
@@ -107,8 +107,8 @@ export const useTabPreferences = (workspaceSlug: string, projectId: string): TTa
       console.error("Error hiding tab:", error);
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "Failed to hide tab. Please try again later.",
+        title: "Erro!",
+        message: "Falha ao ocultar a aba. Tente novamente mais tarde.",
       });
     }
   };
@@ -127,8 +127,8 @@ export const useTabPreferences = (workspaceSlug: string, projectId: string): TTa
       console.error("Error showing tab:", error);
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "Something went wrong. Please try again later.",
+        title: "Erro!",
+        message: "Algo deu errado. Tente novamente mais tarde.",
       });
     }
   };

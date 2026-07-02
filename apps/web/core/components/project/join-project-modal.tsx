@@ -51,16 +51,16 @@ export function JoinProjectModal(props: TJoinProjectModalProps) {
   return (
     <ModalCore isOpen={isOpen} handleClose={handleClose} position={EModalPosition.CENTER} width={EModalWidth.XL}>
       <div className="space-y-5 px-5 py-8 sm:p-6">
-        <h3 className="text-16 leading-6 font-medium text-primary">Join Project?</h3>
+        <h3 className="text-16 leading-6 font-medium text-primary">Entrar no projeto?</h3>
         <p>
-          Are you sure you want to join the project <span className="font-semibold break-words">{project?.name}</span>?
+          Tem certeza de que deseja entrar no projeto <span className="font-semibold break-words">{project?.name}</span>?
           Please click the &apos;Join Project&apos; button below to continue.
         </p>
         <div className="space-y-3" />
       </div>
       <div className="mt-5 flex justify-end gap-2 px-5 pb-8 sm:px-6 sm:pb-6">
         <Button variant="secondary" size="lg" onClick={handleClose}>
-          Cancel
+          Cancelar
         </Button>
         <Button variant="primary" size="lg" tabIndex={1} type="submit" onClick={handleJoin} loading={isJoiningLoading}>
           {isJoiningLoading ? "Joining..." : "Join Project"}

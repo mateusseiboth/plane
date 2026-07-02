@@ -244,7 +244,7 @@
   "full_changelog": "Registro de cambios completo",
   "support": "Soporte",
   "forum": "Forum",
-  "powered_by_plane_pages": "Desarrollado por Plane Pages",
+  "powered_by_plane_pages": "Desarrollado por Avião Pages",
   "please_select_at_least_one_invitation": "Por favor selecciona al menos una invitación.",
   "please_select_at_least_one_invitation_description": "Por favor selecciona al menos una invitación para unirte al espacio de trabajo.",
   "we_see_that_someone_has_invited_you_to_join_a_workspace": "Vemos que alguien te ha invitado a unirte a un espacio de trabajo",
@@ -439,6 +439,7 @@
     "assignees": "Asignados",
     "assignee": "Asignado",
     "created_by": "Creado por",
+    "subscriber": "Suscriptor",
     "none": "Ninguno",
     "link": "Enlace",
     "estimates": "Estimaciones",
@@ -717,7 +718,14 @@
     "developer": "Developer",
     "work_structure": "Work structure",
     "execution": "Execution",
-    "administration": "Administration"
+    "administration": "Administration",
+    "save_view": "Save view",
+    "update_view": "Update view",
+    "invalid_filter": "Invalid filter",
+    "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
+    "all_filters_applied": "All filters applied",
+    "filter_configuration_error": "Filter configuration error",
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
   },
   "chart": {
     "x_axis": "Eje X",
@@ -820,7 +828,7 @@
     "edited_by": "Editado por"
   },
   "self_hosted_maintenance_message": {
-    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Plane no se inició. Esto podría deberse a que uno o más servicios de Plane fallaron al iniciar.",
+    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Avião no se inició. Esto podría deberse a que uno o más servicios de Avião fallaron al iniciar.",
     "choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure": "Selecciona View Logs desde setup.sh y los logs de Docker para estar seguro."
   },
   "customize_navigation": "Personalizar navegación",
@@ -832,7 +840,7 @@
   "pin": "Fijar",
   "unpin": "Desfijar",
   "workspace_dashboards": "Tableros",
-  "pi_chat": "Plane AI",
+  "pi_chat": "Avião AI",
   "in_app": "En la aplicación",
   "forms": "Formularios",
   "milestones": "Hitos",

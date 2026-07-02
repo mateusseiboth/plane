@@ -101,16 +101,16 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
         try {
           await removeIssue(workspaceSlug, projectId, _issueId);
           setToast({
-            title: "Success!",
+            title: "Sucesso!",
             type: TOAST_TYPE.SUCCESS,
-            message: "Work item deleted successfully",
+            message: "Item de trabalho excluído com sucesso",
           });
         } catch (error) {
           console.log("Error in deleting work item:", error);
           setToast({
-            title: "Error!",
+            title: "Erro!",
             type: TOAST_TYPE.ERROR,
-            message: "Work item delete failed",
+            message: "Falha ao excluir item de trabalho",
           });
         }
       },
@@ -119,9 +119,9 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
           await inboxIssue.updateIssue(data);
         } catch (_error) {
           setToast({
-            title: "Work item update failed",
+            title: "Falha ao atualizar item de trabalho",
             type: TOAST_TYPE.ERROR,
-            message: "Work item update failed",
+            message: "Falha ao atualizar item de trabalho",
           });
         }
       },

@@ -87,11 +87,11 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
     setPromiseToast(addToFavoritePromise, {
       loading: "Adding module to favorites...",
       success: {
-        title: "Success!",
+        title: "Sucesso!",
         message: () => "Module added to favorites.",
       },
       error: {
-        title: "Error!",
+        title: "Erro!",
         message: () => "Couldn't add the module to favorites. Please try again.",
       },
     });
@@ -111,11 +111,11 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
     setPromiseToast(removeFromFavoritePromise, {
       loading: "Removing module from favorites...",
       success: {
-        title: "Success!",
+        title: "Sucesso!",
         message: () => "Module removed from favorites.",
       },
       error: {
-        title: "Error!",
+        title: "Erro!",
         message: () => "Couldn't remove the module from favorites. Please try again.",
       },
     });
@@ -133,15 +133,15 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
       .then(() => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "Module updated successfully.",
+          title: "Sucesso!",
+          message: "Módulo atualizado com sucesso.",
         });
       })
       .catch((err) => {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: err?.detail ?? "Module could not be updated. Please try again.",
+          title: "Erro!",
+          message: err?.detail ?? "Não foi possível atualizar o módulo. Tente novamente.",
         });
       });
   };

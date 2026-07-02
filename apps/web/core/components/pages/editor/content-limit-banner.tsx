@@ -20,7 +20,7 @@ export function ContentLimitBanner({ className, onDismiss }: Props) {
           <TriangleAlert />
         </span>
         <span className="font-medium">
-          Content limit reached and live sync is off. Create a new page or use nested pages to continue syncing.
+          Limite de conteúdo atingido e a sincronização em tempo real está desativada. Crie uma nova página ou use páginas aninhadas para continuar sincronizando.
         </span>
       </div>
       {onDismiss && (

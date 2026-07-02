@@ -69,14 +69,14 @@ function ArchivedIssueDetailsPage({ params }: Route.ComponentProps) {
         <>
           <Banner
             variant="warning"
-            title="This work item has been archived. Visit the Archives section to restore it."
+            title="Este item de trabalho foi arquivado. Acesse a seção Arquivos para restaurá-lo."
             icon={<ArchiveIcon className="size-4" />}
             action={
               <Button
                 variant="secondary"
                 onClick={() => router.push(`/${workspaceSlug}/projects/${projectId}/archives/issues/`)}
               >
-                Go to archives
+                Ir para arquivos
               </Button>
             }
             className="border-b border-subtle"

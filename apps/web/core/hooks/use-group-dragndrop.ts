@@ -63,8 +63,8 @@ export const useGroupIssuesDragNDrop = (
   ) => {
     const errorToastProps = {
       type: TOAST_TYPE.ERROR,
-      title: "Error!",
-      message: "Error while updating work item",
+      title: "Erro!",
+      message: "Erro ao atualizar o item de trabalho",
     };
     // Surface the backend reason (e.g. "Sua função não permite esta transição de
     // estado.") instead of the generic message whenever the API returns one.
@@ -119,7 +119,7 @@ export const useGroupIssuesDragNDrop = (
       orderBy !== "sort_order"
     ).catch((err) => {
       setToast({
-        title: "Error!",
+        title: "Erro!",
         type: TOAST_TYPE.ERROR,
         message: err?.detail ?? "Failed to perform this action",
       });

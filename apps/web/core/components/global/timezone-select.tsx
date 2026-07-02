@@ -28,7 +28,7 @@ export const TimezoneSelect = observer(function TimezoneSelect(props: TTimezoneS
     value,
     onChange,
     error = false,
-    label = "Select a timezone",
+    label = "Selecione um fuso horário",
     buttonClassName = "",
     className = "",
     optionsClassName = "",

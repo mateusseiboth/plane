@@ -91,7 +91,7 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
       await updateEntity(workspaceSlug.toString(), entityDetails.project_id, entityDetails.id, formData).catch(() => {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
+          title: "Erro!",
           message: `${isEpic ? "Epic" : "Work item"} could not be updated. Please try again.`,
         });
       });
@@ -321,7 +321,7 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
         } catch {
           setToast({
             type: TOAST_TYPE.ERROR,
-            title: "Error!",
+            title: "Erro!",
             message: `${entityDetails.is_epic ? "Epic" : "Work item"} could not be updated. Please try again.`,
           });
         }
@@ -353,7 +353,7 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
         } catch {
           setToast({
             type: TOAST_TYPE.ERROR,
-            title: "Error!",
+            title: "Erro!",
             message: `${entityDetails.is_epic ? "Epic" : "Work item"} could not be updated. Please try again.`,
           });
         }

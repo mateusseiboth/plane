@@ -52,16 +52,16 @@ export const CreateUpdateWorkspaceViewModal = observer(function CreateUpdateWork
       const res = await createGlobalView(workspaceSlug, payloadData);
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Success!",
-        message: "View created successfully.",
+        title: "Sucesso!",
+        message: "Visualização criada com sucesso.",
       });
       router.push(`/${workspaceSlug}/workspace-views/${res.id}`);
       handleClose();
     } catch (_error) {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "View could not be created. Please try again.",
+        title: "Erro!",
+        message: "Não foi possível criar a visualização. Tente novamente.",
       });
     }
   };
@@ -81,16 +81,16 @@ export const CreateUpdateWorkspaceViewModal = observer(function CreateUpdateWork
         resetExpression(EIssuesStoreType.GLOBAL, data.id, res.rich_filters);
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "View updated successfully.",
+          title: "Sucesso!",
+          message: "Visualização atualizada com sucesso.",
         });
         handleClose();
       }
     } catch (_error) {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "View could not be updated. Please try again.",
+        title: "Erro!",
+        message: "Não foi possível atualizar a visualização. Tente novamente.",
       });
     }
   };

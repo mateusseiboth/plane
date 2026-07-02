@@ -60,14 +60,14 @@ export const PageVersionsMainContent = observer(function PageVersionsMainContent
       .then(() => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Page version restored.",
+          title: "Versão da página restaurada.",
         });
         handleClose();
       })
       .catch(() =>
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Failed to restore page version.",
+          title: "Falha ao restaurar a versão da página.",
         })
       )
       .finally(() => setIsRestoring(false));
@@ -91,10 +91,10 @@ export const PageVersionsMainContent = observer(function PageVersionsMainContent
             </span>
             <div>
               <h6 className="text-16 font-semibold">Something went wrong!</h6>
-              <p className="text-13 text-tertiary">The version could not be loaded, please try again.</p>
+              <p className="text-13 text-tertiary">Não foi possível carregar a versão. Tente novamente.</p>
             </div>
             <Button variant="link" onClick={handleRetry} loading={isRetrying}>
-              Try again
+              Tentar novamente
             </Button>
           </div>
         </div>
@@ -109,7 +109,7 @@ export const PageVersionsMainContent = observer(function PageVersionsMainContent
               </h6>
               <span className="flex flex-shrink-0 items-center gap-1 rounded-sm bg-accent-primary/20 px-1.5 py-1 text-11 font-medium text-accent-primary">
                 <EyeIcon className="size-3 flex-shrink-0" />
-                View only
+                Somente visualização
               </span>
             </div>
             {restoreEnabled && (

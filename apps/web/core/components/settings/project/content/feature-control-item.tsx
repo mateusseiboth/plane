@@ -41,13 +41,13 @@ export const ProjectSettingsFeatureControlItem = observer(function ProjectSettin
     const updateProjectPromise = updateProject(workspaceSlug, projectId, settingsPayload);
 
     setPromiseToast(updateProjectPromise, {
-      loading: "Updating project feature...",
+      loading: "Atualizando recurso do projeto...",
       success: {
-        title: "Success!",
+        title: "Sucesso!",
         message: () => "Project feature updated successfully.",
       },
       error: {
-        title: "Error!",
+        title: "Erro!",
         message: () => "Something went wrong while updating project feature. Please try again.",
       },
     });

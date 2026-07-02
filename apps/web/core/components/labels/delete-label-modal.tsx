@@ -49,7 +49,7 @@ export const DeleteLabelModal = observer(function DeleteLabelModal(props: Props)
         const error = err?.error || "Label could not be deleted. Please try again.";
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
+          title: "Erro!",
           message: error,
         });
       });
@@ -61,10 +61,10 @@ export const DeleteLabelModal = observer(function DeleteLabelModal(props: Props)
       handleSubmit={handleDeletion}
       isSubmitting={isDeleteLoading}
       isOpen={isOpen}
-      title="Delete Label"
+      title="Excluir etiqueta"
       content={
         <>
-          Are you sure you want to delete <span className="font-medium text-primary">{data?.name}</span>? This will
+          Tem certeza de que deseja excluir <span className="font-medium text-primary">{data?.name}</span>? This will
           remove the label from all the work item and from any views where the label is being filtered upon.
         </>
       }

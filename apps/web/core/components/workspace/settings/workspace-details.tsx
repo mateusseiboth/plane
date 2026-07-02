@@ -69,9 +69,9 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
     try {
       await updateWorkspace(currentWorkspace.slug, payload);
       setToast({
-        title: "Success!",
+        title: "Sucesso!",
         type: TOAST_TYPE.SUCCESS,
-        message: "Workspace updated successfully",
+        message: "Espaço de trabalho atualizado com sucesso",
       });
     } catch (err: unknown) {
       console.error(err);
@@ -91,14 +91,14 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
       });
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Success!",
-        message: "Workspace picture removed successfully.",
+        title: "Sucesso!",
+        message: "Imagem do espaço de trabalho removida com sucesso.",
       });
     } catch {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error!",
-        message: "There was some error in deleting your profile picture. Please try again.",
+        title: "Erro!",
+        message: "Ocorreu um erro ao excluir sua foto de perfil. Tente novamente.",
       });
     }
   };
@@ -110,7 +110,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
       .then(() => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Workspace URL copied to the clipboard.",
+          title: "URL do espaço de trabalho copiada para a área de transferência.",
         });
         return undefined;
       })

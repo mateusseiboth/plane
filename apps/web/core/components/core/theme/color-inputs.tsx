@@ -37,10 +37,10 @@ export const CustomThemeColorInputs = observer(function CustomThemeColorInputs(p
             control={control}
             name="background"
             rules={{
-              required: "Neutral color is required",
+              required: "A cor neutra é obrigatória",
               pattern: {
                 value: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
-                message: "Enter a valid hex code",
+                message: "Insira um código hexadecimal válido",
               },
             }}
             render={({ field: { value, onChange } }) => (
@@ -70,10 +70,10 @@ export const CustomThemeColorInputs = observer(function CustomThemeColorInputs(p
             control={control}
             name="primary"
             rules={{
-              required: "Brand color is required",
+              required: "A cor da marca é obrigatória",
               pattern: {
                 value: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
-                message: "Enter a valid hex code",
+                message: "Insira um código hexadecimal válido",
               },
             }}
             render={({ field: { value, onChange } }) => (

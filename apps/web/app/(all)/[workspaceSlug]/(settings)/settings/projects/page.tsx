@@ -39,7 +39,7 @@ function ProjectSettingsPage() {
           onClick={() => toggleCreateProjectModal(true)}
           data-ph-element={PROJECT_TRACKER_ELEMENTS.EMPTY_STATE_CREATE_PROJECT_BUTTON}
         >
-          Start your first project
+          Comece seu primeiro projeto
         </Button>
       </div>
     </div>

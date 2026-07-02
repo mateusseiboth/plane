@@ -454,6 +454,7 @@
     "assignees": "Assignees",
     "assignee": "Assignee",
     "created_by": "Created by",
+    "subscriber": "Subscriber",
     "none": "None",
     "link": "Link",
     "estimates": "Estimates",
@@ -733,7 +734,14 @@
     "work_structure": "Work structure",
     "execution": "Execution",
     "administration": "Administration",
-    "permissions": "Permissions"
+    "permissions": "Permissions",
+    "save_view": "Save view",
+    "update_view": "Update view",
+    "invalid_filter": "Invalid filter",
+    "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
+    "all_filters_applied": "All filters applied",
+    "filter_configuration_error": "Filter configuration error",
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
   },
   "chart": {
     "x_axis": "X-axis",

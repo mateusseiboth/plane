@@ -231,7 +231,7 @@ export abstract class BaseWorkspaceRootStore implements IWorkspaceRootStore {
   updateWorkspaceLogo = (workspaceSlug: string, logoURL: string) => {
     const workspaceId = this.getWorkspaceBySlug(workspaceSlug)?.id;
     if (!workspaceId) {
-      throw new Error("Workspace not found");
+      throw new Error("Espaço de trabalho não encontrado");
     }
     runInAction(() => {
       set(this.workspaces[workspaceId], ["logo_url"], logoURL);

@@ -48,7 +48,7 @@ export const PluginAdminPage: React.FC = observer(() => {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Plugins</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Plugins extend the app with sidebar items and full pages. Manage dynamically loaded plugins for this instance.
+            Os plugins estendem o aplicativo com itens na barra lateral e páginas completas. Gerencie plugins carregados dinamicamente para esta instância.
           </p>
         </div>
         <button
@@ -68,7 +68,7 @@ export const PluginAdminPage: React.FC = observer(() => {
       <div className="mb-4 flex gap-3">
         <input
           type="text"
-          placeholder="Search by name…"
+          placeholder="Buscar por nome…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
@@ -78,7 +78,7 @@ export const PluginAdminPage: React.FC = observer(() => {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
         >
-          <option value="">All statuses</option>
+          <option value="">Todos os status</option>
           <option value="ACTIVE">Active</option>
           <option value="INACTIVE">Inactive</option>
           <option value="PENDING_APPROVAL">Pending</option>
@@ -88,7 +88,7 @@ export const PluginAdminPage: React.FC = observer(() => {
           onClick={refetch}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
         >
-          Refresh
+          Atualizar
         </button>
       </div>
 

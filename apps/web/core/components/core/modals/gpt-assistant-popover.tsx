@@ -93,11 +93,11 @@ export function GptAssistantPopover(props: Props) {
     const errorMessage =
       err?.status === 429
         ? error || "You have reached the maximum number of requests of 50 requests per month per user."
-        : error || "Some error occurred. Please try again.";
+        : error || "Ocorreu um erro. Tente novamente.";
 
     setToast({
       type: TOAST_TYPE.ERROR,
-      title: "Error!",
+      title: "Erro!",
       message: errorMessage,
     });
 
@@ -123,8 +123,8 @@ export function GptAssistantPopover(props: Props) {
   const handleInvalidTask = () => {
     setToast({
       type: TOAST_TYPE.ERROR,
-      title: "Error!",
-      message: "Please enter some task to get AI assistance.",
+      title: "Erro!",
+      message: "Insira alguma tarefa para obter assistência da IA.",
     });
   };
 
@@ -185,7 +185,7 @@ export function GptAssistantPopover(props: Props) {
         onClose();
       }}
     >
-      Use this response
+      Usar esta resposta
     </Button>
   );
 
@@ -288,7 +288,7 @@ export function GptAssistantPopover(props: Props) {
             )}
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={onClose}>
-                Close
+                Fechar
               </Button>
               <Button variant="primary" onClick={handleSubmit(handleAIResponse)} loading={isSubmitting}>
                 {generateResponseButtonText}

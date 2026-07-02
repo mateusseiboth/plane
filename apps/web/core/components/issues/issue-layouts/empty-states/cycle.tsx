@@ -58,15 +58,15 @@ export const CycleEmptyState = observer(function CycleEmptyState() {
       .then(() =>
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Success!",
-          message: "Work items added to the cycle successfully.",
+          title: "Sucesso!",
+          message: "Itens de trabalho adicionados ao ciclo com sucesso.",
         })
       )
       .catch(() =>
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Selected work items could not be added to the cycle. Please try again.",
+          title: "Erro!",
+          message: "Não foi possível adicionar os itens selecionados ao ciclo. Tente novamente.",
         })
       );
   };

@@ -45,7 +45,7 @@ export function ArchiveRestoreProjectModal(props: Props) {
       .then(() => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Archive success",
+          title: "Arquivado com sucesso",
           message: `${projectDetails.name} has been archived successfully`,
         });
         onClose();
@@ -55,8 +55,8 @@ export function ArchiveRestoreProjectModal(props: Props) {
       .catch(() =>
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Project could not be archived. Please try again.",
+          title: "Erro!",
+          message: "Não foi possível arquivar o projeto. Tente novamente.",
         })
       )
       .finally(() => setIsLoading(false));
@@ -68,7 +68,7 @@ export function ArchiveRestoreProjectModal(props: Props) {
       .then(() => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Restore success",
+          title: "Restaurado com sucesso",
           message: `You can find ${projectDetails.name} in your projects.`,
         });
         onClose();
@@ -78,8 +78,8 @@ export function ArchiveRestoreProjectModal(props: Props) {
       .catch(() =>
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Project could not be restored. Please try again.",
+          title: "Erro!",
+          message: "Não foi possível restaurar o projeto. Tente novamente.",
         })
       )
       .finally(() => setIsLoading(false));
@@ -98,7 +98,7 @@ export function ArchiveRestoreProjectModal(props: Props) {
         </p>
         <div className="mt-3 flex justify-end gap-2">
           <Button variant="secondary" size="lg" onClick={onClose}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             variant="primary"

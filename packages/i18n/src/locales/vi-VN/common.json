@@ -244,7 +244,7 @@
   "full_changelog": "Nhật ký thay đổi đầy đủ",
   "support": "Hỗ trợ",
   "forum": "Forum",
-  "powered_by_plane_pages": "Được hỗ trợ bởi Plane Pages",
+  "powered_by_plane_pages": "Được hỗ trợ bởi Avião Pages",
   "please_select_at_least_one_invitation": "Vui lòng chọn ít nhất một lời mời.",
   "please_select_at_least_one_invitation_description": "Vui lòng chọn ít nhất một lời mời để tham gia không gian làm việc.",
   "we_see_that_someone_has_invited_you_to_join_a_workspace": "Chúng tôi thấy có người đã mời bạn tham gia không gian làm việc",
@@ -439,6 +439,7 @@
     "assignees": "Người phụ trách",
     "assignee": "Người phụ trách",
     "created_by": "Người tạo",
+    "subscriber": "Người đăng ký",
     "none": "Không có",
     "link": "Liên kết",
     "estimates": "Ước tính",
@@ -717,7 +718,14 @@
     "developer": "Developer",
     "work_structure": "Work structure",
     "execution": "Execution",
-    "administration": "Administration"
+    "administration": "Administration",
+    "save_view": "Save view",
+    "update_view": "Update view",
+    "invalid_filter": "Invalid filter",
+    "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
+    "all_filters_applied": "All filters applied",
+    "filter_configuration_error": "Filter configuration error",
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
   },
   "chart": {
     "x_axis": "Trục X",
@@ -820,7 +828,7 @@
     "edited_by": "Được chỉnh sửa bởi"
   },
   "self_hosted_maintenance_message": {
-    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Plane không khởi động được. Điều này có thể do một hoặc nhiều dịch vụ Plane không khởi động được.",
+    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Avião không khởi động được. Điều này có thể do một hoặc nhiều dịch vụ Avião không khởi động được.",
     "choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure": "Chọn View Logs từ setup.sh và log Docker để chắc chắn."
   },
   "customize_navigation": "Tùy chỉnh điều hướng",
@@ -832,7 +840,7 @@
   "pin": "Ghim",
   "unpin": "Bỏ ghim",
   "workspace_dashboards": "Bảng điều khiển",
-  "pi_chat": "Plane AI",
+  "pi_chat": "Avião AI",
   "in_app": "Trong ứng dụng",
   "forms": "Biểu mẫu",
   "milestones": "Cột mốc",

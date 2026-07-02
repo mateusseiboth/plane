@@ -244,7 +244,7 @@
   "full_changelog": "完整更新日誌",
   "support": "支援",
   "forum": "Forum",
-  "powered_by_plane_pages": "由 Plane Pages 提供",
+  "powered_by_plane_pages": "由 Avião Pages 提供",
   "please_select_at_least_one_invitation": "請至少選擇一個邀請。",
   "please_select_at_least_one_invitation_description": "請至少選擇一個邀請加入工作區。",
   "we_see_that_someone_has_invited_you_to_join_a_workspace": "我們發現有人邀請您加入工作區",
@@ -439,6 +439,7 @@
     "assignees": "指派對象",
     "assignee": "指派對象",
     "created_by": "建立者",
+    "subscriber": "訂閱者",
     "none": "無",
     "link": "連結",
     "estimates": "評估",
@@ -717,7 +718,14 @@
     "developer": "Developer",
     "work_structure": "Work structure",
     "execution": "Execution",
-    "administration": "Administration"
+    "administration": "Administration",
+    "save_view": "Save view",
+    "update_view": "Update view",
+    "invalid_filter": "Invalid filter",
+    "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
+    "all_filters_applied": "All filters applied",
+    "filter_configuration_error": "Filter configuration error",
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
   },
   "chart": {
     "x_axis": "X 軸",
@@ -820,7 +828,7 @@
     "edited_by": "編輯者"
   },
   "self_hosted_maintenance_message": {
-    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Plane 未能啟動。這可能是因為一個或多個 Plane 服務啟動失敗。",
+    "plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start": "Avião 未能啟動。這可能是因為一個或多個 Avião 服務啟動失敗。",
     "choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure": "從 setup.sh 和 Docker 日誌中選擇 View Logs 來確認。"
   },
   "customize_navigation": "自訂導覽",

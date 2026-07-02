@@ -171,6 +171,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
     filters: [
       "priority",
       "state_group",
+      "state_id",
       "label_id",
       "assignee_id",
       "created_by_id",

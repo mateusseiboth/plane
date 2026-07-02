@@ -205,7 +205,7 @@ export class ProjectEstimateStore implements IProjectEstimateStore {
       this.loader = undefined;
       this.error = {
         status: "error",
-        message: "Error fetching estimates",
+        message: "Erro ao buscar estimativas",
       };
       throw error;
     }
@@ -245,7 +245,7 @@ export class ProjectEstimateStore implements IProjectEstimateStore {
       this.loader = undefined;
       this.error = {
         status: "error",
-        message: "Error fetching estimates",
+        message: "Erro ao buscar estimativas",
       };
       throw error;
     }
@@ -292,7 +292,7 @@ export class ProjectEstimateStore implements IProjectEstimateStore {
     } catch (error) {
       this.error = {
         status: "error",
-        message: "Error creating estimate",
+        message: "Erro ao criar estimativa",
       };
       throw error;
     }
@@ -311,7 +311,7 @@ export class ProjectEstimateStore implements IProjectEstimateStore {
     } catch (error) {
       this.error = {
         status: "error",
-        message: "Error deleting estimate",
+        message: "Erro ao excluir estimativa",
       };
       throw error;
     }

@@ -64,8 +64,8 @@ export function Invitations(props: Props) {
   return invitations && invitations.length > 0 ? (
     <div className="space-y-4">
       <div className="mx-auto space-y-1 py-4 text-center">
-        <h3 className="text-24 font-bold text-primary">You are invited!</h3>
-        <p className="font-medium text-placeholder">Accept the invites to collaborate with your team.</p>
+        <h3 className="text-24 font-bold text-primary">Você foi convidado!</h3>
+        <p className="font-medium text-placeholder">Aceite os convites para colaborar com sua equipe.</p>
       </div>
       <div>
         {invitations &&
@@ -110,7 +110,7 @@ export function Invitations(props: Props) {
             width="20px"
           />
         ) : (
-          "Continue to workspace"
+          "Continuar para o espaço de trabalho"
         )}
       </Button>
       <div className="mx-auto mt-4 flex items-center sm:w-96">
@@ -125,10 +125,10 @@ export function Invitations(props: Props) {
         onClick={handleCurrentViewChange}
         disabled={isJoiningWorkspaces}
       >
-        Create your own workspace
+        Crie seu próprio espaço de trabalho
       </Button>
     </div>
   ) : (
-    <div>No Invitations found</div>
+    <div>Nenhum convite encontrado</div>
   );
 }

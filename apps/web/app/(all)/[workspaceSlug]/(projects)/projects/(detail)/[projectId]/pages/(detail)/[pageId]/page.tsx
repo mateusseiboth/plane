@@ -161,7 +161,7 @@ function PageDetailsPage({ params }: Route.ComponentProps) {
   if (pageDetailsError || !canCurrentUserAccessPage)
     return (
       <div className="flex h-full w-full flex-col items-center justify-center">
-        <h3 className="text-center text-16 font-semibold">Page not found</h3>
+        <h3 className="text-center text-16 font-semibold">Página não encontrada</h3>
         <p className="mt-3 text-center text-13 text-secondary">
           The page you are trying to access doesn{"'"}t exist or you don{"'"}t have permission to view it.
         </p>
@@ -169,7 +169,7 @@ function PageDetailsPage({ params }: Route.ComponentProps) {
           href={`/${workspaceSlug}/projects/${projectId}/pages`}
           className={cn(getButtonStyling("secondary", "base"), "mt-5")}
         >
-          View other Pages
+          Ver outras páginas
         </Link>
       </div>
     );

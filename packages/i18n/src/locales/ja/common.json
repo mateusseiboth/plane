@@ -244,7 +244,7 @@
   "full_changelog": "完全な変更履歴",
   "support": "サポート",
   "forum": "Forum",
-  "powered_by_plane_pages": "Powered by Plane Pages",
+  "powered_by_plane_pages": "Powered by Avião Pages",
   "please_select_at_least_one_invitation": "少なくとも1つの招待を選択してください。",
   "please_select_at_least_one_invitation_description": "ワークスペースに参加するには少なくとも1つの招待を選択してください。",
   "we_see_that_someone_has_invited_you_to_join_a_workspace": "誰かがあなたをワークスペースに招待しています",
@@ -439,6 +439,7 @@
     "assignees": "担当者",
     "assignee": "担当者",
     "created_by": "作成者",
+    "subscriber": "購読者",
     "none": "なし",
     "link": "リンク",
     "estimates": "見積もり",
@@ -717,7 +718,14 @@
     "developer": "Developer",
     "work_structure": "Work structure",
     "execution": "Execution",
-    "administration": "Administration"
+    "administration": "Administration",
+    "save_view": "Save view",
+    "update_view": "Update view",
+    "invalid_filter": "Invalid filter",
+    "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
+    "all_filters_applied": "All filters applied",
+    "filter_configuration_error": "Filter configuration error",
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
   },
   "chart": {
     "x_axis": "エックス アクシス",

@@ -21,7 +21,7 @@ const linkMap = [
   },
   {
     key: "status",
-    label: "Status Page",
+    label: "Página de status",
     value: "https://status.plane.so/",
   },
   {
@@ -81,7 +81,7 @@ export function ProdErrorComponent({ onGoHome }: ProdErrorComponentProps) {
 
           <div className="flex items-center justify-start gap-6">
             <Button variant="primary" size="lg" onClick={onGoHome}>
-              Go to home
+              Ir para o início
             </Button>
           </div>
         </div>

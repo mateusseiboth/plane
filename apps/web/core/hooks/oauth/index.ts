@@ -10,7 +10,7 @@ import type { TOAuthConfigs } from "@plane/types";
 import { useCoreOAuthConfig } from "./core";
 import { useExtendedOAuthConfig } from "./extended";
 
-export const useOAuthConfig = (oauthActionText: string = "Continue"): TOAuthConfigs => {
+export const useOAuthConfig = (oauthActionText: string = "Continuar"): TOAuthConfigs => {
   const coreOAuthConfig = useCoreOAuthConfig(oauthActionText);
   const extendedOAuthConfig = useExtendedOAuthConfig(oauthActionText);
   return {

@@ -61,19 +61,20 @@ export const ConfirmProjectMemberRemove = observer(function ConfirmProjectMember
           </div>
           <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
             <h3 className="text-16 leading-6 font-medium text-primary">
-              {isCurrentUser ? "Leave project?" : `Remove ${data?.display_name}?`}
+              {isCurrentUser ? "Sair do projeto?" : `Remover ${data?.display_name}?`}
             </h3>
             <div className="mt-2">
               <p className="text-13 text-secondary">
                 {isCurrentUser ? (
                   <>
-                    Are you sure you want to leave the <span className="font-bold">{currentProjectDetails?.name}</span>{" "}
-                    project? You will be able to join the project if invited again or if it{"'"}s public.
+                    Tem certeza de que deseja sair do projeto{" "}
+                    <span className="font-bold">{currentProjectDetails?.name}</span>? Você poderá entrar novamente se for
+                    convidado ou se o projeto for público.
                   </>
                 ) : (
                   <>
-                    Are you sure you want to remove member- <span className="font-bold">{data?.display_name}</span>?
-                    They will no longer have access to this project. This action cannot be undone.
+                    Tem certeza de que deseja remover o membro <span className="font-bold">{data?.display_name}</span>?
+                    Ele não terá mais acesso a este projeto. Esta ação não pode ser desfeita.
                   </>
                 )}
               </p>
@@ -83,10 +84,10 @@ export const ConfirmProjectMemberRemove = observer(function ConfirmProjectMember
       </div>
       <div className="flex justify-end gap-2 p-4 sm:px-6">
         <Button variant="secondary" size="lg" onClick={handleClose}>
-          Cancel
+          Cancelar
         </Button>
         <Button variant="error-fill" size="lg" tabIndex={1} onClick={handleDeletion} loading={isDeleteLoading}>
-          {isCurrentUser ? (isDeleteLoading ? "Leaving..." : "Leave") : isDeleteLoading ? "Removing..." : "Remove"}
+          {isCurrentUser ? (isDeleteLoading ? "Saindo..." : "Sair") : isDeleteLoading ? "Removendo..." : "Remover"}
         </Button>
       </div>
     </ModalCore>

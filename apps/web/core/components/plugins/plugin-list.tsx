@@ -39,7 +39,7 @@ export const PluginList: React.FC<PluginListProps> = ({
     return (
       <div className="flex flex-col items-center justify-center py-16 text-neutral-400">
         <div className="text-4xl">🔌</div>
-        <p className="mt-3 text-sm">No plugins found. Upload your first plugin to get started.</p>
+        <p className="mt-3 text-sm">Nenhum plugin encontrado. Envie seu primeiro plugin para começar.</p>
       </div>
     );
   }
@@ -122,7 +122,7 @@ export const PluginList: React.FC<PluginListProps> = ({
                         }}
                         className="text-xs text-red-600 hover:underline dark:text-red-400"
                       >
-                        Remove
+                        Remover
                       </button>
                     )}
                   </div>

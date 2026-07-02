@@ -79,7 +79,7 @@ export const WorkspaceImageUploadModal = observer(function WorkspaceImageUploadM
       console.log("error", error);
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Error",
+        title: "Erro",
         message: error.error || "Something went wrong",
       });
     } finally {
@@ -161,7 +161,7 @@ export const WorkspaceImageUploadModal = observer(function WorkspaceImageUploadM
           </Button>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="lg" onClick={handleClose}>
-              Cancel
+              Cancelar
             </Button>
             <Button variant="primary" size="lg" onClick={handleSubmit} disabled={!image} loading={isImageUploading}>
               {isImageUploading ? "Uploading" : "Upload & Save"}

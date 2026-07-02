@@ -36,10 +36,10 @@ function ProjectViewIssuesPage({ params }: Route.ComponentProps) {
     return (
       <EmptyState
         image={emptyView}
-        title="View does not exist"
-        description="The view you are looking for does not exist or you don't have permission to view it."
+        title="A visualização não existe"
+        description="A visualização que você procura não existe ou você não tem permissão para vê-la."
         primaryButton={{
-          text: "View other views",
+          text: "Ver outras visualizações",
           onClick: () => router.push(`/${workspaceSlug}/projects/${projectId}/views`),
         }}
       />

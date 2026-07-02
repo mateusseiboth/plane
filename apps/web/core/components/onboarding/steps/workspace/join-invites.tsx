@@ -68,8 +68,8 @@ export function WorkspaceJoinInvitesStep(props: Props) {
   return invitations && invitations.length > 0 ? (
     <div className="flex flex-col gap-10">
       <CommonOnboardingHeader
-        title="Join invites or create a workspace"
-        description="All your work — unified."
+        title="Aceite convites ou crie um espaço de trabalho"
+        description="Todo o seu trabalho — unificado."
       />
       <div className="flex flex-col gap-3">
         {invitations &&
@@ -115,7 +115,7 @@ export function WorkspaceJoinInvitesStep(props: Props) {
               width="20px"
             />
           ) : (
-            "Continue"
+            "Continuar"
           )}
         </Button>
         <Button
@@ -125,11 +125,11 @@ export function WorkspaceJoinInvitesStep(props: Props) {
           onClick={handleCurrentViewChange}
           disabled={isJoiningWorkspaces}
         >
-          Create new workspace
+          Criar novo espaço de trabalho
         </Button>
       </div>
     </div>
   ) : (
-    <div>No Invitations found</div>
+    <div>Nenhum convite encontrado</div>
   );
 }

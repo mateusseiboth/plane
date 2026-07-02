@@ -84,7 +84,7 @@ export const WorkspaceCreateStep = observer(function WorkspaceCreateStep({
           });
           await fetchWorkspaces();
           await completeStep(workspaceResponse.id);
-          onComplete(formData.organization_size === "Just myself");
+          onComplete(formData.organization_size === "Apenas eu");
         } catch {
           setToast({
             type: TOAST_TYPE.ERROR,
@@ -132,7 +132,7 @@ export const WorkspaceCreateStep = observer(function WorkspaceCreateStep({
         void handleSubmit(handleCreateWorkspace)(e);
       }}
     >
-      <CommonOnboardingHeader title="Create your workspace" description="All your work — unified." />
+      <CommonOnboardingHeader title="Crie seu espaço de trabalho" description="Todo o seu trabalho — unificado." />
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
           <label
@@ -166,7 +166,7 @@ export const WorkspaceCreateStep = observer(function WorkspaceCreateStep({
                       shouldValidate: true,
                     });
                   }}
-                  placeholder="Enter workspace name"
+                  placeholder="Insira o nome do espaço de trabalho"
                   ref={ref}
                   className={cn(
                     "w-full rounded-md border border-strong bg-surface-1 px-3 py-2 text-secondary transition-all duration-200 placeholder:text-placeholder focus:border-transparent focus:ring-2 focus:ring-accent-strong focus:outline-none",

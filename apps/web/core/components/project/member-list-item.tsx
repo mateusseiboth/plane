@@ -52,16 +52,16 @@ export const ProjectMemberListItem = observer(function ProjectMemberListItem(pro
         .catch((err) => {
           setToast({
             type: TOAST_TYPE.ERROR,
-            title: "You can’t leave this project yet.",
-            message: err?.error || "Something went wrong. Please try again.",
+            title: "Você ainda não pode sair deste projeto.",
+            message: err?.error || "Algo deu errado. Tente novamente.",
           });
         });
     } else
       await removeMemberFromProject(workspaceSlug.toString(), projectId.toString(), memberId).catch((err) =>
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "You can't remove the member from this project yet.",
-          message: err?.error || "Something went wrong. Please try again.",
+          title: "Você ainda não pode remover o membro deste projeto.",
+          message: err?.error || "Algo deu errado. Tente novamente.",
         })
       );
   };

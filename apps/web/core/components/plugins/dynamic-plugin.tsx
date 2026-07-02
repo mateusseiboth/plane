@@ -116,7 +116,7 @@ const PluginSkeleton: React.FC = () => (
 
 const PluginErrorFallback: React.FC<{ message: string; pluginId: string }> = ({ message, pluginId }) => (
   <div className="flex flex-col items-center justify-center rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-    <p className="text-sm font-medium text-red-500">Plugin failed to load</p>
+    <p className="text-sm font-medium text-red-500">Falha ao carregar o plugin</p>
     <p className="mt-1 text-xs text-red-400">{message}</p>
     <p className="mt-2 font-mono text-xs text-custom-text-400">id: {pluginId}</p>
   </div>

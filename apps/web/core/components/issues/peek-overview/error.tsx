@@ -25,7 +25,7 @@ export function IssuePeekOverviewError(props: TIssuePeekOverviewError) {
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden">
       <div className="flex flex-shrink-0 justify-start">
-        <Tooltip tooltipContent="Close the peek view" isMobile={isMobile}>
+        <Tooltip tooltipContent="Fechar a visualização rápida" isMobile={isMobile}>
           <button onClick={removeRoutePeekId} className="m-5 h-5 w-5">
             <MoveRight className="h-4 w-4 text-tertiary hover:text-secondary" />
           </button>
@@ -35,8 +35,8 @@ export function IssuePeekOverviewError(props: TIssuePeekOverviewError) {
       <div className="h-full w-full">
         <EmptyState
           image={emptyIssue ?? undefined}
-          title="Work item does not exist"
-          description="The work item you are looking for does not exist, has been archived, or has been deleted."
+          title="O item de trabalho não existe"
+          description="O item de trabalho que você procura não existe, foi arquivado ou foi excluído."
         />
       </div>
     </div>

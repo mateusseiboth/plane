@@ -44,8 +44,8 @@ export function ArchiveCycleModal(props: Props) {
       .then(() => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
-          title: "Archive success",
-          message: "Your archives can be found in project archives.",
+          title: "Arquivado com sucesso",
+          message: "Seus arquivos podem ser encontrados nos arquivos do projeto.",
         });
         onClose();
         router.push(`/${workspaceSlug}/projects/${projectId}/cycles`);
@@ -54,8 +54,8 @@ export function ArchiveCycleModal(props: Props) {
       .catch(() => {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Cycle could not be archived. Please try again.",
+          title: "Erro!",
+          message: "Não foi possível arquivar o ciclo. Tente novamente.",
         });
       })
       .finally(() => setIsArchiving(false));
@@ -66,11 +66,11 @@ export function ArchiveCycleModal(props: Props) {
       <div className="px-5 py-4">
         <h3 className="text-18 font-medium 2xl:text-20">Archive cycle {cycleName}</h3>
         <p className="mt-3 text-13 text-secondary">
-          Are you sure you want to archive the cycle? All your archives can be restored later.
+          Tem certeza de que deseja arquivar o ciclo? Todos os seus arquivos podem ser restaurados depois.
         </p>
         <div className="mt-3 flex justify-end gap-2">
           <Button variant="secondary" size="lg" onClick={onClose}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="primary" size="lg" tabIndex={1} onClick={handleArchiveCycle} loading={isArchiving}>
             {isArchiving ? "Archiving" : "Archive"}

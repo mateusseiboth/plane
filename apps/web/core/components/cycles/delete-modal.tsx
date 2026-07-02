@@ -49,8 +49,8 @@ export const CycleDeleteModal = observer(function CycleDeleteModal(props: ICycle
           if (cycleId || peekCycle) router.push(`/${workspaceSlug}/projects/${projectId}/cycles`);
           setToast({
             type: TOAST_TYPE.SUCCESS,
-            title: "Success!",
-            message: "Cycle deleted successfully.",
+            title: "Sucesso!",
+            message: "Ciclo excluído com sucesso.",
           });
         })
         .catch((errors) => {
@@ -68,8 +68,8 @@ export const CycleDeleteModal = observer(function CycleDeleteModal(props: ICycle
     } catch {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Warning!",
-        message: "Something went wrong please try again later.",
+        title: "Aviso!",
+        message: "Algo deu errado, tente novamente mais tarde.",
       });
     }
 
@@ -82,10 +82,10 @@ export const CycleDeleteModal = observer(function CycleDeleteModal(props: ICycle
       handleSubmit={formSubmit}
       isSubmitting={loader}
       isOpen={isOpen}
-      title="Delete cycle"
+      title="Excluir ciclo"
       content={
         <>
-          Are you sure you want to delete cycle{' "'}
+          Tem certeza de que deseja excluir o ciclo{' "'}
           <span className="font-medium break-words text-primary">{cycle?.name}</span>
           {'"'}? All of the data related to the cycle will be permanently removed. This action cannot be undone.
         </>

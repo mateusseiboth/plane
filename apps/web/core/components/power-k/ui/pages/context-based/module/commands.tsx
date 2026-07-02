@@ -54,8 +54,8 @@ export const usePowerKModuleContextBasedActions = (): TPowerKCommandConfig[] => 
       await updateModuleDetails(workspaceSlug.toString(), projectId.toString(), moduleDetails.id, formData).catch(() => {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "Module could not be updated. Please try again.",
+          title: "Erro!",
+          message: "Não foi possível atualizar o módulo. Tente novamente.",
         });
       });
     },
@@ -83,7 +83,7 @@ export const usePowerKModuleContextBasedActions = (): TPowerKCommandConfig[] => 
     } catch {
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Some error occurred",
+        title: "Ocorreu um erro",
       });
     }
   }, [addModuleToFavorites, removeModuleFromFavorites, workspaceSlug, moduleDetails, isFavorite]);

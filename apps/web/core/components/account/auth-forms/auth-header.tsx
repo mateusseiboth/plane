@@ -27,30 +27,30 @@ type TAuthHeader = {
 const Titles = {
   [EAuthModes.SIGN_IN]: {
     [EAuthSteps.EMAIL]: {
-      header: "Work in all dimensions.",
-      subHeader: "Welcome back to Avião.",
+      header: "Trabalhe em todas as dimensões.",
+      subHeader: "Bem-vindo de volta ao Avião.",
     },
     [EAuthSteps.PASSWORD]: {
-      header: "Work in all dimensions.",
-      subHeader: "Welcome back to Avião.",
+      header: "Trabalhe em todas as dimensões.",
+      subHeader: "Bem-vindo de volta ao Avião.",
     },
     [EAuthSteps.UNIQUE_CODE]: {
-      header: "Work in all dimensions.",
-      subHeader: "Welcome back to Avião.",
+      header: "Trabalhe em todas as dimensões.",
+      subHeader: "Bem-vindo de volta ao Avião.",
     },
   },
   [EAuthModes.SIGN_UP]: {
     [EAuthSteps.EMAIL]: {
-      header: "Work in all dimensions.",
-      subHeader: "Create your Plane account.",
+      header: "Trabalhe em todas as dimensões.",
+      subHeader: "Crie sua conta Avião.",
     },
     [EAuthSteps.PASSWORD]: {
-      header: "Work in all dimensions.",
-      subHeader: "Create your Plane account.",
+      header: "Trabalhe em todas as dimensões.",
+      subHeader: "Crie sua conta Avião.",
     },
     [EAuthSteps.UNIQUE_CODE]: {
-      header: "Work in all dimensions.",
-      subHeader: "Create your Plane account.",
+      header: "Trabalhe em todas as dimensões.",
+      subHeader: "Crie sua conta Avião.",
     },
   },
 };

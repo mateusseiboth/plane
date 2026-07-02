@@ -7,8 +7,7 @@
 import Link from "next/link";
 import { GOD_MODE_URL } from "@plane/constants";
 // assets
-import GradientLogo from "@/app/assets/auth/gradient-logo.webp?url";
-import GradientBgLogo from "@/app/assets/auth/gradient-bg-logo.webp?url";
+import NewLogo from "@/app/assets/images/new-logo.png?url";
 import DefaultLayout from "@/layouts/default-layout";
 import { PlaneLockup } from "@plane/propel/icons";
 import { Button } from "@plane/propel/button";
@@ -19,14 +18,14 @@ export function InstanceNotReady() {
       <div className="relative z-10 flex h-screen w-screen overflow-hidden">
         {/* Background decorations */}
         <img
-          src={GradientBgLogo}
-          className="pointer-events-none absolute -top-24 -left-32 h-56 w-96 opacity-15"
+          src={NewLogo}
+          className="pointer-events-none absolute -top-24 -left-32 h-56 w-96 object-contain opacity-15"
           alt=""
           aria-hidden="true"
         />
         <img
-          src={GradientBgLogo}
-          className="pointer-events-none absolute -right-20 -bottom-16 h-56 w-96 opacity-15"
+          src={NewLogo}
+          className="pointer-events-none absolute -right-20 -bottom-16 h-56 w-96 object-contain opacity-15"
           alt=""
           aria-hidden="true"
         />
@@ -37,17 +36,18 @@ export function InstanceNotReady() {
           </div>
           <div className="flex h-full w-full flex-col items-center justify-center gap-7">
             <div className="flex flex-col items-center gap-11">
-              <img src={GradientLogo} className="h-24 w-40 object-contain" alt="Plane Logo" />
+              <img src={NewLogo} className="h-24 w-40 object-contain" alt="Logo" />
               <div className="flex max-w-124 flex-col items-center gap-3">
-                <h1 className="text-h2-semibold text-primary">Welcome to Avião</h1>
+                <h1 className="text-h2-semibold text-primary">Bem-vindo ao Avião</h1>
                 <p className="text-center text-body-md-regular text-secondary">
-                  Set up your instance and create your first workspace to begin managing projects and work.
+                  Configure sua instância e crie seu primeiro espaço de trabalho para começar a gerenciar projetos e
+                  tarefas.
                 </p>
               </div>
             </div>
             <a href={GOD_MODE_URL} className="w-72">
               <Button variant="primary" className="w-full" size="xl">
-                Get started
+                Começar
               </Button>
             </a>
           </div>

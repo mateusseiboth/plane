@@ -26,16 +26,16 @@ export const APP_URL = process.env.VITE_APP_URL || "https://app.plane.so/";
 export const SITE_NAME = `${APP_NAME} | ${APP_TAGLINE}`;
 export const SITE_TITLE = `${APP_NAME} | ${APP_TAGLINE}`;
 export const SITE_DESCRIPTION =
-  "Open-source project management tool to manage work items, cycles, and product roadmaps easily";
+  "Ferramenta de gestão de projetos de código aberto para gerenciar itens de trabalho, ciclos e roadmaps de produto com facilidade";
 export const SITE_KEYWORDS =
   "software development, plan, ship, software, accelerate, code management, release management, project management, work items tracking, agile, scrum, kanban, collaboration";
 export const SITE_URL = APP_URL;
 export const TWITTER_USER_NAME = `${APP_NAME} | ${APP_TAGLINE}`;
 
 // Publish (Spaces) metadata
-export const SPACE_SITE_NAME = `${APP_NAME} Publish | Make your boards and roadmaps public with one click.`;
-export const SPACE_SITE_TITLE = `${APP_NAME} Publish | Make your boards public with one-click`;
-export const SPACE_SITE_DESCRIPTION = `${APP_NAME} Publish is a customer feedback management tool.`;
+export const SPACE_SITE_NAME = `${APP_NAME} Publish | Torne seus quadros e roadmaps públicos com um clique.`;
+export const SPACE_SITE_TITLE = `${APP_NAME} Publish | Torne seus quadros públicos com um clique`;
+export const SPACE_SITE_DESCRIPTION = `${APP_NAME} Publish é uma ferramenta de gestão de feedback de clientes.`;
 export const SPACE_SITE_KEYWORDS =
   "software development, customer feedback, software, accelerate, code management, release management, project management, work items tracking, agile, scrum, kanban, collaboration";
 export const SPACE_SITE_URL = APP_URL;

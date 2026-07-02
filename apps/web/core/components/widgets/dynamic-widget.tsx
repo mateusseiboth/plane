@@ -105,7 +105,7 @@ const WidgetSkeleton: React.FC = () => (
 
 const WidgetErrorFallback: React.FC<{ message: string; widgetId: string }> = ({ message, widgetId }) => (
   <div className="flex flex-col items-center justify-center rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-    <p className="text-sm font-medium text-red-500">Widget failed to load</p>
+    <p className="text-sm font-medium text-red-500">Falha ao carregar o widget</p>
     <p className="mt-1 text-xs text-red-400">{message}</p>
     <p className="mt-2 font-mono text-xs text-custom-text-400">id: {widgetId}</p>
   </div>

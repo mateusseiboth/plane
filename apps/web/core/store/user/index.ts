@@ -140,7 +140,7 @@ export class UserStore implements IUserStore {
         this.isAuthenticated = false;
         this.error = {
           status: "user-fetch-error",
-          message: "Failed to fetch current user",
+          message: "Falha ao buscar o usuário atual",
         };
       });
       throw error;
@@ -173,7 +173,7 @@ export class UserStore implements IUserStore {
       runInAction(() => {
         this.error = {
           status: "user-update-error",
-          message: "Failed to update current user",
+          message: "Falha ao atualizar o usuário atual",
         };
       });
       throw error;
@@ -199,7 +199,7 @@ export class UserStore implements IUserStore {
       runInAction(() => {
         this.error = {
           status: "user-update-error",
-          message: "Failed to update current user",
+          message: "Falha ao atualizar o usuário atual",
         };
       });
       throw error;

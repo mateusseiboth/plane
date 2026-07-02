@@ -15,19 +15,19 @@ export const MONTHS_LIST: {
 } = {
   1: {
     shortTitle: "Jan",
-    title: "January",
+    title: "Janeiro",
   },
   2: {
     shortTitle: "Feb",
-    title: "February",
+    title: "Fevereiro",
   },
   3: {
     shortTitle: "Mar",
-    title: "March",
+    title: "Março",
   },
   4: {
     shortTitle: "Apr",
-    title: "April",
+    title: "Abril",
   },
   5: {
     shortTitle: "May",
@@ -35,31 +35,31 @@ export const MONTHS_LIST: {
   },
   6: {
     shortTitle: "Jun",
-    title: "June",
+    title: "Junho",
   },
   7: {
     shortTitle: "Jul",
-    title: "July",
+    title: "Julho",
   },
   8: {
     shortTitle: "Aug",
-    title: "August",
+    title: "Agosto",
   },
   9: {
     shortTitle: "Sep",
-    title: "September",
+    title: "Setembro",
   },
   10: {
     shortTitle: "Oct",
-    title: "October",
+    title: "Outubro",
   },
   11: {
     shortTitle: "Nov",
-    title: "November",
+    title: "Novembro",
   },
   12: {
     shortTitle: "Dec",
-    title: "December",
+    title: "Dezembro",
   },
 };
 
@@ -72,37 +72,37 @@ export const DAYS_LIST: {
 } = {
   1: {
     shortTitle: "Sun",
-    title: "Sunday",
+    title: "Domingo",
     value: EStartOfTheWeek.SUNDAY,
   },
   2: {
     shortTitle: "Mon",
-    title: "Monday",
+    title: "Segunda-feira",
     value: EStartOfTheWeek.MONDAY,
   },
   3: {
     shortTitle: "Tue",
-    title: "Tuesday",
+    title: "Terça-feira",
     value: EStartOfTheWeek.TUESDAY,
   },
   4: {
     shortTitle: "Wed",
-    title: "Wednesday",
+    title: "Quarta-feira",
     value: EStartOfTheWeek.WEDNESDAY,
   },
   5: {
     shortTitle: "Thu",
-    title: "Thursday",
+    title: "Quinta-feira",
     value: EStartOfTheWeek.THURSDAY,
   },
   6: {
     shortTitle: "Fri",
-    title: "Friday",
+    title: "Sexta-feira",
     value: EStartOfTheWeek.FRIDAY,
   },
   7: {
     shortTitle: "Sat",
-    title: "Saturday",
+    title: "Sábado",
     value: EStartOfTheWeek.SATURDAY,
   },
 };
@@ -115,10 +115,10 @@ export const CALENDAR_LAYOUTS: {
 } = {
   month: {
     key: "month",
-    title: "Month layout",
+    title: "Layout de mês",
   },
   week: {
     key: "week",
-    title: "Week layout",
+    title: "Layout de semana",
   },
 };

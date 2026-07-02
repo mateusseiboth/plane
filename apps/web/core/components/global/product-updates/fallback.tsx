@@ -27,7 +27,7 @@ export function ProductUpdatesFallback(props: TProductUpdatesFallbackProps) {
         align="center"
         actions={[
           {
-            label: "Go to changelog",
+            label: "Ir para o changelog",
             variant: "primary",
             onClick: () => window.open(changelogUrl, "_blank"),
           },

@@ -47,15 +47,15 @@ export const StateDelete = observer(function StateDelete(props: TStateDelete) {
       if (errorStatus.status === 400) {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
+          title: "Erro!",
           message:
-            "This state contains some work items within it, please move them to some other state to delete this state.",
+            "Este estado contém alguns itens de trabalho; mova-os para outro estado para poder excluí-lo.",
         });
       } else {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "Error!",
-          message: "State could not be deleted. Please try again.",
+          title: "Erro!",
+          message: "Não foi possível excluir o estado. Tente novamente.",
         });
       }
       setIsDelete(false);
@@ -69,10 +69,10 @@ export const StateDelete = observer(function StateDelete(props: TStateDelete) {
         handleSubmit={handleDeleteState}
         isSubmitting={isDelete}
         isOpen={isDeleteModal}
-        title="Delete State"
+        title="Excluir estado"
         content={
           <>
-            Are you sure you want to delete state- <span className="font-medium text-primary">{state?.name}</span>? All
+            Tem certeza de que deseja excluir o estado- <span className="font-medium text-primary">{state?.name}</span>? All
             of the data related to the state will be permanently removed. This action cannot be undone.
           </>
         }

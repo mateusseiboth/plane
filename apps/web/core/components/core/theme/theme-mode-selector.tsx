@@ -20,7 +20,7 @@ export const CustomThemeModeSelector = observer(function CustomThemeModeSelector
   return (
     <div>
       <h6 className="text-h6-medium">
-        Choose color mode<span className="text-danger-primary">*</span>
+        Escolher modo de cor<span className="text-danger-primary">*</span>
       </h6>
       <Controller
         control={control}

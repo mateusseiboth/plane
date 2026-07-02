@@ -20,6 +20,7 @@ import { useGlobalView } from "@/hooks/store/use-global-view";
 import { useLabel } from "@/hooks/store/use-label";
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
+import { useProjectState } from "@/hooks/store/use-project-state";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 // local imports
 import { WorkItemFiltersHOC } from "./base";
@@ -46,7 +47,11 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
     workspace: { getWorkspaceMemberIds },
   } = useMember();
   const { getWorkspaceLabelIds } = useLabel();
+  const { workspaceStates } = useProjectState();
   // derived values
+  // Cross-project view: expose every state across the workspace so the State
+  // filter lists the actual states (Pendência, A fazer, Em análise, …).
+  const workspaceStateIds = useMemo(() => workspaceStates?.map((state) => state.id), [workspaceStates]);
   const hasWorkspaceMemberLevelPermissions = allowPermissions(
     PROJECT_WORK_ROLES,
     EUserPermissionsLevel.WORKSPACE,
@@ -123,8 +128,8 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
       if (!viewDetails) {
         setToast({
           type: TOAST_TYPE.ERROR,
-          title: "We couldn't find the view",
-          message: "The view you're trying to update doesn't exist.",
+          title: "Não encontramos a visualização",
+          message: "A visualização que você está tentando atualizar não existe.",
         });
 
         return;
@@ -142,15 +147,15 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
         .then(() => {
           setToast({
             type: TOAST_TYPE.SUCCESS,
-            title: "Success!",
-            message: "Your view has been updated successfully.",
+            title: "Sucesso!",
+            message: "Sua visualização foi atualizada com sucesso.",
           });
         })
         .catch(() => {
           setToast({
             type: TOAST_TYPE.ERROR,
-            title: "Error!",
-            message: "Your view could not be updated. Please try again.",
+            title: "Erro!",
+            message: "Não foi possível atualizar sua visualização. Tente novamente.",
           });
         });
     },
@@ -191,6 +196,7 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
         memberIds={getWorkspaceMemberIds(workspaceSlug)}
         labelIds={getWorkspaceLabelIds(workspaceSlug)}
         projectIds={joinedProjectIds}
+        stateIds={workspaceStateIds}
         saveViewOptions={saveViewOptions}
         updateViewOptions={updateViewOptions}
       >
