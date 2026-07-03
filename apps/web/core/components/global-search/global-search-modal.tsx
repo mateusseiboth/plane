@@ -30,6 +30,7 @@ type SearchResult = {
   id: string;
   name: string;
   type: "issue" | "intake";
+  sequence_id?: number | null;
   legacy_ticket_number?: string | null;
   priority?: string | null;
   state?: { name: string; group: string } | null;
@@ -154,6 +155,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                         <div className="flex items-center gap-2 px-3 py-1.5">
                           {category === "Intakes" ? <Inbox className="h-3.5 w-3.5 text-tertiary" /> : <FileText className="h-3.5 w-3.5 text-tertiary" />}
                           <span className="text-11 font-semibold uppercase tracking-wider text-tertiary">{category}</span>
+                          <span className="rounded-full bg-surface-2 px-1.5 text-10 font-medium text-tertiary">{items.length}</span>
                         </div>
                         {items.map((item, idx) => {
                           const globalIdx = baseIdx + idx;
@@ -167,6 +169,13 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                                 globalIdx === selected ? "bg-accent-primary/10" : "hover:bg-surface-2"
                               )}
                             >
+                              {/* Work item identifier (e.g. SIARTW-32) */}
+                              {item.project?.identifier && item.sequence_id != null && (
+                                <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-10 font-mono font-semibold text-secondary">
+                                  {item.project.identifier}-{item.sequence_id}
+                                </span>
+                              )}
+
                               {/* Legacy ticket badge */}
                               {item.legacy_ticket_number && (
                                 <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
@@ -189,9 +198,9 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                                 <span className="shrink-0 text-11 text-tertiary">{item.state.name}</span>
                               )}
 
-                              {/* Project identifier */}
+                              {/* Project name */}
                               {item.project && (
-                                <span className="shrink-0 text-11 text-tertiary">{item.project.identifier}</span>
+                                <span className="max-w-40 shrink-0 truncate text-11 text-tertiary">{item.project.name}</span>
                               )}
 
                               <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-tertiary opacity-0 group-hover:opacity-100" />

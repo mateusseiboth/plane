@@ -9,7 +9,6 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
 // ui
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { Breadcrumbs, Header } from "@plane/ui";
@@ -19,7 +18,7 @@ import { InboxIssueCreateModalRoot } from "@/components/inbox/modals/create-moda
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 // plane web imports
 import { CommonProjectBreadcrumbs } from "@/plane-web/components/breadcrumbs/common";
 import { IntakeIcon } from "@plane/propel/icons";
@@ -30,17 +29,14 @@ export const ProjectInboxHeader = observer(function ProjectInboxHeader() {
   // router
   const { workspaceSlug, projectId } = useParams();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canCreateIntake } = useProjectRolePermissions(projectId?.toString());
   const { t } = useTranslation();
 
   const { currentProjectDetails, loader: currentProjectDetailsLoader } = useProject();
   const { loader } = useProjectInbox();
 
   // derived value
-  const isAuthorized = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.GUEST],
-    EUserPermissionsLevel.PROJECT
-  );
+  const isAuthorized = canCreateIntake;
 
   return (
     <Header>

@@ -267,8 +267,8 @@ export class WorkspaceService extends APIService {
         throw error?.response?.data;
       });
   }
-  async globalSearch(workspaceSlug: string, q: string): Promise<any> {
-    return this.get(`/api/workspaces/${workspaceSlug}/global-search/`, { params: { q } })
+  async globalSearch(workspaceSlug: string, q: string, limit = 250): Promise<any> {
+    return this.get(`/api/workspaces/${workspaceSlug}/global-search/`, { params: { q, limit } })
       .then((res) => res?.data?.results ?? {issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []})
       .catch(() => ({issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []}));
   }

@@ -15,6 +15,7 @@ import {
 } from "@plane/constants";
 import { useUserPermissions } from "@/hooks/store/user";
 import { EUserPermissionsLevel } from "@plane/constants";
+import { useWorkflowRole } from "@/hooks/use-workflow-role";
 
 export function useProjectRolePermissions(projectId?: string) {
   const { workspaceSlug, projectId: routerProjectId } = useParams();
@@ -28,8 +29,14 @@ export function useProjectRolePermissions(projectId?: string) {
       ? (getProjectRoleByWorkspaceSlugAndProjectId(slug, resolvedProjectId) as EUserProjectRoles | undefined)
       : undefined;
 
+  // Role configurável do workspace (tela "Funções e permissões"). Quando
+  // carregada, é a fonte da verdade — o mapa estático vira apenas fallback,
+  // igual ao resolveRole/canTransition do backend.
+  const workflowRole = useWorkflowRole(slug, role);
+
   const can = (action: EProjectAction): boolean => {
     if (!role) return false;
+    if (workflowRole) return workflowRole.permissions.includes(action);
     return canPerform(role, action);
   };
 
@@ -121,9 +128,25 @@ export function useProjectRolePermissions(projectId?: string) {
     canCancelAnything,
     canMoveUnrestricted,
 
-    /** Generic state transition check (group → group) */
-    canMoveToState: (fromGroup: string, toGroup: string): boolean => {
+    /**
+     * Generic state transition check. Com a role configurável carregada usa a
+     * tabela "Transições de etapa permitidas" (mesma lógica de canTransition no
+     * backend); sem ela, cai no mapa estático por grupo.
+     */
+    canMoveToState: (fromGroup: string, toGroup: string, fromName?: string, toName?: string): boolean => {
       if (!role) return false;
+      if (workflowRole) {
+        if (workflowRole.permissions.includes(EProjectAction.STATE_MOVE_UNRESTRICTED)) return true;
+        if (fromName && toName && fromName === toName) return true;
+        return workflowRole.transitions.some(
+          (t) =>
+            t.allowed &&
+            t.from_group === fromGroup &&
+            (t.from_state_name === null || !fromName || t.from_state_name === fromName) &&
+            t.to_group === toGroup &&
+            (t.to_state_name === null || !toName || t.to_state_name === toName)
+        );
+      }
       return canTransitionState(role, fromGroup, toGroup);
     },
 

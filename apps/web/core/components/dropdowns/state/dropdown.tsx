@@ -43,9 +43,9 @@ export const StateDropdown = observer(function StateDropdown(props: TWorkItemSta
       if (id === currentStateId) return true; // always allow current state
       const targetState = getStateById(id);
       if (!targetState) return false;
-      return canMoveToState(fromGroup, targetState.group);
+      return canMoveToState(fromGroup, targetState.group, currentState?.name, targetState.name);
     });
-  }, [allStateIds, currentStateId, fromGroup, canMoveToState, getStateById, role]);
+  }, [allStateIds, currentStateId, fromGroup, currentState?.name, canMoveToState, getStateById, role]);
 
   // fetch states if not provided
   const onDropdownOpen = async () => {

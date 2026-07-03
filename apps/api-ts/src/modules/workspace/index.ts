@@ -651,8 +651,23 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     // The web client sends `?q=`; older callers used `?query=`. Accept both.
-    const q = (((query.q ?? query.query) as string) ?? "").trim();
+    const qRaw = (((query.q ?? query.query) as string) ?? "").trim();
+    // Leading "#" is UI decoration for legacy ticket numbers ("#500-2026") —
+    // the column stores the bare value, so strip it before matching.
+    const q = qRaw.replace(/^#/, "");
     if (!q) return {results: {issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []}};
+
+    // Hard cap so "show everything" stays bounded; the client controls the page size.
+    const limit = Math.min(Math.max(Number(query.limit) || 100, 1), 250);
+
+    // "SIARTW-32" / "siartw 32" → project identifier + sequence number.
+    const identifierMatch = q.match(/^([A-Za-z][A-Za-z0-9]*)[-\s](\d{1,10})$/);
+    const identifierClause = identifierMatch
+      ? Prisma.sql`OR (upper(p.identifier) = upper(${identifierMatch[1]}) AND i.sequence_id = ${Number(identifierMatch[2])})`
+      : Prisma.empty;
+    const identifierBoost = identifierMatch
+      ? Prisma.sql`+ (CASE WHEN upper(p.identifier) = upper(${identifierMatch[1]}) AND i.sequence_id = ${Number(identifierMatch[2])} THEN 10 ELSE 0 END)`
+      : Prisma.empty;
 
     // ── Issues + intakes: native Postgres full-text + trigram search ──────────
     // - websearch_to_tsquery over a stemmed, accent-folded document (title +
@@ -691,7 +706,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         AND (
           ${ftsDoc} @@ websearch_to_tsquery(${cfg}, ${q})
           OR i.name % ${q}
+          OR i.name ILIKE '%' || ${q} || '%'
           OR i.legacy_ticket_number ILIKE '%' || ${q} || '%'
+          ${identifierClause}
           OR EXISTS (
             SELECT 1 FROM issue_comments c
             WHERE c.issue_id = i.id AND c.deleted_at IS NULL
@@ -701,8 +718,10 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       ORDER BY (
         ts_rank(${ftsDoc}, websearch_to_tsquery(${cfg}, ${q})) * 2
         + GREATEST(similarity(i.name, ${q}), similarity(coalesce(i.legacy_ticket_number,''), ${q}))
+        + (CASE WHEN i.legacy_ticket_number = ${q} THEN 10 ELSE 0 END)
+        ${identifierBoost}
       ) DESC, i.updated_at DESC
-      LIMIT 40
+      LIMIT ${limit}
     `);
 
     const [issueRows, projects, pages, cycles, modules] = await Promise.all([
@@ -736,7 +755,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
     return {
       results: {
-        issues: workItems.slice(0, 15).map((r) => ({
+        issues: workItems.map((r) => ({
           id: r.id,
           name: r.name,
           type: "issue",
@@ -746,10 +765,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           state: r.state_name ? {name: r.state_name, group: r.state_group} : null,
           project: toProject(r),
         })),
-        intakes: intakes.slice(0, 8).map((r) => ({
+        intakes: intakes.map((r) => ({
           id: r.id,
           name: r.name,
           type: "intake",
+          sequence_id: r.sequence_id,
           legacy_ticket_number: r.legacy_ticket_number ?? null,
           project: toProject(r),
         })),

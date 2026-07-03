@@ -7,7 +7,7 @@
 import { cloneDeep, set } from "lodash-es";
 import { action, makeObservable, observable, runInAction, computed } from "mobx";
 // plane imports
-import { EUserPermissions, API_BASE_URL } from "@plane/constants";
+import { API_BASE_URL, PROJECT_WORK_ROLES } from "@plane/constants";
 import type { IUser, TUserPermissions } from "@plane/types";
 // plane web imports
 import type { RootStore } from "@/plane-web/store/root.store";
@@ -270,7 +270,7 @@ export class UserStore implements IUserStore {
     const userPermissions =
       (allWorkspaceProjectRoles &&
         Object.keys(allWorkspaceProjectRoles)
-          .filter((key) => allWorkspaceProjectRoles[key] >= EUserPermissions.MEMBER)
+          .filter((key) => (PROJECT_WORK_ROLES as number[]).includes(allWorkspaceProjectRoles[key]))
           .reduce(
             (res: { [projectId: string]: number }, key: string) => ((res[key] = allWorkspaceProjectRoles[key]), res),
             {}
