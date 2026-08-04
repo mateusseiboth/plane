@@ -74,7 +74,7 @@ export function SingleExport({ service, refreshing }: Props) {
           )}
         </>
       ) : (
-        <div className="text-11 text-danger-primary">Expired</div>
+        <div className="text-11 text-danger-primary">Expirado</div>
       )}
     </div>
   );

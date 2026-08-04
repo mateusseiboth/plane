@@ -3,6 +3,7 @@
 @import "@plane/propel/styles/react-day-picker.css";
 @import "./power-k.css";
 @import "./emoji.css";
+@import "./print.css";
 @plugin "@tailwindcss/typography";
 
 /* stickies and editor colors */

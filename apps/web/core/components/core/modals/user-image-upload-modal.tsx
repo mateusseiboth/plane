@@ -96,7 +96,7 @@ export const UserImageUploadModal = observer(function UserImageUploadModal(props
   return (
     <ModalCore isOpen={isOpen} handleClose={handleClose} position={EModalPosition.CENTER} width={EModalWidth.XL}>
       <div className="space-y-5 px-5 py-8 sm:p-6">
-        <h3 className="text-16 leading-6 font-medium text-primary">Upload Image</h3>
+        <h3 className="text-16 leading-6 font-medium text-primary">Enviar imagem</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-center gap-3">
             <div
@@ -125,7 +125,7 @@ export const UserImageUploadModal = observer(function UserImageUploadModal(props
                 <div>
                   <UserCirclePropertyIcon className="mx-auto h-16 w-16 text-secondary" />
                   <span className="mt-2 block text-13 font-medium text-secondary">
-                    {isDragActive ? "Drop image here to upload" : "Drag & drop image here"}
+                    {isDragActive ? "Solte a imagem aqui para enviar" : "Drag & drop image here"}
                   </span>
                 </div>
               )}
@@ -137,7 +137,7 @@ export const UserImageUploadModal = observer(function UserImageUploadModal(props
             <p className="text-13 text-danger-primary">
               {fileRejections[0].errors[0].code === "file-too-large"
                 ? "The image size cannot exceed 5 MB."
-                : "Please upload a file in a valid format."}
+                : "Envie um arquivo em formato válido."}
             </p>
           )}
         </div>

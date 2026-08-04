@@ -7,7 +7,7 @@
 import {observer} from "mobx-react";
 import {useParams, useSearchParams} from "next/navigation";
 // components
-import {EUserPermissionsLevel, MODULE_TRACKER_ELEMENTS} from "@plane/constants";
+import {EUserPermissionsLevel, MODULE_TRACKER_ELEMENTS, PROJECT_WORK_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {EmptyStateDetailed} from "@plane/propel/empty-state";
 import {EUserProjectRoles} from "@plane/types";
@@ -40,14 +40,7 @@ export const ModulesListView = observer(function ModulesListView() {
   const projectModuleIds = projectId ? getProjectModuleIds(projectId.toString()) : undefined;
   const filteredModuleIds = projectId ? getFilteredModuleIds(projectId.toString()) : undefined;
   const canPerformEmptyStateActions = allowPermissions(
-    [
-      EUserProjectRoles.ADMIN,
-      EUserProjectRoles.GESTOR_PROJETO,
-      EUserProjectRoles.MEMBER,
-      EUserProjectRoles.TI,
-      EUserProjectRoles.QUALIDADE,
-      EUserProjectRoles.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT,
   );
 

@@ -32,7 +32,7 @@ export const IssueLinkActivity = observer(function IssueLinkActivity(props: TIss
       <>
         {activity.verb === "created" ? (
           <>
-            <span>added </span>
+            <span>adicionou </span>
             <a
               href={`${activity.new_value}`}
               target="_blank"
@@ -44,7 +44,7 @@ export const IssueLinkActivity = observer(function IssueLinkActivity(props: TIss
           </>
         ) : activity.verb === "updated" ? (
           <>
-            <span>updated the </span>
+            <span>atualizou o </span>
             <a
               href={`${activity.old_value}`}
               target="_blank"
@@ -56,7 +56,7 @@ export const IssueLinkActivity = observer(function IssueLinkActivity(props: TIss
           </>
         ) : (
           <>
-            <span>removed this </span>
+            <span>removeu este </span>
             <a
               href={`${activity.old_value}`}
               target="_blank"
@@ -67,7 +67,7 @@ export const IssueLinkActivity = observer(function IssueLinkActivity(props: TIss
             </a>
           </>
         )}
-        {showIssue && (activity.verb === "created" ? ` to ` : ` from `)}
+        {showIssue && (activity.verb === "created" ? ` em ` : ` de `)}
         {showIssue && <IssueLink activityId={activityId} />}.
       </>
     </IssueActivityBlockComponent>

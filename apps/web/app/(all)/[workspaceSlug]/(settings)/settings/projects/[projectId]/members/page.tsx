@@ -38,7 +38,7 @@ function MembersSettingsPage({ params }: Route.ComponentProps) {
     PROJECT_CONFIG_ROLES,
     EUserPermissionsLevel.PROJECT
   );
-  const isWorkspaceAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const isWorkspaceAdmin = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.WORKSPACE);
   const canPerformProjectMemberActions = isProjectMemberOrAdmin || isWorkspaceAdmin;
 
   if (workspaceUserInfo && !canPerformProjectMemberActions) {

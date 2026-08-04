@@ -273,3 +273,15 @@ export enum ECreateOrJoinWorkspaceViews {
   WORKSPACE_CREATE = "WORKSPACE_CREATE",
   WORKSPACE_JOIN = "WORKSPACE_JOIN",
 }
+
+/**
+ * Workspace-wide print settings (logo, header/footer texts) applied to every
+ * printable screen. Persisted under the `print_settings` workspace setting.
+ */
+export type TWorkspacePrintSettings = {
+  logo_asset: string | null;
+  logo_url: string | null;
+  header_text: string | null;
+  footer_text: string | null;
+  show_generated_at: boolean;
+};

@@ -10,7 +10,7 @@ import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
 import useSWR from "swr";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IProject, IUserLite, IWorkspace } from "@plane/types";
@@ -62,8 +62,7 @@ export const ProjectSettingsMemberDefaults = observer(function ProjectSettingsMe
 
   const { currentProjectDetails, fetchProjectDetails, updateProject } = useProject();
   // derived values
-  const isAdmin = allowPermissions(
-    [EUserPermissions.ADMIN],
+  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     currentProjectDetails?.id
@@ -184,7 +183,7 @@ export const ProjectSettingsMemberDefaults = observer(function ProjectSettingsMe
       {currentProjectDetails && (
         <DefaultSettingItem
           title="Acesso de convidado"
-          description="Isso permitirá que convidados tenham acesso de visualização a todos os itens de trabalho do projeto."
+          description="Isso permitirá que convidados tenham acesso de visualização a todos os chamados do projeto."
         >
           <div className="flex items-center justify-end">
             <ToggleSwitch

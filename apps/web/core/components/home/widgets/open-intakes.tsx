@@ -47,7 +47,7 @@ export function OpenIntakesWidget({ workspaceSlug }: THomeWidgetProps) {
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Inbox className="h-4 w-4 text-secondary" />
-          <span className="text-13 font-semibold">Intakes Abertos</span>
+          <span className="text-13 font-semibold">Solicitações abertas</span>
           {intakes.length > 0 && (
             <span className="rounded-full bg-accent-primary/15 px-1.5 py-0.5 text-10 font-semibold text-accent-primary">
               {intakes.length}
@@ -62,7 +62,7 @@ export function OpenIntakesWidget({ workspaceSlug }: THomeWidgetProps) {
         </Link>
       </div>
       {intakes.length === 0 && (
-        <p className="py-4 text-center text-13 text-secondary">Nenhum intake aberto.</p>
+        <p className="py-4 text-center text-13 text-secondary">Nenhuma solicitação aberta.</p>
       )}
       <div className="space-y-2">
         {intakes.slice(0, 6).map((intake) => (

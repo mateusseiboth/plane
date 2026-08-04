@@ -183,7 +183,7 @@ export function FavoriteFolder(props: Props) {
                       <Tooltip
                         isMobile={isMobile}
                         tooltipContent={
-                          favorite.sort_order === null ? "Join the project to rearrange" : "Drag to rearrange"
+                          favorite.sort_order === null ? "Entre no projeto para reordenar" : "Drag to rearrange"
                         }
                         position="top-end"
                         disabled={isDragging}
@@ -237,7 +237,7 @@ export function FavoriteFolder(props: Props) {
                   <CustomMenu.MenuItem onClick={() => setFolderToRename(favorite.id)}>
                     <div className="flex items-center justify-start gap-2">
                       <DraftIcon className="h-3.5 w-3.5 stroke-[1.5] text-tertiary" />
-                      <span>Rename Folder</span>
+                      <span>Renomear pasta</span>
                     </div>
                   </CustomMenu.MenuItem>
                 </CustomMenu>

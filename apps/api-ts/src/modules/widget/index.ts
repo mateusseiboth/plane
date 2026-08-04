@@ -29,7 +29,7 @@ function validateBundleMime(file: Blob) {
   const mime = (file as any).type as string | undefined;
   if (mime && !ALLOWED_BUNDLE_MIME.has(mime.split(";")[0].trim())) {
     throw Object.assign(
-      new Error(`Invalid bundle MIME type "${mime}". Expected application/javascript.`),
+      new Error(`Tipo MIME do bundle inválido: "${mime}". Esperado application/javascript.`),
       { status: 400 }
     );
   }
@@ -38,7 +38,7 @@ function validateBundleMime(file: Blob) {
 function requireInstanceAdmin(user: { isInstanceAdmin: boolean; isSuperuser: boolean }, set: any) {
   if (!user.isInstanceAdmin && !user.isSuperuser) {
     set.status = 403;
-    throw Object.assign(new Error("Only instance admins can manage widgets."), { status: 403 });
+    throw Object.assign(new Error("Apenas administradores da instância podem gerenciar widgets."), { status: 403 });
   }
 }
 
@@ -72,13 +72,13 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
     const ip = request.headers.get("x-forwarded-for") ?? user.id;
     if (!checkRateLimit(`widget-upload:${user.id}:${ip}`, 5, 60_000)) {
       set.status = 429;
-      return { detail: "Too many upload requests. Please wait before trying again." };
+      return { detail: "Muitas solicitações de envio. Aguarde antes de tentar novamente." };
     }
 
     const file: Blob | null = (body as any).file ?? null;
     if (!file) {
       set.status = 400;
-      return { detail: "Multipart field 'file' (widget.zip) is required." };
+      return { detail: "O campo multipart 'file' (widget.zip) é obrigatório." };
     }
 
     const zipBuffer = Buffer.from(await file.arrayBuffer());
@@ -91,7 +91,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
     });
     if (existing) {
       set.status = 409;
-      return { detail: `Widget "${manifest.name}" version ${manifest.version} already exists.` };
+      return { detail: `O widget "${manifest.name}" na versão ${manifest.version} já existe.` };
     }
 
     // Persist bundle to storage
@@ -151,7 +151,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
   // ── Get widget by ID ─────────────────────────────────────────────────────────
   .get("/:id", async ({ params: { id }, set }) => {
     const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget not found." }; }
+    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
     return serializeWidget(widget);
   })
 
@@ -160,7 +160,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
     requireInstanceAdmin(user, set);
     const b = body as any;
     const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget not found." }; }
+    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
 
     const data: any = {};
     if (b.name !== undefined) data.name = String(b.name).trim().slice(0, 255);
@@ -174,7 +174,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
   .post("/:id/activate", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
     const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget not found." }; }
+    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
     auditLog("widget.activate", user.id, id);
     const updated = await prisma.widget.update({ where: { id }, data: { status: "ACTIVE" } });
     return serializeWidget(updated);
@@ -184,7 +184,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
   .post("/:id/deactivate", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
     const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget not found." }; }
+    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
     auditLog("widget.deactivate", user.id, id);
     const updated = await prisma.widget.update({ where: { id }, data: { status: "INACTIVE" } });
     return serializeWidget(updated);
@@ -194,7 +194,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
   .delete("/:id", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
     const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget not found." }; }
+    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
     auditLog("widget.delete", user.id, id);
     await prisma.widget.update({
       where: { id },
@@ -210,8 +210,8 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
     const wildcard = (params as any)["*"] as string;
 
     const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget not found." }; }
-    if (widget.status !== "ACTIVE") { set.status = 403; return { detail: "Widget is not active." }; }
+    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
+    if (widget.status !== "ACTIVE") { set.status = 403; return { detail: "O widget não está ativo." }; }
 
     const key = wildcard ? `${widget.storageKey.split("/").slice(0, -1).join("/")}/${wildcard}` : widget.storageKey;
 
@@ -220,7 +220,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
       buffer = await widgetStorage.get(widget.storageKey);
     } catch {
       set.status = 404;
-      return { detail: "Asset not found." };
+      return { detail: "Arquivo não encontrado." };
     }
 
     return new Response(new Uint8Array(buffer), {
@@ -236,7 +236,7 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
   // ── List versions ─────────────────────────────────────────────────────────────
   .get("/:id/versions", async ({ params: { id }, set }) => {
     const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget not found." }; }
+    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
     const versions = await prisma.widgetVersion.findMany({
       where: { widgetId: id },
       orderBy: { createdAt: "desc" },

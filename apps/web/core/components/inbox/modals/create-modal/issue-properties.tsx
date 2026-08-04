@@ -147,7 +147,7 @@ export const InboxIssueProperties = observer(function InboxIssueProperties(props
             value={data?.cycle_id || ""}
             onChange={(cycleId) => handleData("cycle_id", cycleId)}
             projectId={projectId}
-            placeholder="Cycle"
+            placeholder="Ciclo"
             buttonVariant="border-with-text"
             tabIndex={getIndex("cycle_id")}
           />
@@ -161,7 +161,7 @@ export const InboxIssueProperties = observer(function InboxIssueProperties(props
             value={data?.module_ids || []}
             onChange={(moduleIds) => handleData("module_ids", moduleIds)}
             projectId={projectId}
-            placeholder="Modules"
+            placeholder="Módulos"
             buttonVariant="border-with-text"
             multiple
             showCount
@@ -209,7 +209,7 @@ export const InboxIssueProperties = observer(function InboxIssueProperties(props
             >
               <>
                 <CustomMenu.MenuItem className="!p-1" onClick={() => setParentIssueModalOpen(true)}>
-                  Alterar item de trabalho pai
+                  Alterar chamado pai
                 </CustomMenu.MenuItem>
                 <CustomMenu.MenuItem
                   className="!p-1"
@@ -218,7 +218,7 @@ export const InboxIssueProperties = observer(function InboxIssueProperties(props
                     setSelectedParentIssue(undefined);
                   }}
                 >
-                  Remover item de trabalho pai
+                  Remover chamado pai
                 </CustomMenu.MenuItem>
               </>
             </CustomMenu>

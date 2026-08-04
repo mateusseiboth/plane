@@ -35,16 +35,16 @@ export const getCoreAuthenticationModesMap: (
 }) => ({
   "unique-codes": {
     key: "unique-codes",
-    name: "Unique codes",
+    name: "Códigos únicos",
     description:
-      "Log in or sign up for Avião using codes sent via email. You need to have set up SMTP to use this method.",
+      "Entre ou cadastre-se no Avião usando códigos enviados por e-mail. É necessário ter o SMTP configurado para usar este método.",
     icon: <Mails className="h-6 w-6 p-0.5 text-tertiary" />,
     config: <EmailCodesConfiguration disabled={disabled} updateConfig={updateConfig} />,
     enabledConfigKey: "ENABLE_MAGIC_LINK_LOGIN",
   },
   "passwords-login": {
     key: "passwords-login",
-    name: "Passwords",
+    name: "Senhas",
     description: "Permita que membros criem contas com senhas e as usem com seus e-mails para entrar.",
     icon: <KeyRound className="h-6 w-6 p-0.5 text-tertiary" />,
     config: <PasswordLoginConfiguration disabled={disabled} updateConfig={updateConfig} />,
@@ -53,21 +53,21 @@ export const getCoreAuthenticationModesMap: (
   google: {
     key: "google",
     name: "Google",
-    description: "Allow members to log in or sign up for Avião with their Google accounts.",
-    icon: <img src={googleLogo} height={20} width={20} alt="Google Logo" />,
+    description: "Permita que membros entrem ou se cadastrem no Avião com suas contas do Google.",
+    icon: <img src={googleLogo} height={20} width={20} alt="Logo do Google" />,
     config: <GoogleConfiguration disabled={disabled} updateConfig={updateConfig} />,
     enabledConfigKey: "IS_GOOGLE_ENABLED",
   },
   github: {
     key: "github",
     name: "GitHub",
-    description: "Allow members to log in or sign up for Avião with their GitHub accounts.",
+    description: "Permita que membros entrem ou se cadastrem no Avião com suas contas do GitHub.",
     icon: (
       <img
         src={resolvedTheme === "dark" ? githubDarkModeImage : githubLightModeImage}
         height={20}
         width={20}
-        alt="GitHub Logo"
+        alt="Logo do GitHub"
       />
     ),
     config: <GithubConfiguration disabled={disabled} updateConfig={updateConfig} />,
@@ -77,7 +77,7 @@ export const getCoreAuthenticationModesMap: (
     key: "gitlab",
     name: "GitLab",
     description: "Permita que membros entrem ou se cadastrem no Avião com suas contas do GitLab.",
-    icon: <img src={gitlabLogo} height={20} width={20} alt="GitLab Logo" />,
+    icon: <img src={gitlabLogo} height={20} width={20} alt="Logo do GitLab" />,
     config: <GitlabConfiguration disabled={disabled} updateConfig={updateConfig} />,
     enabledConfigKey: "IS_GITLAB_ENABLED",
   },
@@ -85,7 +85,7 @@ export const getCoreAuthenticationModesMap: (
     key: "gitea",
     name: "Gitea",
     description: "Permita que membros entrem ou se cadastrem no Avião com suas contas do Gitea.",
-    icon: <img src={giteaLogo} height={20} width={20} alt="Gitea Logo" />,
+    icon: <img src={giteaLogo} height={20} width={20} alt="Logo do Gitea" />,
     config: <GiteaConfiguration disabled={disabled} updateConfig={updateConfig} />,
     enabledConfigKey: "IS_GITEA_ENABLED",
   },

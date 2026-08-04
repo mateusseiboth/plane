@@ -3,7 +3,8 @@
 // utils/permissions.ts (pure data + seed) so the seed scripts stay decoupled
 // from the @db singleton.
 import prisma from "@db";
-import {DEFAULT_ROLES, EProjectAction, roleCan, type EffectiveRole} from "@utils/permissions";
+import {EProjectAction, defaultRoleForLevel, roleCan, type EffectiveRole} from "@utils/permissions";
+import {getProjectOrFail} from "@utils/workspace";
 
 export {roleCan, EProjectAction};
 export type {EffectiveRole};
@@ -20,8 +21,50 @@ export async function resolveRole(workspaceId: string, roleIntOrLevel: number, w
   }
   const byLevel = await prisma.workflowRole.findFirst({where: {workspaceId, level: roleIntOrLevel, deletedAt: null}});
   if (byLevel) return {id: byLevel.id, key: byLevel.key, level: byLevel.level, permissions: (byLevel.permissions as string[]) ?? []};
-  const def = [...DEFAULT_ROLES].reverse().find((d) => roleIntOrLevel >= d.level) ?? DEFAULT_ROLES[0];
+  const def = defaultRoleForLevel(roleIntOrLevel);
   return {id: null, key: def.key, level: def.level, permissions: def.permissions};
+}
+
+/**
+ * Membership + action guard for every project-scoped mutation.
+ *
+ * The backend is the source of truth: UI gates are a convenience, so any route
+ * that changes project data must go through here (or an equivalent explicit
+ * check). Throws 403 when the caller is not a project member or when the
+ * effective (configurable) role lacks `action`.
+ */
+export async function requireProjectAction(
+  workspaceId: string,
+  projectId: string,
+  userId: string,
+  action: EProjectAction,
+): Promise<{project: any; member: any; role: EffectiveRole}> {
+  const {project, member} = await getProjectOrFail(workspaceId, projectId, userId);
+  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
+  if (!roleCan(role, action)) {
+    throw {status: 403, message: "Sua função não permite esta ação."};
+  }
+  return {project, member, role};
+}
+
+/**
+ * Guard for mutating a single record the caller may only own (comments,
+ * attachments, work items). Passes when the role holds `allAction`, or holds
+ * `ownAction` and is the record's author.
+ */
+export async function requireOwnOrAll(
+  workspaceId: string,
+  projectId: string,
+  userId: string,
+  ownerId: string | null | undefined,
+  ownAction: EProjectAction,
+  allAction: EProjectAction,
+): Promise<{project: any; member: any; role: EffectiveRole}> {
+  const {project, member} = await getProjectOrFail(workspaceId, projectId, userId);
+  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
+  if (roleCan(role, allAction)) return {project, member, role};
+  if (roleCan(role, ownAction) && ownerId && ownerId === userId) return {project, member, role};
+  throw {status: 403, message: "Sua função não permite esta ação."};
 }
 
 /** State ids a role may see within a project (null = no restriction / sees all). */

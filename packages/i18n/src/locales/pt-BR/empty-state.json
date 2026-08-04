@@ -2,7 +2,7 @@
   "common_empty_state": {
     "progress": {
       "title": "Ainda não há métricas de progresso para mostrar.",
-      "description": "Comece definindo valores de propriedades em itens de trabalho para ver as métricas de progresso aqui."
+      "description": "Comece definindo valores de propriedades em chamados para ver as métricas de progresso aqui."
     },
     "updates": {
       "title": "Ainda não há atualizações.",
@@ -36,9 +36,9 @@
       "description": "O projeto que você está procurando não existe."
     },
     "work_items": {
-      "title": "Comece com seu primeiro item de trabalho.",
-      "description": "Os itens de trabalho são os blocos de construção do seu projeto — atribua proprietários, defina prioridades e acompanhe o progresso facilmente.",
-      "cta_primary": "Criar seu primeiro item de trabalho"
+      "title": "Comece com seu primeiro chamado.",
+      "description": "Os chamados são os blocos de construção do seu projeto — atribua proprietários, defina prioridades e acompanhe o progresso facilmente.",
+      "cta_primary": "Criar seu primeiro chamado"
     },
     "cycles": {
       "title": "Agrupe e defina prazos para seu trabalho em Ciclos.",
@@ -46,21 +46,21 @@
       "cta_primary": "Definir seu primeiro ciclo"
     },
     "cycle_work_items": {
-      "title": "Nenhum item de trabalho para mostrar neste ciclo",
-      "description": "Crie itens de trabalho para começar a monitorar o progresso da sua equipe neste ciclo e atingir seus objetivos no prazo.",
-      "cta_primary": "Criar item de trabalho",
-      "cta_secondary": "Adicionar item de trabalho existente"
+      "title": "Nenhum chamado para mostrar neste ciclo",
+      "description": "Crie chamados para começar a monitorar o progresso da sua equipe neste ciclo e atingir seus objetivos no prazo.",
+      "cta_primary": "Criar chamado",
+      "cta_secondary": "Adicionar chamado existente"
     },
     "modules": {
       "title": "Mapeie as metas do seu projeto para Módulos e acompanhe facilmente.",
-      "description": "Os módulos são compostos por itens de trabalho interconectados. Eles auxiliam no monitoramento do progresso através das fases do projeto, cada uma com prazos e análises específicas para indicar o quão perto você está de alcançar essas fases.",
+      "description": "Os módulos são compostos por chamados interconectados. Eles auxiliam no monitoramento do progresso através das fases do projeto, cada uma com prazos e análises específicas para indicar o quão perto você está de alcançar essas fases.",
       "cta_primary": "Definir seu primeiro módulo"
     },
     "module_work_items": {
-      "title": "Nenhum item de trabalho para mostrar neste Módulo",
-      "description": "Crie itens de trabalho para começar a monitorar este módulo.",
-      "cta_primary": "Criar item de trabalho",
-      "cta_secondary": "Adicionar item de trabalho existente"
+      "title": "Nenhum chamado para mostrar neste Módulo",
+      "description": "Crie chamados para começar a monitorar este módulo.",
+      "cta_primary": "Criar chamado",
+      "cta_secondary": "Adicionar chamado existente"
     },
     "views": {
       "title": "Salve visualizações personalizadas para seu projeto",
@@ -68,18 +68,18 @@
       "cta_primary": "Criar visualização"
     },
     "no_work_items_in_project": {
-      "title": "Ainda não há itens de trabalho no projeto",
-      "description": "Adicione itens de trabalho ao seu projeto e divida seu trabalho em partes rastreáveis com visualizações.",
-      "cta_primary": "Adicionar item de trabalho"
+      "title": "Ainda não há chamados no projeto",
+      "description": "Adicione chamados ao seu projeto e divida seu trabalho em partes rastreáveis com visualizações.",
+      "cta_primary": "Adicionar chamado"
     },
     "work_item_filter": {
-      "title": "Nenhum item de trabalho encontrado",
+      "title": "Nenhum chamado encontrado",
       "description": "Seu filtro atual não retornou nenhum resultado. Tente alterar os filtros.",
-      "cta_primary": "Adicionar item de trabalho"
+      "cta_primary": "Adicionar chamado"
     },
     "pages": {
       "title": "Documente tudo — de notas a PRDs",
-      "description": "As páginas permitem que você capture e organize informações em um só lugar. Escreva notas de reuniões, documentação de projetos e PRDs, incorpore itens de trabalho e estruture-os com componentes prontos para uso.",
+      "description": "As páginas permitem que você capture e organize informações em um só lugar. Escreva notas de reuniões, documentação de projetos e PRDs, incorpore chamados e estruture-os com componentes prontos para uso.",
       "cta_primary": "Criar sua primeira Página"
     },
     "archive_pages": {
@@ -87,12 +87,12 @@
       "description": "Arquive páginas que não estão no seu radar. Acesse-as aqui quando necessário."
     },
     "intake_sidebar": {
-      "title": "Registrar solicitações de Entrada",
+      "title": "Registre suas solicitações",
       "description": "Envie novas solicitações para serem revisadas, priorizadas e rastreadas dentro do fluxo de trabalho do seu projeto.",
-      "cta_primary": "Criar solicitação de Entrada"
+      "cta_primary": "Criar solicitação"
     },
     "intake_main": {
-      "title": "Selecione um item de trabalho de Entrada para ver seus detalhes"
+      "title": "Selecione uma solicitação para ver seus detalhes"
     },
     "epics": {
       "title": "Transforme projetos complexos em épicos estruturados.",
@@ -101,9 +101,9 @@
       "cta_secondary": "Documentação"
     },
     "epic_work_items": {
-      "title": "Você ainda não adicionou itens de trabalho a este épico.",
-      "description": "Comece adicionando alguns itens de trabalho a este épico e acompanhe-os aqui.",
-      "cta_secondary": "Adicionar itens de trabalho"
+      "title": "Você ainda não adicionou chamados a este épico.",
+      "description": "Comece adicionando alguns chamados a este épico e acompanhe-os aqui.",
+      "cta_secondary": "Adicionar chamados"
     }
   },
   "workspace_empty_state": {
@@ -112,8 +112,8 @@
       "description": "Você pode arquivar épicos concluídos ou cancelados. Encontre-os aqui após o arquivamento."
     },
     "archive_work_items": {
-      "title": "Ainda não há itens de trabalho arquivados",
-      "description": "Manualmente ou por meio de automação, você pode arquivar itens de trabalho concluídos ou cancelados. Encontre-os aqui uma vez arquivados.",
+      "title": "Ainda não há chamados arquivados",
+      "description": "Manualmente ou por meio de automação, você pode arquivar chamados concluídos ou cancelados. Encontre-os aqui uma vez arquivados.",
       "cta_primary": "Configurar automação"
     },
     "archive_cycles": {
@@ -128,26 +128,26 @@
       "title": "Mantenha referências, recursos ou documentos importantes à mão para o seu trabalho"
     },
     "inbox_sidebar_all": {
-      "title": "As atualizações dos seus itens de trabalho inscritos aparecerão aqui"
+      "title": "As atualizações dos seus chamados inscritos aparecerão aqui"
     },
     "inbox_sidebar_mentions": {
-      "title": "As menções aos seus itens de trabalho aparecerão aqui"
+      "title": "As menções aos seus chamados aparecerão aqui"
     },
     "your_work_by_priority": {
-      "title": "Ainda não há item de trabalho atribuído"
+      "title": "Ainda não há chamado atribuído"
     },
     "your_work_by_state": {
-      "title": "Ainda não há item de trabalho atribuído"
+      "title": "Ainda não há chamado atribuído"
     },
     "views": {
       "title": "Ainda não há Visualizações",
-      "description": "Adicione itens de trabalho ao seu projeto e use visualizações para filtrar, classificar e monitorar o progresso sem esforço.",
-      "cta_primary": "Adicionar item de trabalho"
+      "description": "Adicione chamados ao seu projeto e use visualizações para filtrar, classificar e monitorar o progresso sem esforço.",
+      "cta_primary": "Adicionar chamado"
     },
     "drafts": {
-      "title": "Itens de trabalho semi-escritos",
-      "description": "Para experimentar isso, comece a adicionar um item de trabalho e deixe-o no meio do caminho ou crie seu primeiro rascunho abaixo. 😉",
-      "cta_primary": "Criar item de trabalho de rascunho"
+      "title": "Chamados semi-escritos",
+      "description": "Para experimentar isso, comece a adicionar um chamado e deixe-o no meio do caminho ou crie seu primeiro rascunho abaixo. 😉",
+      "cta_primary": "Criar chamado de rascunho"
     },
     "projects_archived": {
       "title": "Nenhum projeto arquivado",
@@ -157,7 +157,7 @@
       "title": "Crie projetos para visualizar as métricas do projeto aqui."
     },
     "analytics_work_items": {
-      "title": "Crie projetos com itens de trabalho e responsáveis para começar a rastrear desempenho, progresso e impacto da equipe aqui."
+      "title": "Crie projetos com chamados e responsáveis para começar a rastrear desempenho, progresso e impacto da equipe aqui."
     },
     "analytics_no_cycle": {
       "title": "Crie ciclos para organizar o trabalho em fases com prazo definido e acompanhar o progresso em sprints."
@@ -166,7 +166,7 @@
       "title": "Crie módulos para organizar seu trabalho e acompanhar o progresso em diferentes estágios."
     },
     "analytics_no_intake": {
-      "title": "Configure a entrada para gerenciar solicitações recebidas e rastrear como elas são aceitas e rejeitadas"
+      "title": "Configure as Solicitações para gerenciar os pedidos recebidos e acompanhar como eles são aceitos e recusados"
     },
     "home_widget_stickies": {
       "title": "Anote uma ideia, capture um momento de inspiração ou registre um lampejo. Adicione um adesivo para começar."
@@ -188,7 +188,7 @@
     },
     "wiki": {
       "title": "Escreva uma nota, um documento ou uma base de conhecimento completa.",
-      "description": "As páginas são espaço para capturar pensamentos no Avião. Anote notas de reuniões, formate-as facilmente, incorpore itens de trabalho, organize-as usando uma biblioteca de componentes e mantenha todas no contexto do seu projeto.",
+      "description": "As páginas são espaço para capturar pensamentos no Avião. Anote notas de reuniões, formate-as facilmente, incorpore chamados, organize-as usando uma biblioteca de componentes e mantenha todas no contexto do seu projeto.",
       "cta_primary": "Criar sua página"
     },
     "project_overview_state_sidebar": {
@@ -199,12 +199,12 @@
   "settings_empty_state": {
     "estimates": {
       "title": "Ainda não há estimativas",
-      "description": "Defina como sua equipe mede o esforço e acompanhe-o consistentemente em todos os itens de trabalho.",
+      "description": "Defina como sua equipe mede o esforço e acompanhe-o consistentemente em todos os chamados.",
       "cta_primary": "Adicionar sistema de estimativas"
     },
     "labels": {
       "title": "Ainda não há etiquetas",
-      "description": "Crie etiquetas personalizadas para categorizar e gerenciar efetivamente seus itens de trabalho.",
+      "description": "Crie etiquetas personalizadas para categorizar e gerenciar efetivamente seus chamados.",
       "cta_primary": "Criar sua primeira etiqueta"
     },
     "exports": {
@@ -227,43 +227,43 @@
       "cta_primary": "Adicionar webhook"
     },
     "work_item_types": {
-      "title": "Crie e personalize tipos de itens de trabalho",
-      "description": "Defina tipos de itens de trabalho exclusivos para seu projeto. Cada tipo pode ter suas próprias propriedades, fluxos de trabalho e campos - adaptados às necessidades do seu projeto e equipe.",
+      "title": "Crie e personalize tipos de chamados",
+      "description": "Defina tipos de chamados exclusivos para seu projeto. Cada tipo pode ter suas próprias propriedades, fluxos de trabalho e campos - adaptados às necessidades do seu projeto e equipe.",
       "cta_primary": "Ativar"
     },
     "work_item_type_properties": {
-      "title": "Defina a propriedade e os detalhes que você deseja capturar para este tipo de item de trabalho. Personalize-o para corresponder ao fluxo de trabalho do seu projeto.",
+      "title": "Defina a propriedade e os detalhes que você deseja capturar para este tipo de chamado. Personalize-o para corresponder ao fluxo de trabalho do seu projeto.",
       "cta_secondary": "Adicionar propriedade"
     },
     "templates": {
       "title": "Ainda não há modelos",
-      "description": "Reduza o tempo de configuração criando modelos para itens de trabalho e páginas — e comece novo trabalho em segundos.",
+      "description": "Reduza o tempo de configuração criando modelos para chamados e páginas — e comece novo trabalho em segundos.",
       "cta_primary": "Criar seu primeiro modelo"
     },
     "recurring_work_items": {
-      "title": "Ainda não há item de trabalho recorrente",
-      "description": "Configure itens de trabalho recorrentes para automatizar tarefas repetidas e manter-se no cronograma sem esforço.",
-      "cta_primary": "Criar item de trabalho recorrente"
+      "title": "Ainda não há chamado recorrente",
+      "description": "Configure chamados recorrentes para automatizar tarefas repetidas e manter-se no cronograma sem esforço.",
+      "cta_primary": "Criar chamado recorrente"
     },
     "worklogs": {
       "title": "Acompanhe folhas de ponto para todos os membros",
-      "description": "Registre tempo em itens de trabalho para ver folhas de ponto detalhadas para qualquer membro da equipe em projetos."
+      "description": "Registre tempo em chamados para ver folhas de ponto detalhadas para qualquer membro da equipe em projetos."
     },
     "group_syncing": {
       "title": "Ainda não há mapeamentos de grupos"
     },
     "template_setting": {
       "title": "Ainda não há modelos",
-      "description": "Reduza o tempo de configuração criando modelos para projetos, itens de trabalho e páginas — e comece novo trabalho em segundos.",
+      "description": "Reduza o tempo de configuração criando modelos para projetos, chamados e páginas — e comece novo trabalho em segundos.",
       "cta_primary": "Criar modelo"
     },
     "workflows": {
       "title": "Ainda não há fluxos de trabalho",
-      "description": "Crie fluxos de trabalho para gerenciar o progresso dos seus itens de trabalho.",
+      "description": "Crie fluxos de trabalho para gerenciar o progresso dos seus chamados.",
       "cta_primary": "Adicionar novo fluxo de trabalho",
       "states": {
         "title": "Adicionar estados",
-        "description": "Selecione os estados pelos quais o item de trabalho progride."
+        "description": "Selecione os estados pelos quais o chamado progride."
       }
     }
   }

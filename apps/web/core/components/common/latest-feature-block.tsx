@@ -21,7 +21,7 @@ export function LatestFeatureBlock() {
         <p className="text-left text-13 text-primary">
           Pages gets a facelift! Write anything and use Galileo to help you start.{" "}
           <Link href="https://plane.so/changelog" target="_blank" rel="noopener noreferrer">
-            <span className="text-13 font-medium underline hover:cursor-pointer">Learn more</span>
+            <span className="text-13 font-medium underline hover:cursor-pointer">Saiba mais</span>
           </Link>
         </p>
       </div>

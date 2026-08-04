@@ -42,6 +42,9 @@ pnpm-debug.log*
 # Turborepo
 .turbo
 
+# Anexos do chat gravados em disco (storage local do chat-backend)
+apps/chat-backend/media/
+
 ## Django ##
 venv
 .venv
@@ -118,3 +121,5 @@ packages/i18n/src/types/keys.generated.ts
 /advisories.md
 old_intranet/
 .deploy/
+# Prisma client gerado por app (evita colisao no store compartilhado do pnpm)
+apps/chat-backend/generated/

@@ -205,7 +205,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
     });
     if (!visit) {
       set.status = 404;
-      return {detail: "Not found."};
+      return {detail: "Não encontrado."};
     }
     return serializeVisit(visit);
   })
@@ -273,13 +273,15 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
     }
   })
 
-  .delete("/:visit_id/issues/:issue_id/", async ({params: {visit_id, issue_id}, set}) => {
+  .delete("/:visit_id/issues/:issue_id/", async ({params: {slug, visit_id, issue_id}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
     const link = await prisma.technicalVisitIssue.findFirst({
       where: {visitId: visit_id, issueId: issue_id, deletedAt: null},
     });
     if (!link) {
       set.status = 404;
-      return {detail: "Not found."};
+      return {detail: "Não encontrado."};
     }
     await prisma.technicalVisitIssue.update({where: {id: link.id}, data: {deletedAt: new Date()}});
     set.status = 204;

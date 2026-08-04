@@ -162,7 +162,7 @@ export const WorkspaceInvitationsListItem = observer(function WorkspaceInvitatio
                 setToast({
                   type: TOAST_TYPE.ERROR,
                   title: "Erro!",
-                  message: error?.error || "An error occurred while updating member role. Please try again.",
+                  message: error?.error || "Ocorreu um erro ao atualizar a função do membro. Tente novamente.",
                 });
               });
             }}

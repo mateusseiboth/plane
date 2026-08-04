@@ -14,7 +14,42 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { nextSequenceId } from "@utils/sequence";
+import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, getProjectOrFail } from "@utils/workspace";
+
+
+/**
+ * Views no formato que o frontend consome (`IProjectView`, snake_case, com
+ * `project`/`workspace` em vez de `projectId`/`workspaceId`). Devolver o objeto
+ * do Prisma cru faz a tela de views perder projeto, filtros e travamento.
+ */
+function serializeView(v: any) {
+  return {
+    id: v.id,
+    name: v.name,
+    description: v.description ?? "",
+    access: v.access,
+    filters: v.filters ?? {},
+    rich_filters: v.filters ?? {},
+    query: v.filters ?? {},
+    query_data: v.queryData ?? {},
+    display_filters: (v.queryData as any)?.display_filters ?? {},
+    display_properties: (v.queryData as any)?.display_properties ?? {},
+    logo_props: (v.queryData as any)?.logo_props,
+    is_global: v.isGlobal,
+    is_locked: (v.queryData as any)?.is_locked ?? false,
+    is_favorite: false,
+    project: v.projectId ?? null,
+    project_id: v.projectId ?? null,
+    workspace: v.workspaceId,
+    workspace_id: v.workspaceId,
+    owned_by: v.createdById ?? null,
+    created_by: v.createdById ?? null,
+    updated_by: v.createdById ?? null,
+    created_at: v.createdAt,
+    updated_at: v.updatedAt,
+  };
+}
 
 export const premiumModule = new Elysia()
   .use(authPlugin)
@@ -38,7 +73,7 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
-    if (!b.duration_minutes || !b.logged_date) { set.status = 400; return { detail: "duration_minutes and logged_date are required." }; }
+    if (!b.duration_minutes || !b.logged_date) { set.status = 400; return { detail: "duration_minutes e logged_date são obrigatórios." }; }
 
     const log = await prisma.issueTimeLog.create({
       data: {
@@ -87,7 +122,7 @@ export const premiumModule = new Elysia()
   .post("/workspaces/:slug/projects/:project_id/intakes/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const intake = await prisma.intake.create({
       data: { projectId: project_id, workspaceId: ws.id, name: b.name ?? "Intake", description: b.description ?? "", createdById: user.id },
@@ -175,7 +210,7 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.source) { set.status = 400; return { detail: "source is required (jira|linear|asana|clickup|github|notion|confluence|csv)." }; }
+    if (!b.source) { set.status = 400; return { detail: "source é obrigatório (jira|linear|asana|clickup|github|notion|confluence|csv)." }; }
     const job = await prisma.importJob.create({
       data: {
         workspaceId: ws.id, projectId: b.project_id ?? null, source: b.source,
@@ -219,26 +254,6 @@ export const premiumModule = new Elysia()
   // AUDIT LOGS
   // ─────────────────────────────────────────────────────────────────────────
 
-  .get("/workspaces/:slug/audit-logs/", async ({ params: { slug }, user, query }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    const m = await requireWorkspaceWriter(ws.id, user.id);
-    if (m.role < 20) return { detail: "Only admins can view audit logs." };
-
-    const where: any = { workspaceId: ws.id };
-    if (query.entity) where.entity = query.entity;
-    if (query.entity_id) where.entityId = query.entity_id;
-    if (query.actor_id) where.actorId = query.actor_id;
-    if (query.action) where.action = query.action;
-    if (query.date_from) where.createdAt = { gte: new Date(query.date_from as string) };
-    if (query.date_to) where.createdAt = { ...where.createdAt, lte: new Date(query.date_to as string) };
-
-    return paginate({
-      query: (skip, take) => prisma.auditLog.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
-      count: () => prisma.auditLog.count({ where }),
-      cursor: query.cursor as string | undefined,
-    });
-  })
-
   // ─────────────────────────────────────────────────────────────────────────
   // ISSUE TYPES & CUSTOM PROPERTIES
   // ─────────────────────────────────────────────────────────────────────────
@@ -257,7 +272,7 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const type = await prisma.issueType.create({
       data: { workspaceId: ws.id, projectId: b.project_id ?? null, name: b.name, description: b.description ?? "", isEpic: b.is_epic ?? false, level: b.level ?? 0, isDefault: b.is_default ?? false },
     });
@@ -277,7 +292,7 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.name || !b.property_type) { set.status = 400; return { detail: "name and property_type are required." }; }
+    if (!b.name || !b.property_type) { set.status = 400; return { detail: "name e property_type são obrigatórios." }; }
     const prop = await prisma.issueProperty.create({
       data: { workspaceId: ws.id, issueTypeId: b.issue_type_id ?? null, name: b.name, displayName: b.display_name ?? b.name, propertyType: b.property_type, isRequired: b.is_required ?? false, isMulti: b.is_multi ?? false, defaultValue: b.default_value ?? null, extraSettings: b.extra_settings ?? null, sortOrder: b.sort_order ?? 65535 },
     });
@@ -306,7 +321,7 @@ export const premiumModule = new Elysia()
       set.status = 201;
       return r;
     } catch (e: any) {
-      if (e?.code === "P2002") { set.status = 409; return { detail: "Already reacted." }; }
+      if (e?.code === "P2002") { set.status = 409; return { detail: "Você já reagiu." }; }
       throw e;
     }
   })
@@ -329,7 +344,7 @@ export const premiumModule = new Elysia()
       set.status = 201;
       return v;
     } catch (e: any) {
-      if (e?.code === "P2002") { set.status = 409; return { detail: "Already voted." }; }
+      if (e?.code === "P2002") { set.status = 409; return { detail: "Você já votou." }; }
       throw e;
     }
   })
@@ -358,7 +373,7 @@ export const premiumModule = new Elysia()
       set.status = 201;
       return sub;
     } catch (e: any) {
-      if (e?.code === "P2002") { set.status = 409; return { detail: "Already subscribed." }; }
+      if (e?.code === "P2002") { set.status = 409; return { detail: "Você já está inscrito." }; }
       throw e;
     }
   })
@@ -377,12 +392,12 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/projects/:project_id/issues/bulk-update/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 5) { set.status = 403; return { detail: "Permission denied." }; }
+    // Bulk edit touches items the caller did not author, so it needs ISSUE_EDIT_ALL.
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
 
     const b = body as any;
     const issueIds: string[] = b.issue_ids ?? [];
-    if (!issueIds.length) { set.status = 400; return { detail: "issue_ids is required." }; }
+    if (!issueIds.length) { set.status = 400; return { detail: "issue_ids é obrigatório." }; }
 
     const data: any = { updatedById: user.id };
     if (b.state !== undefined) data.stateId = b.state;
@@ -419,8 +434,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/projects/:project_id/issues/bulk-delete/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_DELETE_ALL);
 
     const issueIds: string[] = (body as any).issue_ids ?? [];
     const result = await prisma.issue.updateMany({
@@ -432,8 +446,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/projects/:project_id/issues/bulk-archive/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_DELETE_ALL);
 
     const issueIds: string[] = (body as any).issue_ids ?? [];
     const result = await prisma.issue.updateMany({
@@ -455,6 +468,7 @@ export const premiumModule = new Elysia()
       query: (skip, take) => prisma.issueView.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
       count: () => prisma.issueView.count({ where }),
       cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializeView),
     });
   })
 
@@ -462,12 +476,12 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const view = await prisma.issueView.create({
       data: { workspaceId: ws.id, name: b.name, description: b.description ?? "", filters: b.filters ?? {}, queryData: b.query_data ?? {}, isGlobal: true, access: b.access ?? "PUBLIC", createdById: user.id },
     });
     set.status = 201;
-    return view;
+    return serializeView(view);
   })
 
   .get("/workspaces/:slug/projects/:project_id/views/", async ({ params: { slug, project_id }, user, query }) => {
@@ -478,6 +492,7 @@ export const premiumModule = new Elysia()
       query: (skip, take) => prisma.issueView.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
       count: () => prisma.issueView.count({ where }),
       cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializeView),
     });
   })
 
@@ -485,12 +500,12 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const view = await prisma.issueView.create({
       data: { workspaceId: ws.id, projectId: project_id, name: b.name, description: b.description ?? "", filters: b.filters ?? {}, queryData: b.query_data ?? {}, isGlobal: false, access: b.access ?? "PUBLIC", createdById: user.id },
     });
     set.status = 201;
-    return view;
+    return serializeView(view);
   })
 
   .patch("/workspaces/:slug/views/:view_id/", async ({ params: { slug, view_id }, body, user }) => {
@@ -502,7 +517,8 @@ export const premiumModule = new Elysia()
     if (b.description !== undefined) data.description = b.description;
     if (b.filters !== undefined) data.filters = b.filters;
     if (b.query_data !== undefined) data.queryData = b.query_data;
-    return prisma.issueView.update({ where: { id: view_id }, data });
+    if (b.access !== undefined) data.access = b.access;
+    return serializeView(await prisma.issueView.update({ where: { id: view_id }, data }));
   })
 
   .delete("/workspaces/:slug/views/:view_id/", async ({ params: { slug, view_id }, user, set }) => {
@@ -526,7 +542,7 @@ export const premiumModule = new Elysia()
   .post("/workspaces/:slug/projects/:project_id/deploy-boards/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const board = await prisma.deployBoard.create({
       data: {

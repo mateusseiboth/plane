@@ -8,7 +8,7 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 import type { Control } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import { ETabIndices, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { ETabIndices, EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { ParentPropertyIcon } from "@plane/propel/icons";
 // types
@@ -82,7 +82,7 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
   const { getIndex } = getTabIndex(ETabIndices.ISSUE_FORM, isMobile);
 
   const canCreateLabel =
-    projectId && allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
+    projectId && allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
 
   const minDate = getDate(startDate);
   minDate?.setDate(minDate.getDate());

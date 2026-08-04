@@ -131,6 +131,54 @@ export const sanitizeHTML = (htmlString: string) => {
 };
 
 /**
+ * @description Sanitizes rich-text (editor) HTML keeping only the formatting
+ * tags that make sense on paper. Used by the print documents, which inject the
+ * result with `dangerouslySetInnerHTML`.
+ * @param {string} htmlString
+ * @return {string}
+ */
+export const sanitizeHTMLForPrint = (htmlString: string) =>
+  sanitizeHtml(htmlString, {
+    allowedTags: [
+      "p",
+      "br",
+      "b",
+      "strong",
+      "i",
+      "em",
+      "u",
+      "s",
+      "code",
+      "pre",
+      "blockquote",
+      "ul",
+      "ol",
+      "li",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "th",
+      "td",
+      "a",
+      "img",
+      "hr",
+      "span",
+    ],
+    allowedAttributes: {
+      a: ["href", "title"],
+      img: ["src", "alt", "width", "height"],
+    },
+    allowedSchemes: ["http", "https", "mailto", "data"],
+  }).trim();
+
+/**
  * @description: This function will remove all the HTML tags from the string and truncate the string to the specified length
  * @param {string} html
  * @param {number} length

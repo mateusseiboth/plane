@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { ArchiveX } from "lucide-react";
 // plane imports
-import { PROJECT_AUTOMATION_MONTHS, EUserPermissions, EUserPermissionsLevel, EIconSize } from "@plane/constants";
+import { PROJECT_AUTOMATION_MONTHS, EUserPermissions, EUserPermissionsLevel, EIconSize , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { StateGroupIcon, StatePropertyIcon } from "@plane/propel/icons";
 import type { IProject } from "@plane/types";
@@ -64,8 +64,7 @@ export const AutoCloseAutomation = observer(function AutoCloseAutomation(props: 
     default_state: defaultState,
   };
 
-  const isAdmin = allowPermissions(
-    [EUserPermissions.ADMIN],
+  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug?.toString(),
     currentProjectDetails?.id

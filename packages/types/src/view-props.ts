@@ -75,6 +75,7 @@ export type TIssueParams =
   | "target_date"
   | "project"
   | "team_project"
+  | "entity"
   | "group_by"
   | "sub_group_by"
   | "order_by"
@@ -107,6 +108,7 @@ export const WORK_ITEM_FILTER_PROPERTY_KEYS = [
   "cycle_id",
   "module_id",
   "project_id",
+  "entity_id",
   "created_at",
   "updated_at",
 ] as const;
@@ -144,6 +146,7 @@ export interface IIssueFilterOptions {
   subscriber?: string[] | null;
   target_date?: string[] | null;
   issue_type?: string[] | null;
+  entity?: string[] | null;
 }
 
 export interface IIssueDisplayFilterOptions {

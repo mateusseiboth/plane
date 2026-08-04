@@ -8,7 +8,7 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 import { MoreHorizontal } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import { IconButton } from "@plane/propel/icon-button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TContextMenuItem } from "@plane/ui";
@@ -47,14 +47,7 @@ export const ModuleQuickActions = observer(function ModuleQuickActions(props: Pr
   const moduleDetails = getModuleById(moduleId);
   // auth
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

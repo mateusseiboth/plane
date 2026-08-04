@@ -13,7 +13,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
       where: { workspaceId: ws.id, deletedAt: null },
       include: { channels: { where: { deletedAt: null } } },
     });
-    return config ?? { detail: "No Slack integration configured." };
+    return config ?? { detail: "Nenhuma integração com o Slack configurada." };
   })
 
   .post("/config/", async ({ params: { slug }, body, user, set }) => {
@@ -32,7 +32,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
       set.status = 201;
       return config;
     } catch (e: any) {
-      if (e?.code === "P2002") { set.status = 409; return { detail: "Slack integration already configured for this workspace." }; }
+      if (e?.code === "P2002") { set.status = 409; return { detail: "A integração com o Slack já está configurada para este workspace." }; }
       throw e;
     }
   })
@@ -41,7 +41,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const config = await prisma.slackIntegrationConfig.findFirst({ where: { workspaceId: ws.id } });
-    if (!config) { set.status = 404; return { detail: "No Slack integration found." }; }
+    if (!config) { set.status = 404; return { detail: "Nenhuma integração com o Slack encontrada." }; }
     const b = body as any;
     const data: any = {};
     if (b.bot_token !== undefined) data.botToken = b.bot_token;
@@ -73,7 +73,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const config = await prisma.slackIntegrationConfig.findFirst({ where: { workspaceId: ws.id } });
-    if (!config) { set.status = 400; return { detail: "Configure Slack integration first." }; }
+    if (!config) { set.status = 400; return { detail: "Configure a integração com o Slack primeiro." }; }
     const b = body as any;
     const ch = await prisma.slackProjectChannel.create({
       data: {

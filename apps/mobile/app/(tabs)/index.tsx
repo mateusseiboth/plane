@@ -169,8 +169,8 @@ export default function HomeScreen() {
 
       <Text variant="heading" style={{ marginTop: spacing.sm }}>Acesso rápido</Text>
       <Row gap={spacing.md} style={{ flexWrap: "wrap" }}>
-        <QuickAction icon={LayoutGrid} label="Work Items" onPress={() => router.push("/(tabs)/work-items")} />
-        <QuickAction icon={Inbox} label="Intake" onPress={() => router.push("/(tabs)/intake")} />
+        <QuickAction icon={LayoutGrid} label="Chamados" onPress={() => router.push("/(tabs)/work-items")} />
+        <QuickAction icon={Inbox} label="Solicitações" onPress={() => router.push("/(tabs)/intake")} />
         <QuickAction icon={Plane} label="Visitas" onPress={() => router.push("/(tabs)/visits")} />
         <QuickAction icon={FileText} label="Wiki" onPress={() => router.push("/wiki")} />
       </Row>

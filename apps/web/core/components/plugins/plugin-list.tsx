@@ -4,10 +4,10 @@ import React from "react";
 import type { IPlugin } from "@/services/plugin.service";
 
 const STATUS_LABELS: Record<IPlugin["status"], { label: string; className: string }> = {
-  ACTIVE: { label: "Active", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  INACTIVE: { label: "Inactive", className: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400" },
-  PENDING_APPROVAL: { label: "Pending", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
-  ARCHIVED: { label: "Archived", className: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
+  ACTIVE: { label: "Ativo", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  INACTIVE: { label: "Inativo", className: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400" },
+  PENDING_APPROVAL: { label: "Pendente", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
+  ARCHIVED: { label: "Arquivado", className: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
 };
 
 interface PluginListProps {
@@ -30,7 +30,7 @@ export const PluginList: React.FC<PluginListProps> = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16 text-neutral-400">
-        Loading plugins…
+        Carregando plugins…
       </div>
     );
   }
@@ -49,12 +49,12 @@ export const PluginList: React.FC<PluginListProps> = ({
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-neutral-200 text-xs font-medium uppercase text-neutral-500 dark:border-neutral-700">
-            <th className="py-3 pr-4">Name</th>
-            <th className="py-3 pr-4">Version</th>
-            <th className="py-3 pr-4">Author</th>
-            <th className="py-3 pr-4">Surfaces</th>
+            <th className="py-3 pr-4">Nome</th>
+            <th className="py-3 pr-4">Versão</th>
+            <th className="py-3 pr-4">Autor</th>
+            <th className="py-3 pr-4">Superfícies</th>
             <th className="py-3 pr-4">Status</th>
-            <th className="py-3">Actions</th>
+            <th className="py-3">Ações</th>
           </tr>
         </thead>
         <tbody>

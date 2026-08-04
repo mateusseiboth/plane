@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 // hooks
@@ -21,14 +21,7 @@ export const ProfileIssuesListLayout = observer(function ProfileIssuesListLayout
 
   const canEditPropertiesBasedOnProject = (projectId: string) =>
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
       workspaceSlug.toString(),
       projectId,

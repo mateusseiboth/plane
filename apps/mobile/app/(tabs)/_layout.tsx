@@ -26,11 +26,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="work-items"
-        options={{ title: "Work Items", tabBarIcon: ({ color }) => <LayoutGrid size={22} color={color} /> }}
+        options={{ title: "Chamados", tabBarIcon: ({ color }) => <LayoutGrid size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="intake"
-        options={{ title: "Intake", tabBarIcon: ({ color }) => <Inbox size={22} color={color} /> }}
+        options={{ title: "Solicitações", tabBarIcon: ({ color }) => <Inbox size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="visits"

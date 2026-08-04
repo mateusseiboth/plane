@@ -72,7 +72,7 @@ export const CreateIssueToastActionItems = observer(function CreateIssueToastAct
 
       {copied ? (
         <>
-          <span className="cursor-default px-2 py-1 text-secondary">Copied!</span>
+          <span className="cursor-default px-2 py-1 text-secondary">Copiado!</span>
         </>
       ) : (
         <>

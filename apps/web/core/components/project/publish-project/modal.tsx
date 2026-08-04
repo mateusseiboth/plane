@@ -43,7 +43,7 @@ const VIEW_OPTIONS: {
   key: TProjectPublishLayouts;
   label: string;
 }[] = [
-  { key: "list", label: "List" },
+  { key: "list", label: "Lista" },
   { key: "kanban", label: "Kanban" },
 ];
 
@@ -243,7 +243,7 @@ export const PublishProjectModal = observer(function PublishProjectModal(props: 
             )}
             <div className="space-y-4">
               <div className="relative flex items-center justify-between gap-2">
-                <div className="text-13">Views</div>
+                <div className="text-13">Visualizações</div>
                 <Controller
                   control={control}
                   name="view_props"
@@ -278,7 +278,7 @@ export const PublishProjectModal = observer(function PublishProjectModal(props: 
                 />
               </div>
               <div className="relative flex items-center justify-between gap-2">
-                <div className="text-13">Allow comments</div>
+                <div className="text-13">Permitir comentários</div>
                 <Controller
                   control={control}
                   name="is_comments_enabled"
@@ -288,7 +288,7 @@ export const PublishProjectModal = observer(function PublishProjectModal(props: 
                 />
               </div>
               <div className="relative flex items-center justify-between gap-2">
-                <div className="text-13">Allow reactions</div>
+                <div className="text-13">Permitir reações</div>
                 <Controller
                   control={control}
                   name="is_reactions_enabled"
@@ -298,7 +298,7 @@ export const PublishProjectModal = observer(function PublishProjectModal(props: 
                 />
               </div>
               <div className="relative flex items-center justify-between gap-2">
-                <div className="text-13">Allow voting</div>
+                <div className="text-13">Permitir votação</div>
                 <Controller
                   control={control}
                   name="is_votes_enabled"

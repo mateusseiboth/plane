@@ -83,7 +83,7 @@ export const ActiveCycleProductivity = observer(function ActiveCycleProductivity
                       <ProgressChart
                         distribution={completionChartDistributionData}
                         totalIssues={cycle.total_issues || 0}
-                        plotTitle={"work items"}
+                        plotTitle={"chamados"}
                       />
                     )}
                   </Fragment>

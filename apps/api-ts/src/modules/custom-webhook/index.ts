@@ -72,10 +72,10 @@ function makePrismaExecutor(workspaceId: string) {
     };
   }): Promise<any> {
     if (!ALLOWED_TABLES.has(table)) {
-      throw new Error(`Table "${table}" is not allowed.`);
+      throw new Error(`A tabela "${table}" não é permitida.`);
     }
     const accessor = (prisma as any)[table];
-    if (!accessor) throw new Error(`Table "${table}" not found in Prisma client.`);
+    if (!accessor) throw new Error(`Tabela "${table}" não encontrada no cliente Prisma.`);
 
     switch (operation) {
       case "retrieve":
@@ -87,13 +87,13 @@ function makePrismaExecutor(workspaceId: string) {
         });
 
       case "insert":
-        if (!data) throw new Error("data is required for insert");
+        if (!data) throw new Error("data é obrigatório para inserção");
         return accessor.create({
           data: { ...sanitizeData(data), workspaceId },
         });
 
       case "update": {
-        if (!data) throw new Error("data is required for update");
+        if (!data) throw new Error("data é obrigatório para atualização");
         const safeData = sanitizeData(data);
         if (options?.id) {
           return accessor.update({ where: { id: options.id }, data: safeData });
@@ -119,7 +119,7 @@ function makePrismaExecutor(workspaceId: string) {
       }
 
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Operação desconhecida: ${operation}`);
     }
   };
 }
@@ -164,7 +164,7 @@ async function runWebhookCode(
       "node:util", "util", "node:querystring", "querystring",
     ]);
     if (!SAFE_BUILTINS.has(specifier)) {
-      throw new Error(`Import of "${specifier}" is not allowed. Only Node.js built-in modules are permitted.`);
+      throw new Error(`A importação de "${specifier}" não é permitida. Apenas módulos nativos do Node.js são permitidos.`);
     }
     return import(specifier);
   }
@@ -269,7 +269,7 @@ export const customWebhookModule = new Elysia()
     const hook = await prisma.customWebhook.findFirst({
       where: { id: hook_id, workspaceId: ws.id, deletedAt: null },
     });
-    if (!hook) { set.status = 404; return { detail: "Not found." }; }
+    if (!hook) { set.status = 404; return { detail: "Não encontrado." }; }
 
     return {
       id: hook.id, name: hook.name, description: hook.description,
@@ -339,12 +339,12 @@ export const customWebhookModule = new Elysia()
   .post("/webhooks/receive/:slug/:hook_id/", async ({ params: { slug, hook_id }, body, request, set }) => {
     // Find workspace and hook
     const ws = await prisma.workspace.findFirst({ where: { slug, deletedAt: null } });
-    if (!ws) { set.status = 404; return { detail: "Workspace not found." }; }
+    if (!ws) { set.status = 404; return { detail: "Workspace não encontrado." }; }
 
     const hook = await prisma.customWebhook.findFirst({
       where: { id: hook_id, workspaceId: ws.id, deletedAt: null, isActive: true },
     });
-    if (!hook) { set.status = 404; return { detail: "Webhook not found or inactive." }; }
+    if (!hook) { set.status = 404; return { detail: "Webhook não encontrado ou inativo." }; }
 
     // Optional signature verification (HMAC-SHA256)
     const sig = request.headers.get("x-webhook-signature") ?? request.headers.get("x-hub-signature-256");
@@ -353,7 +353,7 @@ export const customWebhookModule = new Elysia()
       const expected = "sha256=" + crypto.createHmac("sha256", hook.secret).update(payload).digest("hex");
       if (sig !== expected) {
         set.status = 401;
-        return { detail: "Invalid webhook signature." };
+        return { detail: "Assinatura do webhook inválida." };
       }
     }
 

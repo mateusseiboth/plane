@@ -30,6 +30,7 @@ import { copyUrlToClipboard, findHowManyDaysLeft, generateWorkItemLink } from "@
 // components
 import { CreateUpdateIssueModal } from "@/components/issues/issue-modal/modal";
 import { NameDescriptionUpdateStatus } from "@/components/issues/issue-update-status";
+import { IntakePrintAction } from "@/components/print";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
@@ -167,7 +168,7 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
   const handleMarkFulfilled = async () => {
     try {
       await inboxIssue?.updateInboxIssueStatus(EInboxIssueStatus.FULFILLED);
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Chamado atendido", message: "O chamado foi marcado como atendido." });
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Solicitação atendida", message: "A solicitação foi marcada como atendida." });
     } catch (err: unknown) {
       const error = err as { detail?: string };
       setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: error?.detail || "Não foi possível marcar como atendido." });
@@ -354,18 +355,20 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
                 variant="secondary"
                 size="lg"
                 icon={ChevronUpIcon}
-                aria-label="Item de trabalho anterior"
+                aria-label="Solicitação anterior"
                 onClick={() => handleInboxIssueNavigation("prev")}
               />
               <IconButton
                 variant="secondary"
                 size="lg"
                 icon={ChevronDownIcon}
-                aria-label="Próximo item de trabalho"
+                aria-label="Próxima solicitação"
                 onClick={() => handleInboxIssueNavigation("next")}
               />
             </div>
           )}
+
+          <IntakePrintAction inboxIssue={inboxIssue} />
 
           <div className="flex flex-wrap items-center gap-2">
             {canMarkAsAccepted && (
@@ -464,7 +467,7 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
                           handleActionWithPermission(
                             isProjectAdmin,
                             () => setSelectDuplicateIssue(true),
-                            "Only project admins can mark work item as duplicate"
+                            "Apenas administradores do projeto podem marcar a solicitação como duplicada"
                           )
                         }
                       >

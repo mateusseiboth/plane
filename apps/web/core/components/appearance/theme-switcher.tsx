@@ -51,7 +51,7 @@ export const ThemeSwitcher = observer(function ThemeSwitcher(props: {
           },
           error: {
             title: "Erro!",
-            message: () => "Failed to update the theme",
+            message: () => "Não foi possível atualizar o tema",
           },
         });
       } catch (error) {

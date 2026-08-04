@@ -16,7 +16,7 @@ import { useTheme } from "next-themes";
 import Masonry from "react-masonry-component";
 
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel , PROJECT_VIEW_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { PlusIcon } from "@plane/propel/icons";
 import { EUserWorkspaceRoles } from "@plane/types";
@@ -66,7 +66,7 @@ export const StickiesList = observer(function StickiesList(props: TProps) {
   const totalRows = Math.ceil(workspaceStickyIds.length / columnCount);
   const isStickiesPage = pathname?.includes("stickies");
   const hasGuestLevelPermissions = allowPermissions(
-    [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
+    [...PROJECT_VIEW_ROLES, EUserWorkspaceRoles.GUEST],
     EUserPermissionsLevel.WORKSPACE
   );
   const stickiesResolvedPath = resolvedTheme === "light" ? lightStickiesAsset : darkStickiesAsset;

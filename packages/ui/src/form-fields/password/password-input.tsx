@@ -24,7 +24,7 @@ export function PasswordInput({
   id,
   value,
   onChange,
-  placeholder = "Enter your password",
+  placeholder = "Digite sua senha",
   className,
   showToggle = true,
   error = false,
@@ -50,7 +50,7 @@ export function PasswordInput({
         autoComplete={autoComplete}
       />
       {showToggle && (
-        <Tooltip tooltipContent={showPassword ? "Hide password" : "Show password"} position="top">
+        <Tooltip tooltipContent={showPassword ? "Ocultar senha" : "Mostrar senha"} position="top">
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}

@@ -43,12 +43,12 @@ const InstanceGiteaAuthenticationPage = observer(function InstanceGiteaAuthentic
     setPromiseToast(updateConfigPromise, {
       loading: "Saving Configuration",
       success: {
-        title: "Configuration saved",
+        title: "Configuração salva",
         message: () => `Gitea authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
         title: "Erro",
-        message: () => "Failed to save configuration",
+        message: () => "Falha ao salvar a configuração",
       },
     });
 
@@ -70,7 +70,7 @@ const InstanceGiteaAuthenticationPage = observer(function InstanceGiteaAuthentic
         <AuthenticationMethodCard
           name="Gitea"
           description="Permita que membros entrem ou se cadastrem no Avião com suas contas do Gitea."
-          icon={<img src={giteaLogo} height={24} width={24} alt="Gitea Logo" />}
+          icon={<img src={giteaLogo} height={24} width={24} alt="Logo do Gitea" />}
           config={
             <ToggleSwitch
               value={isGiteaEnabled}

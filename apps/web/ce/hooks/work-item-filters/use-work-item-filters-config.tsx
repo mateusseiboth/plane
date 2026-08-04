@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { AtSign, Briefcase } from "lucide-react";
+import { AtSign, Briefcase, Building2 } from "lucide-react";
 // plane imports
 import { useTranslation } from "@plane/i18n";
 import { Logo } from "@plane/propel/emoji-icon-picker";
@@ -32,6 +32,7 @@ import type {
   IIssueLabel,
   IModule,
   IProject,
+  TEntity,
   TWorkItemFilterProperty,
 } from "@plane/types";
 import { Avatar } from "@plane/ui";
@@ -40,6 +41,7 @@ import {
   getCreatedAtFilterConfig,
   getCreatedByFilterConfig,
   getCycleFilterConfig,
+  getEntityFilterConfig,
   getFileURL,
   getLabelFilterConfig,
   getMentionFilterConfig,
@@ -67,6 +69,8 @@ import { useFiltersOperatorConfigs } from "@/plane-web/hooks/rich-filters/use-fi
 export type TWorkItemFiltersEntityProps = {
   workspaceSlug: string;
   cycleIds?: string[];
+  /** Workspace entities (clientes/órgãos). `undefined` while still loading. */
+  entities?: TEntity[];
   labelIds?: string[];
   memberIds?: string[];
   moduleIds?: string[];
@@ -90,8 +94,18 @@ export type TWorkItemFiltersConfig = {
 };
 
 export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps): TWorkItemFiltersConfig => {
-  const { allowedFilters, cycleIds, labelIds, memberIds, moduleIds, projectId, projectIds, stateIds, workspaceSlug } =
-    props;
+  const {
+    allowedFilters,
+    cycleIds,
+    entities,
+    labelIds,
+    memberIds,
+    moduleIds,
+    projectId,
+    projectIds,
+    stateIds,
+    workspaceSlug,
+  } = props;
   // store hooks
   const { loader: projectLoader, getProjectById } = useProject();
   const { getCycleById } = useCycle();
@@ -218,6 +232,20 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
         ...operatorConfigs,
       }),
     [isFilterEnabled, project?.module_view, modules, operatorConfigs, t]
+  );
+
+  // entity filter config
+  const entityFilterConfig = useMemo(
+    () =>
+      getEntityFilterConfig<TWorkItemFilterProperty>("entity_id")({
+        label: t("common.entity"),
+        isEnabled: isFilterEnabled("entity_id") && entities !== undefined,
+        filterIcon: Building2,
+        getOptionIcon: () => <Building2 className="h-3 w-3 shrink-0" />,
+        entities: entities ?? [],
+        ...operatorConfigs,
+      }),
+    [isFilterEnabled, entities, operatorConfigs, t]
   );
 
   // assignee filter config
@@ -389,6 +417,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       projectFilterConfig,
       mentionFilterConfig,
       labelFilterConfig,
+      entityFilterConfig,
       cycleFilterConfig,
       moduleFilterConfig,
       startDateFilterConfig,
@@ -403,6 +432,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       state_group: stateGroupFilterConfig,
       state_id: stateFilterConfig,
       label_id: labelFilterConfig,
+      entity_id: entityFilterConfig,
       cycle_id: cycleFilterConfig,
       module_id: moduleFilterConfig,
       assignee_id: assigneeFilterConfig,

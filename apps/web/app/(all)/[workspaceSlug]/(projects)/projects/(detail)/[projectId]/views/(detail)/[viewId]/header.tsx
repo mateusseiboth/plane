@@ -27,6 +27,7 @@ import { Breadcrumbs, Header, BreadcrumbNavigationSearchDropdown } from "@plane/
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { SwitcherIcon, SwitcherLabel } from "@/components/common/switcher-label";
 import { DisplayFiltersSelection, FiltersDropdown, LayoutSelection } from "@/components/issues/issue-layouts/filters";
+import { WorkItemsPrintAction } from "@/components/print";
 import { ViewQuickActions } from "@/components/views/quick-actions";
 import { WorkItemFiltersToggle } from "@/components/work-item-filters/filters-toggle";
 // hooks
@@ -129,7 +130,7 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
           <Breadcrumbs.Item
             component={
               <BreadcrumbLink
-                label="Views"
+                label="Visualizações"
                 href={`/${workspaceSlug}/projects/${projectId}/views/`}
                 icon={<ViewsIcon className="h-4 w-4 text-tertiary" />}
               />
@@ -157,7 +158,7 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
 
         {viewDetails?.access === EViewAccess.PRIVATE ? (
           <div className="cursor-default text-tertiary">
-            <Tooltip tooltipContent={"Private"}>
+            <Tooltip tooltipContent={"Privado"}>
               <LockIcon className="h-4 w-4" />
             </Tooltip>
           </div>
@@ -197,6 +198,12 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
             </FiltersDropdown>
           )}
         </>
+        <WorkItemsPrintAction
+          storeType={EIssuesStoreType.PROJECT_VIEW}
+          title={`Chamados — ${viewDetails?.name ?? ""}`}
+          subtitle={currentProjectDetails?.name}
+          showProject={false}
+        />
         {canUserCreateIssue && (
           <Button
             variant="primary"
@@ -206,7 +213,7 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
             }}
             data-ph-element={WORK_ITEM_TRACKER_ELEMENTS.HEADER_ADD_BUTTON.PROJECT_VIEW}
           >
-            Adicionar item de trabalho
+            Adicionar chamado
           </Button>
         )}
         <div className="hidden md:block">

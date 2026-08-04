@@ -46,11 +46,11 @@ export const useAttachmentOperations = (
           loading: "Uploading attachment...",
           success: {
             title: "Anexo enviado",
-            message: () => "The attachment has been successfully uploaded",
+            message: () => "O anexo foi enviado com sucesso",
           },
           error: {
             title: "Falha ao enviar anexo",
-            message: () => "The attachment could not be uploaded",
+            message: () => "Não foi possível enviar o anexo",
           },
         });
 

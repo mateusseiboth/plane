@@ -14,6 +14,8 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Tooltip } from "@plane/propel/tooltip";
 import { EIssuesStoreType } from "@plane/types";
 import { generateWorkItemLink, copyTextToClipboard } from "@plane/utils";
+// components
+import { PrintButton, WorkItemPrintDocument } from "@/components/print";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
@@ -150,6 +152,13 @@ export const IssueDetailQuickActions = observer(function IssueDetailQuickActions
             <Tooltip tooltipContent={t("common.actions.copy_link")} isMobile={isMobile}>
               <IconButton variant="secondary" size="lg" onClick={handleCopyText} icon={CopyLinkIcon} />
             </Tooltip>
+            {/* LGPD: imprimir um chamado é acesso a dado pessoal — fica na trilha. */}
+            <PrintButton
+              documentTitle={`${projectIdentifier ?? ""}-${issue.sequence_id}`}
+              auditEntity="issue"
+              auditEntityId={issueId}
+            />
+            <WorkItemPrintDocument issueId={issueId} />
             <WorkItemDetailQuickActions
               parentRef={parentRef}
               issue={issue}

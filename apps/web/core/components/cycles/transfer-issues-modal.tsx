@@ -42,7 +42,7 @@ export const TransferIssuesModal = observer(function TransferIssuesModal(props: 
         setToast({
           type: TOAST_TYPE.SUCCESS,
           title: "Sucesso!",
-          message: "Itens de trabalho transferidos com sucesso",
+          message: "Chamados transferidos com sucesso",
         });
         await getCycleDetails(payload.new_cycle_id);
       })
@@ -50,7 +50,7 @@ export const TransferIssuesModal = observer(function TransferIssuesModal(props: 
         setToast({
           type: TOAST_TYPE.ERROR,
           title: "Erro!",
-          message: "Não foi possível transferir os itens de trabalho. Tente novamente.",
+          message: "Não foi possível transferir os chamados. Tente novamente.",
         });
       });
   };
@@ -82,7 +82,7 @@ export const TransferIssuesModal = observer(function TransferIssuesModal(props: 
         <div className="flex items-center justify-between px-5">
           <div className="flex items-center gap-1">
             <TransferIcon className="w-5 fill-primary" />
-            <h4 className="text-18 font-medium text-primary">Transferir itens de trabalho</h4>
+            <h4 className="text-18 font-medium text-primary">Transferir chamados</h4>
           </div>
           <button onClick={handleClose}>
             <CloseIcon className="h-4 w-4" />
@@ -132,7 +132,7 @@ export const TransferIssuesModal = observer(function TransferIssuesModal(props: 
               <div className="flex w-full items-center justify-center gap-4 p-5 text-13">
                 <AlertCircle className="h-3.5 w-3.5 text-secondary" />
                 <span className="text-center text-secondary">
-                  You don’t have any current cycle. Please create one to transfer the work items.
+                  Você não possui um ciclo atual. Crie um para transferir os chamados.
                 </span>
               </div>
             )

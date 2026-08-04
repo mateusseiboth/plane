@@ -98,7 +98,7 @@ export const AnalyticsSelectParams = observer(function AnalyticsSelectParams(pro
                 </div>
               }
               options={groupByOptions}
-              placeholder="Group By"
+              placeholder="Agrupar por"
               allowNoValue
             />
           )}

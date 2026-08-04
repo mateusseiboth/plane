@@ -55,12 +55,11 @@ describe("TestLabelListCreateAPIEndpoint", () => {
     expect(res.status).toBe(400);
   });
 
-  it("list labels returns paginated results", async () => {
+  it("list labels returns an array", async () => {
     const res = await client.get(labelsUrl());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
-    expect(typeof data.total_count).toBe("number");
+    expect(data).toBeInstanceOf(Array);
   });
 
   it("update label changes name and color", async () => {

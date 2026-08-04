@@ -1,0 +1,179 @@
+/**
+ * Estilos compartilhados de impressão.
+ *
+ * Duas estratégias são suportadas (ver core/components/print/use-print.ts):
+ *
+ * 1. `document` — o conteúdo a imprimir é montado em um portal filho direto de
+ *    <body> com a classe `.print-document-root`. Ao imprimir, todos os outros
+ *    filhos de <body> (navegação, sidebar, modais) são removidos do fluxo.
+ *    É a estratégia padrão: pagina corretamente em várias folhas.
+ *
+ * 2. `area` — imprime um trecho da própria página marcado com
+ *    `data-print-area`. Usada quando o conteúdo depende de medição de largura
+ *    (gráficos), que não funciona dentro de um container oculto.
+ *
+ * Utilitários: `data-print-hide` esconde um elemento na impressão e
+ * `data-print-only` mostra um elemento apenas na impressão.
+ */
+
+.print-document-root {
+  display: none;
+}
+
+[data-print-only] {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Estratégia 1: documento dedicado montado em portal */
+  html.print-mode-document body > *:not(.print-document-root) {
+    display: none !important;
+  }
+
+  html.print-mode-document .print-document-root {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* Estratégia 2: imprimir apenas uma área da página atual */
+  html.print-mode-area body * {
+    visibility: hidden !important;
+  }
+
+  html.print-mode-area [data-print-area],
+  html.print-mode-area [data-print-area] * {
+    visibility: visible !important;
+  }
+
+  html.print-mode-area [data-print-area] {
+    position: absolute !important;
+    inset-inline-start: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Containers roláveis entre <body> e a área impressa recortariam o conteúdo
+     posicionado — soltamos altura e overflow de todos eles. */
+  html.print-mode-area body *:has([data-print-area]) {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Utilitários */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  [data-print-only] {
+    display: block !important;
+  }
+
+  /* Papel: sempre tinta escura sobre fundo branco, independente do tema */
+  .print-document-root,
+  [data-print-area] {
+    color: #111827 !important;
+  }
+
+  .print-document-root *,
+  [data-print-area] * {
+    color: inherit;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .print-document-root a,
+  [data-print-area] a {
+    text-decoration: none !important;
+  }
+
+  /* Evita quebras feias */
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Conteúdo rico vindo do editor */
+  .print-rich-text p {
+    margin: 0 0 0.35rem;
+  }
+
+  .print-rich-text ul,
+  .print-rich-text ol {
+    margin: 0 0 0.35rem;
+    padding-inline-start: 1.1rem;
+  }
+
+  .print-rich-text ul {
+    list-style: disc;
+  }
+
+  .print-rich-text ol {
+    list-style: decimal;
+  }
+
+  .print-rich-text h1,
+  .print-rich-text h2,
+  .print-rich-text h3 {
+    margin: 0.4rem 0 0.2rem;
+    font-weight: 600;
+  }
+
+  .print-rich-text blockquote {
+    margin: 0 0 0.35rem;
+    padding-inline-start: 0.5rem;
+    border-inline-start: 2px solid #d4d4d4;
+  }
+
+  .print-rich-text img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .print-rich-text table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-rich-text td,
+  .print-rich-text th {
+    border: 1px solid #d4d4d4;
+    padding: 2px 4px;
+  }
+
+  .print-document-root table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-document-root thead {
+    display: table-header-group;
+  }
+
+  .print-document-root tr,
+  [data-print-area] tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

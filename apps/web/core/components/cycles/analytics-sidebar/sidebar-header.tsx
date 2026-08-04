@@ -9,7 +9,7 @@ import {observer} from "mobx-react";
 import {useEffect} from "react";
 import {Controller, useForm} from "react-hook-form";
 // Plane Imports
-import {CYCLE_STATUS, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {CYCLE_STATUS, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {ChevronRightIcon} from "@plane/propel/icons";
 import {TOAST_TYPE, setToast} from "@plane/propel/toast";
@@ -115,14 +115,7 @@ export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Pr
   };
 
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT,
   );
 

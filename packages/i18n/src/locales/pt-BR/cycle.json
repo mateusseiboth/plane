@@ -2,19 +2,19 @@
   "active_cycle": {
     "empty_state": {
       "progress": {
-        "title": "Adicione itens de trabalho ao ciclo para visualizar seu progresso"
+        "title": "Adicione chamados ao ciclo para visualizar seu progresso"
       },
       "chart": {
-        "title": "Adicione itens de trabalho ao ciclo para visualizar o gráfico de burndown."
+        "title": "Adicione chamados ao ciclo para visualizar o gráfico de burndown."
       },
       "priority_issue": {
-        "title": "Observe os itens de trabalho de alta prioridade abordados no ciclo rapidamente."
+        "title": "Observe os chamados de alta prioridade abordados no ciclo rapidamente."
       },
       "assignee": {
-        "title": "Adicione responsáveis aos itens de trabalho para ver uma divisão do trabalho por responsáveis."
+        "title": "Adicione responsáveis aos chamados para ver uma divisão do trabalho por responsáveis."
       },
       "label": {
-        "title": "Adicione etiquetas aos itens de trabalho para ver a divisão do trabalho por etiquetas."
+        "title": "Adicione etiquetas aos chamados para ver a divisão do trabalho por etiquetas."
       }
     }
   },
@@ -25,16 +25,16 @@
   "active_cycle_analytics": {
     "empty_state": {
       "progress": {
-        "title": "Adicione itens de trabalho ao ciclo para visualizar seu\n progresso"
+        "title": "Adicione chamados ao ciclo para visualizar seu\n progresso"
       },
       "priority": {
-        "title": "Observe itens de trabalho de alta prioridade abordados no\n ciclo rapidamente."
+        "title": "Observe chamados de alta prioridade abordados no\n ciclo rapidamente."
       },
       "assignee": {
-        "title": "Adicione responsáveis aos itens de trabalho para ver uma\n divisão do trabalho por responsáveis."
+        "title": "Adicione responsáveis aos chamados para ver uma\n divisão do trabalho por responsáveis."
       },
       "label": {
-        "title": "Adicione etiquetas aos itens de trabalho para ver a\n divisão do trabalho por etiquetas."
+        "title": "Adicione etiquetas aos chamados para ver a\n divisão do trabalho por etiquetas."
       }
     }
   }

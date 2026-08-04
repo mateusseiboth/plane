@@ -25,7 +25,7 @@ const InstanceImagePage = observer(function InstanceImagePage(_props: Route.Comp
   return (
     <PageWrapper
       header={{
-        title: "Third-party image libraries",
+        title: "Bibliotecas de imagens de terceiros",
         description: "Permita que seus usuários busquem e escolham imagens de bibliotecas de terceiros",
       }}
     >

@@ -87,7 +87,7 @@ export const usePageOperations = (
       move: async () => {},
       openInNewTab: () => window.open(pageLink, "_blank"),
       toggleAccess: async () => {
-        const changedPageType = access === EPageAccess.PUBLIC ? "private" : "public";
+        const changedPageType = access === EPageAccess.PUBLIC ? "privada" : "pública";
         try {
           if (access === EPageAccess.PUBLIC)
             await executeCollaborativeAction({ type: "sendMessageToServer", message: "make-private" });
@@ -95,13 +95,13 @@ export const usePageOperations = (
           setToast({
             type: TOAST_TYPE.SUCCESS,
             title: "Sucesso!",
-            message: `The page has been marked ${changedPageType} and moved to the ${changedPageType} section.`,
+            message: `A página foi marcada como ${changedPageType} e movida para a seção correspondente.`,
           });
         } catch (_error) {
           setToast({
             type: TOAST_TYPE.ERROR,
             title: "Erro!",
-            message: `The page couldn't be marked ${changedPageType}. Please try again.`,
+            message: `Não foi possível marcar a página como ${changedPageType}. Tente novamente.`,
           });
         }
       },

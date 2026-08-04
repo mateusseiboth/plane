@@ -6,7 +6,7 @@
 
 import { observer } from "mobx-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 // components
 import { PageHead } from "@/components/core/page-title";
 import { ProjectDetailsForm } from "@/components/project/form";
@@ -27,7 +27,7 @@ function ProjectSettingsPage({ params }: Route.ComponentProps) {
   const { currentProjectDetails } = useProject();
   const { allowPermissions } = useUserPermissions();
   // derived values
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
+  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
 
   const pageTitle = currentProjectDetails?.name ? `${currentProjectDetails?.name} - General Settings` : undefined;
 

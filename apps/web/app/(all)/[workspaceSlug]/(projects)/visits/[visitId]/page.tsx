@@ -2,6 +2,7 @@
 
 import {PageHead} from "@/components/core/page-title";
 import {RichTextEditor} from "@/components/editor/rich-text";
+import {PrintButton, TechnicalVisitPrintDocument} from "@/components/print";
 import {useEditorAsset} from "@/hooks/store/use-editor-asset";
 import {useProject} from "@/hooks/store/use-project";
 import {useWorkspace} from "@/hooks/store/use-workspace";
@@ -224,6 +225,7 @@ function TechnicalVisitDetailPage() {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       <PageHead title={pageTitle} />
+      <TechnicalVisitPrintDocument visit={{...visit, ...form}} />
 
       <div className="flex items-center justify-between border-b border-subtle px-6 py-4">
         <div className="flex items-start gap-3">
@@ -249,6 +251,11 @@ function TechnicalVisitDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <PrintButton
+            documentTitle={`Visita técnica ${visit.visit_number ? `#${visit.visit_number}` : ""}`.trim()}
+            auditEntity="technical_visit"
+            auditEntityId={visit.id}
+          />
           {canEdit && form.status === 0 && (
             <button
               type="button"

@@ -52,7 +52,7 @@ export function IconRoot(props: IconRootProps) {
               <SearchIcon className="absolute bottom-3 left-2.5 h-3.5 w-3.5 text-placeholder" />
 
               <input
-                placeholder="Search"
+                placeholder="Buscar"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="block h-full w-full rounded-md border-[0.5px] border-none border-subtle bg-transparent p-0 px-3 py-2 text-16 placeholder-(--text-color-placeholder) focus:outline-none"
@@ -117,7 +117,7 @@ export function IconRoot(props: IconRootProps) {
         </div>
         <div className="flex h-6 w-full items-center gap-2 py-1 pr-3 pl-4">
           <InfoIcon className="h-3 w-3" />
-          <p className="text-11"> Colors will be adjusted to ensure sufficient contrast.</p>
+          <p className="text-11"> As cores serão ajustadas para garantir contraste suficiente.</p>
         </div>
       </div>
       <div className="mt-2 grid grid-cols-8 justify-items-center gap-1 px-2.5">

@@ -181,7 +181,7 @@ export function BlockMenu(props: Props) {
 
           // Ensure the insertion position is within the document's bounds
           if (insertPos < 0 || insertPos > docSize) {
-            throw new Error("The insertion position is invalid or outside the document.");
+            throw new Error("A posição de inserção é inválida ou está fora do documento.");
           }
 
           const contentToInsert = firstChild.toJSON();

@@ -34,8 +34,8 @@ type Options = {
 };
 
 export const cycleEstimateOptions: Options[] = [
-  { value: "issues", label: "Work items" },
-  { value: "points", label: "Estimates" },
+  { value: "issues", label: "Chamados" },
+  { value: "points", label: "Estimativas" },
 ];
 export const cycleChartOptions: Options[] = [
   { value: "burndown", label: "Burn-down" },

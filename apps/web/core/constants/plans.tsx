@@ -76,7 +76,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
     features: [
       {
         title: "Projetos",
-        description: "Adicione projetos para abrigar itens de trabalho, ciclos e módulos.",
+        description: "Adicione projetos para abrigar chamados, ciclos e módulos.",
         cloud: {
           free: true,
           one: true,
@@ -86,8 +86,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Itens de trabalho",
-        description: "Adicione trabalho por meio de itens de trabalho, defina propriedades para acompanhamento e adicione a\nciclos ou módulos.",
+        title: "Chamados",
+        description: "Adicione trabalho por meio de chamados, defina propriedades para acompanhamento e adicione a\nciclos ou módulos.",
         cloud: {
           free: true,
           one: true,
@@ -130,7 +130,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Admissão",
+        title: "Solicitações",
         description:
           "Veja sugestões e feedback de visualizadores e\nconvidados antes de decidir adicioná-los ao seu\nprojeto.",
         cloud: {
@@ -145,11 +145,11 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         title: "Estimativas",
         description: "Meça o esforço em pontos em um sistema que funciona para\nvocê.",
         cloud: {
-          free: "Basic",
-          one: "Basic",
-          pro: "Advanced",
-          business: "Advanced",
-          enterprise: "Advanced",
+          free: "Básico",
+          one: "Básico",
+          pro: "Avançado",
+          business: "Avançado",
+          enterprise: "Avançado",
         },
       },
     ],
@@ -160,34 +160,34 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
     features: [
       {
         title: "Operações em massa",
-        description: "Adicione vários itens de trabalho a ciclos ou módulos, transfira-os\nou edite suas propriedades.",
+        description: "Adicione vários chamados a ciclos ou módulos, transfira-os\nou edite suas propriedades.",
         cloud: {
           free: false,
-          one: "Limited props",
-          pro: "All props",
+          one: "Propriedades limitadas",
+          pro: "Todas as propriedades",
           business: (
             <span className="flex flex-col items-end gap-1 lg:items-center">
               <ComingSoonBadge />
-              Transferências e conversões de item de trabalho
+              Transferências e conversões de chamado
             </span>
           ),
           enterprise: (
             <span className="flex flex-col items-end gap-1 lg:items-center">
               <ComingSoonBadge />
-              Transferências e conversões de item de trabalho
+              Transferências e conversões de chamado
             </span>
           ),
         },
       },
       {
         title: "Controle de tempo e registros de horas",
-        description: "Acompanhe o tempo por item de trabalho, veja relatórios agregados e\nfiltre conforme a necessidade.",
+        description: "Acompanhe o tempo por chamado, veja relatórios agregados e\nfiltre conforme a necessidade.",
         cloud: {
           free: false,
-          one: "Basic",
-          pro: "Historical timesheets",
-          business: "Historical timesheets\nand approvals",
-          enterprise: "Historical timesheets\nand approvals",
+          one: "Básico",
+          pro: "Registros de horas históricos",
+          business: "Registros de horas históricos\ne aprovações",
+          enterprise: "Registros de horas históricos\ne aprovações",
         },
       },
       {
@@ -202,8 +202,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Tipos de item de trabalho",
-        description: "Crie seus próprios tipos de item de trabalho com suas próprias\npropriedades.",
+        title: "Tipos de chamado",
+        description: "Crie seus próprios tipos de chamado com suas próprias\npropriedades.",
         cloud: {
           free: false,
           one: false,
@@ -218,14 +218,14 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         cloud: {
           free: false,
           one: false,
-          pro: "Project-level\ncustom properties",
-          business: "Workspace-level\nproperties and roll-ups",
-          enterprise: "Workspace-level\nproperties and roll-ups",
+          pro: "Propriedades personalizadas\npor projeto",
+          business: "Propriedades por workspace\ne consolidações",
+          enterprise: "Propriedades por workspace\ne consolidações",
         },
       },
       {
         title: "Dependências no Gantt",
-        description: "Ajuste os cronogramas de itens de trabalho dependentes visualmente no\nnosso layout de Gantt.",
+        description: "Ajuste os cronogramas de chamados dependentes visualmente no\nnosso layout de Gantt.",
         cloud: {
           free: false,
           one: false,
@@ -235,8 +235,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Transferências de item de trabalho",
-        description: "Mova um item de trabalho de um projeto ou ciclo para\noutro.",
+        title: "Transferências de chamado",
+        description: "Mova um chamado de um projeto ou ciclo para\noutro.",
         cloud: {
           free: false,
           one: false,
@@ -248,7 +248,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       {
         title: "Transferência automática de itens do ciclo",
         description:
-          "Transfira itens de trabalho incompletos de um ciclo concluído\npara o próximo ciclo ou para o estado padrão do projeto. ",
+          "Transfira chamados incompletos de um ciclo concluído\npara o próximo ciclo ou para o estado padrão do projeto. ",
         cloud: {
           free: false,
           one: false,
@@ -259,7 +259,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       },
       {
         title: "Épicos",
-        description: "Organize o trabalho de longo prazo em épicos que abrigam itens de trabalho,\nciclos e módulos.",
+        description: "Organize o trabalho de longo prazo em épicos que abrigam chamados,\nciclos e módulos.",
         cloud: {
           free: false,
           one: false,
@@ -306,13 +306,13 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       },
       {
         title: "Atribuição automática em módulos",
-        description: "Escolha regras de atribuição para itens de trabalho em um\nmódulo, incluindo Linear, Rodízio ou Capacidade.",
+        description: "Escolha regras de atribuição para chamados em um\nmódulo, incluindo Linear, Rodízio ou Capacidade.",
         cloud: {
           free: false,
           one: false,
           pro: "Linear",
-          business: "Round-robin and Capacity",
-          enterprise: "Round-robin and Capacity",
+          business: "Rodízio e Capacidade",
+          enterprise: "Rodízio e Capacidade",
         },
       },
       // {
@@ -354,7 +354,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       // {
       //   title: "Atualizações do projeto",
       //   description:
-      //     "Keep stakeholders in the loop with a dedicated\nspace for updates that everyone in the project can\nsee.",
+      //     "Mantenha as partes interessadas informadas com um espaço\ndedicado a atualizações visíveis para todos no projeto.",
       //   comingSoon: true,
       //   cloud: {
       //     free: false,
@@ -365,9 +365,9 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       //   },
       // },
       {
-        title: "Modelos de item de trabalho predefinidos",
+        title: "Modelos de chamado predefinidos",
         description:
-          "Escolha entre os modelos de item de trabalho disponíveis que\npersonalizam tipos e propriedades de item de trabalho para vários\ncasos de uso.",
+          "Escolha entre os modelos de chamado disponíveis que\npersonalizam tipos e propriedades de chamado para vários\ncasos de uso.",
         comingSoon: true,
         cloud: {
           free: false,
@@ -422,8 +422,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Responsáveis pela admissão",
-        description: "Atribua itens de admissão aprovados a um membro por\npadrão.",
+        title: "Responsáveis pelas solicitações",
+        description: "Atribua solicitações aprovadas a um membro por\npadrão.",
         cloud: {
           free: false,
           one: false,
@@ -434,7 +434,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       },
       {
         title: "SLAs personalizados",
-        description: "Defina matrizes de SLA para itens de trabalho sensíveis ao tempo.",
+        description: "Defina matrizes de SLA para chamados sensíveis ao tempo.",
         cloud: {
           free: false,
           one: false,
@@ -444,8 +444,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Formulários de admissão",
-        description: "Receba itens de admissão a partir de formulários web\nacessíveis externamente.",
+        title: "Formulários de solicitação",
+        description: "Receba solicitações a partir de formulários web\nacessíveis externamente.",
         cloud: {
           free: false,
           one: false,
@@ -455,8 +455,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "E-mails para admissão",
-        description: "Obtenha um endereço de e-mail para registrar itens de trabalho\ndiretamente na Admissão de um projeto.",
+        title: "E-mails para solicitações",
+        description: "Obtenha um endereço de e-mail para registrar solicitações\ndiretamente nas Solicitações de um projeto.",
         comingSoon: true,
         cloud: {
           free: false,
@@ -475,7 +475,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       {
         title: "Layouts",
         description:
-          "Escolha entre os layouts de Lista, Quadro, Calendário,\nGantt ou Planilha para seus itens de trabalho.",
+          "Escolha entre os layouts de Lista, Quadro, Calendário,\nGantt ou Planilha para seus chamados.",
         cloud: {
           free: true,
           one: true,
@@ -626,8 +626,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       //   title: "Pesquisa",
       //   description: "Pesquise por meio de consultas em linguagem natural, operadores ou\nPQL",
       //   cloud: {
-      //     free: "Basic text search",
-      //     one: "Basic text search",
+      //     free: "Busca textual básica",
+      //     one: "Busca textual básica",
       //     pro: (
       //       <span className="flex flex-col items-end lg:items-center gap-1">
       //         <span className="bg-[#3f76ff] text-on-color font-semibold text-9 p-0.5 w-fit whitespace-nowrap rounded-xs">
@@ -675,47 +675,47 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
       {
         title: "Limite de membros",
         description: "Número de assentos que podem usar os recursos de gestão de projetos e trabalho",
-        selfHostedDescription: "Number of users that our standard infra supports\nIncrease infra to get more users",
+        selfHostedDescription: "Número de usuários suportados pela nossa infraestrutura padrão\nAmplie a infraestrutura para ter mais usuários",
         cloud: {
           free: "12",
           one: "",
-          pro: "Unlimited",
-          business: "Unlimited",
-          enterprise: "Unlimited",
+          pro: "Ilimitado",
+          business: "Ilimitado",
+          enterprise: "Ilimitado",
         },
         "self-hosted": {
           free: "~50",
           one: "~50",
           pro: "~200",
           business: "~200",
-          enterprise: "Unlimited",
+          enterprise: "Ilimitado",
         },
       },
       {
         title: "Cargos",
         description: "Escolha um dos quatro cargos predefinidos ou crie\ncargos personalizados com RBAC.",
         cloud: {
-          free: "Basic",
-          one: "Basic",
-          pro: "Pre-defined roles",
+          free: "Básico",
+          one: "Básico",
+          pro: "Funções predefinidas",
           business: "RBAC",
           enterprise: "GAC",
         },
       },
       {
         title: "Convidados",
-        description: "Permita que alguns usuários vejam tudo ou apenas seus itens de trabalho em\num projeto.",
+        description: "Permita que alguns usuários vejam tudo ou apenas seus chamados em\num projeto.",
         cloud: {
           free: false,
-          one: "5 per paid member",
-          pro: "5 per paid member",
-          business: "5 per paid member",
-          enterprise: "5 per paid member",
+          one: "5 por membro pago",
+          pro: "5 por membro pago",
+          business: "5 por membro pago",
+          enterprise: "5 por membro pago",
         },
       },
       {
         title: "Aprovações",
-        description: "Defina aprovações de espaço de trabalho, projeto e tipo de item de trabalho para\nadministradores designados.",
+        description: "Defina aprovações de espaço de trabalho, projeto e tipo de chamado para\nadministradores designados.",
         comingSoon: true,
         cloud: {
           free: false,
@@ -796,7 +796,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
           one: false,
           pro: "5,000",
           business: "10,000",
-          enterprise: "Unlimited",
+          enterprise: "Ilimitado",
         },
       },
     ],
@@ -828,8 +828,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Incorporação de itens de trabalho",
-        description: "Incorpore itens de trabalho de qualquer projeto do qual você seja\nmembro.",
+        title: "Incorporação de chamados",
+        description: "Incorpore chamados de qualquer projeto do qual você seja\nmembro.",
         cloud: {
           free: false,
           one: true,
@@ -839,8 +839,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Vincular a itens de trabalho",
-        description: "Vincule páginas a itens de trabalho em uma seção separada nos detalhes\ndo item de trabalho.",
+        title: "Vincular a chamados",
+        description: "Vincule páginas a chamados em uma seção separada nos detalhes\ndo chamado.",
         cloud: {
           free: false,
           one: true,
@@ -878,9 +878,9 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         cloud: {
           free: false,
           one: false,
-          pro: "One download\nat a time",
-          business: "Queued downloads",
-          enterprise: "Queued downloads",
+          pro: "Um download\npor vez",
+          business: "Downloads em fila",
+          enterprise: "Downloads em fila",
         },
       },
       {
@@ -900,9 +900,9 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         cloud: {
           free: false,
           one: false,
-          pro: "2 days",
-          business: "3 months",
-          enterprise: "Unlimited",
+          pro: "2 dias",
+          business: "3 meses",
+          enterprise: "Ilimitado",
         },
       },
       {
@@ -926,8 +926,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
           free: false,
           one: false,
           pro: false,
-          business: "Word-compatible + other format downloads",
-          enterprise: "Word-compatible + other format downloads",
+          business: "Downloads compatíveis com Word e outros formatos",
+          enterprise: "Downloads compatíveis com Word e outros formatos",
         },
       },
     ],
@@ -938,24 +938,24 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
     features: [
       {
         title: "Jira",
-        description: "Importe seus itens de trabalho e membros do Jira.",
+        description: "Importe seus chamados e membros do Jira.",
         cloud: {
-          free: "Without custom props",
-          one: "Without custom props",
-          pro: "With custom props",
-          business: "With custom props",
-          enterprise: "With custom props",
+          free: "Sem propriedades personalizadas",
+          one: "Sem propriedades personalizadas",
+          pro: "Com propriedades personalizadas",
+          business: "Com propriedades personalizadas",
+          enterprise: "Com propriedades personalizadas",
         },
       },
       {
         title: "GitHub",
-        description: "Importe seus itens de trabalho e membros do GitHub.",
+        description: "Importe seus chamados e membros do GitHub.",
         cloud: {
-          free: "Without custom props",
-          one: "Without custom props",
-          pro: "With custom props",
-          business: "With custom props",
-          enterprise: "With custom props",
+          free: "Sem propriedades personalizadas",
+          one: "Sem propriedades personalizadas",
+          pro: "Com propriedades personalizadas",
+          business: "Com propriedades personalizadas",
+          enterprise: "Com propriedades personalizadas",
         },
       },
     ],
@@ -1036,7 +1036,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
           one: false,
           pro: "1 TB",
           business: "5 TB",
-          enterprise: "Custom",
+          enterprise: "Personalizado",
         },
       },
       {
@@ -1047,7 +1047,7 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
           one: false,
           pro: "100 MB",
           business: "200 MB",
-          enterprise: "Custom",
+          enterprise: "Personalizado",
         },
       },
     ],
@@ -1227,8 +1227,8 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
               <MessageCircle className="size-4 flex-shrink-0" />
             </div>
           ),
-          business: "Full-suite\nprofessional services",
-          enterprise: "Full-suite\nprofessional services",
+          business: "Suíte completa de\nserviços profissionais",
+          enterprise: "Suíte completa de\nserviços profissionais",
         },
       },
       {
@@ -1268,8 +1268,8 @@ export const PLANE_PLANS: PlanePlans = {
       name: "One",
       monthlyPrice: 799,
       yearlyPrice: 799,
-      monthlyPriceSecondaryDescription: "per workspace",
-      yearlyPriceSecondaryDescription: "per workspace",
+      monthlyPriceSecondaryDescription: "por workspace",
+      yearlyPriceSecondaryDescription: "por workspace",
       buttonCTA: "Upgrade",
       isActive: false,
     },
@@ -1278,34 +1278,34 @@ export const PLANE_PLANS: PlanePlans = {
       name: "Pro",
       monthlyPrice: 8,
       yearlyPrice: 6,
-      monthlyPriceSecondaryDescription: "billed monthly",
-      yearlyPriceSecondaryDescription: "billed yearly",
+      monthlyPriceSecondaryDescription: "cobrado mensalmente",
+      yearlyPriceSecondaryDescription: "cobrado anualmente",
       buttonCTA: "Upgrade",
       isActive: true,
     },
     business: {
       id: EProductSubscriptionEnum.BUSINESS,
       name: "Business",
-      monthlyPriceSecondaryDescription: "billed monthly",
-      yearlyPriceSecondaryDescription: "billed yearly",
+      monthlyPriceSecondaryDescription: "cobrado mensalmente",
+      yearlyPriceSecondaryDescription: "cobrado anualmente",
       buttonCTA: "Falar com vendas",
       isActive: false,
     },
     enterprise: {
       id: EProductSubscriptionEnum.ENTERPRISE,
       name: "Enterprise",
-      monthlyPriceSecondaryDescription: "billed monthly",
-      yearlyPriceSecondaryDescription: "billed yearly",
+      monthlyPriceSecondaryDescription: "cobrado mensalmente",
+      yearlyPriceSecondaryDescription: "cobrado anualmente",
       buttonCTA: "Falar com vendas",
       isActive: false,
     },
   },
   planHighlights: {
-    free: ["Upto 12 users", "Páginas", "Unlimited projects", "Unlimited cycles and modules"],
-    one: ["Upto 50 users", "OIDC and SAML", "Active cycles", "Limited time tracking"],
-    pro: ["Unlimited users", "Custom work items + Properties", "Work item templates", "Full Time Tracking"],
+    free: ["Até 12 usuários", "Páginas", "Projetos ilimitados", "Ciclos e módulos ilimitados"],
+    one: ["Até 50 usuários", "OIDC and SAML", "Ciclos ativos", "Controle de tempo limitado"],
+    pro: ["Usuários ilimitados", "Chamados e propriedades personalizados", "Modelos de chamado", "Controle de tempo completo"],
     business: ["RBAC", "Modelos de projeto", "Linhas de base e desvios", "Relatórios personalizados"],
-    enterprise: ["Private + managed deployments", "GAC", "LDAP support", "Bancos de dados e fórmulas"],
+    enterprise: ["Implantações privadas e gerenciadas", "GAC", "Suporte a LDAP", "Bancos de dados e fórmulas"],
   },
   planComparison: PLANS_COMPARISON_LIST,
 };

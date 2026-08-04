@@ -84,7 +84,7 @@ export function WorkItemSelectionPage(props: Props) {
       {/* {searchTerm === "" ? (
         recentIssues.length > 0 ? (
           <CommandPaletteEntityList
-            heading="Issues"
+            heading="Chamados"
             items={recentIssues}
             getKey={(issue) => issue.id}
             getLabel={(issue) => `${issue.project_identifier}-${issue.sequence_id} ${issue.name}`}
@@ -122,7 +122,7 @@ export function WorkItemSelectionPage(props: Props) {
         )
       ) : issueResults.length > 0 ? (
         <CommandPaletteEntityList
-          heading="Issues"
+          heading="Chamados"
           items={issueResults}
           getKey={(issue) => issue.id}
           getLabel={(issue) => `${issue.project__identifier}-${issue.sequence_id} ${issue.name}`}

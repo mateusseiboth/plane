@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { SquareUser } from "lucide-react";
 // Plane imports
-import { MODULE_STATUS, EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
+import { MODULE_STATUS, EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN, PROJECT_WORK_ROLES} from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setPromiseToast, setToast } from "@plane/propel/toast";
@@ -50,14 +50,7 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
 
   const moduleStatus = MODULE_STATUS.find((status) => status.value === moduleDetails.status);
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
   const isDisabled = !isEditingAllowed || !!moduleDetails?.archived_at;
@@ -84,7 +77,7 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
       },
       error: {
         title: "Erro!",
-        message: () => "Couldn't add the module to favorites. Please try again.",
+        message: () => "Não foi possível adicionar o módulo aos favoritos. Tente novamente.",
       },
     });
   };
@@ -108,7 +101,7 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
       },
       error: {
         title: "Erro!",
-        message: () => "Couldn't remove the module from favorites. Please try again.",
+        message: () => "Não foi possível remover o módulo dos favoritos. Tente novamente.",
       },
     });
   };

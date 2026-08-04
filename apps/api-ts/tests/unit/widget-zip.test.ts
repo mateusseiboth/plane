@@ -31,18 +31,18 @@ describe("extractWidgetZip", () => {
 
   it("throws 400 when manifest.json is missing", () => {
     const zip = makeZip({ "widget.js": VALID_BUNDLE });
-    expect(() => extractWidgetZip(zip)).toThrow("Missing manifest.json");
+    expect(() => extractWidgetZip(zip)).toThrow("manifest.json ausente");
   });
 
   it("throws 400 when entry file is missing", () => {
     const manifest = JSON.stringify({ name: "W", version: "1.0.0", author: "A", entry: "missing.js", permissions: [] });
     const zip = makeZip({ "manifest.json": manifest });
-    expect(() => extractWidgetZip(zip)).toThrow('Entry file "missing.js" not found');
+    expect(() => extractWidgetZip(zip)).toThrow('Arquivo de entrada "missing.js" não encontrado');
   });
 
   it("throws 400 when manifest.json is invalid JSON", () => {
     const zip = makeZip({ "manifest.json": "NOT JSON", "widget.js": VALID_BUNDLE });
-    expect(() => extractWidgetZip(zip)).toThrow("not valid JSON");
+    expect(() => extractWidgetZip(zip)).toThrow("não é um JSON válido");
   });
 
   it("normalises paths inside a top-level directory", () => {

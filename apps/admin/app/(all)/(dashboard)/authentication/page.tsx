@@ -81,7 +81,7 @@ const InstanceAuthenticationPage = observer(function InstanceAuthenticationPage(
         },
         error: {
           title: "Erro",
-          message: () => "Failed to save configuration",
+          message: () => "Falha ao salvar a configuração",
         },
       });
 

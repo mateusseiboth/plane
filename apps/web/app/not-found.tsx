@@ -13,7 +13,7 @@ import Image404 from "@/app/assets/404.svg?url";
 import type { Route } from "./+types/not-found";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "404 - Page Not Found" },
+  { title: "404 - Página não encontrada" },
   { name: "robots", content: "noindex, nofollow" },
 ];
 
@@ -23,13 +23,13 @@ function PageNotFound() {
       <div className="grid h-full place-items-center p-4">
         <div className="space-y-8 text-center">
           <div className="relative mx-auto h-60 w-60 lg:h-80 lg:w-80">
-            <img src={Image404} className="h-full w-full object-contain" alt="404- Page not found" />
+            <img src={Image404} className="h-full w-full object-contain" alt="404 - Página não encontrada" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-16 font-semibold">Oops! Something went wrong.</h3>
+            <h3 className="text-16 font-semibold">Ops! Algo deu errado.</h3>
             <p className="text-13 text-secondary">
-              Sorry, the page you are looking for cannot be found. It may have been removed, had its name changed, or is
-              temporarily unavailable.
+              Desculpe, a página que você procura não foi encontrada. Ela pode ter sido removida, ter tido o nome
+              alterado ou estar temporariamente indisponível.
             </p>
           </div>
           <Link href="/">

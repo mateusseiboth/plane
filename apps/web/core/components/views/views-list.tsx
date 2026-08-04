@@ -7,7 +7,7 @@
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { EUserProjectRoles } from "@plane/types";
@@ -32,10 +32,7 @@ export const ProjectViewsList = observer(function ProjectViewsList() {
   // derived values
   const projectViews = getProjectViews(projectId?.toString());
   const filteredProjectViews = getFilteredProjectViews(projectId?.toString());
-  const canPerformEmptyStateActions = allowPermissions(
-    [EUserProjectRoles.ADMIN, EUserProjectRoles.MEMBER, EUserProjectRoles.GUEST],
-    EUserPermissionsLevel.PROJECT
-  );
+  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
 
   if (loader || !projectViews || !filteredProjectViews) return <ViewListLoader />;
 

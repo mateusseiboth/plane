@@ -8,7 +8,7 @@ import { useCallback } from "react";
 import { observer } from "mobx-react";
 import { useTheme } from "next-themes";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { TModuleFilters } from "@plane/types";
 import { EUserProjectRoles } from "@plane/types";
@@ -48,7 +48,7 @@ function ProjectModulesPage({ params }: Route.ComponentProps) {
   // derived values
   const project = getProjectById(projectId);
   const pageTitle = project?.name ? `${project?.name} - Modules` : undefined;
-  const canPerformEmptyStateActions = allowPermissions([EUserProjectRoles.ADMIN], EUserPermissionsLevel.PROJECT);
+  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
   const resolvedPath = resolvedTheme === "light" ? lightModulesAsset : darkModulesAsset;
 
   const handleRemoveFilter = useCallback(

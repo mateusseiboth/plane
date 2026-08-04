@@ -11,7 +11,7 @@ import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element
 import { autoScrollForElements } from "@atlaskit/pragmatic-drag-and-drop-auto-scroll/element";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
-import { EIssueFilterType, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EIssueFilterType, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import type { EIssuesStoreType } from "@plane/types";
 import { EIssueServiceType, EIssueLayoutTypes } from "@plane/types";
 //hooks
@@ -132,14 +132,7 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
   const [deleteIssueModal, setDeleteIssueModal] = useState(false);
 
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
 
@@ -272,7 +265,7 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
             isDragOverDelete ? "bg-danger-primary blur-2xl" : ""
           } transition duration-300`}
         >
-          Solte aqui para excluir o item de trabalho.
+          Solte aqui para excluir o chamado.
         </div>
       </div>
       <IssueLayoutHOC layout={EIssueLayoutTypes.KANBAN}>

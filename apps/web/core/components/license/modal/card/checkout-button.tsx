@@ -65,7 +65,7 @@ export const PlanCheckoutButton = observer(function PlanCheckoutButton(props: Pr
             />
           )}
         </div>
-        <div className="text-caption-md-medium text-tertiary">per user per month</div>
+        <div className="text-caption-md-medium text-tertiary">por usuário por mês</div>
       </div>
       {isLoading ? (
         <Loader className="flex flex-col items-center justify-center">

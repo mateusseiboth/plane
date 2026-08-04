@@ -71,7 +71,7 @@ export function CycleCreateUpdateModal(props: CycleModalProps) {
         setToast({
           type: TOAST_TYPE.ERROR,
           title: "Erro!",
-          message: err?.detail ?? "Error in creating cycle. Please try again.",
+          message: err?.detail ?? "Erro ao criar o ciclo. Tente novamente.",
         });
       });
   };
@@ -92,7 +92,7 @@ export function CycleCreateUpdateModal(props: CycleModalProps) {
         setToast({
           type: TOAST_TYPE.ERROR,
           title: "Erro!",
-          message: err?.detail ?? "Error in updating cycle. Please try again.",
+          message: err?.detail ?? "Erro ao atualizar o ciclo. Tente novamente.",
         });
       });
   };

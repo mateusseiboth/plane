@@ -8,7 +8,7 @@ import { observer } from "mobx-react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EUserProjectRoles, EInboxIssueCurrentTab } from "@plane/types";
 // assets
@@ -39,7 +39,7 @@ function ProjectInboxPage({ params }: Route.ComponentProps) {
   const { currentProjectDetails } = useProject();
   const { allowPermissions } = useUserPermissions();
   // derived values
-  const canPerformEmptyStateActions = allowPermissions([EUserProjectRoles.ADMIN], EUserPermissionsLevel.PROJECT);
+  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
   const resolvedPath = resolvedTheme === "light" ? lightIntakeAsset : darkIntakeAsset;
 
   // No access to inbox

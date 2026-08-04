@@ -37,20 +37,19 @@ describe("TestWorkspaceInviteAPIEndpoints", () => {
     expect(res.status).toBe(400);
   });
 
-  it("list invitations returns paginated results", async () => {
+  it("list invitations returns an array", async () => {
     const res = await client.get(url());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
-    expect(typeof data.total_count).toBe("number");
-    expect(data.results.length).toBeGreaterThanOrEqual(2);
+    expect(data).toBeInstanceOf(Array);
+    expect(data.length).toBeGreaterThanOrEqual(2);
   });
 
   it("filter invitations by accepted=false", async () => {
     const res = await client.get(`${url()}?accepted=false`);
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results.every((i: any) => i.accepted === false)).toBe(true);
+    expect(data.every((i: any) => i.accepted === false)).toBe(true);
   });
 
   it("get invitation by id", async () => {
@@ -136,6 +135,7 @@ describe("TestProjectInviteAPIEndpoints", () => {
     const res = await client.get(url());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
+    // Convites de projeto são paginados (diferente dos de workspace, que vêm em array).
     expect(data.results).toBeInstanceOf(Array);
   });
 

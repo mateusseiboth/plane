@@ -517,6 +517,10 @@
         "title": "Storage",
         "heading": "Storage"
       },
+      "print": {
+        "title": "Printing",
+        "heading": "Printing"
+      },
       "chat": {
         "title": "Chat",
         "heading": "Chat"
@@ -528,6 +532,9 @@
       "widgets": {
         "title": "Widgets",
         "heading": "Widgets"
+      },
+      "auditoria": {
+        "title": "Audit trail (LGPD)"
       }
     },
     "empty_state": {

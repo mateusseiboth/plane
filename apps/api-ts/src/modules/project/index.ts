@@ -3,8 +3,10 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { publishRealtime } from "@utils/realtime";
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { nextSequenceId } from "@utils/sequence";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
+import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { notifyQualityOfIntake } from "@utils/notifications";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
@@ -145,13 +147,13 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await requireWorkspaceMember(ws.id, user.id);
 
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
-    if (!b.identifier) { set.status = 400; return { detail: "Identifier is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
+    if (!b.identifier) { set.status = 400; return { detail: "O identificador é obrigatório." }; }
 
     const exists = await prisma.project.findFirst({
       where: { workspaceId: ws.id, identifier: b.identifier.toUpperCase(), deletedAt: null },
     });
-    if (exists) { set.status = 409; return { detail: "Project with this identifier already exists." }; }
+    if (exists) { set.status = 409; return { detail: "Já existe um projeto com este identificador." }; }
 
     const project = await prisma.$transaction(async (tx) => {
       const p = await tx.project.create({
@@ -218,7 +220,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .patch("/:project_id/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -242,7 +244,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .patch("/:project_id", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -260,7 +262,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .delete("/:project_id/", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Only admins can delete projects." }; }
+    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir projetos." }; }
     await prisma.project.update({ where: { id: project_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -269,7 +271,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .delete("/:project_id", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Only admins can delete projects." }; }
+    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir projetos." }; }
     await prisma.project.update({ where: { id: project_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -296,21 +298,39 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     }));
   })
 
-  .post("/:project_id/members/", async ({ params: { slug, project_id }, body, user, set }) => {
+  .post("/:project_id/members/", async ({ params: { slug, project_id }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const members: Array<{ member_id: string; role: number }> = Array.isArray(b) ? b : b.members ?? [b];
     const results = [];
     for (const m of members) {
-      const created = await prisma.projectMember.upsert({
-        where: { projectId_memberId: { projectId: project.id, memberId: m.member_id } },
-        create: { projectId: project.id, workspaceId: ws.id, memberId: m.member_id, role: m.role ?? 5, isActive: true },
-        update: { role: m.role ?? 5, isActive: true, deletedAt: null },
-        include: { member: { select: { id: true } } },
+      // A unique de project_members inclui deleted_at, então não existe a chave
+      // composta `projectId_memberId` que um upsert exigiria — busca e decide.
+      const existing = await prisma.projectMember.findFirst({
+        where: { projectId: project.id, memberId: m.member_id, deletedAt: null },
+        select: { id: true },
       });
+      const created = existing
+        ? await prisma.projectMember.update({
+            where: { id: existing.id },
+            data: { role: m.role ?? 5, isActive: true },
+          })
+        : await prisma.projectMember.create({
+            data: { projectId: project.id, workspaceId: ws.id, memberId: m.member_id, role: m.role ?? 5, isActive: true },
+          });
       results.push({ id: created.id, member: created.memberId, role: created.role, original_role: created.role });
+      // LGPD: alteração de acesso a dados de um projeto.
+      recordAudit({
+        workspaceId: ws.id,
+        entity: AUDIT_ENTITIES.MEMBER,
+        entityId: created.memberId,
+        action: AUDIT_ACTIONS.PERMISSION_CHANGE,
+        actor: user,
+        headers,
+        metadata: { project_id, papel: created.role, operacao: existing ? "atualizado" : "adicionado" },
+      });
     }
     set.status = 201;
     return results;
@@ -322,14 +342,14 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const m = await prisma.projectMember.findFirst({
       where: { projectId: project.id, memberId: pk, deletedAt: null },
     });
-    if (!m) { set.status = 404; return { detail: "Not found." }; }
+    if (!m) { set.status = 404; return { detail: "Não encontrado." }; }
     return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
   })
 
   .patch("/:project_id/members/:pk/", async ({ params: { slug, project_id, pk }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = b.role;
@@ -337,13 +357,13 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const updated = await prisma.projectMember.findFirst({ where: { projectId: project.id, memberId: pk, deletedAt: null } });
     return updated
       ? { id: updated.id, member: updated.memberId, role: updated.role, original_role: updated.role }
-      : { detail: "Not found." };
+      : { detail: "Não encontrado." };
   })
 
   .delete("/:project_id/members/:pk/", async ({ params: { slug, project_id, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     await prisma.projectMember.updateMany({
       where: { projectId: project.id, memberId: pk },
       data: { isActive: false, deletedAt: new Date() },
@@ -378,7 +398,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
     });
     if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
-    set.status = 404; return { detail: "Not a project member." };
+    set.status = 404; return { detail: "Você não é membro do projeto." };
   })
 
   .get("/:project_id/project-members/me/", async ({ params: { slug, project_id }, user, set }) => {
@@ -393,7 +413,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
     });
     if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
-    set.status = 404; return { detail: "Not a project member." };
+    set.status = 404; return { detail: "Você não é membro do projeto." };
   })
 
   // ── Project invitations ────────────────────────────────────────────────────
@@ -412,7 +432,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .delete("/:project_id/invitations/:pk/", async ({ params: { slug, project_id, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     await prisma.projectMemberInvite.delete({ where: { id: pk } }).catch(() => {});
     set.status = 204;
     return null;
@@ -540,9 +560,9 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     };
   })
 
-  .post("/:project_id/inbox-issues/", async ({params: {slug, project_id}, body, user, set}) => {
+  .post("/:project_id/inbox-issues/", async ({params: {slug, project_id}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.INTAKE_CREATE);
     const b = (body as any).issue ?? body as any;
     const triageState = await findTriageState(project_id);
     const sequenceId = await nextSequenceId(prisma, project_id);
@@ -574,6 +594,16 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await notifyQualityOfIntake({workspaceId: ws.id, projectId: project_id, issueId: issue.id, actorId: user.id, issueName: issue.name});
     publishRealtime(ws.id, {entity: "intake", action: "create", project_id, id: issue.id, issue_id: issue.id, actor: user.id});
     publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, actor: user.id});
+    // LGPD: abertura de solicitação (pedido de chamado) pelo cliente.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.INTAKE,
+      entityId: issue.id,
+      action: AUDIT_ACTIONS.CREATE,
+      actor: user,
+      headers,
+      metadata: {project_id, name: issue.name},
+    });
     set.status = 201;
     return {
       id: issue.id, status: -2, snoozed_till: null, duplicate_to: undefined,
@@ -582,18 +612,28 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     };
   })
 
-  .get("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, user, set}) => {
+  .get("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const issue = await prisma.issue.findFirst({
       where: {id: inbox_id, projectId: project_id, deletedAt: null},
       include: {state: {select: {group: true}}},
     });
-    if (!issue) { set.status = 404; return {detail: "Not found."}; }
+    if (!issue) { set.status = 404; return {detail: "Não encontrado."}; }
     const ii = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}}) as any;
     const stateGroup = issue.state?.group ?? "triage";
     const derivedStatus = stateGroup === "triage" ? -2 : stateGroup === "cancelled" ? -1 : 1;
     const status = ii ? ii.status : derivedStatus;
+    // LGPD: visualização de solicitação.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.INTAKE,
+      entityId: issue.id,
+      action: AUDIT_ACTIONS.VIEW,
+      actor: user,
+      headers,
+      metadata: {project_id, sequence_id: issue.sequenceId},
+    });
     return {
       id: issue.id, status,
       snoozed_till: ii?.snoozeTill ?? null,
@@ -610,7 +650,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     };
   })
 
-  .patch("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, body, user, set}) => {
+  .patch("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     const {member: callerMember} = await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
@@ -718,13 +758,32 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     };
     publishRealtime(ws.id, {entity: "intake", action: "update", project_id, id: inbox_id, issue_id: inbox_id, actor: user.id});
     publishRealtime(ws.id, {entity: "issue", action: "update", project_id, id: inbox_id, actor: user.id});
+    // LGPD: triagem da solicitação (aceite/recusa/snooze) muda o destino do pedido.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.INTAKE,
+      entityId: inbox_id,
+      action: AUDIT_ACTIONS.UPDATE,
+      actor: user,
+      headers,
+      metadata: {project_id, status: result.status, campos: Object.keys(b ?? {})},
+    });
     return result;
   })
 
-  .delete("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, user, set}) => {
+  .delete("/:project_id/inbox-issues/:inbox_id/", async ({params: {slug, project_id, inbox_id}, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     await prisma.issue.update({where: {id: inbox_id}, data: {deletedAt: new Date()}});
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.INTAKE,
+      entityId: inbox_id,
+      action: AUDIT_ACTIONS.DELETE,
+      actor: user,
+      headers,
+      metadata: {project_id},
+    });
     const ii = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}});
     if (ii) await prisma.intakeIssue.update({where: {id: ii.id}, data: {deletedAt: new Date()}});
     publishRealtime(ws.id, {entity: "intake", action: "delete", project_id, id: inbox_id, issue_id: inbox_id, actor: user.id});
@@ -815,7 +874,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     });
     if (!requester || requester.role < 20) {
       set.status = 403;
-      return { detail: "Only workspace admins can sync project members." };
+      return { detail: "Apenas administradores do workspace podem sincronizar membros do projeto." };
     }
 
     const [wsMembers, projects] = await Promise.all([
@@ -922,11 +981,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
-    if (!b.reaction) { set.status = 400; return {detail: "reaction is required."}; }
+    if (!b.reaction) { set.status = 400; return {detail: "reaction é obrigatório."}; }
     const existing = await prisma.commentReaction.findFirst({
       where: {commentId: comment_id, actorId: user.id, reaction: b.reaction, deletedAt: null},
     });
-    if (existing) { set.status = 409; return {detail: "Already reacted."}; }
+    if (existing) { set.status = 409; return {detail: "Você já reagiu."}; }
     const r = await prisma.commentReaction.create({
       data: {commentId: comment_id, actorId: user.id, workspaceId: ws.id, projectId: project_id, reaction: b.reaction},
     });

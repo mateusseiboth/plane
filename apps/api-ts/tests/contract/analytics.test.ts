@@ -44,10 +44,12 @@ describe("TestAnalyticsAPIEndpoints", () => {
     const res = await client.get(`/workspaces/${wsSlug}/project-stats/`);
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
-    const stat = data.results.find((r: any) => r.project?.id === projectId);
+    expect(data).toBeInstanceOf(Array);
+    // Cada item traz o id do projeto e os totais já agregados.
+    const stat = data.find((r: any) => r.id === projectId);
     expect(stat).toBeDefined();
-    expect(stat.total).toBeGreaterThanOrEqual(2);
+    expect(stat.total_issues).toBeGreaterThanOrEqual(2);
+    expect(typeof stat.completed_issues).toBe("number");
   });
 });
 
@@ -81,12 +83,11 @@ describe("TestAnalyticViewCRUD", () => {
     expect(res.status).toBe(400);
   });
 
-  it("list analytic views returns paginated results", async () => {
+  it("list analytic views returns an array", async () => {
     const res = await client.get(url());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
     expect(data.results).toBeInstanceOf(Array);
-    expect(typeof data.total_count).toBe("number");
   });
 
   it("get analytic view by id", async () => {

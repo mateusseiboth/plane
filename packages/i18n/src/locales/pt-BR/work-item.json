@@ -1,50 +1,50 @@
 {
   "issue": {
-    "label": "{count, plural, one {Item de trabalho} other {Itens de trabalho}}",
-    "all": "Todos os Itens de trabalho",
-    "edit": "Editar item de trabalho",
+    "label": "{count, plural, one {Chamado} other {Chamados}}",
+    "all": "Todos os chamados",
+    "edit": "Editar chamado",
     "title": {
-      "label": "Título do item de trabalho",
-      "required": "O título do item de trabalho é obrigatório."
+      "label": "Título do chamado",
+      "required": "O título do chamado é obrigatório."
     },
     "add": {
-      "press_enter": "Pressione 'Enter' para adicionar outro item de trabalho",
-      "label": "Adicionar item de trabalho",
+      "press_enter": "Pressione 'Enter' para adicionar outro chamado",
+      "label": "Adicionar chamado",
       "cycle": {
-        "failed": "Não foi possível adicionar o item de trabalho ao ciclo. Por favor, tente novamente.",
-        "success": "{count, plural, one {Item de trabalho} other {Itens de trabalho}} adicionado(s) ao ciclo com sucesso.",
-        "loading": "Adicionando {count, plural, one {item de trabalho} other {itens de trabalho}} ao ciclo"
+        "failed": "Não foi possível adicionar o chamado ao ciclo. Por favor, tente novamente.",
+        "success": "{count, plural, one {Chamado} other {Chamados}} adicionado(s) ao ciclo com sucesso.",
+        "loading": "Adicionando {count, plural, one {chamado} other {chamados}} ao ciclo"
       },
       "assignee": "Adicionar responsáveis",
       "start_date": "Adicionar data de início",
       "due_date": "Adicionar data de vencimento",
-      "parent": "Adicionar item de trabalho pai",
-      "sub_issue": "Adicionar sub-item de trabalho",
+      "parent": "Adicionar chamado pai",
+      "sub_issue": "Adicionar subchamado",
       "dependency": "Adicionar dependência",
       "relation": "Adicionar relação",
       "link": "Adicionar link",
-      "existing": "Adicionar item de trabalho existente"
+      "existing": "Adicionar chamado existente"
     },
     "remove": {
-      "label": "Remover item de trabalho",
+      "label": "Remover chamado",
       "cycle": {
-        "loading": "Removendo item de trabalho do ciclo",
-        "success": "Item de trabalho removido do ciclo com sucesso.",
-        "failed": "Não foi possível remover o item de trabalho do ciclo. Por favor, tente novamente."
+        "loading": "Removendo chamado do ciclo",
+        "success": "Chamado removido do ciclo com sucesso.",
+        "failed": "Não foi possível remover o chamado do ciclo. Por favor, tente novamente."
       },
       "module": {
-        "loading": "Removendo item de trabalho do módulo",
-        "success": "Item de trabalho removido do módulo com sucesso.",
-        "failed": "Não foi possível remover o item de trabalho do módulo. Por favor, tente novamente."
+        "loading": "Removendo chamado do módulo",
+        "success": "Chamado removido do módulo com sucesso.",
+        "failed": "Não foi possível remover o chamado do módulo. Por favor, tente novamente."
       },
       "parent": {
-        "label": "Remover item de trabalho pai"
+        "label": "Remover chamado pai"
       }
     },
-    "new": "Novo Item de trabalho",
-    "adding": "Adicionando item de trabalho",
+    "new": "Novo chamado",
+    "adding": "Adicionando chamado",
     "create": {
-      "success": "Item de trabalho criado com sucesso"
+      "success": "Chamado criado com sucesso"
     },
     "priority": {
       "urgent": "Urgente",
@@ -56,15 +56,15 @@
       "properties": {
         "label": "Exibir Propriedades",
         "id": "ID",
-        "issue_type": "Tipo de Item de Trabalho",
-        "sub_issue_count": "Contagem de sub-itens de trabalho",
+        "issue_type": "Tipo de chamado",
+        "sub_issue_count": "Contagem de subchamados",
         "attachment_count": "Contagem de anexos",
         "created_on": "Criado em",
-        "sub_issue": "Sub-item de trabalho",
-        "work_item_count": "Contagem de itens de trabalho"
+        "sub_issue": "Subchamado",
+        "work_item_count": "Contagem de chamados"
       },
       "extra": {
-        "show_sub_issues": "Mostrar sub-itens de trabalho",
+        "show_sub_issues": "Mostrar subchamados",
         "show_empty_groups": "Mostrar grupos vazios"
       }
     },
@@ -152,35 +152,35 @@
     },
     "empty_state": {
       "issue_detail": {
-        "title": "O item de trabalho não existe",
-        "description": "O item de trabalho que você está procurando não existe, foi arquivado ou foi excluído.",
+        "title": "O chamado não existe",
+        "description": "O chamado que você está procurando não existe, foi arquivado ou foi excluído.",
         "primary_button": {
-          "text": "Visualizar outros itens de trabalho"
+          "text": "Visualizar outros chamados"
         }
       }
     },
     "sibling": {
-      "label": "Itens de trabalho irmãos"
+      "label": "Chamados irmãos"
     },
     "archive": {
-      "description": "Apenas itens de trabalho concluídos ou cancelados\npodem ser arquivados",
-      "label": "Arquivar Item de Trabalho",
-      "confirm_message": "Tem certeza de que deseja arquivar o item de trabalho? Todos os seus itens de trabalho arquivados podem ser restaurados posteriormente.",
+      "description": "Apenas chamados concluídos ou cancelados\npodem ser arquivados",
+      "label": "Arquivar chamado",
+      "confirm_message": "Tem certeza de que deseja arquivar o chamado? Todos os seus chamados arquivados podem ser restaurados posteriormente.",
       "success": {
         "label": "Sucesso ao arquivar",
         "message": "Seus arquivos podem ser encontrados nos arquivos do projeto."
       },
       "failed": {
-        "message": "Não foi possível arquivar o item de trabalho. Por favor, tente novamente."
+        "message": "Não foi possível arquivar o chamado. Por favor, tente novamente."
       }
     },
     "restore": {
       "success": {
         "title": "Sucesso ao restaurar",
-        "message": "Seu item de trabalho pode ser encontrado nos itens de trabalho do projeto."
+        "message": "Seu chamado pode ser encontrado nos chamados do projeto."
       },
       "failed": {
-        "message": "Não foi possível restaurar o item de trabalho. Por favor, tente novamente."
+        "message": "Não foi possível restaurar o chamado. Por favor, tente novamente."
       }
     },
     "relation": {
@@ -195,29 +195,29 @@
       "implements": "Implementa",
       "implemented_by": "Implementado por"
     },
-    "copy_link": "Copiar link do item de trabalho",
+    "copy_link": "Copiar link do chamado",
     "delete": {
-      "label": "Excluir item de trabalho",
-      "error": "Erro ao excluir item de trabalho"
+      "label": "Excluir chamado",
+      "error": "Erro ao excluir chamado"
     },
     "subscription": {
       "actions": {
-        "subscribed": "Item de trabalho inscrito com sucesso",
-        "unsubscribed": "Item de trabalho não inscrito com sucesso"
+        "subscribed": "Inscrição no chamado realizada com sucesso",
+        "unsubscribed": "Inscrição no chamado cancelada com sucesso"
       }
     },
     "select": {
-      "error": "Selecione pelo menos um item de trabalho",
-      "empty": "Nenhum item de trabalho selecionado",
-      "add_selected": "Adicionar itens de trabalho selecionados",
+      "error": "Selecione pelo menos um chamado",
+      "empty": "Nenhum chamado selecionado",
+      "add_selected": "Adicionar chamados selecionados",
       "select_all": "Selecionar tudo",
       "deselect_all": "Desmarcar tudo"
     },
-    "open_in_full_screen": "Abrir item de trabalho em tela cheia",
+    "open_in_full_screen": "Abrir chamado em tela cheia",
     "duplicate": {
       "modal": {
         "title": "Fazer uma cópia para outro projeto",
-        "description1": "Isto cria uma cópia do item de trabalho.",
+        "description1": "Isto cria uma cópia do chamado.",
         "description2": "Todos os dados de propriedades serão removidos ao duplicar.",
         "placeholder": "Selecionar um projeto"
       }
@@ -225,10 +225,10 @@
     "toast": {
       "duplicate": {
         "success": {
-          "message": "Item de trabalho duplicado com sucesso"
+          "message": "Chamado duplicado com sucesso"
         },
         "error": {
-          "message": "Falha ao duplicar o item de trabalho"
+          "message": "Falha ao duplicar o chamado"
         }
       }
     },
@@ -270,22 +270,22 @@
   },
   "sub_work_item": {
     "update": {
-      "success": "Sub-item de trabalho atualizado com sucesso",
-      "error": "Erro ao atualizar sub-item de trabalho"
+      "success": "Subchamado atualizado com sucesso",
+      "error": "Erro ao atualizar subchamado"
     },
     "remove": {
-      "success": "Sub-item de trabalho removido com sucesso",
-      "error": "Erro ao remover sub-item de trabalho"
+      "success": "Subchamado removido com sucesso",
+      "error": "Erro ao remover subchamado"
     },
     "empty_state": {
       "sub_list_filters": {
-        "title": "Você não tem sub-itens de trabalho que correspondem aos filtros que você aplicou.",
-        "description": "Para ver todos os sub-itens de trabalho, limpe todos os filtros aplicados.",
+        "title": "Você não tem subchamados que correspondem aos filtros que você aplicou.",
+        "description": "Para ver todos os subchamados, limpe todos os filtros aplicados.",
         "action": "Limpar filtros"
       },
       "list_filters": {
-        "title": "Você não tem itens de trabalho que correspondem aos filtros que você aplicou.",
-        "description": "Para ver todos os itens de trabalho, limpe todos os filtros aplicados.",
+        "title": "Você não tem chamados que correspondem aos filtros que você aplicou.",
+        "description": "Para ver todos os chamados, limpe todos os filtros aplicados.",
         "action": "Limpar filtros"
       }
     }
@@ -293,10 +293,10 @@
   "issue_relation": {
     "empty_state": {
       "search": {
-        "title": "Nenhum item de trabalho correspondente encontrado"
+        "title": "Nenhum chamado correspondente encontrado"
       },
       "no_issues": {
-        "title": "Nenhum item de trabalho encontrado"
+        "title": "Nenhum chamado encontrado"
       }
     }
   },
@@ -304,36 +304,36 @@
     "empty_state": {
       "general": {
         "title": "Nenhum comentário ainda",
-        "description": "Os comentários podem ser usados como um espaço de discussão e acompanhamento para os itens de trabalho"
+        "description": "Os comentários podem ser usados como um espaço de discussão e acompanhamento para os chamados"
       }
     }
   },
   "bulk_operations": {
     "error_details": {
       "invalid_archive_state_group": {
-        "title": "Não é possível arquivar itens de trabalho",
-        "message": "Apenas itens de trabalho pertencentes aos grupos de estado Concluído ou Cancelado podem ser arquivados."
+        "title": "Não é possível arquivar chamados",
+        "message": "Apenas chamados pertencentes aos grupos de estado Concluído ou Cancelado podem ser arquivados."
       },
       "invalid_issue_start_date": {
-        "title": "Não é possível atualizar itens de trabalho",
-        "message": "A data de início selecionada sucede a data de vencimento para alguns itens de trabalho. Certifique-se de que a data de início seja anterior à data de vencimento."
+        "title": "Não é possível atualizar chamados",
+        "message": "A data de início selecionada sucede a data de vencimento para alguns chamados. Certifique-se de que a data de início seja anterior à data de vencimento."
       },
       "invalid_issue_target_date": {
-        "title": "Não é possível atualizar itens de trabalho",
-        "message": "A data de vencimento selecionada precede a data de início para alguns itens de trabalho. Certifique-se de que a data de vencimento seja posterior à data de início."
+        "title": "Não é possível atualizar chamados",
+        "message": "A data de vencimento selecionada precede a data de início para alguns chamados. Certifique-se de que a data de vencimento seja posterior à data de início."
       },
       "invalid_state_transition": {
-        "title": "Não é possível atualizar itens de trabalho",
-        "message": "A mudança de estado não é permitida para alguns itens de trabalho. Certifique-se de que a mudança de estado seja permitida."
+        "title": "Não é possível atualizar chamados",
+        "message": "A mudança de estado não é permitida para alguns chamados. Certifique-se de que a mudança de estado seja permitida."
       }
     }
   },
   "recurring_work_items": {
     "settings": {
-      "heading": "Itens de trabalho recorrentes",
+      "heading": "Chamados recorrentes",
       "description": "Configure seu trabalho recorrente uma vez e nós cuidaremos das repetições. Você verá tudo aqui quando for necessário.",
-      "new_recurring_work_item": "Novo item de trabalho recorrente",
-      "update_recurring_work_item": "Atualizar item de trabalho recorrente",
+      "new_recurring_work_item": "Novo chamado recorrente",
+      "update_recurring_work_item": "Atualizar chamado recorrente",
       "form": {
         "interval": {
           "title": "Agendamento",
@@ -349,13 +349,13 @@
           }
         },
         "button": {
-          "create": "Criar item de trabalho recorrente",
-          "update": "Atualizar item de trabalho recorrente"
+          "create": "Criar chamado recorrente",
+          "update": "Atualizar chamado recorrente"
         }
       },
       "create_button": {
-        "label": "Criar item de trabalho recorrente",
-        "no_permission": "Entre em contato com o administrador do projeto para criar itens de trabalho recorrentes"
+        "label": "Criar chamado recorrente",
+        "no_permission": "Entre em contato com o administrador do projeto para criar chamados recorrentes"
       }
     },
     "empty_state": {
@@ -364,46 +364,46 @@
         "description": "Configure uma vez. Nós o traremos de volta quando chegar a hora. Faça upgrade para o Business para tornar o trabalho recorrente mais fácil."
       },
       "no_templates": {
-        "button": "Crie seu primeiro item de trabalho recorrente"
+        "button": "Crie seu primeiro chamado recorrente"
       }
     },
     "toasts": {
       "create": {
         "success": {
-          "title": "Item de trabalho recorrente criado",
-          "message": "{name}, o item de trabalho recorrente, agora está disponível no seu espaço de trabalho."
+          "title": "Chamado recorrente criado",
+          "message": "{name}, o chamado recorrente, agora está disponível no seu espaço de trabalho."
         },
         "error": {
-          "title": "Não foi possível criar o item de trabalho recorrente desta vez.",
-          "message": "Tente salvar seus dados novamente ou copie-os para um novo item de trabalho recorrente, de preferência em outra aba."
+          "title": "Não foi possível criar o chamado recorrente desta vez.",
+          "message": "Tente salvar seus dados novamente ou copie-os para um novo chamado recorrente, de preferência em outra aba."
         }
       },
       "update": {
         "success": {
-          "title": "Item de trabalho recorrente alterado",
-          "message": "{name}, o item de trabalho recorrente, foi alterado."
+          "title": "Chamado recorrente alterado",
+          "message": "{name}, o chamado recorrente, foi alterado."
         },
         "error": {
-          "title": "Não foi possível salvar as alterações neste item de trabalho recorrente.",
-          "message": "Tente salvar seus dados novamente ou volte a este item de trabalho recorrente mais tarde. Se o problema persistir, entre em contato conosco."
+          "title": "Não foi possível salvar as alterações neste chamado recorrente.",
+          "message": "Tente salvar seus dados novamente ou volte a este chamado recorrente mais tarde. Se o problema persistir, entre em contato conosco."
         }
       },
       "delete": {
         "success": {
-          "title": "Item de trabalho recorrente excluído",
-          "message": "{name}, o item de trabalho recorrente, foi excluído do seu espaço de trabalho."
+          "title": "Chamado recorrente excluído",
+          "message": "{name}, o chamado recorrente, foi excluído do seu espaço de trabalho."
         },
         "error": {
-          "title": "Não foi possível excluir o item de trabalho recorrente.",
+          "title": "Não foi possível excluir o chamado recorrente.",
           "message": "Tente excluir novamente ou volte mais tarde. Se não conseguir excluir, entre em contato conosco."
         }
       }
     },
     "delete_confirmation": {
-      "title": "Excluir item de trabalho recorrente",
+      "title": "Excluir chamado recorrente",
       "description": {
-        "prefix": "Tem certeza que deseja excluir o item de trabalho recorrente-",
-        "suffix": "? Todos os dados relacionados ao item de trabalho recorrente serão removidos permanentemente. Esta ação não pode ser desfeita."
+        "prefix": "Tem certeza que deseja excluir o chamado recorrente-",
+        "suffix": "? Todos os dados relacionados ao chamado recorrente serão removidos permanentemente. Esta ação não pode ser desfeita."
       }
     }
   },

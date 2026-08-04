@@ -103,14 +103,14 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
           setToast({
             title: "Sucesso!",
             type: TOAST_TYPE.SUCCESS,
-            message: "Item de trabalho excluído com sucesso",
+            message: "Solicitação excluída com sucesso",
           });
         } catch (error) {
           console.log("Error in deleting work item:", error);
           setToast({
             title: "Erro!",
             type: TOAST_TYPE.ERROR,
-            message: "Falha ao excluir item de trabalho",
+            message: "Falha ao excluir solicitação",
           });
         }
       },
@@ -119,9 +119,9 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
           await inboxIssue.updateIssue(data);
         } catch (_error) {
           setToast({
-            title: "Falha ao atualizar item de trabalho",
+            title: "Falha ao atualizar solicitação",
             type: TOAST_TYPE.ERROR,
-            message: "Falha ao atualizar item de trabalho",
+            message: "Falha ao atualizar solicitação",
           });
         }
       },
@@ -206,7 +206,7 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
                 createdAt: issue.created_at ? new Date(issue.created_at) : new Date(),
                 createdByDisplayName:
                   inboxIssue.source === EInboxIssueSource.FORMS
-                    ? "Intake Form user"
+                    ? "Usuário do formulário de solicitação"
                     : (getUserDetails(issue.created_by ?? "")?.display_name ?? ""),
                 id: issue.id,
                 isRestoreDisabled: !isEditable,

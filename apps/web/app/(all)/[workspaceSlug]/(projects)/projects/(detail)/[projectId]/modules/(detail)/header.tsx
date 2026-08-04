@@ -36,6 +36,7 @@ import {
   MobileLayoutSelection,
 } from "@/components/issues/issue-layouts/filters";
 import { ModuleQuickActions } from "@/components/modules";
+import { ModulePrintDocument } from "@/components/print";
 import { WorkItemFiltersToggle } from "@/components/work-item-filters/filters-toggle";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
@@ -140,7 +141,7 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
               <Breadcrumbs.Item
                 component={
                   <BreadcrumbLink
-                    label="Modules"
+                    label="Módulos"
                     href={`/${workspaceSlug}/projects/${projectId}/modules/`}
                     icon={<ModuleIcon className="h-4 w-4 text-tertiary" />}
                     isLast
@@ -230,7 +231,7 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
           {canUserCreateIssue ? (
             <>
               <Button className="hidden md:block" onClick={() => setAnalyticsModal(true)} variant="secondary" size="lg">
-                <span className="hidden @4xl:flex">Analytics</span>
+                <span className="hidden @4xl:flex">Análises</span>
                 <span className="@4xl:hidden">
                   <ChartNoAxesColumn className="size-3.5" />
                 </span>
@@ -244,12 +245,13 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
                 }}
                 data-ph-element={WORK_ITEM_TRACKER_ELEMENTS.HEADER_ADD_BUTTON.MODULE}
               >
-                Adicionar item de trabalho
+                Adicionar chamado
               </Button>
             </>
           ) : (
             <></>
           )}
+          {moduleId && <ModulePrintDocument moduleId={moduleId.toString()} />}
           <IconButton
             variant="tertiary"
             size="lg"

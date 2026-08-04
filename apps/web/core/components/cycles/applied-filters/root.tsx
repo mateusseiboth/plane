@@ -6,7 +6,7 @@
 
 import {observer} from "mobx-react";
 // plane imports
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {CloseIcon} from "@plane/propel/icons";
 import type {TCycleFilters} from "@plane/types";
@@ -40,14 +40,7 @@ export const CycleAppliedFiltersList = observer(function CycleAppliedFiltersList
   const isEditingAllowed =
     alwaysAllowEditing ||
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
     );
 

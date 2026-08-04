@@ -204,7 +204,7 @@ export function CreateApiTokenForm(props: Props) {
                           {option.label}
                         </CustomSelect.Option>
                       ))}
-                      <CustomSelect.Option value="custom">Custom</CustomSelect.Option>
+                      <CustomSelect.Option value="custom">Personalizado</CustomSelect.Option>
                     </CustomSelect>
                   );
                 }}

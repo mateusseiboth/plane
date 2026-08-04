@@ -10,7 +10,7 @@ import { useParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { Info, SquareUser } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
-import { MODULE_STATUS, EUserPermissions, EUserPermissionsLevel, EEstimateSystem } from "@plane/constants";
+import { MODULE_STATUS, EUserPermissions, EUserPermissionsLevel, EEstimateSystem, PROJECT_WORK_ROLES} from "@plane/constants";
 // plane types
 import { useTranslation } from "@plane/i18n";
 import {
@@ -164,14 +164,7 @@ export const ModuleAnalyticsSidebar = observer(function ModuleAnalyticsSidebar(p
       : `${moduleDetails.completed_estimate_points}/${moduleDetails.total_estimate_points}`;
 
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
 

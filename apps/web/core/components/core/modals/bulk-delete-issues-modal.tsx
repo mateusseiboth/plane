@@ -104,7 +104,7 @@ export const BulkDeleteIssuesModal = observer(function BulkDeleteIssuesModal(pro
       setToast({
         type: TOAST_TYPE.ERROR,
         title: "Erro!",
-        message: "Selecione pelo menos um item de trabalho.",
+        message: "Selecione pelo menos um chamado.",
       });
       return;
     }
@@ -116,7 +116,7 @@ export const BulkDeleteIssuesModal = observer(function BulkDeleteIssuesModal(pro
         setToast({
           type: TOAST_TYPE.SUCCESS,
           title: "Sucesso!",
-          message: "Itens de trabalho excluídos com sucesso!",
+          message: "Chamados excluídos com sucesso!",
         });
         handleClose();
       })
@@ -133,7 +133,7 @@ export const BulkDeleteIssuesModal = observer(function BulkDeleteIssuesModal(pro
     issues.length > 0 ? (
       <li className="p-2">
         {query === "" && (
-          <h2 className="mt-4 mb-2 px-3 text-11 font-semibold text-primary">Selecione os itens de trabalho para excluir</h2>
+          <h2 className="mt-4 mb-2 px-3 text-11 font-semibold text-primary">Selecione os chamados para excluir</h2>
         )}
         <ul className="text-13 text-secondary">
           {issues.map((issue) => (

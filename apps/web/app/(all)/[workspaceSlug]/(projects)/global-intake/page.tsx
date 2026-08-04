@@ -15,6 +15,7 @@ import { Intake } from "@plane/propel/icons";
 import { cn, calculateTimeAgo } from "@plane/utils";
 import { PageHead } from "@/components/core/page-title";
 import { InboxIssueRoot } from "@/components/inbox";
+import { IntakeListPrintDocument, PrintButton } from "@/components/print";
 import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { APIService } from "@/services/api.service";
@@ -64,7 +65,7 @@ function GlobalIntakePage() {
     ? intakeProjects.find((p) => p?.id === selectedProjectId)
     : undefined;
 
-  const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Intake Global` : "Intake Global";
+  const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Solicitações globais` : "Solicitações globais";
 
   // ── Global list state (when no project is selected) ──────────────────────
   const [statusFilter, setStatusFilter] = useState<number>(-2); // -2=pending default
@@ -155,7 +156,22 @@ function GlobalIntakePage() {
                   {INTAKE_STATUS_LABEL[s]}
                 </button>
               ))}
+              <div className="ml-auto">
+                <PrintButton
+                  documentTitle="Solicitações"
+                  auditEntity="intake"
+                  auditEntityId={currentWorkspace?.id ?? ""}
+                  auditMetadata={{escopo: "listagem"}}
+                />
+              </div>
             </div>
+
+            <IntakeListPrintDocument
+              title="Solicitações"
+              subtitle={currentWorkspace?.name}
+              statusLabel={INTAKE_STATUS_LABEL[statusFilter]}
+              records={allIntakes}
+            />
 
             <div className="flex-1 overflow-y-auto">
               {loadingAll && (
@@ -164,7 +180,7 @@ function GlobalIntakePage() {
               {!loadingAll && allIntakes.length === 0 && (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-secondary">
                   <AlertCircle className="h-10 w-10 opacity-40" />
-                  <p className="text-sm">Nenhum intake com status "{INTAKE_STATUS_LABEL[statusFilter]}".</p>
+                  <p className="text-sm">Nenhuma solicitação com status "{INTAKE_STATUS_LABEL[statusFilter]}".</p>
                 </div>
               )}
               {!loadingAll && allIntakes.map((intake: any) => (

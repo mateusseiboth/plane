@@ -16,6 +16,7 @@ import { EViewAccess } from "@plane/types";
 import { removeNillKeys } from "@/components/issues/issue-layouts/utils";
 import { CreateUpdateWorkspaceViewModal } from "@/components/workspace/views/modal";
 // hooks
+import { useEntities } from "@/hooks/use-entities";
 import { useGlobalView } from "@/hooks/store/use-global-view";
 import { useLabel } from "@/hooks/store/use-label";
 import { useMember } from "@/hooks/store/use-member";
@@ -54,6 +55,7 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
   const [createViewPayload, setCreateViewPayload] = useState<Partial<IWorkspaceView> | undefined>(undefined);
   // hooks
   const { getViewDetailsById, updateGlobalView } = useGlobalView();
+  const { entities } = useEntities(workspaceSlug);
   const { data: currentUser } = useUser();
   const { allowPermissions } = useUserPermissions();
   const { joinedProjectIds } = useProject();
@@ -214,6 +216,7 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
       <WorkItemFiltersHOC
         {...props}
         memberIds={getWorkspaceMemberIds(workspaceSlug)}
+        entities={entities}
         labelIds={workspaceLabelIds}
         projectIds={joinedProjectIds}
         stateIds={workspaceStateIds}

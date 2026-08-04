@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {TabNavigationItem, TabNavigationList} from "@plane/propel/tab-navigation";
 import type {EUserProjectRoles} from "@plane/types";
@@ -136,14 +136,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
   const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug.toString(), project?.id);
 
   const isAuthorized = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_VIEW_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug.toString(),
     project?.id,

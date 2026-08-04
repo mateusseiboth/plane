@@ -101,13 +101,13 @@ function validateContributions(raw: unknown): PluginContributions {
   const rawSidebar = Array.isArray(contributions.sidebar) ? contributions.sidebar : [];
   const sidebar: PluginSidebarContribution[] = rawSidebar.map((item: any, idx: number) => {
     if (!item || typeof item !== "object") {
-      throw Object.assign(new Error(`manifest.json: contributions.sidebar[${idx}] must be an object.`), { status: 400 });
+      throw Object.assign(new Error(`manifest.json: contributions.sidebar[${idx}] deve ser um objeto.`), { status: 400 });
     }
     if (!item.label || typeof item.label !== "string") {
-      throw Object.assign(new Error(`manifest.json: contributions.sidebar[${idx}].label is required.`), { status: 400 });
+      throw Object.assign(new Error(`manifest.json: contributions.sidebar[${idx}].label é obrigatório.`), { status: 400 });
     }
     if (!item.page || typeof item.page !== "string") {
-      throw Object.assign(new Error(`manifest.json: contributions.sidebar[${idx}].page is required.`), { status: 400 });
+      throw Object.assign(new Error(`manifest.json: contributions.sidebar[${idx}].page é obrigatório.`), { status: 400 });
     }
     return {
       id: typeof item.id === "string" && item.id ? slugify(item.id) : slugify(item.label),
@@ -121,10 +121,10 @@ function validateContributions(raw: unknown): PluginContributions {
   const rawPages = Array.isArray(contributions.pages) ? contributions.pages : [];
   const pages: PluginPageContribution[] = rawPages.map((item: any, idx: number) => {
     if (!item || typeof item !== "object") {
-      throw Object.assign(new Error(`manifest.json: contributions.pages[${idx}] must be an object.`), { status: 400 });
+      throw Object.assign(new Error(`manifest.json: contributions.pages[${idx}] deve ser um objeto.`), { status: 400 });
     }
     if (!item.path || typeof item.path !== "string") {
-      throw Object.assign(new Error(`manifest.json: contributions.pages[${idx}].path is required.`), { status: 400 });
+      throw Object.assign(new Error(`manifest.json: contributions.pages[${idx}].path é obrigatório.`), { status: 400 });
     }
     return {
       path: String(item.path).replace(/^\/+/, "").slice(0, 200),
@@ -141,7 +141,7 @@ export function validatePluginManifest(raw: Record<string, unknown>): ValidatedP
   for (const field of required) {
     if (!raw[field] || typeof raw[field] !== "string") {
       throw Object.assign(
-        new Error(`manifest.json: missing or invalid field "${field}".`),
+        new Error(`manifest.json: campo "${field}" ausente ou inválido.`),
         { status: 400 }
       );
     }
@@ -150,7 +150,7 @@ export function validatePluginManifest(raw: Record<string, unknown>): ValidatedP
   const version = raw.version as string;
   if (!SEMVER_RE.test(version)) {
     throw Object.assign(
-      new Error(`manifest.json: version must follow semver (major.minor.patch), got "${version}".`),
+      new Error(`manifest.json: a versão deve seguir o padrão semver (major.minor.patch); recebido "${version}".`),
       { status: 400 }
     );
   }
@@ -160,7 +160,7 @@ export function validatePluginManifest(raw: Record<string, unknown>): ValidatedP
   if (!slug) slug = `plugin-${Date.now()}`;
   if (!SLUG_RE.test(slug)) {
     throw Object.assign(
-      new Error(`manifest.json: slug "${slug}" is invalid (use lowercase letters, numbers and dashes).`),
+      new Error(`manifest.json: o slug "${slug}" é inválido (use letras minúsculas, números e hifens).`),
       { status: 400 }
     );
   }
@@ -169,7 +169,7 @@ export function validatePluginManifest(raw: Record<string, unknown>): ValidatedP
   const invalid = permissions.filter((p) => !VALID_PLUGIN_PERMISSIONS.has(p));
   if (invalid.length) {
     throw Object.assign(
-      new Error(`manifest.json: unknown permissions: ${invalid.join(", ")}.`),
+      new Error(`manifest.json: permissões desconhecidas: ${invalid.join(", ")}.`),
       { status: 400 }
     );
   }
@@ -184,7 +184,7 @@ export function validatePluginManifest(raw: Record<string, unknown>): ValidatedP
   for (const item of contributions.sidebar) {
     if (!declaredPages.has(item.page)) {
       throw Object.assign(
-        new Error(`manifest.json: sidebar item "${item.label}" points at page "${item.page}" which is not declared in contributions.pages.`),
+        new Error(`manifest.json: o item de menu "${item.label}" aponta para a página "${item.page}", que não está declarada em contributions.pages.`),
         { status: 400 }
       );
     }
@@ -211,11 +211,11 @@ const CONFIG_FIELD_TYPES = new Set(["string", "number", "boolean", "select", "he
 function validateConfigSchema(raw: unknown): PluginConfigField[] {
   if (raw == null) return [];
   if (!Array.isArray(raw)) {
-    throw Object.assign(new Error("manifest.json: configSchema must be an array."), { status: 400 });
+    throw Object.assign(new Error("manifest.json: configSchema deve ser um array."), { status: 400 });
   }
   return raw.map((item: any, idx: number) => {
     if (!item || typeof item !== "object" || !item.key || typeof item.key !== "string") {
-      throw Object.assign(new Error(`manifest.json: configSchema[${idx}].key is required.`), { status: 400 });
+      throw Object.assign(new Error(`manifest.json: configSchema[${idx}].key é obrigatório.`), { status: 400 });
     }
     const type = typeof item.type === "string" && CONFIG_FIELD_TYPES.has(item.type) ? item.type : "string";
     return {
@@ -240,19 +240,19 @@ function validateConfigSchema(raw: unknown): PluginConfigField[] {
 function validateDefinedPermissions(raw: unknown, slug: string): PluginDefinedPermission[] {
   if (raw == null) return [];
   if (!Array.isArray(raw)) {
-    throw Object.assign(new Error("manifest.json: definedPermissions must be an array."), { status: 400 });
+    throw Object.assign(new Error("manifest.json: definedPermissions deve ser um array."), { status: 400 });
   }
   const ns = slug.replace(/-/g, "");
   return raw.map((item: any, idx: number) => {
     if (!item || typeof item !== "object" || !item.key || typeof item.key !== "string") {
-      throw Object.assign(new Error(`manifest.json: definedPermissions[${idx}].key is required.`), { status: 400 });
+      throw Object.assign(new Error(`manifest.json: definedPermissions[${idx}].key é obrigatório.`), { status: 400 });
     }
     const key = String(item.key).slice(0, 120);
     // Must be namespaced by the plugin slug (or its compact form) to avoid clashes.
     const prefix = key.split(".")[0];
     if (prefix !== slug && prefix !== ns) {
       throw Object.assign(
-        new Error(`manifest.json: definedPermissions[${idx}].key "${key}" must be prefixed by the plugin slug ("${slug}.").`),
+        new Error(`manifest.json: definedPermissions[${idx}].key "${key}" deve ter o slug do plugin como prefixo ("${slug}.").`),
         { status: 400 }
       );
     }
@@ -268,17 +268,17 @@ function validateDefinedPermissions(raw: unknown, slug: string): PluginDefinedPe
 function validateBackend(raw: unknown): PluginBackendManifest | null {
   if (raw == null) return null;
   if (typeof raw !== "object") {
-    throw Object.assign(new Error("manifest.json: backend must be an object."), { status: 400 });
+    throw Object.assign(new Error("manifest.json: backend deve ser um objeto."), { status: 400 });
   }
   const b = raw as Record<string, unknown>;
   if (!b.baseUrl || typeof b.baseUrl !== "string") {
-    throw Object.assign(new Error("manifest.json: backend.baseUrl is required."), { status: 400 });
+    throw Object.assign(new Error("manifest.json: backend.baseUrl é obrigatório."), { status: 400 });
   }
   let baseUrl: string;
   try {
     baseUrl = new URL(b.baseUrl).toString().replace(/\/$/, "");
   } catch {
-    throw Object.assign(new Error(`manifest.json: backend.baseUrl "${b.baseUrl}" is not a valid URL.`), { status: 400 });
+    throw Object.assign(new Error(`manifest.json: backend.baseUrl "${b.baseUrl}" não é uma URL válida.`), { status: 400 });
   }
   return {
     baseUrl,

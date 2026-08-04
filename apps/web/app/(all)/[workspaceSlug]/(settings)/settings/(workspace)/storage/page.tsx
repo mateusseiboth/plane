@@ -151,7 +151,7 @@ function StoragePage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-secondary">Region</label>
+                <label className="mb-1 block text-sm font-medium text-secondary">Região</label>
                 <Input
                   type="text"
                   value={form.region}

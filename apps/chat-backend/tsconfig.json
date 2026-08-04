@@ -11,9 +11,12 @@
     "types": ["bun"],
     "paths": {
       "@/*": ["./src/*"],
-      "@db": ["./src/db.ts"]
+      "@db": ["./src/db.ts"],
+      "@generated/*": ["./generated/*"],
+      "@tests/*": ["./tests/*"],
+      "@scripts/*": ["./scripts/*"]
     }
   },
-  "include": ["./src/**/*", "./prisma.config.ts"],
+  "include": ["./src/**/*", "./tests/**/*", "./scripts/**/*", "./prisma.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

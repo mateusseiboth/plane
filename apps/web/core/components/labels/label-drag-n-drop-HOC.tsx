@@ -14,7 +14,7 @@ import { attachInstruction } from "@atlaskit/pragmatic-drag-and-drop-hitbox/tree
 import { observer } from "mobx-react";
 import { createRoot } from "react-dom/client";
 // types
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import type { IIssueLabel, InstructionType } from "@plane/types";
 // ui
 import { DropIndicator } from "@plane/ui";
@@ -67,7 +67,7 @@ export const LabelDndHOC = observer(function LabelDndHOC(props: Props) {
   const dragHandleRef = useRef<HTMLButtonElement | null>(null);
 
   const { allowPermissions } = useUserPermissions();
-  const isEditable = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT);
+  const isEditable = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT);
 
   useEffect(() => {
     const element = labelRef.current;

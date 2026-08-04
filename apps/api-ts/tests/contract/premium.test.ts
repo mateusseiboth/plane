@@ -28,14 +28,18 @@ describe("TestAiProviderAPIEndpoints", () => {
     expect(res.status).toBe(201);
     const data = await res.json() as any;
     expect(data.name).toBe("Local Ollama");
-    expect(data.api_key).toBeNull();
+    // A chave nunca é devolvida — a API expõe apenas se existe uma configurada.
+    expect(data.api_key).toBeUndefined();
+    expect(data.has_api_key).toBe(false);
   });
 
-  it("create provider with masked api_key", async () => {
+  it("create provider never echoes the api_key back", async () => {
     const res = await client.post(url(), { name: "OpenAI", provider_type: "openai", api_key: "sk-test-key", default_model: "gpt-4o-mini" });
     expect(res.status).toBe(201);
     const data = await res.json() as any;
-    expect(data.api_key).toBe("***");
+    expect(data.api_key).toBeUndefined();
+    expect(JSON.stringify(data)).not.toContain("sk-test-key");
+    expect(data.has_api_key).toBe(true);
   });
 
   it("list providers", async () => {
@@ -97,7 +101,7 @@ describe("TestEstimateAPIEndpoints", () => {
     const res = await client.get(url());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
+    expect(data).toBeInstanceOf(Array);
   });
 
   it("estimate requires name", async () => {

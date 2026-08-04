@@ -65,7 +65,10 @@ describe("TestIssueAPIEndpoints", () => {
     expect(res.status).toBe(200);
     const data = await res.json() as any;
     expect(data.id).toBe(created.id);
-    expect(data.assignees).toBeInstanceOf(Array);
+    // O serializer expõe os vínculos como listas de ids (contrato do frontend).
+    expect(data.assignee_ids).toBeInstanceOf(Array);
+    expect(data.assignee_ids).toContain(userId);
+    expect(data.label_ids).toBeInstanceOf(Array);
   });
 
   it("update issue", async () => {

@@ -64,7 +64,7 @@ export function ShortcutsModal(props: Props) {
               <Dialog.Panel className="relative flex h-full items-center justify-center">
                 <div className="flex h-[61vh] w-full flex-col space-y-4 overflow-hidden rounded-lg bg-surface-1 py-5 shadow-raised-200 transition-all sm:w-[28rem]">
                   <Dialog.Title as="h3" className="flex justify-between px-5">
-                    <span className="text-16 font-medium">Keyboard shortcuts</span>
+                    <span className="text-16 font-medium">Atalhos de teclado</span>
                     <button type="button" onClick={handleClose}>
                       <CloseIcon className="h-4 w-4 text-secondary hover:text-primary" aria-hidden="true" />
                     </button>

@@ -192,7 +192,7 @@ export function ResizableSidebar({
           maxWidth: `${isCollapsed ? 0 : width}px`,
         }}
         role="complementary"
-        aria-label="Main sidebar"
+        aria-label="Barra lateral principal"
         data-prevent-outside-click={isMobile}
       >
         <aside

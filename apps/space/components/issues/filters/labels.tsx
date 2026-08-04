@@ -68,7 +68,7 @@ export function FilterLabels(props: Props) {
                     className="ml-8 text-11 font-medium text-accent-primary"
                     onClick={handleViewToggle}
                   >
-                    {itemsToRender === filteredOptions.length ? "View less" : "View all"}
+                    {itemsToRender === filteredOptions.length ? "View less" : "Ver todos"}
                   </button>
                 )}
               </>

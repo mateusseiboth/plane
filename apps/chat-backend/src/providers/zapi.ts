@@ -4,7 +4,7 @@
 // Webhook (on-message-received): { phone, senderName, text:{message}, image:{...},
 //        audio:{...}, video:{...}, document:{...}, messageId, fromMe, ... }
 
-import type {InboundMessage, WhatsAppProvider} from "@/providers/provider";
+import type {InboundMessage, InboundMutation, WhatsAppProvider} from "@/providers/provider";
 
 export class ZapiProvider implements WhatsAppProvider {
   private baseUrl: string;
@@ -23,23 +23,33 @@ export class ZapiProvider implements WhatsAppProvider {
     return `${this.baseUrl}/instances/${this.instanceId}/token/${this.token}/${action}`;
   }
 
-  private async post(action: string, body: Record<string, unknown>): Promise<void> {
+  private async request(
+    method: "POST" | "DELETE",
+    action: string,
+    body?: Record<string, unknown>
+  ): Promise<string | null> {
     const res = await fetch(this.url(action), {
-      method: "POST",
+      method,
       headers: {"Content-Type": "application/json", "Client-Token": this.clientToken},
-      body: JSON.stringify(body),
+      body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       throw new Error(`Z-API ${action} failed: ${res.status} ${txt}`);
     }
+    const data = (await res.json().catch(() => null)) as {messageId?: string; id?: string} | null;
+    return data?.messageId ?? data?.id ?? null;
   }
 
-  async sendText(phone: string, text: string): Promise<void> {
-    await this.post("send-text", {phone, message: text});
+  private async post(action: string, body: Record<string, unknown>): Promise<string | null> {
+    return await this.request("POST", action, body);
   }
 
-  async sendMedia(phone: string, media: {url?: string; base64?: string; mime: string; name?: string; type: string}): Promise<void> {
+  async sendText(phone: string, text: string): Promise<string | null> {
+    return await this.post("send-text", {phone, message: text});
+  }
+
+  async sendMedia(phone: string, media: {url?: string; base64?: string; mime: string; name?: string; type: string}): Promise<string | null> {
     const payload = media.url ?? media.base64 ?? "";
     if (media.type === "image") return await this.post("send-image", {phone, image: payload});
     if (media.type === "video") return await this.post("send-video", {phone, video: payload});
@@ -47,8 +57,50 @@ export class ZapiProvider implements WhatsAppProvider {
     return await this.post("send-document/" + (media.name?.split(".").pop() || "bin"), {phone, document: payload, fileName: media.name});
   }
 
+  async editText(phone: string, externalId: string, text: string): Promise<void> {
+    await this.post("edit-message", {phone, messageId: externalId, message: text});
+  }
+
+  async deleteMessage(phone: string, externalId: string): Promise<void> {
+    // DELETE /messages?messageId=&phone=&owner=true — só apagamos o que nós enviamos.
+    const query = `messages?messageId=${encodeURIComponent(externalId)}&phone=${encodeURIComponent(phone)}&owner=true`;
+    await this.request("DELETE", query);
+  }
+
+  /**
+   * Edição/remoção feita pelo cliente. A Z-API sinaliza edição no próprio webhook
+   * de mensagem (`isEdit`/`isEdited`) e remoção num callback dedicado
+   * (`type: "DeleteCallback"` ou `notification: "MESSAGE_DELETED"`), cujo formato
+   * varia entre versões — daí a leitura tolerante dos vários campos possíveis.
+   */
+  parseWebhookMutation(body: any): InboundMutation | null {
+    if (!body || body.fromMe) return null;
+
+    const isDelete =
+      body.type === "DeleteCallback" ||
+      body.notification === "MESSAGE_DELETED" ||
+      body.isDeleted === true ||
+      body.deleted === true;
+    if (isDelete) {
+      const ids = [body.messageId, body.referenceMessageId, ...(Array.isArray(body.ids) ? body.ids : [])]
+        .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
+      if (ids.length === 0) return null;
+      return {kind: "delete", phone: body.phone ?? body.participantPhone, externalIds: ids};
+    }
+
+    const isEdit = body.isEdit === true || body.isEdited === true || body.type === "EditCallback";
+    if (!isEdit) return null;
+    const externalId: string | undefined = body.referenceMessageId ?? body.messageId;
+    const text: string | undefined = body.text?.message ?? body.message;
+    const phone: string | undefined = body.phone ?? body.participantPhone;
+    if (!externalId || typeof text !== "string" || !phone) return null;
+    return {kind: "edit", phone, externalId, text};
+  }
+
   parseWebhook(body: any): InboundMessage | null {
     if (!body || body.fromMe) return null; // ignore our own outgoing echoes
+    // Edições/remoções seguem por parseWebhookMutation, não criam mensagem nova.
+    if (this.parseWebhookMutation(body)) return null;
     const phone: string | undefined = body.phone || body.participantPhone;
     if (!phone) return null;
     const base = {externalId: body.messageId, phone, senderName: body.senderName || body.chatName};

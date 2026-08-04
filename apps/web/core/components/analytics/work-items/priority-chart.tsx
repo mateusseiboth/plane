@@ -95,7 +95,7 @@ const PriorityChart = observer(function PriorityChart(props: Props) {
       parsedBars = [
         {
           key: "count",
-          label: "Count",
+          label: "Quantidade",
           stackId: "bar-one",
           fill: (payload) => generateBarColor(payload.key, { x_axis, y_axis, group_by }, baseColors, workspaceStates),
           textClassName: "",
@@ -163,13 +163,13 @@ const PriorityChart = observer(function PriorityChart(props: Props) {
       },
       {
         accessorKey: "count",
-        header: () => <div className="text-right">Count</div>,
+        header: () => <div className="text-right">Quantidade</div>,
         cell: ({ row }) => <div className="text-right">{row.original.count}</div>,
         meta: {
           export: {
-            key: "Count",
+            key: "Quantidade",
             value: (row) => row.original.count,
-            label: "Count",
+            label: "Quantidade",
           },
         },
       },

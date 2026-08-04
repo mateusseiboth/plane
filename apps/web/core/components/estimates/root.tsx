@@ -105,18 +105,18 @@ export const EstimateRoot = observer(function EstimateRoot(props: TEstimateRoot)
           {archivedEstimateIds && archivedEstimateIds.length > 0 && (
             <div className="mt-12 flex flex-col gap-y-4">
               <SettingsHeading
-                title="Archived estimates"
+                title="Estimativas arquivadas"
                 description={
                   <>
-                    Estimates have gone through a change, these are the estimates you had in your older versions which
-                    were not in use. Read more about them&nbsp;
+                    As estimativas passaram por mudanças. Estas são as estimativas que você tinha em versões
+                    anteriores e que não estavam em uso. Leia mais sobre elas&nbsp;
                     <a
                       href={"https://docs.plane.so/core-concepts/projects/run-project#estimate"}
                       target="_blank"
                       className="text-accent-primary/80 hover:text-accent-primary"
                       rel="noreferrer"
                     >
-                      here.
+                      aqui.
                     </a>
                   </>
                 }

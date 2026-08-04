@@ -67,8 +67,8 @@ const PROJECT_FEATURES_LIST = {
   inbox: {
     key: "intake",
     property: "inbox_view",
-    title: "Admissão",
-    description: "Considere e discuta os itens de trabalho antes de adicioná-los ao seu projeto.",
+    title: "Solicitações",
+    description: "Analise e discuta as solicitações antes de adicioná-las ao seu projeto.",
     icon: <IntakeIcon className="h-5 w-5 flex-shrink-0 text-tertiary" />,
     isPro: false,
     isEnabled: true,
@@ -100,7 +100,7 @@ export const ProjectFeaturesList = observer(function ProjectFeaturesList(props: 
       },
       error: {
         title: "Erro!",
-        message: () => "Something went wrong while updating project feature. Please try again.",
+        message: () => "Algo deu errado ao atualizar o recurso do projeto. Tente novamente.",
       },
     });
     void updateProjectPromise.then(() => {

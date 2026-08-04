@@ -45,7 +45,7 @@ const InstanceGitlabAuthenticationPage = observer(function InstanceGitlabAuthent
     setPromiseToast(updateConfigPromise, {
       loading: "Saving Configuration",
       success: {
-        title: "Configuration saved",
+        title: "Configuração salva",
         message: () => `GitLab authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
@@ -69,7 +69,7 @@ const InstanceGitlabAuthenticationPage = observer(function InstanceGitlabAuthent
         <AuthenticationMethodCard
           name="GitLab"
           description="Permita que membros entrem ou se cadastrem no Avião com suas contas do GitLab."
-          icon={<img src={GitlabLogo} height={24} width={24} alt="GitLab Logo" />}
+          icon={<img src={GitlabLogo} height={24} width={24} alt="Logo do GitLab" />}
           config={
             <ToggleSwitch
               value={Boolean(parseInt(enableGitlabConfig))}

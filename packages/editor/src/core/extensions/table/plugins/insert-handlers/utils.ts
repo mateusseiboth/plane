@@ -31,8 +31,8 @@ export const createColumnInsertButton = (editor: Editor, tableInfo: TableInfo): 
   const button = document.createElement("button");
   button.type = "button";
   button.className = "table-column-insert-button";
-  button.title = "Insert columns";
-  button.ariaLabel = "Insert columns";
+  button.title = "Inserir colunas";
+  button.ariaLabel = "Inserir colunas";
 
   const icon = document.createElement("span");
   icon.innerHTML = addSvg;
@@ -129,8 +129,8 @@ export const createRowInsertButton = (editor: Editor, tableInfo: TableInfo): HTM
   const button = document.createElement("button");
   button.type = "button";
   button.className = "table-row-insert-button";
-  button.title = "Insert rows";
-  button.ariaLabel = "Insert rows";
+  button.title = "Inserir linhas";
+  button.ariaLabel = "Inserir linhas";
 
   const icon = document.createElement("span");
   icon.innerHTML = addSvg;

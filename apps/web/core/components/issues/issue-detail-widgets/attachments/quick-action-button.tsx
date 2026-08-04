@@ -79,7 +79,7 @@ export const IssueAttachmentActionButton = observer(function IssueAttachmentActi
         title: "Erro!",
         message:
           totalAttachedFiles > 1
-            ? "Only one file can be uploaded at a time."
+            ? "Apenas um arquivo pode ser enviado por vez."
             : `File must be of ${maxFileSize / 1024 / 1024}MB or less in size.`,
       });
       return;

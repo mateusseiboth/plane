@@ -59,7 +59,7 @@ export const CycleEmptyState = observer(function CycleEmptyState() {
         setToast({
           type: TOAST_TYPE.SUCCESS,
           title: "Sucesso!",
-          message: "Itens de trabalho adicionados ao ciclo com sucesso.",
+          message: "Chamados adicionados ao ciclo com sucesso.",
         })
       )
       .catch(() =>
@@ -96,7 +96,7 @@ export const CycleEmptyState = observer(function CycleEmptyState() {
             description={t("common_empty_state.search.description")}
             actions={[
               {
-                label: "Clear filters",
+                label: "Limpar filtros",
                 onClick: cycleWorkItemFilter?.clearFilters,
                 disabled: !canPerformEmptyStateActions || !cycleWorkItemFilter,
                 variant: "secondary",

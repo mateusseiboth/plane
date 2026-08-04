@@ -116,14 +116,14 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
             variant="secondary"
             size="lg"
             icon={ChevronUpIcon}
-            aria-label="Item de trabalho anterior"
+            aria-label="Solicitação anterior"
             onClick={() => handleInboxIssueNavigation("prev")}
           />
           <IconButton
             variant="secondary"
             size="lg"
             icon={ChevronDownIcon}
-            aria-label="Próximo item de trabalho"
+            aria-label="Próxima solicitação"
             onClick={() => handleInboxIssueNavigation("next")}
           />
         </div>
@@ -143,7 +143,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
               <CustomMenu.MenuItem onClick={handleCopyIssueLink}>
                 <div className="flex items-center gap-2">
                   <LinkIcon width={14} height={14} strokeWidth={2} />
-                  Copiar link do item de trabalho
+                  Copiar link da solicitação
                 </div>
               </CustomMenu.MenuItem>
             )}
@@ -151,7 +151,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
               <CustomMenu.MenuItem onClick={() => router.push(workItemLink)}>
                 <div className="flex items-center gap-2">
                   <NewTabIcon width={14} height={14} strokeWidth={2} />
-                  Abrir item de trabalho
+                  Abrir solicitação
                 </div>
               </CustomMenu.MenuItem>
             )}
@@ -161,7 +161,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     handleIssueSnoozeAction,
-                    "Only project admins can snooze/Un-snooze work items"
+                    "Apenas administradores do projeto podem adiar ou reativar solicitações"
                   )
                 }
               >
@@ -177,7 +177,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     () => setSelectDuplicateIssue(true),
-                    "Only project admins can mark work items as duplicate"
+                    "Apenas administradores do projeto podem marcar solicitações como duplicadas"
                   )
                 }
               >
@@ -193,7 +193,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     () => setAcceptIssueModal(true),
-                    "Only project admins can accept work items"
+                    "Apenas administradores do projeto podem aceitar solicitações"
                   )
                 }
               >
@@ -209,7 +209,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     () => setDeclineIssueModal(true),
-                    "Only project admins can deny work items"
+                    "Apenas administradores do projeto podem recusar solicitações"
                   )
                 }
               >

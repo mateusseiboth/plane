@@ -16,6 +16,7 @@ import { Tabs } from "@plane/propel/tabs";
 import { cn } from "@plane/utils";
 import AnalyticsFilterActions from "@/components/analytics/analytics-filter-actions";
 import { PageHead } from "@/components/core/page-title";
+import { PrintButton, PrintFooter, PrintHeader } from "@/components/print";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProject } from "@/hooks/store/use-project";
@@ -53,6 +54,7 @@ function AnalyticsPage({ params }: Route.ComponentProps) {
   const ANALYTICS_TABS = useAnalyticsTabs(workspaceSlug.toString());
 
   const [selectedTab, setSelectedTab] = useState(tabId || ANALYTICS_TABS[0]?.key);
+  const activeTabLabel = ANALYTICS_TABS.find((tab) => tab.key === selectedTab)?.label ?? "";
 
   useEffect(() => {
     if (tabId) {
@@ -74,8 +76,16 @@ function AnalyticsPage({ params }: Route.ComponentProps) {
           {workspaceProjectIds.length > 0 || loader === "init-loader" ? (
             <div className="flex h-full overflow-hidden">
               <Tabs value={selectedTab} onValueChange={handleTabChange} className="h-full w-full">
-                <div className={"flex h-full w-full flex-col"}>
+                <div className={"flex h-full w-full flex-col"} data-print-area>
+                  <div data-print-only>
+                    <PrintHeader
+                      title="Análises"
+                      subtitle={currentWorkspace?.name}
+                      meta={[{ label: "Aba", value: activeTabLabel }]}
+                    />
+                  </div>
                   <div
+                    data-print-hide
                     className={cn(
                       "flex w-full items-center justify-between gap-4 overflow-hidden border-b border-subtle bg-surface-1 px-6 py-2"
                     )}
@@ -99,8 +109,16 @@ function AnalyticsPage({ params }: Route.ComponentProps) {
                       ))}
                     </Tabs.List>
 
-                    <div className="flex-shrink-0">
+                    <div className="flex shrink-0 items-center gap-2">
                       <AnalyticsFilterActions />
+                      {/* LGPD: relatórios agregam dados de pessoas — a impressão vai para a trilha. */}
+                      <PrintButton
+                        mode="area"
+                        documentTitle={`Análises — ${activeTabLabel}`}
+                        auditEntity="report"
+                        auditEntityId={currentWorkspace?.id ?? ""}
+                        auditMetadata={{ aba: selectedTab }}
+                      />
                     </div>
                   </div>
                   {ANALYTICS_TABS.map((tab) => (
@@ -112,6 +130,9 @@ function AnalyticsPage({ params }: Route.ComponentProps) {
                       <tab.content />
                     </Tabs.Content>
                   ))}
+                  <div data-print-only>
+                    <PrintFooter />
+                  </div>
                 </div>
               </Tabs>
             </div>

@@ -85,7 +85,7 @@ export const InboxIssueListItem = observer(function InboxIssueListItem(props: In
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <Tooltip
-                tooltipHeading="Created on"
+                tooltipHeading="Criado em"
                 tooltipContent={`${renderFormattedDate(issue.created_at ?? "")}`}
                 isMobile={isMobile}
               >
@@ -95,7 +95,7 @@ export const InboxIssueListItem = observer(function InboxIssueListItem(props: In
               <div className="rounded-full border-2 border-strong-1" />
 
               {issue.priority && (
-                <Tooltip tooltipHeading="Priority" tooltipContent={`${issue.priority ?? "None"}`}>
+                <Tooltip tooltipHeading="Prioridade" tooltipContent={`${issue.priority ?? "None"}`}>
                   <PriorityIcon priority={issue.priority} withContainer className="h-3 w-3" />
                 </Tooltip>
               )}

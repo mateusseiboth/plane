@@ -79,7 +79,7 @@ export const useCycleMenuItems = (props: UseCycleMenuItemsProps): MenuResult => 
     factory.createArchiveMenuItem(handlers.handleArchive, {
       shouldRender: isEditingAllowed && !isArchived,
       disabled: !isCompleted,
-      description: isCompleted ? undefined : "Only completed cycles can be archived",
+      description: isCompleted ? undefined : "Apenas ciclos concluídos podem ser arquivados",
     }),
     factory.createRestoreMenuItem(handlers.handleRestore, isEditingAllowed && isArchived),
     factory.createDeleteMenuItem(handlers.handleDelete, isEditingAllowed && !isCompleted && !isArchived),
@@ -104,7 +104,7 @@ export const useModuleMenuItems = (props: UseModuleMenuItemsProps): MenuResult =
     factory.createArchiveMenuItem(handlers.handleArchive, {
       shouldRender: isEditingAllowed && !isArchived,
       disabled: !isInArchivableGroup,
-      description: isInArchivableGroup ? undefined : "Only completed or cancelled modules can be archived",
+      description: isInArchivableGroup ? undefined : "Apenas módulos concluídos ou cancelados podem ser arquivados",
     }),
     factory.createRestoreMenuItem(handlers.handleRestore, isEditingAllowed && isArchived),
     factory.createDeleteMenuItem(handlers.handleDelete, isEditingAllowed && !isArchived),

@@ -75,7 +75,7 @@ export function ModuleButtonContent(props: ModuleButtonContentProps) {
                   {!hideIcon && <ModuleIcon className="h-2.5 w-2.5 flex-shrink-0" />}
                   {!hideText && (
                     <Tooltip
-                      tooltipHeading="Title"
+                      tooltipHeading="Título"
                       tooltipContent={moduleDetails?.name}
                       disabled={!showTooltip}
                       isMobile={isMobile}
@@ -86,7 +86,7 @@ export function ModuleButtonContent(props: ModuleButtonContentProps) {
                   )}
                   {!disabled && (
                     <Tooltip
-                      tooltipContent="Remove"
+                      tooltipContent="Remover"
                       disabled={!showTooltip}
                       isMobile={isMobile}
                       renderByDefault={false}

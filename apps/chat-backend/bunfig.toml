@@ -1,0 +1,16 @@
+[install]
+production = false
+
+[test]
+timeout = 30_000
+
+[bundle]
+target = "bun"
+
+# Path aliases — espelham o tsconfig para o Bun resolver nativamente
+[alias]
+"@" = "./src"
+"@db" = "./src/db.ts"
+"@generated" = "./generated"
+"@tests" = "./tests"
+"@scripts" = "./scripts"

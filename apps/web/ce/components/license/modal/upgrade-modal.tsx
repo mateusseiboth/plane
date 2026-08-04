@@ -59,8 +59,8 @@ export const PaidPlanUpgradeModal = observer(function PaidPlanUpgradeModal(props
             <div className="flex text-24 leading-8 font-bold">Faça upgrade para um plano pago e desbloqueie os recursos que faltam.</div>
             <div className="mt-4 mb-2">
               <p className="mb-4 pr-8 text-13 text-primary">
-                Dashboards, Workflows, Approvals, Time Management, and other superpowers are just a click away. Upgrade
-                today to unlock features your teams need yesterday.
+                Painéis, fluxos de trabalho, aprovações, gestão de tempo e outros superpoderes estão a um clique de
+                distância. Faça o upgrade hoje e libere os recursos que a sua equipe já precisava ontem.
               </p>
             </div>
 

@@ -41,11 +41,11 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .post("/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const exists = await prisma.state.findFirst({ where: { projectId: project_id, name: b.name, deletedAt: null } });
-    if (exists) { set.status = 409; return { detail: "State with this name already exists.", id: exists.id }; }
+    if (exists) { set.status = 409; return { detail: "Já existe um estado com este nome.", id: exists.id }; }
     const lastSeq = await prisma.state.findFirst({ where: { projectId: project_id }, orderBy: { sequence: "desc" }, select: { sequence: true } });
     const state = await prisma.state.create({
       data: {
@@ -78,7 +78,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .patch("/:state_id/", async ({ params: { slug, project_id, state_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) { data.name = b.name; data.slug = slugify(b.name); }
@@ -94,7 +94,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .patch("/:state_id", async ({ params: { slug, project_id, state_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) { data.name = b.name; data.slug = slugify(b.name); }
@@ -107,7 +107,12 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     return stateDto(s);
   })
 
-  .post("/:state_id/mark-default/", async ({ params: { project_id, state_id } }) => {
+  .post("/:state_id/mark-default/", async ({ params: { slug, project_id, state_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    const exists = await prisma.state.findFirst({ where: { id: state_id, projectId: project_id, deletedAt: null } });
+    if (!exists) { set.status = 404; return { detail: "Estado não encontrado." }; }
     await prisma.$transaction(async tx => {
       await tx.state.updateMany({ where: { projectId: project_id }, data: { default: false } });
       await tx.state.update({ where: { id: state_id }, data: { default: true } });
@@ -119,11 +124,11 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .delete("/:state_id/", async ({ params: { slug, project_id, state_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Only admins can delete states." }; }
+    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir estados." }; }
     const state = await prisma.state.findFirstOrThrow({ where: { id: state_id, projectId: project_id } });
-    if (state.default) { set.status = 400; return { detail: "Default state cannot be deleted." }; }
+    if (state.default) { set.status = 400; return { detail: "O estado padrão não pode ser excluído." }; }
     const issueCount = await prisma.issue.count({ where: { stateId: state_id, deletedAt: null } });
-    if (issueCount > 0) { set.status = 400; return { detail: "The state is not empty, only empty states can be deleted." }; }
+    if (issueCount > 0) { set.status = 400; return { detail: "O estado não está vazio; apenas estados vazios podem ser excluídos." }; }
     await prisma.state.update({ where: { id: state_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -132,11 +137,11 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .delete("/:state_id", async ({ params: { slug, project_id, state_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Only admins can delete states." }; }
+    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir estados." }; }
     const state = await prisma.state.findFirstOrThrow({ where: { id: state_id, projectId: project_id } });
-    if (state.default) { set.status = 400; return { detail: "Default state cannot be deleted." }; }
+    if (state.default) { set.status = 400; return { detail: "O estado padrão não pode ser excluído." }; }
     const issueCount = await prisma.issue.count({ where: { stateId: state_id, deletedAt: null } });
-    if (issueCount > 0) { set.status = 400; return { detail: "The state is not empty, only empty states can be deleted." }; }
+    if (issueCount > 0) { set.status = 400; return { detail: "O estado não está vazio; apenas estados vazios podem ser excluídos." }; }
     await prisma.state.update({ where: { id: state_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;

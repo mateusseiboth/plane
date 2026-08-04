@@ -94,7 +94,7 @@ export function InstanceGitlabConfigForm(props: Props) {
     {
       key: "GITLAB_CLIENT_SECRET",
       type: "password",
-      label: "Secret",
+      label: "Segredo",
       description: (
         <>
           The client secret is also found in your{" "}
@@ -128,7 +128,7 @@ export function InstanceGitlabConfigForm(props: Props) {
       url: `${originURL}/auth/gitlab/callback/`,
       description: (
         <>
-          Geraremos isto automaticamente. Cole isto no <CodeBlock darkerShade>Redirect URI</CodeBlock> field of your{" "}
+          Geraremos isto automaticamente. Cole isto no <CodeBlock darkerShade>URI de redirecionamento</CodeBlock> field of your{" "}
           <a
             tabIndex={-1}
             href="https://docs.gitlab.com/ee/integration/oauth_provider.html"
@@ -151,7 +151,7 @@ export function InstanceGitlabConfigForm(props: Props) {
       const response = await updateInstanceConfigurations(payload);
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Done!",
+        title: "Pronto!",
         message: "Sua autenticação do GitLab está configurada. Teste-a agora.",
       });
       reset({

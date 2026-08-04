@@ -78,7 +78,7 @@ export function ProjectSettingLabelItem(props: Props) {
         setIsUpdating(true);
       },
       isVisible: true,
-      text: "Edit label",
+      text: "Editar etiqueta",
       key: "edit_label",
     },
   ];

@@ -24,7 +24,7 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
 
   const handleFile = (file: File) => {
     if (!file.name.endsWith(".zip")) {
-      setError("Only .zip files are accepted.");
+      setError("Apenas arquivos .zip são aceitos.");
       return;
     }
     setError(null);

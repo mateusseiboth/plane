@@ -16,12 +16,12 @@ export function ImageDownloadAction(props: Props) {
   const { src } = props;
 
   return (
-    <Tooltip tooltipContent="Download">
+    <Tooltip tooltipContent="Baixar">
       <button
         type="button"
         onClick={() => window.open(src, "_blank")}
         className="grid h-full flex-shrink-0 place-items-center text-white/60 transition-colors hover:text-white"
-        aria-label="Download image"
+        aria-label="Baixar imagem"
       >
         <Download className="size-3" />
       </button>

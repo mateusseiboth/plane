@@ -65,7 +65,7 @@ export function ConfirmDiscardModal(props: Props) {
                     Keep editing
                   </Button>
                   <Link href={onDiscardHref} className={getButtonStyling("primary", "base")}>
-                    Go back
+                    Voltar
                   </Link>
                 </div>
               </Dialog.Panel>

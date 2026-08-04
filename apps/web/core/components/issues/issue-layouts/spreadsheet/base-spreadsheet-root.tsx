@@ -9,7 +9,7 @@ import { useCallback, useEffect } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { ALL_ISSUES, EIssueFilterType, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { ALL_ISSUES, EIssueFilterType, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import type { EIssuesStoreType, IIssueDisplayFilterOptions } from "@plane/types";
 import { EIssueLayoutTypes } from "@plane/types";
 // hooks
@@ -63,14 +63,7 @@ export const BaseSpreadsheetRoot = observer(function BaseSpreadsheetRoot(props: 
   const { enableInlineEditing, enableQuickAdd, enableIssueCreation } = issues?.viewFlags || {};
   // user role validation
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
 

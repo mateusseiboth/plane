@@ -28,6 +28,7 @@ import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { CountChip } from "@/components/common/count-chip";
 // constants
 import { HeaderFilters } from "@/components/issues/filters";
+import { WorkItemsPrintAction } from "@/components/print";
 // helpers
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
@@ -74,7 +75,7 @@ export const IssuesHeader = observer(function IssuesHeader() {
             <Breadcrumbs.Item
               component={
                 <BreadcrumbLink
-                  label="Itens de trabalho"
+                  label="Chamados"
                   href={`/${workspaceSlug}/projects/${projectId}/issues/`}
                   icon={<WorkItemsIcon className="h-4 w-4 text-tertiary" />}
                   isLast
@@ -86,7 +87,7 @@ export const IssuesHeader = observer(function IssuesHeader() {
           {issuesCount && issuesCount > 0 ? (
             <Tooltip
               isMobile={isMobile}
-              tooltipContent={`There are ${issuesCount} ${issuesCount > 1 ? "work items" : "work item"} in this project`}
+              tooltipContent={`Existem ${issuesCount} ${issuesCount > 1 ? "chamados" : "chamado"} neste projeto`}
               position="bottom"
             >
               <CountChip count={issuesCount} />
@@ -117,6 +118,12 @@ export const IssuesHeader = observer(function IssuesHeader() {
             canUserCreateIssue={canUserCreateIssue}
           />
         </div>
+        <WorkItemsPrintAction
+          storeType={EIssuesStoreType.PROJECT}
+          title={`Chamados — ${currentProjectDetails?.name ?? ""}`}
+          subtitle={currentProjectDetails?.name}
+          showProject={false}
+        />
         {canUserCreateIssue && (
           <Button
             variant="primary"

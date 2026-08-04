@@ -40,7 +40,7 @@ export const meta = () => [
   { property: "og:title", content: "Avião | Ferramenta de gestão de projetos simples, extensível e de código aberto." },
   {
     property: "og:description",
-    content: "Ferramenta de gestão de projetos de código aberto para gerenciar itens de trabalho, ciclos e roadmaps de produto com facilidade",
+    content: "Ferramenta de gestão de projetos de código aberto para gerenciar chamados, ciclos e roadmaps de produto com facilidade",
   },
   { property: "og:url", content: "https://app.plane.so/" },
   { property: "og:image", content: "https://app.plane.so/og-image.png" },

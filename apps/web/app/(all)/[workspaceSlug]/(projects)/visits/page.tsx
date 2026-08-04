@@ -2,6 +2,7 @@
 
 import {PageHead} from "@/components/core/page-title";
 import {EntityDropdown} from "@/components/dropdowns/entity";
+import {PrintButton, TechnicalVisitsPrintDocument} from "@/components/print";
 import {useWorkspace} from "@/hooks/store/use-workspace";
 import {APIService} from "@/services/api.service";
 import {API_BASE_URL} from "@plane/constants";
@@ -207,14 +208,24 @@ function TechnicalVisitsPage() {
             {visits.length} visita{visits.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-1.5 rounded bg-accent-primary px-3 py-2 text-13 font-medium text-white hover:bg-accent-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Nova Visita
-        </button>
+        <div className="flex items-center gap-2">
+          <PrintButton documentTitle="Visitas técnicas" auditEntity="technical_visit" auditEntityId={currentWorkspace?.id ?? ""}
+            auditMetadata={{escopo: "listagem"}} />
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-1.5 rounded bg-accent-primary px-3 py-2 text-13 font-medium text-white hover:bg-accent-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Nova Visita
+          </button>
+        </div>
       </div>
+
+      <TechnicalVisitsPrintDocument
+        visits={visits}
+        subtitle={currentWorkspace?.name}
+        statusLabel={statusFilter === null ? "Todas" : VISIT_STATUS_LABELS[statusFilter]}
+      />
 
       {/* Status filters */}
       <div className="flex gap-2 overflow-x-auto border-b border-subtle px-6 py-3">

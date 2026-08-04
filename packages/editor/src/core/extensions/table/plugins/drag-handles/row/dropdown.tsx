@@ -24,19 +24,19 @@ const DROPDOWN_ITEMS: {
 }[] = [
   {
     key: "insert-above",
-    label: "Insert above",
+    label: "Inserir acima",
     icon: ArrowUp,
     action: (editor) => editor.chain().focus().addRowBefore().run(),
   },
   {
     key: "insert-below",
-    label: "Insert below",
+    label: "Inserir abaixo",
     icon: ArrowDown,
     action: (editor) => editor.chain().focus().addRowAfter().run(),
   },
   {
     key: "duplicate",
-    label: "Duplicate",
+    label: "Duplicar",
     icon: CopyIcon,
     action: (editor) => {
       const table = findTable(editor.state.selection);
@@ -51,13 +51,13 @@ const DROPDOWN_ITEMS: {
   },
   {
     key: "clear-contents",
-    label: "Clear contents",
+    label: "Limpar conteúdo",
     icon: CloseIcon,
     action: (editor) => editor.chain().focus().clearSelectedCells().run(),
   },
   {
     key: "delete",
-    label: "Delete",
+    label: "Excluir",
     icon: TrashIcon,
     action: (editor) => editor.chain().focus().deleteRow().run(),
   },

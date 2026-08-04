@@ -34,7 +34,7 @@ export const IssueLayoutHOC = observer(function IssueLayoutHOC(props: Props) {
   }
 
   if (getGroupIssueCount(undefined, undefined, false) === 0) {
-    return <div className="grid size-full place-items-center text-secondary">Nenhum item de trabalho encontrado</div>;
+    return <div className="grid size-full place-items-center text-secondary">Nenhum chamado encontrado</div>;
   }
 
   return <>{props.children}</>;

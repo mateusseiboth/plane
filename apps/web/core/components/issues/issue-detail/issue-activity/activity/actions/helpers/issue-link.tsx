@@ -34,7 +34,7 @@ export function IssueLink(props: TIssueLink) {
   });
   return (
     <Tooltip
-      tooltipContent={activity.issue_detail ? activity.issue_detail.name : "Este item de trabalho foi excluído"}
+      tooltipContent={activity.issue_detail ? activity.issue_detail.name : "Este chamado foi excluído"}
       isMobile={isMobile}
     >
       <a

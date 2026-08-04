@@ -23,7 +23,7 @@ export function validateManifest(raw: Record<string, unknown>): ValidatedManifes
   for (const field of required) {
     if (!raw[field] || typeof raw[field] !== "string") {
       throw Object.assign(
-        new Error(`manifest.json: missing or invalid field "${field}".`),
+        new Error(`manifest.json: campo "${field}" ausente ou inválido.`),
         { status: 400 }
       );
     }
@@ -32,7 +32,7 @@ export function validateManifest(raw: Record<string, unknown>): ValidatedManifes
   const version = raw.version as string;
   if (!SEMVER_RE.test(version)) {
     throw Object.assign(
-      new Error(`manifest.json: version must follow semver (major.minor.patch), got "${version}".`),
+      new Error(`manifest.json: a versão deve seguir o padrão semver (major.minor.patch); recebido "${version}".`),
       { status: 400 }
     );
   }
@@ -41,7 +41,7 @@ export function validateManifest(raw: Record<string, unknown>): ValidatedManifes
   const invalid = permissions.filter((p) => !VALID_PERMISSIONS.has(p));
   if (invalid.length) {
     throw Object.assign(
-      new Error(`manifest.json: unknown permissions: ${invalid.join(", ")}.`),
+      new Error(`manifest.json: permissões desconhecidas: ${invalid.join(", ")}.`),
       { status: 400 }
     );
   }

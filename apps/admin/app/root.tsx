@@ -23,7 +23,7 @@ import "@fontsource/ibm-plex-mono";
 
 const APP_TITLE = "Avião | Ferramenta de gestão de projetos simples, extensível e de código aberto.";
 const APP_DESCRIPTION =
-  "Ferramenta de gestão de projetos de código aberto para gerenciar itens de trabalho, sprints e roadmaps de produto com tranquilidade.";
+  "Ferramenta de gestão de projetos de código aberto para gerenciar chamados, sprints e roadmaps de produto com tranquilidade.";
 
 export const links: LinksFunction = () => [
   { rel: "apple-touch-icon", sizes: "180x180", href: appleTouchIcon },
@@ -91,7 +91,7 @@ export function HydrateFallback() {
 export function ErrorBoundary({ error: _error }: Route.ErrorBoundaryProps) {
   return (
     <div>
-      <p>Something went wrong.</p>
+      <p>Algo deu errado.</p>
     </div>
   );
 }

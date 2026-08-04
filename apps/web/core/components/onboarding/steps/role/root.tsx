@@ -24,13 +24,13 @@ type Props = {
 };
 
 const ROLES = [
-  { id: "product-manager", label: "Product Manager", icon: Box },
-  { id: "engineering-manager", label: "Engineering Manager", icon: ViewsIcon },
+  { id: "product-manager", label: "Gerente de Produto", icon: Box },
+  { id: "engineering-manager", label: "Gerente de Engenharia", icon: ViewsIcon },
   { id: "designer", label: "Designer", icon: PenTool },
-  { id: "developer", label: "Developer", icon: Monitor },
-  { id: "founder-executive", label: "Founder/Executive", icon: Rocket },
-  { id: "operations-manager", label: "Operations Manager", icon: RefreshCw },
-  { id: "others", label: "Others", icon: Box },
+  { id: "developer", label: "Desenvolvedor", icon: Monitor },
+  { id: "founder-executive", label: "Fundador/Executivo", icon: Rocket },
+  { id: "operations-manager", label: "Gerente de Operações", icon: RefreshCw },
+  { id: "others", label: "Outros", icon: Box },
 ];
 
 const defaultValues = {

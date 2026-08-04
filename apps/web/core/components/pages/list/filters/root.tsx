@@ -86,7 +86,7 @@ export const PageFiltersSelection = observer(function PageFiltersSelection(props
                 favorites: !filters.filters?.favorites,
               })
             }
-            title="Favorites"
+            title="Favoritos"
           />
         </div>
 

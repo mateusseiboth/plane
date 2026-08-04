@@ -128,7 +128,7 @@ export const AllIssueLayoutRoot = observer(function AllIssueLayoutRoot(props: Pr
         assetKey="view"
         actions={[
           {
-            label: "Ir para Todos os itens de trabalho",
+            label: "Ir para Todos os chamados",
             onClick: () => router.push(`/${workspaceSlug}/workspace-views/all-issues`),
             variant: "primary",
           },

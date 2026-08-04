@@ -114,7 +114,7 @@ export const IssueDetailWidgetModals = observer(function IssueDetailWidgetModals
       setToast({
         type: TOAST_TYPE.ERROR,
         title: "Erro!",
-        message: "Selecione pelo menos um item de trabalho.",
+        message: "Selecione pelo menos um chamado.",
       });
       return;
     }

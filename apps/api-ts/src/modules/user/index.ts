@@ -178,12 +178,12 @@ export const userModule = new Elysia({ prefix: "/users" })
 
   .post("/me/email/generate-code/", async ({ set }) => {
     set.status = 400;
-    return { error: "Email is not configured." };
+    return { error: "O e-mail não está configurado." };
   })
 
   .patch("/me/email/", async ({ set }) => {
     set.status = 400;
-    return { error: "Email update via code is not configured." };
+    return { error: "A atualização de e-mail por código não está configurada." };
   })
 
   // ── Profile (TUserProfile contract) ──────────────────────────────────────────
@@ -293,9 +293,9 @@ export const userModule = new Elysia({ prefix: "/users" })
 
   .get("/me/accounts/", async () => [])
 
-  .get("/me/accounts/:pk/", async ({ set }) => { set.status = 404; return { detail: "Not found." }; })
+  .get("/me/accounts/:pk/", async ({ set }) => { set.status = 404; return { detail: "Não encontrado." }; })
 
-  .delete("/me/accounts/:pk/", async ({ set }) => { set.status = 404; return { detail: "Not found." }; })
+  .delete("/me/accounts/:pk/", async ({ set }) => { set.status = 404; return { detail: "Não encontrado." }; })
 
   // ── Instance admin check ──────────────────────────────────────────────────────
 
@@ -313,10 +313,10 @@ export const userModule = new Elysia({ prefix: "/users" })
     if (b.first_name !== undefined) data.firstName = b.first_name;
     if (b.last_name !== undefined) data.lastName = b.last_name;
     await prisma.user.update({ where: { id: user.id }, data });
-    return { detail: "Onboarded successfully." };
+    return { detail: "Onboarding concluído com sucesso." };
   })
 
-  .post("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marked as completed." }))
+  .post("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marcado como concluído." }))
 
   // ── Update onboarding step ────────────────────────────────────────────────────
 
@@ -383,8 +383,8 @@ export const userModule = new Elysia({ prefix: "/users" })
       where: { token: b.token },
       include: { workspace: true },
     });
-    if (!invite) { set.status = 400; return { detail: "Invalid invitation token." }; }
-    if (invite.email !== user.email) { set.status = 400; return { detail: "Invitation is not for this email." }; }
+    if (!invite) { set.status = 400; return { detail: "Token de convite inválido." }; }
+    if (invite.email !== user.email) { set.status = 400; return { detail: "O convite não é para este e-mail." }; }
 
     await prisma.$transaction(async tx => {
       await tx.workspaceMemberInvite.update({ where: { id: invite.id }, data: { accepted: true } });
@@ -397,7 +397,7 @@ export const userModule = new Elysia({ prefix: "/users" })
         });
       }
     });
-    return { detail: "Invitation accepted." };
+    return { detail: "Convite aceito." };
   })
 
   // ── Dashboard ─────────────────────────────────────────────────────────────────

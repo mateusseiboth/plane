@@ -49,7 +49,7 @@ export const StateDeleteModal = observer(function StateDeleteModal(props: TState
             type: TOAST_TYPE.ERROR,
             title: "Erro!",
             message:
-              "Este estado contém alguns itens de trabalho; mova-os para outro estado para poder excluí-lo.",
+              "Este estado contém alguns chamados; mova-os para outro estado para poder excluí-lo.",
           });
         else
           setToast({

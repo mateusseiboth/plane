@@ -92,8 +92,8 @@ export default function SearchScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
         {results ? (
           <>
-            <Section title="Work Items" hits={results.issues} />
-            <Section title="Intakes" hits={results.intakes} />
+            <Section title="Chamados" hits={results.issues} />
+            <Section title="Solicitações" hits={results.intakes} />
             {results.issues.length === 0 && results.intakes.length === 0 && !loading ? (
               <Text variant="secondary" style={{ textAlign: "center", marginTop: spacing.xl }}>Nenhum resultado.</Text>
             ) : null}

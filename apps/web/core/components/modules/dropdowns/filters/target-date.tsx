@@ -71,7 +71,7 @@ export const FilterTargetDate = observer(function FilterTargetDate(props: Props)
                   multiple
                 />
               ))}
-              <FilterOption isChecked={isCustomDateSelected()} onClick={handleCustomDate} title="Custom" multiple />
+              <FilterOption isChecked={isCustomDateSelected()} onClick={handleCustomDate} title="Personalizado" multiple />
             </>
           ) : (
             <p className="text-11 text-placeholder italic">Nenhum resultado encontrado</p>

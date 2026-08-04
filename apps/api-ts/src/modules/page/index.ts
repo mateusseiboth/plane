@@ -4,6 +4,41 @@ import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 
+
+/**
+ * Página no formato que o frontend consome (`TPage`, snake_case). O objeto cru do
+ * Prisma chega com `isLocked`/`descriptionHtml`/`ownedById`, que a UI lê como
+ * `undefined` — bloqueio, conteúdo e dono somem da tela.
+ */
+function serializePage(p: any) {
+  return {
+    id: p.id,
+    name: p.name,
+    access: p.access,
+    color: p.color ?? "",
+    description_html: p.descriptionHtml ?? "<p></p>",
+    description_json: p.descriptionJson ?? undefined,
+    description_stripped: p.descriptionStripped ?? "",
+    is_locked: p.isLocked ?? false,
+    is_global: p.isGlobal ?? false,
+    is_favorite: false,
+    archived_at: p.archivedAt ?? null,
+    deleted_at: p.deletedAt ?? undefined,
+    owned_by: p.ownedById ?? null,
+    created_by: p.createdById ?? null,
+    updated_by: p.updatedById ?? p.createdById ?? null,
+    created_at: p.createdAt,
+    updated_at: p.updatedAt,
+    workspace: p.workspaceId,
+    parent: p.parentId ?? null,
+    parent_id: p.parentId ?? null,
+    logo_props: p.logoProps ?? undefined,
+    label_ids: (p.labels ?? []).map((l: any) => l.labelId ?? l.label?.id).filter(Boolean),
+    project_ids: (p.projectPages ?? p.projects ?? []).map((pp: any) => pp.projectId).filter(Boolean),
+    sub_pages_count: (p.children ?? []).length,
+  };
+}
+
 export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
 
@@ -20,6 +55,7 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
         prisma.page.findMany({ where, skip, take, include: { labels: { include: { label: true } }, children: { where: { deletedAt: null }, select: { id: true, name: true } } }, orderBy: { updatedAt: "desc" } }),
       count: () => prisma.page.count({ where }),
       cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializePage),
     });
   })
 
@@ -27,7 +63,7 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const page = await prisma.page.create({
       data: {
         workspaceId: ws.id,
@@ -59,17 +95,17 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
   .get("/pages/:page_id/", async ({ params: { slug, page_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return prisma.page.findFirstOrThrow({
+    return serializePage(await prisma.page.findFirstOrThrow({
       where: { id: page_id, workspaceId: ws.id, deletedAt: null },
       include: { labels: { include: { label: true } }, children: { where: { deletedAt: null } }, versions: { orderBy: { createdAt: "desc" }, take: 1 } },
-    });
+    }));
   })
 
   .patch("/pages/:page_id/", async ({ params: { slug, page_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const page = await prisma.page.findFirstOrThrow({ where: { id: page_id, workspaceId: ws.id } });
-    if (page.isLocked && page.ownedById !== user.id) { set.status = 403; return { detail: "Page is locked." }; }
+    if (page.isLocked && page.ownedById !== user.id) { set.status = 403; return { detail: "A página está bloqueada." }; }
 
     const b = body as any;
     const data: any = { updatedById: user.id };
@@ -99,7 +135,7 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
       }).catch(() => {});
     }
 
-    return prisma.page.update({ where: { id: page_id }, data });
+    return serializePage(await prisma.page.update({ where: { id: page_id }, data }));
   })
 
   .delete("/pages/:page_id/", async ({ params: { slug, page_id }, user, set }) => {
@@ -116,16 +152,16 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const page = await prisma.page.findFirstOrThrow({ where: { id: page_id, workspaceId: ws.id } });
-    if (page.ownedById !== user.id) { set.status = 403; return { detail: "Only the page owner can lock it." }; }
-    return prisma.page.update({ where: { id: page_id }, data: { isLocked: true } });
+    if (page.ownedById !== user.id) { set.status = 403; return { detail: "Apenas o dono da página pode bloqueá-la." }; }
+    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { isLocked: true } }));
   })
 
   .delete("/pages/:page_id/lock/", async ({ params: { slug, page_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const page = await prisma.page.findFirstOrThrow({ where: { id: page_id, workspaceId: ws.id } });
-    if (page.ownedById !== user.id) { set.status = 403; return { detail: "Only the page owner can unlock it." }; }
-    return prisma.page.update({ where: { id: page_id }, data: { isLocked: false } });
+    if (page.ownedById !== user.id) { set.status = 403; return { detail: "Apenas o dono da página pode desbloqueá-la." }; }
+    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { isLocked: false } }));
   })
 
   // ── Archive / Unarchive ────────────────────────────────────────────────────
@@ -133,13 +169,13 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
   .post("/pages/:page_id/archive/", async ({ params: { slug, page_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return prisma.page.update({ where: { id: page_id }, data: { archivedAt: new Date() } });
+    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { archivedAt: new Date() } }));
   })
 
   .delete("/pages/:page_id/archive/", async ({ params: { slug, page_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return prisma.page.update({ where: { id: page_id }, data: { archivedAt: null } });
+    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { archivedAt: null } }));
   })
 
   // ── Versions ───────────────────────────────────────────────────────────────

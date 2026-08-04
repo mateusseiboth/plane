@@ -120,11 +120,11 @@ export const DeleteIssueModal = observer(function DeleteIssueModal(props: Props)
       content={
         <>
           {/* TODO: Translate here */}
-          {`Are you sure you want to delete ${isEpic ? "epic" : "work item"} `}
+          {`Tem certeza de que deseja excluir ${isEpic ? "o épico" : "o chamado"} `}
           <span className="font-medium break-words text-primary">
             {projectDetails?.identifier}-{issue?.sequence_id}
           </span>
-          {` ? All of the data related to the ${isEpic ? "epic" : "work item"} will be permanently removed. This action cannot be undone.`}
+          {` ? Todos os dados relacionados ${isEpic ? "ao épico" : "ao chamado"} serão removidos permanentemente. Esta ação não pode ser desfeita.`}
         </>
       }
     />

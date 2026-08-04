@@ -29,7 +29,7 @@ export function ColorPicker(props: ColorPickerProps) {
       <button
         className={`size-4 cursor-pointer rounded-full conical-gradient ${className}`}
         onClick={handleOnClick}
-        aria-label="Open color picker"
+        aria-label="Abrir seletor de cores"
       />
       <input
         ref={inputRef}

@@ -16,28 +16,28 @@ export const INDIVIDUAL_WEBHOOK_OPTIONS: {
 }[] = [
   {
     key: "project",
-    label: "Projects",
+    label: "Projetos",
     description: "Projeto criado, atualizado ou excluído",
   },
   {
     key: "cycle",
-    label: "Cycles",
-    description: "Cycle created, updated, or deleted",
+    label: "Ciclos",
+    description: "Ciclo criado, atualizado ou excluído",
   },
   {
     key: "issue",
-    label: "Work items",
-    description: "Item de trabalho criado, atualizado, excluído, adicionado a um ciclo ou módulo",
+    label: "Chamados",
+    description: "Chamado criado, atualizado, excluído, adicionado a um ciclo ou módulo",
   },
   {
     key: "module",
-    label: "Modules",
-    description: "Module created, updated, or deleted",
+    label: "Módulos",
+    description: "Módulo criado, atualizado ou excluído",
   },
   {
     key: "issue_comment",
-    label: "Comentários do item de trabalho",
-    description: "Comment posted, updated, or deleted",
+    label: "Comentários do chamado",
+    description: "Comentário publicado, atualizado ou excluído",
   },
 ];
 

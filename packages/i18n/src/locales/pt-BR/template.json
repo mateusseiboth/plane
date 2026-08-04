@@ -2,16 +2,16 @@
   "templates": {
     "settings": {
       "title": "Modelos",
-      "description": "Economize 80% do tempo gasto na criação de projetos, itens de trabalho e páginas quando você usa modelos.",
+      "description": "Economize 80% do tempo gasto na criação de projetos, chamados e páginas quando você usa modelos.",
       "new_project_template": "Novo modelo de projeto",
-      "new_work_item_template": "Novo modelo de item de trabalho",
+      "new_work_item_template": "Novo modelo de chamado",
       "new_page_template": "Novo modelo de página",
       "options": {
         "project": {
           "label": "Modelos de projeto"
         },
         "work_item": {
-          "label": "Modelos de item de trabalho"
+          "label": "Modelos de chamado"
         },
         "page": {
           "label": "Modelos de página"
@@ -70,7 +70,7 @@
         "work_item": {
           "template": {
             "name": {
-              "placeholder": "Nomeie seu modelo de item de trabalho.",
+              "placeholder": "Nomeie seu modelo de chamado.",
               "validation": {
                 "required": "Nome do modelo é obrigatório",
                 "maxLength": "Nome do modelo deve ter menos de 255 caracteres"
@@ -81,18 +81,18 @@
             }
           },
           "name": {
-            "placeholder": "Dê um título a este item de trabalho.",
+            "placeholder": "Dê um título a este chamado.",
             "validation": {
-              "required": "Título do item de trabalho é obrigatório",
-              "maxLength": "Título do item de trabalho deve ter menos de 255 caracteres"
+              "required": "Título do chamado é obrigatório",
+              "maxLength": "Título do chamado deve ter menos de 255 caracteres"
             }
           },
           "description": {
-            "placeholder": "Descreva este item de trabalho para que fique claro o que você realizará quando concluí-lo."
+            "placeholder": "Descreva este chamado para que fique claro o que você realizará quando concluí-lo."
           },
           "button": {
-            "create": "Criar modelo de item de trabalho",
-            "update": "Atualizar modelo de item de trabalho"
+            "create": "Criar modelo de chamado",
+            "update": "Atualizar modelo de chamado"
           }
         },
         "page": {
@@ -227,23 +227,23 @@
     "empty_state": {
       "upgrade": {
         "title": "Modelos",
-        "description": "Com modelos de projeto, item de trabalho e página no Avião, você não precisa criar um projeto do zero ou definir propriedades de item de trabalho manualmente.",
+        "description": "Com modelos de projeto, chamado e página no Avião, você não precisa criar um projeto do zero ou definir propriedades de chamado manualmente.",
         "sub_description": "Recupere 80% do seu tempo administrativo quando você usa Modelos."
       },
       "no_templates": {
         "button": "Crie seu primeiro modelo"
       },
       "no_labels": {
-        "description": " Ainda não há etiquetas. Crie etiquetas para ajudar a organizar e filtrar itens de trabalho em seu projeto."
+        "description": " Ainda não há etiquetas. Crie etiquetas para ajudar a organizar e filtrar chamados em seu projeto."
       },
       "no_modules": {
         "description": "Ainda não há módulos. Organize o trabalho em subprojetos com líderes e responsáveis dedicados."
       },
       "no_work_items": {
-        "description": "Não há itens de trabalho ainda. Adicione um para estruturar seu trabalho melhor."
+        "description": "Não há chamados ainda. Adicione um para estruturar seu trabalho melhor."
       },
       "no_sub_work_items": {
-        "description": "Não há itens de trabalho ainda. Adicione um para estruturar seu trabalho melhor."
+        "description": "Não há chamados ainda. Adicione um para estruturar seu trabalho melhor."
       },
       "page": {
         "no_templates": {
@@ -322,7 +322,7 @@
         "page": "Escolher a partir do modelo"
       },
       "tooltip": {
-        "work_item": "Escolher um modelo de item de trabalho"
+        "work_item": "Escolher um modelo de chamado"
       },
       "no_results": {
         "work_item": "Nenhum modelo encontrado.",

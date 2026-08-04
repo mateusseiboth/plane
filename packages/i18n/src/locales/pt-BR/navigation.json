@@ -20,7 +20,7 @@
     "work_items": "Itens",
     "cycles": "Ciclos",
     "modules": "Módulos",
-    "intake": "Admissão",
+    "intake": "Solicitações",
     "drafts": "Rascunhos",
     "favorites": "Favoritos",
     "pro": "Pro",
@@ -31,7 +31,7 @@
     "plane_pro": "Avião Pro",
     "business": "Business",
     "all_work_items": "Todos os itens",
-    "global_intake": "Intake global",
+    "global_intake": "Solicitações globais",
     "technical_visits": "Visitas Técnicas",
     "reports": "Relatórios",
     "chat": "Atendimento"

@@ -17,27 +17,27 @@ const sidebarOptions: {
 }[] = [
   {
     key: "work-items",
-    label: "Work items",
+    label: "Chamados",
     Icon: WorkItemsIcon,
   },
   {
     key: "cycles",
-    label: "Cycles",
+    label: "Ciclos",
     Icon: CycleIcon,
   },
   {
     key: "modules",
-    label: "Modules",
+    label: "Módulos",
     Icon: ModuleIcon,
   },
   {
     key: "views",
-    label: "Views",
+    label: "Visualizações",
     Icon: ViewsIcon,
   },
   {
     key: "pages",
-    label: "Pages",
+    label: "Páginas",
     Icon: PageIcon,
   },
 ];

@@ -33,7 +33,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
     const b = body as any;
     if (!b.emails?.length) {
       set.status = 400;
-      return {detail: "emails array is required."};
+      return {detail: "A lista de e-mails é obrigatória."};
     }
 
     const created = [];
@@ -89,7 +89,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
     const b = body as any;
     if (!b.token) {
       set.status = 400;
-      return {detail: "token is required."};
+      return {detail: "token é obrigatório."};
     }
 
     const ws = await getWorkspaceOrFail(slug);
@@ -98,7 +98,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
     });
     if (!invite) {
       set.status = 404;
-      return {detail: "Invite not found or already accepted."};
+      return {detail: "Convite não encontrado ou já aceito."};
     }
 
     // If user exists, add them as member
@@ -152,13 +152,13 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
     const {member} = await getProjectOrFail(ws.id, project_id, user.id);
     if (member.role < 15) {
       set.status = 403;
-      return {detail: "Permission denied."};
+      return {detail: "Permissão negada."};
     }
 
     const b = body as any;
     if (!b.emails?.length) {
       set.status = 400;
-      return {detail: "emails array is required."};
+      return {detail: "A lista de e-mails é obrigatória."};
     }
 
     const created = [];
@@ -188,7 +188,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
     const {member} = await getProjectOrFail(ws.id, project_id, user.id);
     if (member.role < 15) {
       set.status = 403;
-      return {detail: "Permission denied."};
+      return {detail: "Permissão negada."};
     }
     await prisma.projectMemberInvite.delete({where: {id: pk}});
     set.status = 204;

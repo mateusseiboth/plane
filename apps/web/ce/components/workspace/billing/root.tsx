@@ -52,7 +52,7 @@ export const BillingRoot = observer(function BillingRoot() {
         />
         <div className="mt-6">
           <SettingsBoxedControlItem
-            title="Community"
+            title="Comunidade"
             description="Projetos, itens, ciclos, módulos, páginas e armazenamento ilimitados"
           />
         </div>

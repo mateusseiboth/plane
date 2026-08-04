@@ -24,8 +24,8 @@ describe("TestWorkspaceAPIEndpoints", () => {
     const res = await client.get("/workspaces/");
     expect(res.status).toBe(200);
     const data = (await res.json()) as any;
-    expect(data.results).toBeInstanceOf(Array);
-    expect(data.results.length).toBeGreaterThan(0);
+    expect(data).toBeInstanceOf(Array);
+    expect(data.length).toBeGreaterThan(0);
   });
 
   it("get workspace detail", async () => {

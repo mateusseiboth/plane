@@ -7,12 +7,14 @@
     "start": "bun run src/index.ts",
     "db:generate": "prisma generate",
     "db:migrate": "bun run scripts/migrate.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "migrate:sac-chat": "bun run scripts/migrate-sac-chat.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.2.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "7",
+    "@prisma/client-runtime-utils": "^7.8.0",
     "elysia": "^1.2.25",
     "jose": "^5.10.0",
     "pg": "^8.21.0"
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
+    "mysql2": "^3.14.0",
     "prisma": "7",
     "typescript": "^5.8.3"
   },

@@ -29,13 +29,12 @@ describe("TestWorkspaceMemberAPIEndpoints", () => {
 
   afterAll(() => cleanDb());
 
-  it("list workspace members returns paginated results", async () => {
+  it("list workspace members returns an array", async () => {
     const res = await client.get(`/workspaces/${wsSlug}/members/`);
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
-    expect(data.results.length).toBeGreaterThanOrEqual(2);
-    expect(typeof data.total_count).toBe("number");
+    expect(data).toBeInstanceOf(Array);
+    expect(data.length).toBeGreaterThanOrEqual(2);
   });
 
   it("get /members/me/ returns authenticated user membership", async () => {
@@ -49,7 +48,7 @@ describe("TestWorkspaceMemberAPIEndpoints", () => {
   it("member listing includes member details", async () => {
     const res = await client.get(`/workspaces/${wsSlug}/members/`);
     const data = await res.json() as any;
-    const second = data.results.find((m: any) => m.memberId === secondUserId || m.member_id === secondUserId || m.member?.id === secondUserId);
+    const second = data.find((m: any) => m.memberId === secondUserId || m.member_id === secondUserId || m.member?.id === secondUserId);
     expect(second).toBeDefined();
     expect(second.member?.email ?? second.email).toBeDefined();
   });
@@ -87,12 +86,12 @@ describe("TestProjectMemberAPIEndpoints", () => {
 
   const url = () => `/workspaces/${wsSlug}/projects/${projectId}/members/`;
 
-  it("list project members returns paginated results", async () => {
+  it("list project members returns an array", async () => {
     const res = await client.get(url());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
-    expect(data.results.length).toBeGreaterThanOrEqual(1);
+    expect(data).toBeInstanceOf(Array);
+    expect(data.length).toBeGreaterThanOrEqual(1);
   });
 
   it("add project member returns 201", async () => {
@@ -100,7 +99,8 @@ describe("TestProjectMemberAPIEndpoints", () => {
     expect(res.status).toBe(201);
     const data = await res.json() as any;
     secondMemberId = data.id;
-    expect(data.memberId ?? data.member_id).toBe(secondUserId);
+    // A rota devolve o id do usuário em `member` (mesmo contrato do Plane).
+    expect(data.member).toBe(secondUserId);
     expect(data.role).toBe(10);
   });
 

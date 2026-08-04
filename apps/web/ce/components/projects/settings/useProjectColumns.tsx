@@ -92,7 +92,7 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
     },
     {
       key: "Email",
-      content: "Email",
+      content: "E-mail",
       thRender: () => (
         <MemberHeaderColumn
           property="email"

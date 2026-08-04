@@ -46,7 +46,7 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const issue = await prisma.issue.findFirst({ where: { id: issue_id, projectId: project_id, deletedAt: null }, include: ISSUE_INCLUDE });
-    if (!issue) { set.status = 404; return { detail: "Not found." }; }
+    if (!issue) { set.status = 404; return { detail: "Não encontrado." }; }
     return serializeIssue(issue);
   })
 
@@ -75,7 +75,7 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const v = await prisma.issueVersion.findFirst({ where: { id: version_id, issueId: issue_id } });
-    if (!v) { set.status = 404; return { detail: "Not found." }; }
+    if (!v) { set.status = 404; return { detail: "Não encontrado." }; }
     return {
       id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
       description: (v as any).descriptionJson ?? null,
@@ -118,7 +118,7 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
   .patch("/:issue_id/", async ({ params: { slug, project_id, issue_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 5) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 5) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
 
     const before = await prisma.issue.findFirst({

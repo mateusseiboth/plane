@@ -54,7 +54,7 @@ export const DeleteInboxIssueModal = observer(function DeleteInboxIssueModal({
         });
       })
       .catch((errors) => {
-        const isPermissionError = errors?.error === "Only admin or creator can delete the work item";
+        const isPermissionError = errors?.error === "Apenas o administrador ou o criador pode excluir o chamado";
         const currentError = isPermissionError
           ? PROJECT_ERROR_MESSAGES.permissionError
           : PROJECT_ERROR_MESSAGES.issueDeleteError;
@@ -77,7 +77,7 @@ export const DeleteInboxIssueModal = observer(function DeleteInboxIssueModal({
       // TODO: Need to translate the confirmation message
       content={
         <>
-          Tem certeza de que deseja excluir o item de trabalho{" "}
+          Tem certeza de que deseja excluir a solicitação{" "}
           <span className="font-medium break-words text-primary">
             {projectDetails?.identifier}-{data?.sequence_id}
           </span>

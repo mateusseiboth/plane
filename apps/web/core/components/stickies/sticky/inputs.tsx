@@ -83,7 +83,7 @@ export function StickyInput(props: TProps) {
             placeholder={(_, value) => {
               const isContentEmpty = isCommentEmpty(value);
               if (!isContentEmpty) return "";
-              return "Click to type here";
+              return "Clique para escrever aqui";
             }}
             containerClassName={cn(
               "vertical-scrollbar scrollbar-sm max-h-[540px] min-h-[256px] w-full overflow-y-scroll p-4 text-14",

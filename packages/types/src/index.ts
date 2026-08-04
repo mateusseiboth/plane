@@ -18,6 +18,7 @@ export * from "./dashboard";
 export * from "./de-dupe";
 export * from "./description_version";
 export * from "./editor";
+export * from "./entity";
 export * from "./enums";
 export * from "./epics";
 export * from "./estimate";

@@ -69,5 +69,5 @@ export const authPlugin = new Elysia({ name: "auth" })
     }
 
     ctx.set.status = 401;
-    throw new Error("Authentication credentials were not provided.");
+    throw new Error("Credenciais de autenticação não foram fornecidas.");
   });

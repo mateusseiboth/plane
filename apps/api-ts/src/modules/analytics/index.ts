@@ -11,7 +11,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/default-analytics/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceWriter(ws.id, user.id);
 
     const baseWhere: any = { workspaceId: ws.id, deletedAt: null };
     if (query.project_id) baseWhere.projectId = query.project_id;
@@ -60,7 +60,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/analytic-view/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceWriter(ws.id, user.id);
     const where = { workspaceId: ws.id, deletedAt: null };
     return paginate({
       query: (skip, take) => prisma.analyticView.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
@@ -71,9 +71,9 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/analytic-view/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const view = await prisma.analyticView.create({
       data: {
         workspaceId: ws.id, name: b.name, description: b.description ?? "",
@@ -87,13 +87,13 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/analytic-view/:view_id/", async ({ params: { slug, view_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceWriter(ws.id, user.id);
     return prisma.analyticView.findFirstOrThrow({ where: { id: view_id, workspaceId: ws.id, deletedAt: null } });
   })
 
   .patch("/analytic-view/:view_id/", async ({ params: { slug, view_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -105,7 +105,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .delete("/analytic-view/:view_id/", async ({ params: { slug, view_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceWriter(ws.id, user.id);
     await prisma.analyticView.update({ where: { id: view_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -115,7 +115,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/project-stats/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceWriter(ws.id, user.id);
 
     const projectIdFilter = query.project_ids
       ? (query.project_ids as string).split(",").filter(Boolean)

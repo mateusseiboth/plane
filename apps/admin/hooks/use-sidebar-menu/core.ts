@@ -15,13 +15,13 @@ export type TCoreSidebarMenuKey = "general" | "email" | "workspace" | "authentic
 export const coreSidebarMenuLinks: Record<TCoreSidebarMenuKey, TSidebarMenuItem> = {
   general: {
     Icon: Cog,
-    name: "General",
+    name: "Geral",
     description: "Identifique suas instâncias e obtenha detalhes importantes.",
     href: `/general/`,
   },
   email: {
     Icon: Mail,
-    name: "Email",
+    name: "E-mail",
     description: "Configure seus controles de SMTP.",
     href: `/email/`,
   },
@@ -33,20 +33,20 @@ export const coreSidebarMenuLinks: Record<TCoreSidebarMenuKey, TSidebarMenuItem>
   },
   authentication: {
     Icon: LockIcon,
-    name: "Authentication",
+    name: "Autenticação",
     description: "Configure os modos de autenticação.",
     href: `/authentication/`,
   },
   ai: {
     Icon: BrainCog,
-    name: "Artificial intelligence",
+    name: "Inteligência artificial",
     description: "Configure suas credenciais da OpenAI.",
     href: `/ai/`,
   },
   image: {
     Icon: Image,
-    name: "Images in Avião",
-    description: "Allow third-party image libraries.",
+    name: "Imagens no Avião",
+    description: "Permita bibliotecas de imagens de terceiros.",
     href: `/image/`,
   },
 };

@@ -51,17 +51,24 @@ export enum EProjectAction {
 export const ALL_ACTIONS = Object.values(EProjectAction);
 
 const VIEWER = [EProjectAction.ISSUE_VIEW, EProjectAction.COMMENT_READ, EProjectAction.ATTACHMENT_VIEW];
-const CONTRIBUTOR = [
+
+// D2 — Atendimento is a service-desk operator: it opens *chamados* (intake) and
+// talks on them, but never creates, edits or moves a work item.
+const INTAKE_OPERATOR = [
   ...VIEWER,
-  EProjectAction.ISSUE_CREATE,
-  EProjectAction.ISSUE_EDIT_OWN,
-  EProjectAction.ISSUE_ASSIGN_SELF,
   EProjectAction.COMMENT_CREATE,
   EProjectAction.COMMENT_EDIT_OWN,
   EProjectAction.COMMENT_DELETE_OWN,
   EProjectAction.ATTACHMENT_UPLOAD,
   EProjectAction.ATTACHMENT_DELETE_OWN,
   EProjectAction.INTAKE_CREATE,
+];
+
+const CONTRIBUTOR = [
+  ...INTAKE_OPERATOR,
+  EProjectAction.ISSUE_CREATE,
+  EProjectAction.ISSUE_EDIT_OWN,
+  EProjectAction.ISSUE_ASSIGN_SELF,
 ];
 
 export type DefaultRole = {
@@ -74,7 +81,7 @@ export type DefaultRole = {
 // 7 system roles — keys/levels match the legacy role integers.
 export const DEFAULT_ROLES: DefaultRole[] = [
   {key: "guest", name: "Visualizador", level: 5, permissions: [...VIEWER]},
-  {key: "atendimento", name: "Atendimento", level: 6, permissions: [...CONTRIBUTOR]},
+  {key: "atendimento", name: "Atendimento", level: 6, permissions: [...INTAKE_OPERATOR]},
   {
     key: "qualidade",
     name: "Qualidade",
@@ -83,8 +90,12 @@ export const DEFAULT_ROLES: DefaultRole[] = [
   },
   {
     key: "member",
+    // Must stay 15 — it mirrors EUserPermissions.MEMBER in packages/constants and
+    // packages/types. With level 10 no WorkflowRole matched a role=15 membership,
+    // so resolveRole() fell through to the TI defaults and canTransition() went
+    // permissive (members bypassed the whole workflow).
     name: "Membro",
-    level: 10,
+    level: 15,
     permissions: [
       ...CONTRIBUTOR,
       EProjectAction.ISSUE_EDIT_ALL,
@@ -229,6 +240,21 @@ export type EffectiveRole = {
 };
 
 /**
+ * Papel padrão correspondente a um nível legado (o maior papel cujo `level` não
+ * ultrapassa o informado).
+ *
+ * DEFAULT_ROLES NÃO está ordenado por nível (member=15 aparece antes de ti=12),
+ * então varrer a lista invertida devolvia "ti" para uma associação role=15 —
+ * membros eram vinculados ao papel de TI no seed e recebiam as permissões de TI
+ * em workspaces ainda não semeados. Ordenar por nível decrescente evita depender
+ * da ordem de declaração.
+ */
+export function defaultRoleForLevel(level: number): DefaultRole {
+  const byLevelDesc = [...DEFAULT_ROLES].sort((a, b) => b.level - a.level);
+  return byLevelDesc.find((d) => level >= d.level) ?? byLevelDesc[byLevelDesc.length - 1];
+}
+
+/**
  * Idempotently seed the 7 system roles + default visibility/transition rules for
  * a workspace, then link any members that don't yet have a workflowRole (by
  * mapping their legacy role Int to the closest system role level).
@@ -242,6 +268,15 @@ export async function seedWorkflowRoles(db: any, workspaceId: string): Promise<R
       role = await db.workflowRole.create({
         data: {workspaceId, key: def.key, name: def.name, level: def.level, isSystem: true, permissions: def.permissions},
       });
+    } else if (role.isSystem) {
+      // `level` is structural: resolveRole() looks a membership's role Int up by
+      // it, so a drifted level silently detaches members from their role — always
+      // realign it. Permissions stay admin-editable unless RESEED_WORKFLOW forces
+      // the code defaults back (needed after changing DEFAULT_ROLES).
+      const data: Record<string, unknown> = {};
+      if (role.level !== def.level) data.level = def.level;
+      if (process.env.RESEED_WORKFLOW === "true") data.permissions = def.permissions;
+      if (Object.keys(data).length) role = await db.workflowRole.update({where: {id: role.id}, data});
     }
     keyToId[def.key] = role.id;
   }
@@ -282,8 +317,7 @@ export async function seedWorkflowRoles(db: any, workspaceId: string): Promise<R
     });
   }
 
-  const pickKey = (roleInt: number) =>
-    ([...DEFAULT_ROLES].reverse().find((d) => roleInt >= d.level) ?? DEFAULT_ROLES[0]).key;
+  const pickKey = (roleInt: number) => defaultRoleForLevel(roleInt).key;
 
   for (const table of ["workspaceMember", "projectMember"] as const) {
     const members = await db[table].findMany({where: {workspaceId, deletedAt: null, workflowRoleId: null}});

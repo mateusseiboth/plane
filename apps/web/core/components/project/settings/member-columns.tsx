@@ -163,7 +163,7 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
                     setToast({
                       type: TOAST_TYPE.ERROR,
                       title: "Você ainda não pode alterar este cargo.",
-                      message: errorString ?? "An error occurred while updating member role. Please try again.",
+                      message: errorString ?? "Ocorreu um erro ao atualizar a função do membro. Tente novamente.",
                     });
                   }
                 );

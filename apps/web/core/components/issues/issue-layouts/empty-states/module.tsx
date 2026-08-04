@@ -53,7 +53,7 @@ export const ModuleEmptyState = observer(function ModuleEmptyState() {
         setToast({
           type: TOAST_TYPE.SUCCESS,
           title: "Sucesso!",
-          message: "Itens de trabalho adicionados ao módulo com sucesso.",
+          message: "Chamados adicionados ao módulo com sucesso.",
         })
       )
       .catch(() =>
@@ -83,7 +83,7 @@ export const ModuleEmptyState = observer(function ModuleEmptyState() {
             description={t("common_empty_state.search.description")}
             actions={[
               {
-                label: "Clear filters",
+                label: "Limpar filtros",
                 onClick: moduleWorkItemFilter?.clearFilters,
                 disabled: !canPerformEmptyStateActions || !moduleWorkItemFilter,
                 variant: "secondary",

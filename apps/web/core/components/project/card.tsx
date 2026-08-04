@@ -89,7 +89,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
       },
       error: {
         title: "Erro!",
-        message: () => "Couldn't add the project to favorites. Please try again.",
+        message: () => "Não foi possível adicionar o projeto aos favoritos. Tente novamente.",
       },
     });
   };
@@ -106,7 +106,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
       },
       error: {
         title: "Erro!",
-        message: () => "Couldn't remove the project from favorites. Please try again.",
+        message: () => "Não foi possível remover o projeto dos favoritos. Tente novamente.",
       },
     });
   };
@@ -280,9 +280,9 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
             <div className="flex items-center justify-center gap-2">
               <Tooltip
                 isMobile={isMobile}
-                tooltipHeading="Members"
+                tooltipHeading="Membros"
                 tooltipContent={
-                  project.members && project.members.length > 0 ? `${project.members.length} Members` : "No Member"
+                  project.members && project.members.length > 0 ? `${project.members.length} membros` : "Nenhum membro"
                 }
                 position="top"
               >
@@ -302,7 +302,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                   <span className="text-13 text-placeholder italic">Nenhum membro ainda</span>
                 )}
               </Tooltip>
-              {isArchived && <div className="text-11 font-medium text-placeholder">Archived</div>}
+              {isArchived && <div className="text-11 font-medium text-placeholder">Arquivado</div>}
             </div>
             {isArchived ? (
               hasAdminRole && (

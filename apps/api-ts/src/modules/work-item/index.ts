@@ -55,7 +55,7 @@ export const workItemModule = new Elysia({ prefix: "/workspaces/:slug/projects/:
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const v = await prisma.issueVersion.findFirst({ where: { id: version_id, issueId: issue_id } });
-    if (!v) { set.status = 404; return { detail: "Not found." }; }
+    if (!v) { set.status = 404; return { detail: "Não encontrado." }; }
     return {
       id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
       description: (v as any).descriptionJson ?? null,

@@ -69,11 +69,11 @@ const PAGE_FORMATS: {
   },
   {
     key: "LETTER",
-    label: "Letter",
+    label: "Carta",
   },
   {
     key: "LEGAL",
-    label: "Legal",
+    label: "Ofício",
   },
   {
     key: "TABLOID",
@@ -87,7 +87,7 @@ const CONTENT_VARIETY: {
 }[] = [
   {
     key: "everything",
-    label: "Everything",
+    label: "Tudo",
   },
   {
     key: "no-assets",
@@ -209,7 +209,7 @@ export function ExportPageModal(props: Props) {
           <h3 className="text-18 font-medium text-secondary">Exportar página</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h6 className="flex-shrink-0 text-13 text-secondary">Export format</h6>
+              <h6 className="flex-shrink-0 text-13 text-secondary">Formato de exportação</h6>
               <Controller
                 control={control}
                 name="export_format"
@@ -232,7 +232,7 @@ export function ExportPageModal(props: Props) {
               />
             </div>
             <div className="flex items-center justify-between gap-2">
-              <h6 className="flex-shrink-0 text-13 text-secondary">Include content</h6>
+              <h6 className="flex-shrink-0 text-13 text-secondary">Incluir conteúdo</h6>
               <Controller
                 control={control}
                 name="content_variety"

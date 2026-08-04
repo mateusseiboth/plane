@@ -113,7 +113,7 @@ export const CalendarDayTile = observer(function CalendarDayTile(props: Props) {
               setToast({
                 type: TOAST_TYPE.ERROR,
                 title: "Erro!",
-                message: "A data de vencimento não pode ser anterior à data de início do item de trabalho.",
+                message: "A data de vencimento não pode ser anterior à data de início do chamado.",
               });
               return;
             }

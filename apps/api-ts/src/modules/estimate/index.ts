@@ -52,12 +52,16 @@ export const estimateModule = new Elysia()
   .post("/workspaces/:slug/projects/:project_id/estimates/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
+    // Nome é obrigatório, como nas demais entidades — antes um POST sem nome
+    // criava silenciosamente uma estimativa chamada "Estimate".
+    const name = b.estimate?.name ?? b.name;
+    if (!name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const estimate = await prisma.estimate.create({
       data: {
         workspaceId: ws.id, projectId: project_id,
-        name: b.estimate?.name ?? b.name ?? "Estimate",
+        name,
         description: b.estimate?.description ?? b.description ?? "",
         type: b.estimate?.type ?? b.type ?? "categories",
         createdById: user.id,
@@ -89,14 +93,14 @@ export const estimateModule = new Elysia()
       where: { id: estimate_id, projectId: project_id, deletedAt: null },
       include: { points: { where: { deletedAt: null }, orderBy: { key: "asc" } } },
     });
-    if (!estimate) { set.status = 404; return { detail: "Not found." }; }
+    if (!estimate) { set.status = 404; return { detail: "Não encontrado." }; }
     return fmtEstimate(estimate);
   })
 
   .patch("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/", async ({ params: { slug, project_id, estimate_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -125,7 +129,7 @@ export const estimateModule = new Elysia()
   .delete("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/", async ({ params: { slug, project_id, estimate_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     await prisma.estimate.update({ where: { id: estimate_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -135,7 +139,7 @@ export const estimateModule = new Elysia()
   .post("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/estimate-points/", async ({ params: { slug, project_id, estimate_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const point = await prisma.estimatePoint.create({
       data: { estimateId: estimate_id, workspaceId: ws.id, projectId: project_id, key: b.key ?? 0, value: String(b.value ?? b.key ?? 0), description: b.description ?? "" },
@@ -147,7 +151,7 @@ export const estimateModule = new Elysia()
   .patch("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/estimate-points/:point_id/", async ({ params: { slug, project_id, estimate_id, point_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     const b = body as any;
     const data: any = {};
     if (b.key !== undefined) data.key = b.key;
@@ -160,7 +164,7 @@ export const estimateModule = new Elysia()
   .delete("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/estimate-points/:point_id/", async ({ params: { slug, project_id, estimate_id, point_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
     await prisma.estimatePoint.delete({ where: { id: point_id } });
     set.status = 204;
     return null;

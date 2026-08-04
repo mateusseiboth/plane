@@ -60,7 +60,7 @@ export const ProjectSettingLabelGroup = observer(function ProjectSettingLabelGro
         setIsUpdating(true);
       },
       isVisible: true,
-      text: "Edit label",
+      text: "Editar etiqueta",
       key: "edit_label",
     },
     {

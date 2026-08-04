@@ -46,7 +46,7 @@ export function handleOptionalAction<T>(
     setToast({
       type: TOAST_TYPE.ERROR,
       title: "Ação não disponível",
-      message: `${actionName} action is not implemented.`,
+      message: `A ação ${actionName} não está implementada.`,
     });
   }
 }
@@ -101,7 +101,7 @@ export const useIssueActionHandlers = (props: MenuItemFactoryProps) => {
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: "Link copiado",
-        message: "Link do item de trabalho copiado para a área de transferência",
+        message: "Link do chamado copiado para a área de transferência",
       })
     );
 
@@ -117,14 +117,14 @@ export const useIssueActionHandlers = (props: MenuItemFactoryProps) => {
         setToast({
           type: TOAST_TYPE.SUCCESS,
           title: "Restaurado com sucesso",
-          message: "Seu item de trabalho pode ser encontrado nos itens de trabalho do projeto.",
+          message: "Seu chamado pode ser encontrado nos chamados do projeto.",
         });
       })
       .catch(() => {
         setToast({
           type: TOAST_TYPE.ERROR,
           title: "Erro!",
-          message: "Não foi possível restaurar o item de trabalho. Tente novamente.",
+          message: "Não foi possível restaurar o chamado. Tente novamente.",
         });
       });
   };
@@ -209,7 +209,7 @@ export const useMenuItemFactory = (props: MenuItemFactoryProps) => {
     key: "remove-from-cycle",
     title: "Remover do ciclo",
     icon: XCircle,
-    action: () => handleOptionalAction(handleRemoveFromView, "Remove from cycle"),
+    action: () => handleOptionalAction(handleRemoveFromView, "Remover do ciclo"),
     shouldRender: isEditingAllowed,
   });
 
@@ -217,7 +217,7 @@ export const useMenuItemFactory = (props: MenuItemFactoryProps) => {
     key: "remove-from-module",
     title: "Remover do módulo",
     icon: XCircle,
-    action: () => handleOptionalAction(handleRemoveFromView, "Remove from module"),
+    action: () => handleOptionalAction(handleRemoveFromView, "Remover do módulo"),
     shouldRender: isEditingAllowed,
   });
 

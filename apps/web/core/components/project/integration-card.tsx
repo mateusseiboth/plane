@@ -69,7 +69,7 @@ export function IntegrationCard({ integration }: Props) {
         setToast({
           type: TOAST_TYPE.SUCCESS,
           title: "Sucesso!",
-          message: `${login}/${name} repository synced with the project successfully.`,
+          message: `Repositório ${login}/${name} sincronizado com o projeto com sucesso.`,
         });
       })
       .catch((err) => {

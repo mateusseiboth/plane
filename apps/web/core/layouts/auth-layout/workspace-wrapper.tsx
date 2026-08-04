@@ -10,7 +10,7 @@ import {useParams} from "next/navigation";
 import type {ReactNode} from "react";
 import useSWR from "swr";
 // ui
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES} from "@plane/constants";
 import {Button, getButtonStyling} from "@plane/propel/button";
 import {PlaneLogo} from "@plane/propel/icons";
 import {TOAST_TYPE, setToast} from "@plane/propel/toast";
@@ -66,14 +66,7 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
   const {fetchWorkspaceStates} = useProjectState();
   // derived values
   const canPerformWorkspaceMemberActions = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_VIEW_ROLES,
     EUserPermissionsLevel.WORKSPACE,
   );
   const allWorkspaces = workspaces ? Object.values(workspaces) : undefined;
@@ -168,7 +161,7 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
                 onClick={handleSignOut}
               >
                 <Tooltip
-                  tooltipContent={"Sign out"}
+                  tooltipContent={"Sair"}
                   position="top"
                   className="ml-2"
                   isMobile={isMobile}

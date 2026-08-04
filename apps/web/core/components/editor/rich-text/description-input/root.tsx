@@ -292,7 +292,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
               return asset_id;
             } catch (error) {
               console.log("Error in uploading asset:", error);
-              throw new Error("Asset upload failed. Please try again later.");
+              throw new Error("Falha ao enviar o arquivo. Tente novamente mais tarde.");
             }
           }}
           duplicateFile={async (assetId: string) => {
@@ -305,7 +305,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
               });
               return asset_id;
             } catch {
-              throw new Error("Asset duplication failed. Please try again later.");
+              throw new Error("Falha ao duplicar o arquivo. Tente novamente mais tarde.");
             }
           }}
         />

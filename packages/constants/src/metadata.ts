@@ -26,7 +26,7 @@ export const APP_URL = process.env.VITE_APP_URL || "https://app.plane.so/";
 export const SITE_NAME = `${APP_NAME} | ${APP_TAGLINE}`;
 export const SITE_TITLE = `${APP_NAME} | ${APP_TAGLINE}`;
 export const SITE_DESCRIPTION =
-  "Ferramenta de gestão de projetos de código aberto para gerenciar itens de trabalho, ciclos e roadmaps de produto com facilidade";
+  "Ferramenta de gestão de projetos de código aberto para gerenciar chamados, ciclos e roadmaps de produto com facilidade";
 export const SITE_KEYWORDS =
   "software development, plan, ship, software, accelerate, code management, release management, project management, work items tracking, agile, scrum, kanban, collaboration";
 export const SITE_URL = APP_URL;

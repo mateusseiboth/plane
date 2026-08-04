@@ -77,7 +77,7 @@ export const HeaderGroupByCard = observer(function HeaderGroupByCard(props: IHea
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: "Sucesso!",
-        message: "Itens de trabalho adicionados ao ciclo com sucesso.",
+        message: "Chamados adicionados ao ciclo com sucesso.",
       });
     } catch (_error) {
       setToast({
@@ -169,14 +169,14 @@ export const HeaderGroupByCard = observer(function HeaderGroupByCard(props: IHea
                   setIsOpen(true);
                 }}
               >
-                <span className="flex items-center justify-start gap-2">Criar item de trabalho</span>
+                <span className="flex items-center justify-start gap-2">Criar chamado</span>
               </CustomMenu.MenuItem>
               <CustomMenu.MenuItem
                 onClick={() => {
                   setOpenExistingIssueListModal(true);
                 }}
               >
-                <span className="flex items-center justify-start gap-2">Adicionar um item de trabalho existente</span>
+                <span className="flex items-center justify-start gap-2">Adicionar um chamado existente</span>
               </CustomMenu.MenuItem>
             </CustomMenu>
           ) : (

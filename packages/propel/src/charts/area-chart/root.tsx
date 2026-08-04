@@ -200,7 +200,7 @@ export const AreaChart = React.memo(function AreaChart<K extends string, T exten
               strokeDasharray={comparisonLine.dashedLine ? "4 4" : "none"}
               activeDot={false}
               legendType="none"
-              name="Comparison line"
+              name="Linha de comparação"
             />
           )}
         </ComposedChart>

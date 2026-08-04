@@ -38,6 +38,7 @@ import { widgetModule } from "@modules/widget";
 import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 import { pluginRegistryModule } from "@modules/plugin-registry";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
+import { auditModule } from "@modules/audit";
 import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 
@@ -53,16 +54,22 @@ function errorHandler({ code, error, set }: any) {
     set.status = (error as any).status;
     return { detail: (error as any).message };
   }
-  if (code === "NOT_FOUND") { set.status = 404; return { detail: "Not found." }; }
-  if (code === "VALIDATION") { set.status = 400; return { detail: "Invalid request data.", errors: (error as any)?.message }; }
+  if (code === "NOT_FOUND") { set.status = 404; return { detail: "Não encontrado." }; }
+  if (code === "VALIDATION") { set.status = 400; return { detail: "Dados da requisição inválidos.", errors: (error as any)?.message }; }
+  // Erros do Prisma que têm equivalente HTTP direto. Sem isso, buscar um
+  // registro inexistente (findFirstOrThrow/update) vira 500 em vez de 404.
+  const prismaCode = (error as any)?.code;
+  if (prismaCode === "P2025") { set.status = 404; return { detail: "Não encontrado." }; }
+  if (prismaCode === "P2002") { set.status = 409; return { detail: "Registro já existe." }; }
+  if (prismaCode === "P2003") { set.status = 400; return { detail: "Referência inválida." }; }
   const msg = error?.message ?? "";
-  if (msg.includes("Authentication credentials") || msg.includes("Not authenticated")) {
+  if (msg.includes("Credenciais de autenticação") || msg.includes("Não autenticado")) {
     set.status = 401;
     return { detail: msg };
   }
   set.status = 500;
   console.error("[error]", error);
-  return { detail: "Internal server error." };
+  return { detail: "Erro interno do servidor." };
 }
 
 // ── Auth routes live at /auth/* (no /api/v1 prefix) ──────────────────────────
@@ -179,6 +186,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // rolesModule MUST be registered before the SDK gateways: those use a
   // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
   // after them, which would make /roles/ demand an X-Widget-Id header.
+  .use(auditModule)
   .use(rolesModule)
   // Mounted before the SDK gateways so their global widget-auth hook doesn't leak
   // onto the SSE stream (see the rolesModule note above).
@@ -194,14 +202,18 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(pluginSdkGatewayModule);
 
 // ── Compose into root app ────────────────────────────────────────────────────
-const app = new Elysia()
-  .use(authApp)
-  .use(apiApp)
-  .listen(PORT);
+// O app é montado sem escutar porta. Só o processo executado como script abre o
+// socket — assim os testes podem importar `app` e chamar `app.handle(request)`
+// no MESMO processo, o que faz `src/modules/*` entrar na medição de cobertura
+// (via HTTP contra outro processo, os handlers rodam mas não são medidos).
+export const app = new Elysia().use(authApp).use(apiApp);
 
-console.log(`🚀 Plane API running on http://localhost:${PORT}/api/v1`);
-console.log(`🔐 Auth endpoints: http://localhost:${PORT}/auth/`);
-console.log(`📖 Swagger: http://localhost:${PORT}/api/v1/schema`);
+if (import.meta.main) {
+  app.listen(PORT);
+  console.log(`🚀 Plane API running on http://localhost:${PORT}/api/v1`);
+  console.log(`🔐 Auth endpoints: http://localhost:${PORT}/auth/`);
+  console.log(`📖 Swagger: http://localhost:${PORT}/api/v1/schema`);
+}
 
 // Ensure full-text search extensions/indexes exist (idempotent, best-effort).
 // Skip the ANALYZE pass on boot to keep startup cheap; the reindex route runs it.

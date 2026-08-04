@@ -17,7 +17,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {createRoot} from "react-dom/client";
 import scrollIntoView from "smooth-scroll-into-view-if-needed";
 // plane imports
-import {EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS} from "@plane/constants";
+import {EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS, PROJECT_VIEW_ROLES} from "@plane/constants";
 import {useOutsideClickDetector} from "@plane/hooks";
 import {useTranslation} from "@plane/i18n";
 import {Logo} from "@plane/propel/emoji-icon-picker";
@@ -113,14 +113,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
   // auth
   const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug.toString(), project?.id);
   const isAuthorized = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_VIEW_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug.toString(),
     project?.id,

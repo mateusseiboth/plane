@@ -1,12 +1,12 @@
 {
   "power_k": {
     "actions_commands": {
-      "bulk_delete_work_items": "Excluir itens de trabalho em massa"
+      "bulk_delete_work_items": "Excluir chamados em massa"
     },
     "contextual_actions": {
       "work_item": {
-        "title": "Ações do item de trabalho",
-        "indicator": "Item de trabalho",
+        "title": "Ações do chamado",
+        "indicator": "Chamado",
         "change_state": "Alterar estado",
         "change_priority": "Alterar prioridade",
         "change_assignees": "Atribuir a",
@@ -20,14 +20,14 @@
         "unsubscribe": "Cancelar inscrição nas notificações",
         "delete": "Excluir",
         "copy_id": "Copiar ID",
-        "copy_id_toast_success": "ID do item de trabalho copiado para a área de transferência.",
-        "copy_id_toast_error": "Ocorreu um erro ao copiar o ID do item de trabalho para a área de transferência.",
+        "copy_id_toast_success": "ID do chamado copiado para a área de transferência.",
+        "copy_id_toast_error": "Ocorreu um erro ao copiar o ID do chamado para a área de transferência.",
         "copy_title": "Copiar título",
-        "copy_title_toast_success": "Título do item de trabalho copiado para a área de transferência.",
-        "copy_title_toast_error": "Ocorreu um erro ao copiar o título do item de trabalho para a área de transferência.",
+        "copy_title_toast_success": "Título do chamado copiado para a área de transferência.",
+        "copy_title_toast_error": "Ocorreu um erro ao copiar o título do chamado para a área de transferência.",
         "copy_url": "Copiar URL",
-        "copy_url_toast_success": "URL do item de trabalho copiada para a área de transferência.",
-        "copy_url_toast_error": "Ocorreu um erro ao copiar a URL do item de trabalho para a área de transferência."
+        "copy_url_toast_success": "URL do chamado copiada para a área de transferência.",
+        "copy_url_toast_error": "Ocorreu um erro ao copiar a URL do chamado para a área de transferência."
       },
       "cycle": {
         "title": "Ações do ciclo",
@@ -66,7 +66,7 @@
       }
     },
     "creation_actions": {
-      "create_work_item": "Novo item de trabalho",
+      "create_work_item": "Novo chamado",
       "create_page": "Nova página",
       "create_view": "Nova visualização",
       "create_cycle": "Novo ciclo",
@@ -83,16 +83,16 @@
       "nav_account_settings": "Ir para configurações da conta",
       "open_project": "Abrir um projeto",
       "nav_projects_list": "Ir para lista de projetos",
-      "nav_all_workspace_work_items": "Ir para todos os itens de trabalho",
-      "nav_assigned_workspace_work_items": "Ir para itens de trabalho atribuídos",
-      "nav_created_workspace_work_items": "Ir para itens de trabalho criados",
-      "nav_subscribed_workspace_work_items": "Ir para itens de trabalho inscritos",
+      "nav_all_workspace_work_items": "Ir para todos os chamados",
+      "nav_assigned_workspace_work_items": "Ir para chamados atribuídos",
+      "nav_created_workspace_work_items": "Ir para chamados criados",
+      "nav_subscribed_workspace_work_items": "Ir para chamados inscritos",
       "nav_workspace_analytics": "Ir para análises do espaço de trabalho",
       "nav_workspace_drafts": "Ir para rascunhos do espaço de trabalho",
       "nav_workspace_archives": "Ir para arquivos do espaço de trabalho",
       "open_workspace_setting": "Abrir uma configuração do espaço de trabalho",
       "nav_workspace_settings": "Ir para configurações do espaço de trabalho",
-      "nav_project_work_items": "Ir para itens de trabalho",
+      "nav_project_work_items": "Ir para chamados",
       "open_project_cycle": "Abrir um ciclo",
       "nav_project_cycles": "Ir para ciclos",
       "open_project_module": "Abrir um módulo",
@@ -100,7 +100,7 @@
       "open_project_view": "Abrir uma visualização do projeto",
       "nav_project_views": "Ir para visualizações do projeto",
       "nav_project_pages": "Ir para páginas",
-      "nav_project_intake": "Ir para admissão",
+      "nav_project_intake": "Ir para Solicitações",
       "nav_project_archives": "Ir para arquivos do projeto",
       "open_project_setting": "Abrir uma configuração do projeto",
       "nav_project_settings": "Ir para configurações do projeto",

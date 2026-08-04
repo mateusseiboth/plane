@@ -29,7 +29,7 @@ export default function IntakeDetailScreen() {
       setWorking(true);
       try {
         await endpoints.intake.setStatus(slug, projectId, id, status);
-        Alert.alert(status === 1 ? "Aprovado" : "Recusado", status === 1 ? "Chamado movido para o fluxo de trabalho." : "Intake recusado.");
+        Alert.alert(status === 1 ? "Aprovado" : "Recusado", status === 1 ? "Chamado movido para o fluxo de trabalho." : "Solicitação recusada.");
         router.back();
       } catch {
         Alert.alert("Erro", "Não foi possível atualizar o intake.");

@@ -8,7 +8,7 @@ import { observer } from "mobx-react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { TPageNavigationTabs } from "@plane/types";
 import { EUserProjectRoles } from "@plane/types";
@@ -50,7 +50,7 @@ function ProjectPagesPage({ params }: Route.ComponentProps) {
   // derived values
   const project = getProjectById(projectId);
   const pageTitle = project?.name ? `${project?.name} - Pages` : undefined;
-  const canPerformEmptyStateActions = allowPermissions([EUserProjectRoles.ADMIN], EUserPermissionsLevel.PROJECT);
+  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
   const resolvedPath = resolvedTheme === "light" ? lightPagesAsset : darkPagesAsset;
   const pageType = getPageType(type);
 

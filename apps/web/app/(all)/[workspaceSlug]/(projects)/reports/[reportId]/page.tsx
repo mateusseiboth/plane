@@ -3,30 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Printer, RotateCw } from "lucide-react";
+import { ArrowLeft, RotateCw } from "lucide-react";
 import { cn } from "@plane/utils";
 import { PageHead } from "@/components/core/page-title";
 import { EntityDropdown } from "@/components/dropdowns/entity";
+import { PrintButton, PrintFooter, PrintHeader } from "@/components/print";
 import { getReportMeta } from "@/components/reports/catalog";
 import { ReportRenderer } from "@/components/reports/renderers";
 import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import reportsService, { type ReportFilters } from "@/services/reports.service";
-
-// CSS de impressão: oculta o restante da página e imprime apenas a área do relatório.
-const PRINT_STYLES = `
-@media print {
-  body * { visibility: hidden !important; }
-  #report-print-area, #report-print-area * { visibility: visible !important; }
-  #report-print-area {
-    position: absolute !important; left: 0; top: 0; width: 100%;
-    padding: 0 !important; margin: 0 !important;
-  }
-  .report-no-print { display: none !important; }
-  .report-print-header { display: block !important; }
-  @page { size: A4; margin: 14mm; }
-}
-`;
 
 function ReportDetailPage() {
   const { workspaceSlug, reportId } = useParams() as { workspaceSlug: string; reportId: string };
@@ -87,10 +73,9 @@ function ReportDetailPage() {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       <PageHead title={pageTitle} />
-      <style>{PRINT_STYLES}</style>
 
       {/* Header / ações (não imprime) */}
-      <div className="report-no-print flex items-center justify-between gap-3 border-b border-subtle px-6 py-4">
+      <div data-print-hide className="flex items-center justify-between gap-3 border-b border-subtle px-6 py-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push(`/${workspaceSlug}/reports`)}
@@ -112,19 +97,21 @@ function ReportDetailPage() {
             <RotateCw className={cn("h-4 w-4", loading && "animate-spin")} />
             Atualizar
           </button>
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 rounded bg-accent-primary px-3 py-2 text-13 font-medium text-white hover:bg-accent-primary/90"
-          >
-            <Printer className="h-4 w-4" />
-            Gerar PDF / Imprimir
-          </button>
+          {/* LGPD: relatórios agregam dados de pessoas — a impressão vai para a trilha. */}
+          <PrintButton
+            mode="area"
+            appearance="label"
+            documentTitle={meta.title}
+            auditEntity="report"
+            auditEntityId={reportId}
+            auditMetadata={{ periodo: periodLabel, projeto: projectName ?? null }}
+          />
         </div>
       </div>
 
       {/* Filtros (não imprime) */}
       {(showPeriod || showProject || showEntity) && (
-        <div className="report-no-print flex flex-wrap items-end gap-4 border-b border-subtle px-6 py-3">
+        <div data-print-hide className="flex flex-wrap items-end gap-4 border-b border-subtle px-6 py-3">
           {showPeriod && (
             <>
               <div>
@@ -189,21 +176,26 @@ function ReportDetailPage() {
 
       {/* Conteúdo / área de impressão */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div id="report-print-area">
+        <div data-print-area>
           {/* Cabeçalho de impressão (visível apenas no PDF/impressão) */}
-          <div className="report-print-header mb-6 hidden border-b border-subtle pb-4">
-            <h1 className="text-xl font-bold">{meta.title}</h1>
-            <p className="text-13 text-secondary">{currentWorkspace?.name}</p>
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-11 text-secondary">
-              <span>Período: {periodLabel}</span>
-              {projectName && <span>Sistema: {projectName}</span>}
-              {generatedAt && <span>Gerado em: {generatedAt.toLocaleString("pt-BR")}</span>}
-            </div>
+          <div data-print-only>
+            <PrintHeader
+              title={meta.title}
+              subtitle={meta.description}
+              meta={[
+                { label: "Período", value: periodLabel },
+                { label: "Sistema", value: projectName },
+              ]}
+            />
           </div>
 
           {loading && <p className="py-10 text-center text-13 text-secondary">Carregando relatório...</p>}
           {!loading && !data && <p className="py-10 text-center text-13 text-tertiary">Não foi possível carregar o relatório.</p>}
           {!loading && data && <ReportRenderer reportId={reportId} data={data} />}
+
+          <div data-print-only>
+            <PrintFooter />
+          </div>
         </div>
       </div>
     </div>

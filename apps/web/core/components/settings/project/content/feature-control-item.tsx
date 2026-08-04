@@ -48,7 +48,7 @@ export const ProjectSettingsFeatureControlItem = observer(function ProjectSettin
       },
       error: {
         title: "Erro!",
-        message: () => "Something went wrong while updating project feature. Please try again.",
+        message: () => "Algo deu errado ao atualizar o recurso do projeto. Tente novamente.",
       },
     });
     void updateProjectPromise.then(() => {

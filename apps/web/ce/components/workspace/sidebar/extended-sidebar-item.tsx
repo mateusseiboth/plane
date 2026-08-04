@@ -205,14 +205,14 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
               </div>
             )}
             {isPinned ? (
-              <Tooltip tooltipContent="Unpin">
+              <Tooltip tooltipContent="Desafixar">
                 <PinOff
                   className="size-3.5 flex-shrink-0 text-placeholder outline-none hover:text-tertiary"
                   onClick={() => unPinNavigationItem(item.key)}
                 />
               </Tooltip>
             ) : (
-              <Tooltip tooltipContent="Pin">
+              <Tooltip tooltipContent="Fixar">
                 <Pin
                   className="size-3.5 flex-shrink-0 text-placeholder outline-none hover:text-tertiary"
                   onClick={() => pinNavigationItem(item.key)}

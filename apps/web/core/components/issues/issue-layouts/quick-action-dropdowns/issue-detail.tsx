@@ -10,7 +10,7 @@ import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 import {useState} from "react";
 // plane imports
-import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import type {TIssue} from "@plane/types";
 import {EIssuesStoreType, EUserProjectRoles} from "@plane/types";
 import {ContextMenu, CustomMenu} from "@plane/ui";
@@ -76,14 +76,7 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
   // auth — editing: ADMIN, MEMBER, GESTOR_PROJETO, TI, QUALIDADE
   const isEditingAllowed =
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
       workspaceSlug?.toString(),
       issue.project_id ?? undefined,

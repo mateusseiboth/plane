@@ -7,7 +7,7 @@
 import {observer} from "mobx-react";
 import {useCallback} from "react";
 // plane constants
-import {ALL_ISSUES, EIssueFilterType, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {ALL_ISSUES, EIssueFilterType, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import type {IIssueDisplayFilterOptions} from "@plane/types";
 import {EIssueLayoutTypes, EIssuesStoreType} from "@plane/types";
 // components
@@ -59,14 +59,7 @@ export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRo
     (projectId: string | undefined) => {
       if (!projectId) return false;
       return allowPermissions(
-        [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-        ],
+        PROJECT_WORK_ROLES,
         EUserPermissionsLevel.PROJECT,
         workspaceSlug.toString(),
         projectId,

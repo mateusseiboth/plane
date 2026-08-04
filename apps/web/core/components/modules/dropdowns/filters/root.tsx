@@ -69,7 +69,7 @@ export const ModuleFiltersSelection = observer(function ModuleFiltersSelection(p
                   favorites: !displayFilters.favorites,
                 })
               }
-              title="Favorites"
+              title="Favoritos"
             />
           </div>
         )}

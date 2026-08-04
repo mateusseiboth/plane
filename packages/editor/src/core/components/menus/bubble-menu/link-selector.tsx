@@ -78,7 +78,7 @@ export function BubbleMenuLinkSelector(props: Props) {
           <input
             ref={inputRef}
             type="url"
-            placeholder="Enter or paste a link"
+            placeholder="Digite ou cole um link"
             onClick={(e) => e.stopPropagation()}
             className="flex-1 rounded-sm border-r-[0.5px] border-strong bg-surface-1 px-1.5 py-2 text-11 outline-none placeholder:text-placeholder"
             defaultValue={editor.getAttributes("link").href || ""}

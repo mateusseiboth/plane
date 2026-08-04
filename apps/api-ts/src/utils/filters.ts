@@ -40,6 +40,9 @@ function canonicalKey(raw: string): string | null {
     case "label":
     case "label_id":
       return "labels";
+    case "entity":
+    case "entity_id":
+      return "entity";
     case "created_by":
     case "created_by_id":
       return "created_by";
@@ -53,6 +56,13 @@ function canonicalKey(raw: string): string | null {
     case "subscriber":
     case "subscriber_id":
       return "subscriber";
+    case "cycle":
+    case "cycle_id":
+      return "cycle";
+    case "module":
+    case "module_id":
+    case "issue_module__module":
+      return "module";
     case "start_date":
       return "start_date";
     case "target_date":
@@ -115,9 +125,19 @@ export async function applyIssueFilters(
 ): Promise<any> {
   if (filters.priority?.length) where.priority = {in: filters.priority};
   if (filters.created_by?.length) where.createdById = {in: filters.created_by};
+  // entity (cliente/órgão) — ids are workspace-scoped, so the same set works at
+  // both the project and the workspace level.
+  if (filters.entity?.length) where.entityId = {in: filters.entity};
   if (filters.project?.length) where.projectId = where.projectId ? where.projectId : {in: filters.project};
   if (filters.assignees?.length) where.assignees = {some: {assigneeId: {in: filters.assignees}, deletedAt: null}};
-  if (filters.mentions?.length) where.mentions = {some: {mentionedId: {in: filters.mentions}}};
+  // IssueMention.mentionId (não `mentionedId`): o nome errado fazia o Prisma
+  // rejeitar a query inteira, então filtrar por menção devolvia 500.
+  if (filters.mentions?.length) where.mentions = {some: {mentionId: {in: filters.mentions}, deletedAt: null}};
+  // subscriber_id é oferecido no painel de filtros de "Meus chamados"; sem esta
+  // linha a chave era normalizada e depois descartada (filtro sem efeito).
+  if (filters.subscriber?.length) where.subscribers = {some: {subscriberId: {in: filters.subscriber}, deletedAt: null}};
+  if (filters.cycle?.length) where.cycleIssues = {some: {cycleId: {in: filters.cycle}, deletedAt: null}};
+  if (filters.module?.length) where.moduleIssues = {some: {moduleId: {in: filters.module}, deletedAt: null}};
 
   // labels — workspace-level views deduplicate labels by name, so a single selected
   // label id must match every same-named label across the workspace's projects.
@@ -170,7 +190,12 @@ export async function applyIssueFilters(
     });
     for (const s of states) stateIdSet.add(s.id);
   }
+  // Um filtro de estado que não resolve para nenhum id precisa devolver lista
+  // VAZIA. Antes o `where.stateId` simplesmente não era aplicado e a listagem
+  // vinha inteira — filtrar por um grupo que o projeto não possui parecia
+  // "filtro ignorado" em vez de "nenhum resultado".
   if (stateIdSet.size) where.stateId = {in: [...stateIdSet]};
+  else if (filters.state?.length || filters.state_group?.length) where.stateId = {in: []};
 
   // date ranges: "after;before" or single date. Guards against invalid/empty dates
   // (Prisma throws on Invalid Date), and supports Django-style "<token>;<date>" pairs.

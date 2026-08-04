@@ -32,12 +32,11 @@ describe("TestModuleListCreateAPIEndpoint", () => {
     expect(data.name).toBe("Sprint 1");
   });
 
-  it("list modules returns paginated results", async () => {
+  it("list modules returns an array", async () => {
     const res = await client.get(url());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
-    expect(typeof data.total_count).toBe("number");
+    expect(data).toBeInstanceOf(Array);
   });
 
   it("create module without name returns 400", async () => {

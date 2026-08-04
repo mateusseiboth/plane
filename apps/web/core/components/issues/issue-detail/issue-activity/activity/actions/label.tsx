@@ -34,12 +34,12 @@ export const IssueLabelActivity = observer(function IssueLabelActivity(props: TI
       ends={ends}
     >
       <>
-        {activity.old_value === "" ? `added a new label ` : `removed the label `}
+        {activity.old_value === "" ? `adicionou uma nova etiqueta ` : `removeu a etiqueta `}
         <LabelActivityChip
           name={activity.old_value === "" ? activity.new_value : activity.old_value}
           color={activity.old_value === "" ? newLabelColor : oldLabelColor}
         />
-        {showIssue && (activity.old_value === "" ? ` to ` : ` from `)}
+        {showIssue && (activity.old_value === "" ? ` em ` : ` de `)}
         {showIssue && <IssueLink activityId={activityId} />}
       </>
     </IssueActivityBlockComponent>

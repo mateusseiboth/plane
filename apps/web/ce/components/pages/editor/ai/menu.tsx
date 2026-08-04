@@ -46,7 +46,7 @@ const MENU_ITEMS: {
 const TONES_LIST = [
   {
     key: "default",
-    label: "Default",
+    label: "Padrão",
     casual_score: 5,
     formal_score: 5,
   },
@@ -243,7 +243,7 @@ export function EditorAIMenu(props: Props) {
                           <CornerDownRight className="size-4 text-tertiary" />
                         </button>
                       </Tooltip>
-                      <Tooltip tooltipContent="Re-generate response">
+                      <Tooltip tooltipContent="Gerar resposta novamente">
                         <button
                           type="button"
                           className="grid size-6 flex-shrink-0 place-items-center rounded-sm outline-none hover:bg-layer-1"
@@ -300,7 +300,7 @@ export function EditorAIMenu(props: Props) {
             <TriangleAlert className="size-3" />
           </span>
           <p className="flex-shrink-0 text-11 font-medium">
-            By using this feature, you consent to sharing the message with a 3rd party service.
+            Ao usar este recurso, você concorda em compartilhar a mensagem com um serviço de terceiros.
           </p>
         </div>
       )}

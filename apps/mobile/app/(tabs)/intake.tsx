@@ -48,7 +48,7 @@ export default function IntakeScreen() {
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 80 }}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           refreshControl={<RefreshControl refreshing={items.loading} onRefresh={items.refetch} tintColor={colors.primary} />}
-          ListEmptyComponent={<EmptyState title="Intake vazio" description="Nenhum item aguardando triagem." />}
+          ListEmptyComponent={<EmptyState title="Nenhuma solicitação" description="Nenhuma solicitação aguardando triagem." />}
           renderItem={({ item }) => (
             <WorkItemRow
               item={{

@@ -61,10 +61,10 @@ export const TalkToSalesCard = observer(function TalkToSalesCard(props: TalkToSa
               <Loader.Item height="36px" width="4rem" />
             </Loader>
           ) : (
-            <>Quote on request</>
+            <>Orçamento sob consulta</>
           )}
         </div>
-        <div className="text-caption-md-medium text-tertiary">per user per month</div>
+        <div className="text-caption-md-medium text-tertiary">por usuário por mês</div>
       </div>
       {isLoading ? (
         <Loader className="flex flex-col items-center justify-center">

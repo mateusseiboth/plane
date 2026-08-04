@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { ArchiveRestore } from "lucide-react";
 // plane imports
-import { PROJECT_AUTOMATION_MONTHS, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { PROJECT_AUTOMATION_MONTHS, EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { IProject } from "@plane/types";
 import { CustomSelect, Loader, ToggleSwitch } from "@plane/ui";
@@ -38,8 +38,7 @@ export const AutoArchiveAutomation = observer(function AutoArchiveAutomation(pro
 
   const { currentProjectDetails } = useProject();
 
-  const isAdmin = allowPermissions(
-    [EUserPermissions.ADMIN],
+  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug?.toString(),
     currentProjectDetails?.id

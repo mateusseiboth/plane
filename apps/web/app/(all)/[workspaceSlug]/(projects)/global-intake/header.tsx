@@ -17,7 +17,7 @@ export const GlobalIntakeHeader = observer(function GlobalIntakeHeader() {
           <Breadcrumbs.Item
             component={
               <BreadcrumbLink
-                label="Intake Global"
+                label="Solicitações globais"
                 icon={<Intake className="size-4 text-secondary" />}
               />
             }

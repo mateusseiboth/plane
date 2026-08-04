@@ -28,7 +28,7 @@ import { useUser } from "@/hooks/store/user";
 export const WORKSPACE_ACTIVE_CYCLES_DETAILS = [
   {
     key: "10000_feet_view",
-    title: "10,000-feet view of all active cycles.",
+    title: "Visão geral de todos os ciclos ativos.",
     description:
       "Amplie a visão para ver os ciclos em andamento em todos os seus projetos de uma vez, em vez de ir de ciclo em ciclo em cada projeto.",
     icon: Folder,
@@ -48,9 +48,9 @@ export const WORKSPACE_ACTIVE_CYCLES_DETAILS = [
   },
   {
     key: "quickly_see_make_or_break_issues",
-    title: "Veja rapidamente os itens de trabalho decisivos. ",
+    title: "Veja rapidamente os chamados decisivos. ",
     description:
-      "Visualize os itens de trabalho de alta prioridade de cada ciclo em relação às datas de vencimento. Veja todos eles por ciclo em um clique.",
+      "Visualize os chamados de alta prioridade de cada ciclo em relação às datas de vencimento. Veja todos eles por ciclo em um clique.",
     icon: AlertOctagon,
   },
   {

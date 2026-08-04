@@ -28,30 +28,30 @@
     },
     "modals": {
       "decline": {
-        "title": "Recusar item de trabalho",
-        "content": "Tem certeza de que deseja recusar o item de trabalho {value}?"
+        "title": "Recusar solicitação",
+        "content": "Tem certeza de que deseja recusar a solicitação {value}?"
       },
       "delete": {
-        "title": "Excluir item de trabalho",
-        "content": "Tem certeza de que deseja excluir o item de trabalho {value}?",
-        "success": "Item de trabalho excluído com sucesso"
+        "title": "Excluir solicitação",
+        "content": "Tem certeza de que deseja excluir a solicitação {value}?",
+        "success": "Solicitação excluída com sucesso"
       }
     },
     "errors": {
-      "snooze_permission": "Apenas administradores do projeto podem adiar/reativar itens de trabalho",
-      "accept_permission": "Apenas administradores do projeto podem aceitar itens de trabalho",
-      "decline_permission": "Apenas administradores do projeto podem recusar itens de trabalho"
+      "snooze_permission": "Apenas administradores do projeto podem adiar/reativar solicitações",
+      "accept_permission": "Apenas administradores do projeto podem aceitar solicitações",
+      "decline_permission": "Apenas administradores do projeto podem recusar solicitações"
     },
     "actions": {
       "accept": "Aceitar",
       "decline": "Recusar",
       "snooze": "Adiar",
       "unsnooze": "Reativar",
-      "copy": "Copiar link do item de trabalho",
+      "copy": "Copiar link da solicitação",
       "delete": "Excluir",
-      "open": "Abrir item de trabalho",
+      "open": "Abrir solicitação",
       "mark_as_duplicate": "Marcar como duplicado",
-      "move": "Mover {value} para os itens de trabalho do projeto"
+      "move": "Mover {value} para os chamados do projeto"
     },
     "source": {
       "in-app": "no aplicativo"
@@ -61,10 +61,10 @@
       "updated_at": "Atualizado em",
       "id": "ID"
     },
-    "label": "Admissão",
-    "page_label": "{workspace} - Admissão",
+    "label": "Solicitações",
+    "page_label": "{workspace} - Solicitações",
     "modal": {
-      "title": "Criar item de trabalho de admissão"
+      "title": "Criar solicitação"
     },
     "tabs": {
       "open": "Aberto",
@@ -72,19 +72,19 @@
     },
     "empty_state": {
       "sidebar_open_tab": {
-        "title": "Nenhum item de trabalho aberto",
-        "description": "Encontre itens de trabalho abertos aqui. Crie um novo item de trabalho."
+        "title": "Nenhuma solicitação aberta",
+        "description": "As solicitações abertas aparecem aqui. Crie uma nova solicitação."
       },
       "sidebar_closed_tab": {
-        "title": "Nenhum item de trabalho fechado",
-        "description": "Todos os itens de trabalho, sejam aceitos ou recusados, podem ser encontrados aqui."
+        "title": "Nenhuma solicitação fechada",
+        "description": "Todas as solicitações, aceitas ou recusadas, podem ser encontradas aqui."
       },
       "sidebar_filter": {
-        "title": "Nenhum item de trabalho correspondente",
-        "description": "Nenhum item de trabalho corresponde ao filtro aplicado na admissão. Crie um novo item de trabalho."
+        "title": "Nenhuma solicitação correspondente",
+        "description": "Nenhuma solicitação corresponde ao filtro aplicado. Crie uma nova solicitação."
       },
       "detail": {
-        "title": "Selecione um item de trabalho para visualizar seus detalhes."
+        "title": "Selecione uma solicitação para visualizar seus detalhes."
       }
     }
   }

@@ -37,9 +37,9 @@ function buildLabelModule(prefix: string) {
     .post("/", async ({ params: { slug, project_id }, body, user, set }) => {
       const ws = await getWorkspaceOrFail(slug);
       const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-      if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+      if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
       const b = body as any;
-      if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+      if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
       const label = await prisma.label.create({
         data: {
           workspaceId: ws.id, projectId: project_id,
@@ -71,7 +71,7 @@ function buildLabelModule(prefix: string) {
     .patch("/:label_id/", async ({ params: { slug, project_id, label_id }, body, user, set }) => {
       const ws = await getWorkspaceOrFail(slug);
       const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-      if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+      if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
       const b = body as any;
       const data: any = {};
       if (b.name !== undefined) data.name = b.name;
@@ -86,7 +86,7 @@ function buildLabelModule(prefix: string) {
     .patch("/:label_id", async ({ params: { slug, project_id, label_id }, body, user, set }) => {
       const ws = await getWorkspaceOrFail(slug);
       const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-      if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+      if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
       const b = body as any;
       const data: any = {};
       if (b.name !== undefined) data.name = b.name;
@@ -101,7 +101,7 @@ function buildLabelModule(prefix: string) {
     .delete("/:label_id/", async ({ params: { slug, project_id, label_id }, user, set }) => {
       const ws = await getWorkspaceOrFail(slug);
       const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-      if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+      if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
       await prisma.label.update({ where: { id: label_id }, data: { deletedAt: new Date() } });
       set.status = 204;
       return null;
@@ -110,7 +110,7 @@ function buildLabelModule(prefix: string) {
     .delete("/:label_id", async ({ params: { slug, project_id, label_id }, user, set }) => {
       const ws = await getWorkspaceOrFail(slug);
       const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-      if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+      if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
       await prisma.label.update({ where: { id: label_id }, data: { deletedAt: new Date() } });
       set.status = 204;
       return null;

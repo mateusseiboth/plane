@@ -24,7 +24,7 @@ export const getProjectFeatureNavigation = (
   {
     i18n_key: "sidebar.work_items",
     key: EProjectFeatureKey.WORK_ITEMS,
-    name: "Work items",
+    name: "Chamados",
     href: `/${workspaceSlug}/projects/${projectId}/issues`,
     icon: WorkItemsIcon,
     access: [
@@ -112,7 +112,7 @@ export const getProjectFeatureNavigation = (
   {
     i18n_key: "sidebar.intake",
     key: EProjectFeatureKey.INTAKE,
-    name: "Intake",
+    name: "Solicitações",
     href: `/${workspaceSlug}/projects/${projectId}/intake`,
     icon: IntakeIcon,
     access: [

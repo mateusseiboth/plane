@@ -8,7 +8,7 @@ import {Star, StarOff, Users} from "lucide-react";
 import {useParams} from "next/navigation";
 import {useCallback} from "react";
 // plane imports
-import {EUserPermissionsLevel} from "@plane/constants";
+import {EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {LinkIcon, ModuleStatusIcon} from "@plane/propel/icons";
 import {setToast, TOAST_TYPE} from "@plane/propel/toast";
@@ -35,14 +35,7 @@ export const usePowerKModuleContextBasedActions = (): TPowerKCommandConfig[] => 
   // permission
   const isEditingAllowed =
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
     ) && !moduleDetails?.archived_at;
   // translation

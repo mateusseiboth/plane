@@ -86,24 +86,24 @@ function WorkspaceInvitationPage() {
           ) : (
             <EmptySpace
               title={`You have been invited to ${invitationDetail.workspace.name}`}
-              description="Seu espaço de trabalho é onde você criará projetos, colaborará em seus itens de trabalho e organizará diferentes fluxos de trabalho na sua conta Avião."
+              description="Seu espaço de trabalho é onde você criará projetos, colaborará em seus chamados e organizará diferentes fluxos de trabalho na sua conta Avião."
             >
-              <EmptySpaceItem Icon={CheckIcon} title="Accept" action={handleAccept} />
-              <EmptySpaceItem Icon={CloseIcon} title="Ignore" action={handleReject} />
+              <EmptySpaceItem Icon={CheckIcon} title="Aceitar" action={handleAccept} />
+              <EmptySpaceItem Icon={CloseIcon} title="Ignorar" action={handleReject} />
             </EmptySpace>
           )
         ) : error || invitationDetail?.responded_at ? (
           invitationDetail?.accepted ? (
             <EmptySpace
               title={`You are already a member of ${invitationDetail.workspace.name}`}
-              description="Seu espaço de trabalho é onde você criará projetos, colaborará em seus itens de trabalho e organizará diferentes fluxos de trabalho na sua conta Avião."
+              description="Seu espaço de trabalho é onde você criará projetos, colaborará em seus chamados e organizará diferentes fluxos de trabalho na sua conta Avião."
             >
               <EmptySpaceItem Icon={Boxes} title="Continuar para o início" href="/" />
             </EmptySpace>
           ) : (
             <EmptySpace
               title="Este link de convite não está mais ativo."
-              description="Seu espaço de trabalho é onde você criará projetos, colaborará em seus itens de trabalho e organizará diferentes fluxos de trabalho na sua conta Avião."
+              description="Seu espaço de trabalho é onde você criará projetos, colaborará em seus chamados e organizará diferentes fluxos de trabalho na sua conta Avião."
               link={{ text: "Ou comece a partir de um projeto vazio", href: "/" }}
             >
               {!currentUser ? (

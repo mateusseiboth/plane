@@ -114,8 +114,8 @@ export function InstanceSignInForm() {
       <div className="mt-10 flex w-full flex-grow flex-col items-center justify-center py-6">
         <div className="relative flex w-full max-w-[22.5rem] flex-col gap-6">
           <FormHeader
-            heading="Manage your Avião instance"
-            subHeading="Configure instance-wide settings to secure your instance"
+            heading="Gerencie sua instância do Avião"
+            subHeading="Defina as configurações globais para proteger sua instância"
           />
           <form
             className="space-y-4"
@@ -135,7 +135,7 @@ export function InstanceSignInForm() {
 
             <div className="w-full space-y-1">
               <label className="text-13 font-medium text-tertiary" htmlFor="email">
-                Email <span className="text-danger-primary">*</span>
+                E-mail <span className="text-danger-primary">*</span>
               </label>
               <Input
                 className="w-full border border-subtle !bg-surface-1 placeholder:text-placeholder"
@@ -153,7 +153,7 @@ export function InstanceSignInForm() {
 
             <div className="w-full space-y-1">
               <label className="text-13 font-medium text-tertiary" htmlFor="password">
-                Password <span className="text-danger-primary">*</span>
+                Senha <span className="text-danger-primary">*</span>
               </label>
               <div className="relative">
                 <Input
@@ -188,7 +188,7 @@ export function InstanceSignInForm() {
             </div>
             <div className="py-2">
               <Button type="submit" size="xl" className="w-full" disabled={isButtonDisabled}>
-                {isSubmitting ? <Spinner height="20px" width="20px" /> : "Sign in"}
+                {isSubmitting ? <Spinner height="20px" width="20px" /> : "Entrar"}
               </Button>
             </div>
           </form>

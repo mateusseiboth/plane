@@ -2,7 +2,7 @@ import prisma from "@db";
 
 export async function getWorkspaceOrFail(slug: string) {
   const ws = await prisma.workspace.findFirst({where: {slug, deletedAt: null}});
-  if (!ws) throw {status: 404, message: "Workspace not found."};
+  if (!ws) throw {status: 404, message: "Workspace não encontrado."};
   return ws;
 }
 
@@ -16,13 +16,13 @@ export async function requireWorkspaceMember(workspaceId: string, userId: string
   const m = await prisma.workspaceMember.findFirst({
     where: {workspaceId, memberId: userId, isActive: true, deletedAt: null},
   });
-  if (!m) throw {status: 403, message: "You do not have permission to perform this action."};
+  if (!m) throw {status: 403, message: "Você não tem permissão para executar esta ação."};
   return m;
 }
 
 export async function requireWorkspaceWriter(workspaceId: string, userId: string) {
   const m = await requireWorkspaceMember(workspaceId, userId);
-  if (m.role < 15) throw {status: 403, message: "You do not have permission to perform this action."};
+  if (m.role < 15) throw {status: 403, message: "Você não tem permissão para executar esta ação."};
   return m;
 }
 
@@ -30,7 +30,7 @@ export async function getProjectOrFail(workspaceId: string, projectId: string, u
   const project = await prisma.project.findFirst({
     where: {id: projectId, workspaceId, deletedAt: null},
   });
-  if (!project) throw {status: 404, message: "Project not found."};
+  if (!project) throw {status: 404, message: "Projeto não encontrado."};
 
   let member = await prisma.projectMember.findFirst({
     where: {projectId, memberId: userId, isActive: true, deletedAt: null},
@@ -84,7 +84,7 @@ export async function getProjectOrFail(workspaceId: string, projectId: string, u
     }
   }
 
-  if (!member) throw {status: 403, message: "You are not a member of this project."};
+  if (!member) throw {status: 403, message: "Você não é membro deste projeto."};
 
   return {project, member};
 }

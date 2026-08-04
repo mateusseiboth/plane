@@ -2,8 +2,16 @@
 // userId / workspaceId as plain strings (no FK) so it can run against its own
 // database. All tables are prefixed chat_* so sharing the Plane Postgres is safe.
 
+// O client é gerado dentro do próprio app: sem isso, `prisma generate` do api-ts
+// e do chat-backend sobrescrevem o MESMO pacote @prisma/client (pnpm workspace
+// com store compartilhado) e um passa a enxergar os models do outro.
+//
+// Fica FORA de src/ de propósito: o compose monta `./src:/app/src` para hot
+// reload, e esse mount esconderia o client gerado dentro da imagem — o container
+// subia com "Cannot find module '@/generated/prisma'".
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -63,6 +71,9 @@ model ChatSession {
   createdAt          DateTime      @default(now()) @map("created_at")
   closedAt           DateTime?     @map("closed_at")
   closedById         String?       @map("closed_by_id")
+  // Origem no chat antigo (SAC): `chat.chat_id`. Só é preenchido pela migração
+  // scripts/migrate-sac-chat.ts e é o que a torna idempotente.
+  legacyId           Int?          @unique @map("legacy_id")
   messages           ChatMessage[]
   readStates         ChatReadState[]
 
@@ -93,6 +104,8 @@ model ChatMessage {
   externalId   String?     @map("external_id") // provider message id (dedup)
   status       String      @default("sent") // sent | delivered | read
   createdAt    DateTime    @default(now()) @map("created_at")
+  // Origem no chat antigo (SAC): `chat_mensagens.chat_mensagens_id`.
+  legacyId     Int?        @unique @map("legacy_id")
 
   @@index([sessionId, createdAt])
   @@index([externalId])

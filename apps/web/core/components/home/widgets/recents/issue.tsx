@@ -100,7 +100,7 @@ export const RecentIssue = observer(function RecentIssue(props: BlockProps) {
       }
       quickActionElement={
         <div className="flex gap-4">
-          <Tooltip tooltipHeading="State" tooltipContent={state?.name ?? "State"}>
+          <Tooltip tooltipHeading="Estado" tooltipContent={state?.name ?? "Estado"}>
             <div>
               <StateGroupIcon
                 stateGroup={state?.group ?? "backlog"}
@@ -110,7 +110,7 @@ export const RecentIssue = observer(function RecentIssue(props: BlockProps) {
               />
             </div>
           </Tooltip>
-          <Tooltip tooltipHeading="Priority" tooltipContent={issueDetails?.priority ?? "Priority"}>
+          <Tooltip tooltipHeading="Prioridade" tooltipContent={issueDetails?.priority ?? "Priority"}>
             <div>
               <PriorityIcon priority={issueDetails?.priority} withContainer size={12} />
             </div>

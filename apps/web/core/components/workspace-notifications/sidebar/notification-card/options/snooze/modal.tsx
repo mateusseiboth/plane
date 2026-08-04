@@ -116,7 +116,7 @@ export function NotificationSnoozeModal(props: TNotificationSnoozeModal) {
     <ModalCore isOpen={isOpen} handleClose={handleClose} position={EModalPosition.CENTER} width={EModalWidth.XXL}>
       <form onSubmit={handleSubmit(onSubmit)} className="p-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-h5-medium leading-6 text-primary">Customize Snooze Time</h3>
+          <h3 className="text-h5-medium leading-6 text-primary">Personalizar tempo de soneca</h3>
 
           <div>
             <button type="button" onClick={handleClose}>
@@ -150,7 +150,7 @@ export function NotificationSnoozeModal(props: TNotificationSnoozeModal) {
             />
           </div>
           <div className="flex-1">
-            <h6 className="mb-2 block text-body-xs-medium text-placeholder">Pick a time</h6>
+            <h6 className="mb-2 block text-body-xs-medium text-placeholder">Escolha um horário</h6>
             <Controller
               control={control}
               name="time"

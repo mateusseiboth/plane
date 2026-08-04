@@ -6,7 +6,7 @@
 
 import { observer } from "mobx-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IProject } from "@plane/types";
@@ -34,7 +34,7 @@ function AutomationSettingsPage({ params }: Route.ComponentProps) {
   const { t } = useTranslation();
 
   // derived values
-  const canPerformProjectAdminActions = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT);
+  const canPerformProjectAdminActions = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT);
 
   const handleChange = async (formData: Partial<IProject>) => {
     if (!projectDetails) return;

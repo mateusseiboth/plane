@@ -17,13 +17,13 @@ function PageNotFound() {
       <div className="grid h-full place-items-center p-4">
         <div className="space-y-8 text-center">
           <div className="relative mx-auto h-60 w-60 lg:h-80 lg:w-80">
-            <img src={Image404} alt="404 - Page not found" className="h-full w-full object-contain" />
+            <img src={Image404} alt="404 - Página não encontrada" className="h-full w-full object-contain" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-16 font-semibold">Oops! Something went wrong.</h3>
+            <h3 className="text-16 font-semibold">Ops! Algo deu errado.</h3>
             <p className="text-13 text-secondary">
-              Sorry, the page you are looking for cannot be found. It may have been removed, had its name changed, or is
-              temporarily unavailable.
+              Desculpe, a página que você procura não foi encontrada. Ela pode ter sido removida, ter tido o nome
+              alterado ou estar temporariamente indisponível.
             </p>
           </div>
           <Link to="/general/">

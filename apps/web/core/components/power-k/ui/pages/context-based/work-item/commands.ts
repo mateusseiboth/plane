@@ -92,7 +92,7 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
         setToast({
           type: TOAST_TYPE.ERROR,
           title: "Erro!",
-          message: `${isEpic ? "Epic" : "Work item"} could not be updated. Please try again.`,
+          message: `Não foi possível atualizar ${isEpic ? "o épico" : "o chamado"}. Tente novamente.`,
         });
       });
     },
@@ -322,7 +322,7 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
           setToast({
             type: TOAST_TYPE.ERROR,
             title: "Erro!",
-            message: `${entityDetails.is_epic ? "Epic" : "Work item"} could not be updated. Please try again.`,
+            message: `Não foi possível atualizar ${entityDetails.is_epic ? "o épico" : "o chamado"}. Tente novamente.`,
           });
         }
       },
@@ -354,7 +354,7 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
           setToast({
             type: TOAST_TYPE.ERROR,
             title: "Erro!",
-            message: `${entityDetails.is_epic ? "Epic" : "Work item"} could not be updated. Please try again.`,
+            message: `Não foi possível atualizar ${entityDetails.is_epic ? "o épico" : "o chamado"}. Tente novamente.`,
           });
         }
       },

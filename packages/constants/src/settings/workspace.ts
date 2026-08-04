@@ -111,6 +111,20 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/chat/`,
   },
+  print: {
+    key: "print",
+    i18n_label: "workspace_settings.settings.print.title",
+    href: `/settings/print`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/print/`,
+  },
+  auditoria: {
+    key: "auditoria",
+    i18n_label: "workspace_settings.settings.auditoria.title",
+    href: `/settings/auditoria`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/auditoria/`,
+  },
 };
 
 export const WORKSPACE_SETTINGS_ACCESS = Object.fromEntries(
@@ -128,6 +142,8 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     WORKSPACE_SETTINGS["export"],
     WORKSPACE_SETTINGS["storage"],
     WORKSPACE_SETTINGS["chat"],
+    WORKSPACE_SETTINGS["print"],
+    WORKSPACE_SETTINGS["auditoria"],
   ].filter(Boolean) as TWorkspaceSettingsItem[],
   [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [],
   [WORKSPACE_SETTINGS_CATEGORY.DEVELOPER]: [

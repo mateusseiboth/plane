@@ -84,7 +84,7 @@ export const AuthRoot = observer(function AuthRoot() {
   const isSMTPConfigured = config?.is_smtp_configured || false;
   const isMagicLoginEnabled = config?.is_magic_login_enabled || false;
   const isEmailPasswordEnabled = config?.is_email_password_enabled || false;
-  const oAuthActionText = authMode === EAuthModes.SIGN_UP ? "Sign up" : "Entrar";
+  const oAuthActionText = authMode === EAuthModes.SIGN_UP ? "Cadastrar" : "Entrar";
   const { isOAuthEnabled, oAuthOptions } = useOAuthConfig(oAuthActionText);
 
   // submit handler- email verification

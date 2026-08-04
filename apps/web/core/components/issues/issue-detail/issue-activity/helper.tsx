@@ -154,7 +154,7 @@ export const useWorkItemCommentOperations = (
           });
           return res;
         } catch {
-          throw new Error("Asset duplication failed. Please try again later.");
+          throw new Error("Falha ao duplicar o arquivo. Tente novamente mais tarde.");
         }
       },
       addCommentReaction: async (commentId, reaction) => {

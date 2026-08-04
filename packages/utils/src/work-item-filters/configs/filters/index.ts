@@ -6,6 +6,7 @@
 
 export * from "./cycle";
 export * from "./date";
+export * from "./entity";
 export * from "./label";
 export * from "./module";
 export * from "./priority";

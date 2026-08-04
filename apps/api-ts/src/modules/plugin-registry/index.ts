@@ -22,7 +22,7 @@ function auditLog(action: string, userId: string, pluginId?: string, meta?: Reco
 function requireInstanceAdmin(user: { isInstanceAdmin: boolean; isSuperuser: boolean }, set: any) {
   if (!user.isInstanceAdmin && !user.isSuperuser) {
     set.status = 403;
-    throw Object.assign(new Error("Only instance admins can manage plugins."), { status: 403 });
+    throw Object.assign(new Error("Apenas administradores da instância podem gerenciar plugins."), { status: 403 });
   }
 }
 
@@ -84,13 +84,13 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
     const ip = request.headers.get("x-forwarded-for") ?? user.id;
     if (!checkRateLimit(`plugin-upload:${user.id}:${ip}`, 5, 60_000)) {
       set.status = 429;
-      return { detail: "Too many upload requests. Please wait before trying again." };
+      return { detail: "Muitas solicitações de envio. Aguarde antes de tentar novamente." };
     }
 
     const file: Blob | null = (body as any).file ?? null;
     if (!file) {
       set.status = 400;
-      return { detail: "Multipart field 'file' (plugin.zip) is required." };
+      return { detail: "O campo multipart 'file' (plugin.zip) é obrigatório." };
     }
 
     const zipBuffer = Buffer.from(await file.arrayBuffer());
@@ -103,7 +103,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
     });
     if (existing) {
       set.status = 409;
-      return { detail: `Plugin "${manifest.slug}" version ${manifest.version} already exists.` };
+      return { detail: `O plugin "${manifest.slug}" na versão ${manifest.version} já existe.` };
     }
 
     // Persist entry bundle + every additional asset bundled in the ZIP.
@@ -191,7 +191,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
   // ── Get plugin by ID ─────────────────────────────────────────────────────────
   .get("/:id", async ({ params: { id }, set }) => {
     const plugin = await prisma.plugin.findFirst({ where: { id, deletedAt: null } });
-    if (!plugin) { set.status = 404; return { detail: "Plugin not found." }; }
+    if (!plugin) { set.status = 404; return { detail: "Plugin não encontrado." }; }
     return serializePlugin(plugin);
   })
 
@@ -200,7 +200,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
     requireInstanceAdmin(user, set);
     const b = body as any;
     const plugin = await prisma.plugin.findFirst({ where: { id, deletedAt: null } });
-    if (!plugin) { set.status = 404; return { detail: "Plugin not found." }; }
+    if (!plugin) { set.status = 404; return { detail: "Plugin não encontrado." }; }
 
     const data: any = {};
     if (b.name !== undefined) data.name = String(b.name).trim().slice(0, 255);
@@ -214,7 +214,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
   .post("/:id/activate", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
     const plugin = await prisma.plugin.findFirst({ where: { id, deletedAt: null } });
-    if (!plugin) { set.status = 404; return { detail: "Plugin not found." }; }
+    if (!plugin) { set.status = 404; return { detail: "Plugin não encontrado." }; }
     auditLog("plugin.activate", user.id, id);
     const updated = await prisma.plugin.update({ where: { id }, data: { status: "ACTIVE" } });
     return serializePlugin(updated);
@@ -224,7 +224,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
   .post("/:id/deactivate", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
     const plugin = await prisma.plugin.findFirst({ where: { id, deletedAt: null } });
-    if (!plugin) { set.status = 404; return { detail: "Plugin not found." }; }
+    if (!plugin) { set.status = 404; return { detail: "Plugin não encontrado." }; }
     auditLog("plugin.deactivate", user.id, id);
     const updated = await prisma.plugin.update({ where: { id }, data: { status: "INACTIVE" } });
     return serializePlugin(updated);
@@ -234,7 +234,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
   .delete("/:id", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
     const plugin = await prisma.plugin.findFirst({ where: { id, deletedAt: null } });
-    if (!plugin) { set.status = 404; return { detail: "Plugin not found." }; }
+    if (!plugin) { set.status = 404; return { detail: "Plugin não encontrado." }; }
     auditLog("plugin.delete", user.id, id);
     await prisma.plugin.update({
       where: { id },
@@ -250,8 +250,8 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
     const wildcard = (params as any)["*"] as string;
 
     const plugin = await prisma.plugin.findFirst({ where: { id, deletedAt: null } });
-    if (!plugin) { set.status = 404; return { detail: "Plugin not found." }; }
-    if (plugin.status !== "ACTIVE") { set.status = 403; return { detail: "Plugin is not active." }; }
+    if (!plugin) { set.status = 404; return { detail: "Plugin não encontrado." }; }
+    if (plugin.status !== "ACTIVE") { set.status = 403; return { detail: "O plugin não está ativo." }; }
 
     const baseDir = plugin.storageKey.split("/").slice(0, -1).join("/");
     // Guard against path traversal in the wildcard segment.
@@ -263,7 +263,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
       buffer = await pluginStorage.get(key);
     } catch {
       set.status = 404;
-      return { detail: "Asset not found." };
+      return { detail: "Arquivo não encontrado." };
     }
 
     return new Response(new Uint8Array(buffer), {
@@ -278,7 +278,7 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
   // ── List versions ─────────────────────────────────────────────────────────────
   .get("/:id/versions", async ({ params: { id }, set }) => {
     const plugin = await prisma.plugin.findFirst({ where: { id, deletedAt: null } });
-    if (!plugin) { set.status = 404; return { detail: "Plugin not found." }; }
+    if (!plugin) { set.status = 404; return { detail: "Plugin não encontrado." }; }
     const versions = await prisma.pluginVersion.findMany({
       where: { pluginId: id },
       orderBy: { createdAt: "desc" },

@@ -71,7 +71,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
     {
       key: "EMAIL_PORT",
       type: "text",
-      label: "Port",
+      label: "Porta",
       placeholder: "8080",
       error: Boolean(errors.EMAIL_PORT),
       required: true,
@@ -79,7 +79,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
     {
       key: "EMAIL_FROM",
       type: "text",
-      label: "Sender's email address",
+      label: "Endereço de e-mail do remetente",
       description:
         "Este é o e-mail que seus usuários verão ao receber mensagens desta instância. Você precisará verificar este endereço.",
       placeholder: "no-reply@projectplane.so",
@@ -92,7 +92,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
     {
       key: "EMAIL_HOST_USER",
       type: "text",
-      label: "Username",
+      label: "Usuário",
       placeholder: "getitdone@projectplane.so",
       error: Boolean(errors.EMAIL_HOST_USER),
       required: false,
@@ -100,8 +100,8 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
     {
       key: "EMAIL_HOST_PASSWORD",
       type: "password",
-      label: "Password",
-      placeholder: "Password",
+      label: "Senha",
+      placeholder: "Senha",
       error: Boolean(errors.EMAIL_HOST_PASSWORD),
       required: false,
     },
@@ -183,7 +183,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
           <div className="flex w-full max-w-xl flex-col gap-y-10 px-1">
             <div className="mr-8 flex items-center gap-10 pt-4">
               <div className="grow">
-                <div className="text-13 font-medium text-primary">Authentication</div>
+                <div className="text-13 font-medium text-primary">Autenticação</div>
                 <div className="text-11 font-regular text-tertiary">
                   Isto é opcional, mas recomendamos configurar um usuário e uma senha para o seu servidor SMTP.
                 </div>

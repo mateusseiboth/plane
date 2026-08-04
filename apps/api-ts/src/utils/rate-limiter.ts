@@ -35,10 +35,25 @@ export function checkRateLimit(
   return true;
 }
 
-// Prune stale buckets every 5 minutes to avoid memory leaks
-setInterval(() => {
-  const cutoff = Date.now() - 5 * 60_000;
+const PRUNE_AFTER_MS = 5 * 60_000;
+
+/**
+ * Descarta buckets parados há mais de `maxIdleMs`, evitando vazamento de memória
+ * quando o limitador é chaveado por IP. Exportada (em vez de embutida no
+ * setInterval) para ser exercitável sem esperar o timer.
+ */
+export function pruneStaleBuckets(maxIdleMs = PRUNE_AFTER_MS): number {
+  const cutoff = Date.now() - maxIdleMs;
+  let removed = 0;
   for (const [k, b] of buckets) {
-    if (b.lastRefill < cutoff) buckets.delete(k);
+    if (b.lastRefill < cutoff) {
+      buckets.delete(k);
+      removed++;
+    }
   }
-}, 5 * 60_000);
+  return removed;
+}
+
+// `unref` para o timer não segurar o processo (relevante em scripts e testes).
+const pruneTimer = setInterval(pruneStaleBuckets, PRUNE_AFTER_MS);
+(pruneTimer as unknown as {unref?: () => void}).unref?.();

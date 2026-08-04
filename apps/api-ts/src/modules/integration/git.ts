@@ -22,7 +22,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.provider) { set.status = 400; return { detail: "Provider is required (github | gitlab | bitbucket)." }; }
+    if (!b.provider) { set.status = 400; return { detail: "O provedor é obrigatório (github | gitlab | bitbucket)." }; }
 
     try {
       const config = await prisma.gitIntegrationConfig.create({
@@ -38,7 +38,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
       set.status = 201;
       return config;
     } catch (e: any) {
-      if (e?.code === "P2002") { set.status = 409; return { detail: `Integration for ${b.provider} already exists.` }; }
+      if (e?.code === "P2002") { set.status = 409; return { detail: `A integração com ${b.provider} já existe.` }; }
       throw e;
     }
   })
@@ -79,7 +79,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.repo_id || !b.name || !b.full_name || !b.url) { set.status = 400; return { detail: "repo_id, name, full_name and url are required." }; }
+    if (!b.repo_id || !b.name || !b.full_name || !b.url) { set.status = 400; return { detail: "repo_id, name, full_name e url são obrigatórios." }; }
 
     const repo = await prisma.gitRepository.create({
       data: {

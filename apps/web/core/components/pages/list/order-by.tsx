@@ -22,7 +22,7 @@ const PAGE_SORTING_KEY_OPTIONS: {
   key: TPageFiltersSortKey;
   label: string;
 }[] = [
-  { key: "name", label: "Name" },
+  { key: "name", label: "Nome" },
   { key: "created_at", label: "Data de criação" },
   { key: "updated_at", label: "Data de modificação" },
 ];

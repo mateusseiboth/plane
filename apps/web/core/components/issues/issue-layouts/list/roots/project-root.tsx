@@ -7,7 +7,7 @@
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 // hooks
 import { useUserPermissions } from "@/hooks/store/user";
 // local imports
@@ -24,14 +24,7 @@ export const ListLayout = observer(function ListLayout() {
 
   const canEditPropertiesBasedOnProject = (projectId: string) =>
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
       workspaceSlug.toString(),
       projectId

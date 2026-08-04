@@ -8,7 +8,7 @@ import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 import {useCallback, useEffect} from "react";
 // plane imports
-import {ALL_ISSUES, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {ALL_ISSUES, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {TOAST_TYPE, setToast} from "@plane/propel/toast";
 import type {EIssuesStoreType, IBlockUpdateData, TIssue} from "@plane/types";
@@ -100,14 +100,7 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
   };
 
   const isAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT,
   );
   const updateBlockDates = useCallback(
@@ -122,7 +115,7 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
         setToast({
           type: TOAST_TYPE.ERROR,
           title: t("toast.error"),
-          message: "Erro ao atualizar as datas do item de trabalho. Tente novamente mais tarde.",
+          message: "Erro ao atualizar as datas do chamado. Tente novamente mais tarde.",
         });
       }),
     [issues, projectId, workspaceSlug],

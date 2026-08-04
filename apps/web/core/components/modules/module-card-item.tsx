@@ -16,8 +16,7 @@ import {
   PROGRESS_STATE_GROUPS_DETAILS,
   EUserPermissions,
   EUserPermissionsLevel,
-  IS_FAVORITE_MENU_OPEN,
-} from "@plane/constants";
+  IS_FAVORITE_MENU_OPEN, PROJECT_WORK_ROLES} from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { WorkItemsIcon } from "@plane/propel/icons";
 import { TOAST_TYPE, setPromiseToast, setToast } from "@plane/propel/toast";
@@ -59,14 +58,7 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
   // derived values
   const moduleDetails = getModuleById(moduleId);
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
   const isDisabled = !isEditingAllowed || !!moduleDetails?.archived_at;
@@ -92,7 +84,7 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
       },
       error: {
         title: "Erro!",
-        message: () => "Couldn't add the module to favorites. Please try again.",
+        message: () => "Não foi possível adicionar o módulo aos favoritos. Tente novamente.",
       },
     });
   };
@@ -116,7 +108,7 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
       },
       error: {
         title: "Erro!",
-        message: () => "Couldn't remove the module from favorites. Please try again.",
+        message: () => "Não foi possível remover o módulo dos favoritos. Tente novamente.",
       },
     });
   };

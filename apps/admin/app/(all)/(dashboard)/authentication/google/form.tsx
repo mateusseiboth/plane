@@ -114,7 +114,7 @@ export function InstanceGoogleConfigForm(props: Props) {
       description: (
         <p>
           We will auto-generate this. Paste this into your{" "}
-          <CodeBlock darkerShade>Authorized JavaScript origins</CodeBlock> field. For this OAuth client{" "}
+          <CodeBlock darkerShade>Origens JavaScript autorizadas</CodeBlock> field. For this OAuth client{" "}
           <a
             href="https://console.cloud.google.com/apis/credentials/oauthclient"
             target="_blank"
@@ -131,11 +131,11 @@ export function InstanceGoogleConfigForm(props: Props) {
   const GOOGLE_SERVICE_DETAILS: TCopyField[] = [
     {
       key: "Callback_URI",
-      label: "Callback URI",
+      label: "URI de callback",
       url: `${originURL}/auth/google/callback/`,
       description: (
         <p>
-          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>Authorized Redirect URI</CodeBlock>{" "}
+          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>URI de redirecionamento autorizada</CodeBlock>{" "}
           field. For this OAuth client{" "}
           <a
             href="https://console.cloud.google.com/apis/credentials/oauthclient"
@@ -157,7 +157,7 @@ export function InstanceGoogleConfigForm(props: Props) {
       const response = await updateInstanceConfigurations(payload);
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Done!",
+        title: "Pronto!",
         message: "Sua autenticação do Google está configurada. Teste-a agora.",
       });
       reset({

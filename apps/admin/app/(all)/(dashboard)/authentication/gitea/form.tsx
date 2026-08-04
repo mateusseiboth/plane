@@ -120,11 +120,11 @@ export function InstanceGiteaConfigForm(props: Props) {
   const GITEA_SERVICE_FIELD: TCopyField[] = [
     {
       key: "Callback_URI",
-      label: "Callback URI",
+      label: "URI de callback",
       url: `${originURL}/auth/gitea/callback/`,
       description: (
         <>
-          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>Authorized Callback URI</CodeBlock>{" "}
+          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>URI de callback autorizada</CodeBlock>{" "}
           field{" "}
           <a
             tabIndex={-1}
@@ -147,7 +147,7 @@ export function InstanceGiteaConfigForm(props: Props) {
       const response = await updateInstanceConfigurations(payload);
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Done!",
+        title: "Pronto!",
         message: "Sua autenticação do Gitea está configurada. Teste-a agora.",
       });
       reset({

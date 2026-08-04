@@ -92,7 +92,7 @@ export function GptAssistantPopover(props: Props) {
     const error = err?.data?.error;
     const errorMessage =
       err?.status === 429
-        ? error || "You have reached the maximum number of requests of 50 requests per month per user."
+        ? error || "Você atingiu o limite máximo de 50 solicitações por mês por usuário."
         : error || "Ocorreu um erro. Tente novamente.";
 
     setToast({
@@ -268,7 +268,7 @@ export function GptAssistantPopover(props: Props) {
                 onChange={onChange}
                 ref={ref}
                 placeholder={`${
-                  prompt && prompt !== "" ? "Tell AI what action to perform on this content..." : "Ask AI anything..."
+                  prompt && prompt !== "" ? "Diga à IA o que fazer com este conteúdo..." : "Ask AI anything..."
                 }`}
                 className="w-full"
                 autoFocus
@@ -282,7 +282,7 @@ export function GptAssistantPopover(props: Props) {
               <>
                 <div className="flex items-start justify-center gap-2 text-13 text-accent-primary">
                   <AlertCircle className="h-4 w-4" />
-                  <p>By using this feature, you consent to sharing the message with a 3rd party service. </p>
+                  <p>Ao usar este recurso, você concorda em compartilhar a mensagem com um serviço de terceiros. </p>
                 </div>
               </>
             )}

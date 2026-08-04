@@ -39,7 +39,7 @@ export const useCoreOAuthConfig = (oauthActionText: string): TOAuthConfigs => {
     {
       id: "google",
       text: `${oauthActionText} with Google`,
-      icon: <img src={googleLogo} height={18} width={18} alt="Google Logo" />,
+      icon: <img src={googleLogo} height={18} width={18} alt="Logo do Google" />,
       onClick: () => {
         window.location.assign(`${API_BASE_URL}/auth/google/${next_path ? `?next_path=${next_path}` : ``}`);
       },
@@ -53,7 +53,7 @@ export const useCoreOAuthConfig = (oauthActionText: string): TOAuthConfigs => {
           src={resolvedTheme === "dark" ? GithubDarkLogo : GithubLightLogo}
           height={18}
           width={18}
-          alt="GitHub Logo"
+          alt="Logo do GitHub"
         />
       ),
       onClick: () => {
@@ -64,7 +64,7 @@ export const useCoreOAuthConfig = (oauthActionText: string): TOAuthConfigs => {
     {
       id: "gitlab",
       text: `${oauthActionText} with GitLab`,
-      icon: <img src={gitlabLogo} height={18} width={18} alt="GitLab Logo" />,
+      icon: <img src={gitlabLogo} height={18} width={18} alt="Logo do GitLab" />,
       onClick: () => {
         window.location.assign(`${API_BASE_URL}/auth/gitlab/${next_path ? `?next_path=${next_path}` : ``}`);
       },
@@ -73,7 +73,7 @@ export const useCoreOAuthConfig = (oauthActionText: string): TOAuthConfigs => {
     {
       id: "gitea",
       text: `${oauthActionText} with Gitea`,
-      icon: <img src={giteaLogo} height={18} width={18} alt="Gitea Logo" />,
+      icon: <img src={giteaLogo} height={18} width={18} alt="Logo do Gitea" />,
       onClick: () => {
         window.location.assign(`${API_BASE_URL}/auth/gitea/${next_path ? `?next_path=${next_path}` : ``}`);
       },

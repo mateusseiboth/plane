@@ -104,11 +104,13 @@ const _viewer: EProjectAction[] = [
   EProjectAction.ATTACHMENT_VIEW,
 ];
 
-const _contributor: EProjectAction[] = [
+/**
+ * D2 — Atendimento is a service-desk operator: it opens *chamados* (intake) and
+ * talks on them, but never creates, edits or moves a work item. Mirrors
+ * INTAKE_OPERATOR in apps/api-ts/src/utils/permissions.ts.
+ */
+const _intakeOperator: EProjectAction[] = [
   ..._viewer,
-  EProjectAction.ISSUE_CREATE,
-  EProjectAction.ISSUE_EDIT_OWN,
-  EProjectAction.ISSUE_ASSIGN_SELF,
   EProjectAction.COMMENT_CREATE,
   EProjectAction.COMMENT_EDIT_OWN,
   EProjectAction.COMMENT_DELETE_OWN,
@@ -117,12 +119,19 @@ const _contributor: EProjectAction[] = [
   EProjectAction.INTAKE_CREATE,
 ];
 
+const _contributor: EProjectAction[] = [
+  ..._intakeOperator,
+  EProjectAction.ISSUE_CREATE,
+  EProjectAction.ISSUE_EDIT_OWN,
+  EProjectAction.ISSUE_ASSIGN_SELF,
+];
+
 export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
   // ── GUEST (5): read-only ───────────────────────────────────────────────────
   [EUserProjectRoles.GUEST]: [..._viewer],
 
   // ── ATENDIMENTO (6): service-desk operator, creates chamados only ──────────
-  [EUserProjectRoles.ATENDIMENTO]: [..._contributor],
+  [EUserProjectRoles.ATENDIMENTO]: [..._intakeOperator],
 
   // ── QUALIDADE (8): quality team — reviews intake, approves/returns work ────
   [EUserProjectRoles.QUALIDADE]: [
@@ -136,7 +145,7 @@ export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
     EProjectAction.VIEW_CREATE,
   ],
 
-  // ── MEMBER (10): general member — full workflow access, no admin ───────────
+  // ── MEMBER (15): general member — full workflow access, no admin ───────────
   [EUserProjectRoles.MEMBER]: [
     ..._contributor,
     EProjectAction.ISSUE_EDIT_ALL,

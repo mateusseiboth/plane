@@ -46,7 +46,7 @@ export const DeleteLabelModal = observer(function DeleteLabelModal(props: Props)
       })
       .catch((err) => {
         setIsDeleteLoading(false);
-        const error = err?.error || "Label could not be deleted. Please try again.";
+        const error = err?.error || "Não foi possível excluir a etiqueta. Tente novamente.";
         setToast({
           type: TOAST_TYPE.ERROR,
           title: "Erro!",

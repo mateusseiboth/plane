@@ -109,7 +109,7 @@ export const LeaveProjectModal = observer(function LeaveProjectModal(props: ILea
         <span>
           <p className="text-13 leading-7 text-secondary">
             Tem certeza de que deseja sair do projeto -
-            <span className="font-medium text-primary">{` "${project?.name}" `}</span>? Todos os itens de trabalho
+            <span className="font-medium text-primary">{` "${project?.name}" `}</span>? Todos os chamados
             associados a você ficarão inacessíveis.
           </p>
         </span>

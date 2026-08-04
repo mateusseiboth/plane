@@ -8,7 +8,7 @@ import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 import {useState} from "react";
 // ui
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {EIssuesStoreType} from "@plane/types";
 import {ContextMenu, CustomMenu} from "@plane/ui";
 import {cn} from "@plane/utils";
@@ -45,27 +45,13 @@ export const ArchivedIssueQuickActions = observer(function ArchivedIssueQuickAct
   // auth
   const isEditingAllowed =
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
     ) && !readOnly;
   const isRestoringAllowed =
     handleRestore &&
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
     );
 

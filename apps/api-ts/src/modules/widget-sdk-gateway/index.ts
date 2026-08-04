@@ -15,14 +15,14 @@ const widgetAuthPlugin = new Elysia({ name: "widget-auth" })
     const widgetId = ctx.headers["x-widget-id"];
     if (!widgetId) {
       ctx.set.status = 400;
-      throw Object.assign(new Error("Missing X-Widget-Id header."), { status: 400 });
+      throw Object.assign(new Error("Cabeçalho X-Widget-Id ausente."), { status: 400 });
     }
     const widget = await prisma.widget.findFirst({
       where: { id: widgetId, status: "ACTIVE", deletedAt: null },
     });
     if (!widget) {
       ctx.set.status = 403;
-      throw Object.assign(new Error("Widget not found or not active."), { status: 403 });
+      throw Object.assign(new Error("Widget não encontrado ou inativo."), { status: 403 });
     }
     return { widget };
   });
@@ -31,7 +31,7 @@ function requirePermission(widget: { permissions: string[] }, permission: string
   if (!widget.permissions.includes(permission)) {
     set.status = 403;
     throw Object.assign(
-      new Error(`Widget does not have permission "${permission}".`),
+      new Error(`O widget não possui a permissão "${permission}".`),
       { status: 403 }
     );
   }
@@ -162,7 +162,7 @@ export const widgetSdkGatewayModule = new Elysia({ prefix: "/widget-sdk" })
           labels: { include: { label: { select: { id: true, name: true, color: true } } } },
         },
       });
-      if (!issue) { set.status = 404; return { detail: "Worker item not found." }; }
+      if (!issue) { set.status = 404; return { detail: "Chamado não encontrado." }; }
       const i = issue as any;
       return {
         id: i.id,
@@ -266,7 +266,7 @@ export const widgetSdkGatewayModule = new Elysia({ prefix: "/widget-sdk" })
     async ({ params: { id }, widget, set }) => {
       requirePermission(widget, "intakes.read", set);
       const intake = await prisma.intake.findFirst({ where: { id, deletedAt: null } });
-      if (!intake) { set.status = 404; return { detail: "Intake not found." }; }
+      if (!intake) { set.status = 404; return { detail: "Solicitação não encontrada." }; }
       const i = intake as any;
       return {
         id: i.id,
@@ -351,7 +351,7 @@ export const widgetSdkGatewayModule = new Elysia({ prefix: "/widget-sdk" })
         where: { id, deletedAt: null },
         include: { state: { select: { id: true, name: true, group: true } } },
       });
-      if (!issue) { set.status = 404; return { detail: "Action not found." }; }
+      if (!issue) { set.status = 404; return { detail: "Ação não encontrada." }; }
       const i = issue as any;
       return {
         id: i.id,
@@ -445,7 +445,7 @@ export const widgetSdkGatewayModule = new Elysia({ prefix: "/widget-sdk" })
       const q = query as any;
       if (!q.start_date || !q.end_date) {
         set.status = 400;
-        return { detail: "start_date and end_date are required." };
+        return { detail: "start_date e end_date são obrigatórios." };
       }
 
       const where: any = {
@@ -484,7 +484,7 @@ export const widgetSdkGatewayModule = new Elysia({ prefix: "/widget-sdk" })
         where: { id: user.id },
         select: { id: true, email: true, displayName: true, firstName: true, lastName: true, avatarUrl: true },
       });
-      if (!u) { set.status = 404; return { detail: "User not found." }; }
+      if (!u) { set.status = 404; return { detail: "Usuário não encontrado." }; }
       return {
         id: u.id,
         email: u.email,
@@ -545,7 +545,7 @@ export const widgetSdkGatewayModule = new Elysia({ prefix: "/widget-sdk" })
         where: { id },
         select: { id: true, email: true, displayName: true, avatarUrl: true },
       });
-      if (!u) { set.status = 404; return { detail: "User not found." }; }
+      if (!u) { set.status = 404; return { detail: "Usuário não encontrado." }; }
       return { id: u.id, email: u.email, display_name: u.displayName, avatar_url: (u as any).avatarUrl ?? null };
     }
   )
@@ -605,7 +605,7 @@ export const widgetSdkGatewayModule = new Elysia({ prefix: "/widget-sdk" })
         where: { id, deletedAt: null },
         select: { id: true, name: true, workspaceId: true, createdAt: true, entityType: true, city: true, state: true },
       });
-      if (!entity) { set.status = 404; return { detail: "Entity not found." }; }
+      if (!entity) { set.status = 404; return { detail: "Entidade não encontrada." }; }
       return {
         id: entity.id,
         name: entity.name,

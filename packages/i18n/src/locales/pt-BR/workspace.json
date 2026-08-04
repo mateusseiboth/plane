@@ -54,7 +54,7 @@
     "empty_state": {
       "general": {
         "title": "Visão geral dos seus projetos, atividades e métricas",
-        "description": "Bem-vindo ao Avião, estamos animados por tê-lo aqui. Crie seu primeiro projeto e rastreie seus itens de trabalho, e esta página se transformará em um espaço que ajuda você a progredir. Os administradores também verão itens que ajudam sua equipe a progredir.",
+        "description": "Bem-vindo ao Avião, estamos animados por tê-lo aqui. Crie seu primeiro projeto e rastreie seus chamados, e esta página se transformará em um espaço que ajuda você a progredir. Os administradores também verão itens que ajudam sua equipe a progredir.",
         "primary_button": {
           "text": "Construa seu primeiro projeto",
           "comic": {
@@ -70,26 +70,26 @@
     "page_label": "{workspace} - Análises",
     "open_tasks": "Total de tarefas abertas",
     "error": "Ocorreu algum erro ao buscar os dados.",
-    "work_items_closed_in": "Itens de trabalho fechados em",
+    "work_items_closed_in": "Chamados fechados em",
     "selected_projects": "Projetos selecionados",
     "total_members": "Total de membros",
     "total_cycles": "Total de ciclos",
     "total_modules": "Total de módulos",
     "pending_work_items": {
-      "title": "Itens de trabalho pendentes",
-      "empty_state": "A análise de itens de trabalho pendentes por colegas de trabalho aparece aqui."
+      "title": "Chamados pendentes",
+      "empty_state": "A análise de chamados pendentes por colegas de trabalho aparece aqui."
     },
     "work_items_closed_in_a_year": {
-      "title": "Itens de trabalho fechados em um ano",
-      "empty_state": "Feche os itens de trabalho para visualizar a análise dos mesmos na forma de um gráfico."
+      "title": "Chamados fechados em um ano",
+      "empty_state": "Feche os chamados para visualizar a análise dos mesmos na forma de um gráfico."
     },
     "most_work_items_created": {
-      "title": "Itens de trabalho mais criados",
-      "empty_state": "Colegas de trabalho e o número de itens de trabalho criados por eles aparecem aqui."
+      "title": "Chamados mais criados",
+      "empty_state": "Colegas de trabalho e o número de chamados criados por eles aparecem aqui."
     },
     "most_work_items_closed": {
-      "title": "Itens de trabalho mais fechados",
-      "empty_state": "Colegas de trabalho e o número de itens de trabalho fechados por eles aparecem aqui."
+      "title": "Chamados mais fechados",
+      "empty_state": "Colegas de trabalho e o número de chamados fechados por eles aparecem aqui."
     },
     "tabs": {
       "scope_and_demand": "Escopo e Demanda",
@@ -110,15 +110,15 @@
     "empty_state": {
       "project_insights": {
         "title": "Ainda não há dados",
-        "description": "Os itens de trabalho atribuídos a você, divididos por estado, aparecerão aqui."
+        "description": "Os chamados atribuídos a você, divididos por estado, aparecerão aqui."
       },
       "created_vs_resolved": {
         "title": "Ainda não há dados",
-        "description": "Os itens de trabalho criados e resolvidos ao longo do tempo aparecerão aqui."
+        "description": "Os chamados criados e resolvidos ao longo do tempo aparecerão aqui."
       },
       "customized_insights": {
         "title": "Ainda não há dados",
-        "description": "Os itens de trabalho atribuídos a você, divididos por estado, aparecerão aqui."
+        "description": "Os chamados atribuídos a você, divididos por estado, aparecerão aqui."
       },
       "general": {
         "title": "Acompanhe progresso, cargas de trabalho e alocações. Identifique tendências, remova bloqueios e trabalhe mais rápido",
@@ -127,28 +127,28 @@
           "text": "Comece seu primeiro projeto",
           "comic": {
             "title": "Analytics funciona melhor com Ciclos + Módulos",
-            "description": "Primeiro, defina um tempo limite para seus itens de trabalho em Ciclos e, se possível, agrupe itens que abrangem mais de um ciclo em Módulos. Confira ambos na navegação esquerda."
+            "description": "Primeiro, defina um tempo limite para seus chamados em Ciclos e, se possível, agrupe itens que abrangem mais de um ciclo em Módulos. Confira ambos na navegação esquerda."
           }
         }
       },
       "cycle_progress": {
         "title": "Ainda não há dados",
-        "description": "A análise de progresso do ciclo aparecerá aqui. Adicione itens de trabalho aos ciclos para começar a acompanhar o progresso."
+        "description": "A análise de progresso do ciclo aparecerá aqui. Adicione chamados aos ciclos para começar a acompanhar o progresso."
       },
       "module_progress": {
         "title": "Ainda não há dados",
-        "description": "A análise de progresso do módulo aparecerá aqui. Adicione itens de trabalho aos módulos para começar a acompanhar o progresso."
+        "description": "A análise de progresso do módulo aparecerá aqui. Adicione chamados aos módulos para começar a acompanhar o progresso."
       },
       "intake_trends": {
         "title": "Ainda não há dados",
-        "description": "A análise de tendências de intake aparecerá aqui. Adicione itens de trabalho ao intake para começar a acompanhar as tendências."
+        "description": "A análise de tendências de solicitações aparecerá aqui. Crie solicitações para começar a acompanhar as tendências."
       }
     },
     "upgrade_to_plan": "Faça upgrade para {plan} para desbloquear {tab}",
-    "workitem_resolved_vs_pending": "Itens de trabalho resolvidos vs pendentes",
+    "workitem_resolved_vs_pending": "Chamados resolvidos vs pendentes",
     "projects_by_status": "Projetos por status",
     "active_users": "Usuários ativos",
-    "intake_trends": "Tendências de entrada"
+    "intake_trends": "Tendências de solicitações"
   },
   "workspace_projects": {
     "label": "{count, plural, one {Projeto} other {Projetos}}",
@@ -170,7 +170,7 @@
       "permission": "Você não tem permissão para realizar esta ação.",
       "cycle_delete": "Falha ao excluir o ciclo",
       "module_delete": "Falha ao excluir o módulo",
-      "issue_delete": "Falha ao excluir o item de trabalho"
+      "issue_delete": "Falha ao excluir o chamado"
     },
     "state": {
       "backlog": "Backlog",
@@ -207,7 +207,7 @@
       },
       "no_projects": {
         "title": "Nenhum projeto",
-        "description": "Para criar itens de trabalho ou gerenciar seu trabalho, você precisa criar um projeto ou fazer parte de um.",
+        "description": "Para criar chamados ou gerenciar seu trabalho, você precisa criar um projeto ou fazer parte de um.",
         "primary_button": {
           "text": "Comece seu primeiro projeto",
           "comic": {
@@ -229,33 +229,33 @@
     "add_view": "Adicionar visualização",
     "empty_state": {
       "all-issues": {
-        "title": "Nenhum item de trabalho no projeto",
-        "description": "Primeiro projeto concluído! Agora, divida seu trabalho em partes rastreáveis com itens de trabalho. Vamos lá!",
+        "title": "Nenhum chamado no projeto",
+        "description": "Primeiro projeto concluído! Agora, divida seu trabalho em partes rastreáveis com chamados. Vamos lá!",
         "primary_button": {
-          "text": "Criar novo item de trabalho"
+          "text": "Criar novo chamado"
         }
       },
       "assigned": {
-        "title": "Nenhum item de trabalho ainda",
-        "description": "Os itens de trabalho atribuídos a você podem ser rastreados aqui.",
+        "title": "Nenhum chamado ainda",
+        "description": "Os chamados atribuídos a você podem ser rastreados aqui.",
         "primary_button": {
-          "text": "Criar novo item de trabalho"
+          "text": "Criar novo chamado"
         }
       },
       "created": {
-        "title": "Nenhum item de trabalho ainda",
-        "description": "Todos os itens de trabalho criados por você vêm aqui, rastreie-os aqui diretamente.",
+        "title": "Nenhum chamado ainda",
+        "description": "Todos os chamados criados por você vêm aqui, rastreie-os aqui diretamente.",
         "primary_button": {
-          "text": "Criar novo item de trabalho"
+          "text": "Criar novo chamado"
         }
       },
       "subscribed": {
-        "title": "Nenhum item de trabalho ainda",
-        "description": "Inscreva-se nos itens de trabalho nos quais você está interessado, rastreie todos eles aqui."
+        "title": "Nenhum chamado ainda",
+        "description": "Inscreva-se nos chamados nos quais você está interessado, rastreie todos eles aqui."
       },
       "custom-view": {
-        "title": "Nenhum item de trabalho ainda",
-        "description": "Itens de trabalho que se aplicam aos filtros, rastreie todos eles aqui."
+        "title": "Nenhum chamado ainda",
+        "description": "Chamados que se aplicam aos filtros, rastreie todos eles aqui."
       }
     },
     "delete_view": {
@@ -264,10 +264,10 @@
     }
   },
   "workspace_draft_issues": {
-    "draft_an_issue": "Rascunhar um item de trabalho",
+    "draft_an_issue": "Rascunhar um chamado",
     "empty_state": {
-      "title": "Itens de trabalho semi-escritos e, em breve, os comentários aparecerão aqui.",
-      "description": "Para experimentar, comece a adicionar um item de trabalho e deixe-o no meio do caminho ou crie seu primeiro rascunho abaixo. 😉",
+      "title": "Chamados semi-escritos e, em breve, os comentários aparecerão aqui.",
+      "description": "Para experimentar, comece a adicionar um chamado e deixe-o no meio do caminho ou crie seu primeiro rascunho abaixo. 😉",
       "primary_button": {
         "text": "Criar seu primeiro rascunho"
       }
@@ -279,7 +279,7 @@
     "toasts": {
       "created": {
         "success": "Rascunho criado",
-        "error": "Não foi possível criar o item de trabalho. Por favor, tente novamente."
+        "error": "Não foi possível criar o chamado. Por favor, tente novamente."
       },
       "deleted": {
         "success": "Rascunho excluído"
@@ -290,7 +290,7 @@
     "empty_state": {
       "general": {
         "title": "Escreva uma nota, um documento ou uma base de conhecimento completa. Obtenha ajuda do Galileo, o assistente de IA do Avião, para começar",
-        "description": "Páginas são espaços para desenvolver pensamentos no Avião. Anote notas de reunião, formate-as facilmente, incorpore itens de trabalho, organize-os usando uma biblioteca de componentes e mantenha tudo no contexto do seu projeto. Para facilitar qualquer documento, invoque o Galileo, a IA do Avião, com um atalho ou clique de um botão.",
+        "description": "Páginas são espaços para desenvolver pensamentos no Avião. Anote notas de reunião, formate-as facilmente, incorpore chamados, organize-os usando uma biblioteca de componentes e mantenha tudo no contexto do seu projeto. Para facilitar qualquer documento, invoque o Galileo, a IA do Avião, com um atalho ou clique de um botão.",
         "primary_button": {
           "text": "Crie sua primeira página"
         }

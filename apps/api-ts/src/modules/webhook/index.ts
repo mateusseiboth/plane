@@ -23,7 +23,7 @@ export const webhookModule = new Elysia({ prefix: "/workspaces/:slug/webhooks" }
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.url) { set.status = 400; return { detail: "URL is required." }; }
+    if (!b.url) { set.status = 400; return { detail: "A URL é obrigatória." }; }
 
     const webhook = await prisma.webhook.create({
       data: {

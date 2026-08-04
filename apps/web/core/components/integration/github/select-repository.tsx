@@ -80,7 +80,7 @@ export function SelectRepository(props: Props) {
               onClick={() => setSize(size + 1)}
               disabled={isValidating}
             >
-              {isValidating ? "Carregando..." : "Click to load more..."}
+              {isValidating ? "Carregando..." : "Clique para carregar mais..."}
             </button>
           )}
         </>

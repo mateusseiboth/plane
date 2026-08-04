@@ -82,7 +82,7 @@
         "export_separate_files": "Exporte os dados em arquivos separados",
         "exporting_projects": "Exportando projeto",
         "format": "Formato",
-        "filters_info": "Aplique filtros para exportar itens de trabalho específicos com base em seus critérios.",
+        "filters_info": "Aplique filtros para exportar chamados específicos com base em seus critérios.",
         "modal": {
           "title": "Exportar para",
           "toasts": {
@@ -272,12 +272,12 @@
       "templates": {
         "title": "Modelos",
         "heading": "Modelos",
-        "description": "Economize 80% do tempo gasto na criação de projetos, itens de trabalho e páginas quando você usar modelos."
+        "description": "Economize 80% do tempo gasto na criação de projetos, chamados e páginas quando você usar modelos."
       },
       "relations": {
         "title": "Relações",
         "heading": "Relações",
-        "description": "Crie e gerencie tipos de relação que conectam itens de trabalho em todo o seu espaço de trabalho."
+        "description": "Crie e gerencie tipos de relação que conectam chamados em todo o seu espaço de trabalho."
       },
       "cancel_trial": {
         "title": "Cancele seu período de teste primeiro.",
@@ -375,7 +375,7 @@
         "webhook_url_title": "URL do webhook",
         "webhook_url_error": "URL do webhook é obrigatória",
         "invalid_webhook_url_error": "URL do webhook inválida",
-        "redirect_uris_title": "Redirect URIs",
+        "redirect_uris_title": "URIs de redirecionamento",
         "redirect_uris_error": "Redirect URIs são obrigatórias",
         "invalid_redirect_uris_error": "Redirect URIs inválidas",
         "redirect_uris_description": "Digite URIs separados por espaço onde o aplicativo redirecionará para o usuário após e.g https://example.com https://example.com/",
@@ -454,7 +454,7 @@
         "app_consent_unapproved_description": "Certifique-se de confiar neste aplicativo antes de conectá-lo ao seu espaço de trabalho.",
         "go_to_app": "Ir para o aplicativo",
         "enable_app_mentions": "Ativar menções do aplicativo",
-        "enable_app_mentions_tooltip": "Quando isso está ativado, os usuários podem mencionar ou atribuir Work Items a este aplicativo.",
+        "enable_app_mentions_tooltip": "Quando isso está ativado, os usuários podem mencionar ou atribuir chamados a este aplicativo.",
         "scopes": "Escopos",
         "select_scopes": "Selecionar escopos",
         "read_access_to": "Acesso somente leitura a",
@@ -517,6 +517,10 @@
         "title": "Armazenamento",
         "heading": "Armazenamento"
       },
+      "print": {
+        "title": "Impressão",
+        "heading": "Impressão"
+      },
       "chat": {
         "title": "Atendimento (Chat)",
         "heading": "Atendimento (Chat)"
@@ -528,6 +532,9 @@
       "widgets": {
         "title": "Widgets",
         "heading": "Widgets"
+      },
+      "auditoria": {
+        "title": "Auditoria (LGPD)"
       }
     },
     "empty_state": {

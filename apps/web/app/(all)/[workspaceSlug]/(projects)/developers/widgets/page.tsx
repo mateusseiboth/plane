@@ -37,7 +37,7 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 const PERMISSIONS = [
   ["worker-items.read", "Listar e ler work items / chamados"],
-  ["intakes.read", "Listar itens de intake (triagem)"],
+  ["intakes.read", "Listar solicitações"],
   ["actions.read", "Ler o histórico de ações/atividades"],
   ["stats.read", "Ler estatísticas agregadas e relatórios"],
   ["users.read", "Listar membros do workspace"],

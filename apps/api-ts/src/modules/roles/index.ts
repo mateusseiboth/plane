@@ -71,7 +71,7 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
     const b = body as any;
     if (!b.name) {
       set.status = 400;
-      return {detail: "Name is required."};
+      return {detail: "O nome é obrigatório."};
     }
     const key = b.key ? slugify(b.key) : slugify(b.name);
     const exists = await prisma.workflowRole.findFirst({where: {workspaceId: ws.id, key, deletedAt: null}});
@@ -112,6 +112,12 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
     const ws = await getWorkspaceOrFail(slug);
     await requireRoleAdmin(ws.id, user.id);
     const b = body as any;
+    // Scope by workspace: a role id from another tenant must never be writable.
+    const target = await prisma.workflowRole.findFirst({where: {id: role_id, workspaceId: ws.id, deletedAt: null}});
+    if (!target) {
+      set.status = 404;
+      return {detail: "Função não encontrada."};
+    }
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
     if (b.level !== undefined) data.level = b.level;
@@ -142,9 +148,14 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
   })
 
   // Replace the full visibility matrix for a role
-  .put("/:role_id/visibility/", async ({params: {slug, role_id}, body, user}) => {
+  .put("/:role_id/visibility/", async ({params: {slug, role_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireRoleAdmin(ws.id, user.id);
+    const target = await prisma.workflowRole.findFirst({where: {id: role_id, workspaceId: ws.id, deletedAt: null}});
+    if (!target) {
+      set.status = 404;
+      return {detail: "Função não encontrada."};
+    }
     const rows: any[] = (body as any)?.visibility ?? [];
     await prisma.$transaction([
       prisma.roleStateVisibility.deleteMany({where: {roleId: role_id}}),
@@ -163,9 +174,14 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
   })
 
   // Replace the full transition matrix for a role
-  .put("/:role_id/transitions/", async ({params: {slug, role_id}, body, user}) => {
+  .put("/:role_id/transitions/", async ({params: {slug, role_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireRoleAdmin(ws.id, user.id);
+    const target = await prisma.workflowRole.findFirst({where: {id: role_id, workspaceId: ws.id, deletedAt: null}});
+    if (!target) {
+      set.status = 404;
+      return {detail: "Função não encontrada."};
+    }
     const rows: any[] = (body as any)?.transitions ?? [];
     await prisma.$transaction([
       prisma.roleStateTransition.deleteMany({where: {roleId: role_id}}),

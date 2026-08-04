@@ -45,7 +45,7 @@ const InstanceGoogleAuthenticationPage = observer(function InstanceGoogleAuthent
     setPromiseToast(updateConfigPromise, {
       loading: "Saving Configuration",
       success: {
-        title: "Configuration saved",
+        title: "Configuração salva",
         message: () => `Google authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
@@ -69,7 +69,7 @@ const InstanceGoogleAuthenticationPage = observer(function InstanceGoogleAuthent
         <AuthenticationMethodCard
           name="Google"
           description="Permita que membros entrem ou se cadastrem no Avião com suas contas do Google."
-          icon={<img src={GoogleLogo} height={24} width={24} alt="Google Logo" />}
+          icon={<img src={GoogleLogo} height={24} width={24} alt="Logo do Google" />}
           config={
             <ToggleSwitch
               value={Boolean(parseInt(enableGoogleConfig))}

@@ -41,7 +41,7 @@ export function InstanceAIForm(props: IInstanceAIForm) {
     {
       key: "LLM_MODEL",
       type: "text",
-      label: "LLM Model",
+      label: "Modelo de LLM",
       description: (
         <>
           Choose an OpenAI engine.{" "}
@@ -122,7 +122,7 @@ export function InstanceAIForm(props: IInstanceAIForm) {
 
       <div className="flex flex-col items-start gap-4">
         <Button variant="primary" size="lg" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
-          {isSubmitting ? "Saving" : "Save changes"}
+          {isSubmitting ? "Saving" : "Salvar alterações"}
         </Button>
 
         <div className="relative inline-flex items-center gap-1.5 rounded-sm border border-accent-subtle bg-accent-subtle px-4 py-2 text-caption-sm-regular text-accent-secondary">

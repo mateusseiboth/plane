@@ -47,60 +47,60 @@ export const BASE_NOTIFICATION_CONTENT_MAP: TNotificationContentMap = {
   duplicate: ({ verb }) => ({
     action:
       verb === "created"
-        ? "marked that this work item is a duplicate of"
-        : "marked that this work item is not a duplicate",
+        ? "marcou que este chamado é duplicado de"
+        : "marcou que este chamado não é duplicado",
     value: null,
     showConnector: false,
   }),
   assignees: ({ newValue, oldValue }) => ({
-    action: newValue !== "" ? "added assignee" : "removed assignee",
+    action: newValue !== "" ? "adicionou o responsável" : "removeu o responsável",
     value: newValue !== "" ? newValue : oldValue,
     showConnector: false,
   }),
   start_date: ({ newValue }) => ({
-    action: newValue !== "" ? "set start date" : "removed the start date",
+    action: newValue !== "" ? "definiu a data de início" : "removeu a data de início",
     value: renderFormattedDate(newValue),
     showConnector: false,
   }),
   target_date: ({ newValue }) => ({
-    action: newValue !== "" ? "set due date" : "removed the due date",
+    action: newValue !== "" ? "definiu a data de entrega" : "removeu a data de entrega",
     value: renderFormattedDate(newValue),
     showConnector: false,
   }),
   labels: ({ newValue, oldValue }) => ({
-    action: newValue !== "" ? "added label" : "removed label",
+    action: newValue !== "" ? "adicionou a etiqueta" : "removeu a etiqueta",
     value: newValue !== "" ? newValue : oldValue,
     showConnector: false,
   }),
   parent: ({ newValue, oldValue }) => ({
-    action: newValue !== "" ? "added parent" : "removed parent",
+    action: newValue !== "" ? "adicionou o item pai" : "removeu o item pai",
     value: newValue !== "" ? newValue : oldValue,
     showConnector: false,
   }),
   relates_to: () => ({
-    action: "marked that this work item is related to",
+    action: "marcou que este chamado está relacionado a",
     value: null,
     showConnector: true,
   }),
   comment: ({ newValue }, renderCommentBox?: boolean) => ({
-    action: "commented",
+    action: "comentou",
     value: renderCommentBox ? null : sanitizeCommentForNotification(newValue),
     showConnector: false,
   }),
   archived_at: ({ newValue }) => ({
-    action: newValue === "restore" ? "restored the work item" : "archived the work item",
+    action: newValue === "restore" ? "restaurou o chamado" : "arquivou o chamado",
     value: null,
     showConnector: false,
   }),
   None: () => ({
     action: null,
-    value: "the work item and assigned it to you.",
+    value: "o chamado e atribuiu a você.",
     showConnector: false,
   }),
   // Fields below only define value - action falls through to default handler
   attachment: () => ({
     action: null,
-    value: "the work item",
+    value: "o chamado",
     showConnector: true,
   }),
   description: ({ newValue }) => ({

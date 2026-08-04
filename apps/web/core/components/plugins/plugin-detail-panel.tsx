@@ -27,19 +27,19 @@ export const PluginDetailPanel: React.FC<PluginDetailPanelProps> = ({ plugin, on
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-        <Section title="Metadata">
+        <Section title="Metadados">
           <Row label="Slug" value={plugin.slug} mono />
-          <Row label="Version" value={plugin.version} />
-          <Row label="Author" value={plugin.author} />
+          <Row label="Versão" value={plugin.version} />
+          <Row label="Autor" value={plugin.author} />
           <Row label="Status" value={plugin.status} />
-          <Row label="Entry file" value={plugin.entry_file} mono />
+          <Row label="Arquivo de entrada" value={plugin.entry_file} mono />
           {plugin.description && <Row label="Descrição" value={plugin.description} />}
         </Section>
 
-        <Section title="Permissions">
+        <Section title="Permissões">
           <div className="flex flex-wrap gap-2">
             {plugin.permissions.length === 0 ? (
-              <span className="text-sm text-neutral-500">None</span>
+              <span className="text-sm text-neutral-500">Nenhum</span>
             ) : (
               plugin.permissions.map((p) => (
                 <span
@@ -53,9 +53,9 @@ export const PluginDetailPanel: React.FC<PluginDetailPanelProps> = ({ plugin, on
           </div>
         </Section>
 
-        <Section title="Pages">
+        <Section title="Páginas">
           {pages.length === 0 ? (
-            <span className="text-sm text-neutral-500">None</span>
+            <span className="text-sm text-neutral-500">Nenhum</span>
           ) : (
             <ul className="space-y-1 text-sm">
               {pages.map((pg) => (
@@ -68,9 +68,9 @@ export const PluginDetailPanel: React.FC<PluginDetailPanelProps> = ({ plugin, on
           )}
         </Section>
 
-        <Section title="Sidebar items">
+        <Section title="Itens da barra lateral">
           {sidebar.length === 0 ? (
-            <span className="text-sm text-neutral-500">None</span>
+            <span className="text-sm text-neutral-500">Nenhum</span>
           ) : (
             <ul className="space-y-1 text-sm">
               {sidebar.map((s) => (
@@ -87,15 +87,15 @@ export const PluginDetailPanel: React.FC<PluginDetailPanelProps> = ({ plugin, on
           <PluginSettingsForm pluginId={plugin.id} />
         </Section>
 
-        <Section title="Manifest (raw)">
+        <Section title="Manifesto (bruto)">
           <pre className="overflow-x-auto rounded bg-neutral-100 p-3 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
             {JSON.stringify(manifest, null, 2)}
           </pre>
         </Section>
 
-        <Section title="Timestamps">
-          <Row label="Created" value={new Date(plugin.created_at).toLocaleString()} />
-          <Row label="Updated" value={new Date(plugin.updated_at).toLocaleString()} />
+        <Section title="Datas">
+          <Row label="Criado em" value={new Date(plugin.created_at).toLocaleString()} />
+          <Row label="Atualizado em" value={new Date(plugin.updated_at).toLocaleString()} />
         </Section>
       </div>
     </div>

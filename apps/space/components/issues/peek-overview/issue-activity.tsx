@@ -40,7 +40,7 @@ export const PeekOverviewIssueActivity = observer(function PeekOverviewIssueActi
 
   return (
     <div className="pb-10">
-      <h4 className="font-medium">Comments</h4>
+      <h4 className="font-medium">Comentários</h4>
       <div className="mt-4">
         <div className="space-y-4">
           {comments.map((comment) => (

@@ -58,7 +58,7 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
       workItem?.is_intake
         ? `/${workItem?.workspace__slug}/projects/${workItem?.project_id}/intake/?currentTab=open&inboxIssueId=${workItem?.id}`
         : `/${workItem?.workspace__slug}/projects/${workItem?.project_id}/issues/${workItem?.id}`,
-    title: "Itens de trabalho",
+    title: "Chamados",
   },
   issue_view: {
     icon: Layers,

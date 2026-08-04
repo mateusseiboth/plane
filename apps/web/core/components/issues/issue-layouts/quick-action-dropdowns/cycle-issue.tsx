@@ -9,7 +9,7 @@ import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 import {useState} from "react";
 // plane imports
-import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
+import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import type {TIssue} from "@plane/types";
 import {EIssuesStoreType} from "@plane/types";
 import {ContextMenu, CustomMenu} from "@plane/ui";
@@ -61,14 +61,7 @@ export const CycleIssueQuickActions = observer(function CycleIssueQuickActions(p
   // auth
   const isEditingAllowed =
     allowPermissions(
-      [
-        EUserPermissions.ADMIN,
-        EUserPermissions.GESTOR_PROJETO,
-        EUserPermissions.MEMBER,
-        EUserPermissions.TI,
-        EUserPermissions.QUALIDADE,
-        EUserPermissions.ATENDIMENTO,
-      ],
+      PROJECT_WORK_ROLES,
       EUserPermissionsLevel.PROJECT,
     ) && !readOnly;
   const isArchivingAllowed = handleArchive && isEditingAllowed;

@@ -61,7 +61,7 @@ export const commandGroups: TCommandGroups = {
         projectIdentifier: issue.project__identifier,
         sequenceId: issue?.sequence_id,
       }),
-    title: "Itens de trabalho",
+    title: "Chamados",
   },
   issue_view: {
     icon: <ViewsIcon className="h-3 w-3" />,

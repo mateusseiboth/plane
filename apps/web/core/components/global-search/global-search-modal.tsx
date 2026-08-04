@@ -18,6 +18,11 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const workspaceService = new WorkspaceService();
 
+const CATEGORY_LABEL: Record<string, string> = {
+  "Work Items": "Chamados",
+  Intakes: "Solicitações",
+};
+
 const PRIORITY_COLOR: Record<string, string> = {
   urgent: "text-red-600 bg-red-50",
   high: "text-orange-600 bg-orange-50",
@@ -154,7 +159,9 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                       <div key={category} className="mb-2">
                         <div className="flex items-center gap-2 px-3 py-1.5">
                           {category === "Intakes" ? <Inbox className="h-3.5 w-3.5 text-tertiary" /> : <FileText className="h-3.5 w-3.5 text-tertiary" />}
-                          <span className="text-11 font-semibold uppercase tracking-wider text-tertiary">{category}</span>
+                          <span className="text-11 font-semibold uppercase tracking-wider text-tertiary">
+                            {CATEGORY_LABEL[category] ?? category}
+                          </span>
                           <span className="rounded-full bg-surface-2 px-1.5 text-10 font-medium text-tertiary">{items.length}</span>
                         </div>
                         {items.map((item, idx) => {

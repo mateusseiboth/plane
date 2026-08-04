@@ -312,7 +312,7 @@ const IssueRowDetails = observer(function IssueRowDetails(props: IssueRowDetails
                 <Tooltip
                   tooltipContent={
                     <>
-                      Apenas itens de trabalho do projeto
+                      Apenas chamados do projeto
                       <br />
                       atual podem ser selecionados.
                     </>

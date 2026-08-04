@@ -26,13 +26,13 @@ describe("TestStateListCreateAPIEndpoint", () => {
 
   const url = () => `/workspaces/${wsSlug}/projects/${projectId}/states/`;
 
-  it("list states returns paginated results", async () => {
+  it("list states returns an array", async () => {
     const res = await client.get(url());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
+    expect(data).toBeInstanceOf(Array);
     // Default states are created with the project
-    expect(data.results.length).toBeGreaterThan(0);
+    expect(data.length).toBeGreaterThan(0);
   });
 
   it("create state returns 201", async () => {
@@ -57,7 +57,7 @@ describe("TestStateListCreateAPIEndpoint", () => {
   it("get state detail", async () => {
     const listRes = await client.get(url());
     const list = await listRes.json() as any;
-    const stateId = list.results[0].id;
+    const stateId = list[0].id;
     const res = await client.get(`${url()}${stateId}/`);
     expect(res.status).toBe(200);
     const data = await res.json() as any;

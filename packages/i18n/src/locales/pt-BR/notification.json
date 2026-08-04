@@ -29,12 +29,12 @@
         "title": "Selecione para ver os detalhes."
       },
       "all": {
-        "title": "Nenhum item de trabalho atribuído",
-        "description": "As atualizações para itens de trabalho atribuídos a você podem ser\nvistas aqui"
+        "title": "Nenhum chamado atribuído",
+        "description": "As atualizações para chamados atribuídos a você podem ser\nvistas aqui"
       },
       "mentions": {
-        "title": "Nenhum item de trabalho atribuído",
-        "description": "As atualizações para itens de trabalho atribuídos a você podem ser\nvistas aqui"
+        "title": "Nenhum chamado atribuído",
+        "description": "As atualizações para chamados atribuídos a você podem ser\nvistas aqui"
       }
     },
     "tabs": {

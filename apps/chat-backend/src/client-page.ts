@@ -160,6 +160,30 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
 .sender-name{font-size:11px;font-weight:600;color:var(--brand);margin-bottom:4px;margin-left:4px}
 .bubble.deleted{font-style:italic;color:var(--txt3);background:transparent;border:1px dashed var(--border);box-shadow:none}
 .ts .edited{font-style:italic;opacity:.8}
+
+/* Ações da própria mensagem (editar / apagar) — aparecem ao passar o mouse */
+.row.out{position:relative}
+.msg-actions{
+  position:absolute;top:2px;left:-4px;transform:translateX(-100%);
+  display:flex;gap:2px;opacity:0;pointer-events:none;transition:opacity .15s ease;
+}
+.row.out:hover .msg-actions,.msg-actions:focus-within{opacity:1;pointer-events:auto}
+.msg-actions button{
+  border:1px solid var(--border);background:var(--bubble-in);color:var(--txt3);
+  border-radius:8px;width:24px;height:24px;display:grid;place-items:center;cursor:pointer;padding:0;
+}
+.msg-actions button:hover{color:var(--txt)}
+.edit-box{display:flex;flex-direction:column;gap:6px;min-width:190px}
+.edit-box textarea{
+  width:100%;resize:vertical;min-height:52px;font:inherit;color:var(--txt);
+  background:var(--bubble-in);border:1px solid var(--border);border-radius:10px;padding:6px 8px;
+}
+.edit-box .edit-btns{display:flex;gap:6px;justify-content:flex-end}
+.edit-box .edit-btns button{
+  border:1px solid var(--border);background:transparent;color:var(--txt);
+  border-radius:8px;padding:3px 10px;cursor:pointer;font-size:12px;
+}
+.edit-box .edit-btns button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
 .ts{font-size:10.5px;color:var(--txt3);margin-top:4px;padding:0 4px;display:flex;align-items:center;gap:4px}
 .out .ts{justify-content:flex-end}
 .check{opacity:.6}
@@ -579,6 +603,9 @@ function buildRow(m) {
   }
   r.appendChild(b);
 
+  // Ações da própria mensagem de texto: editar e apagar.
+  if (isOut && m.type === "text") r.appendChild(buildActions(m));
+
   // Timestamp (+ edited marker, + delivery check for own messages)
   if (m.created_at) {
     const ts = document.createElement("div");
@@ -589,6 +616,84 @@ function buildRow(m) {
     r.appendChild(ts);
   }
   return r;
+}
+
+// ── Editar / apagar a própria mensagem ────────────────────────────
+function buildActions(m) {
+  const box = document.createElement("div");
+  box.className = "msg-actions";
+
+  const edit = document.createElement("button");
+  edit.type = "button";
+  edit.title = "Editar mensagem";
+  edit.setAttribute("aria-label", "Editar mensagem");
+  edit.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
+  edit.onclick = () => startEdit(m);
+
+  const del = document.createElement("button");
+  del.type = "button";
+  del.title = "Apagar mensagem";
+  del.setAttribute("aria-label", "Apagar mensagem");
+  del.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+  del.onclick = () => {
+    if (!confirm("Apagar esta mensagem?")) return;
+    sendWs({ type: "client.delete", message_id: m.id });
+  };
+
+  box.appendChild(edit);
+  box.appendChild(del);
+  return box;
+}
+
+// Troca a bolha por um editor inline; Enter salva, Esc cancela.
+function startEdit(m) {
+  const row = msgs.querySelector('[data-id="' + (window.CSS && CSS.escape ? CSS.escape(m.id) : m.id) + '"]');
+  if (!row) return;
+  const bubble = row.querySelector(".bubble");
+  if (!bubble || bubble.querySelector("textarea")) return;
+
+  const original = m.text || "";
+  bubble.innerHTML = "";
+  const box = document.createElement("div");
+  box.className = "edit-box";
+  const area = document.createElement("textarea");
+  area.value = original;
+  const btns = document.createElement("div");
+  btns.className = "edit-btns";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "Cancelar";
+  const save = document.createElement("button");
+  save.type = "button";
+  save.className = "primary";
+  save.textContent = "Salvar";
+
+  const restore = () => renderMessage(m);
+  const commit = () => {
+    const text = area.value.trim();
+    if (!text || text === original) return restore();
+    sendWs({ type: "client.edit", message_id: m.id, text: text });
+    // A confirmação chega pelo evento message.edit do servidor.
+    renderMessage({ ...m, text: text });
+  };
+
+  cancel.onclick = restore;
+  save.onclick = commit;
+  area.onkeydown = (e) => {
+    if (e.key === "Escape") return restore();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      commit();
+    }
+  };
+
+  btns.appendChild(cancel);
+  btns.appendChild(save);
+  box.appendChild(area);
+  box.appendChild(btns);
+  bubble.appendChild(box);
+  area.focus();
+  area.setSelectionRange(area.value.length, area.value.length);
 }
 
 // ── Render a message (replaces an existing row in place on edit/delete) ─
@@ -815,15 +920,22 @@ $("pc-submit").onclick = async () => {
   }
 };
 
+// Recarrega e re-renderiza o histórico (usado ao abrir a sessão e para desfazer
+// um efeito otimista quando o servidor recusa uma ação).
+async function reloadHistory() {
+  const hist = await (await fetch(API + "/sessions/" + sessionId + "/messages/?token=" + encodeURIComponent(token))).json();
+  msgs.innerHTML = "";
+  (hist.results || []).forEach(renderMessage);
+  return hist;
+}
+
 // ── Resume an existing/just-created session: load history + connect ─────────
 async function resumeSession(data) {
   token = data.token; sessionId = data.session.id; protocol = data.session.protocol;
   showChat();
   setHeader(null, "Protocolo " + protocol);
   try {
-    const hist = await (await fetch(API + "/sessions/" + sessionId + "/messages/?token=" + encodeURIComponent(token))).json();
-    msgs.innerHTML = "";
-    (hist.results || []).forEach(renderMessage);
+    const hist = await reloadHistory();
 
     if (hist.session) {
       if (hist.session.status === "closed") {
@@ -872,6 +984,9 @@ function connect() {
     }
     if (m.type === "message.edit") { renderMessage(m.message); return; }
     if (m.type === "message.delete") { redactMessage(m.message_id); return; }
+    // Ação recusada pelo servidor (ex.: mensagem de outra pessoa): avisa e
+    // recarrega o histórico para desfazer o efeito otimista da UI.
+    if (m.type === "error") { alert(m.detail || "Não foi possível concluir a ação."); reloadHistory(); return; }
     if (m.type === "typing" && m.who === "attendant") {
       $("typing").classList.add("on");
       scrollToBottom();

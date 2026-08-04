@@ -35,7 +35,7 @@ export function IdentifierText(props: TIdentifierTextProps) {
         .then(() => {
           setToast({
             type: TOAST_TYPE.SUCCESS,
-            title: "ID do item de trabalho copiado para a área de transferência",
+            title: "ID do chamado copiado para a área de transferência",
           });
           return;
         })

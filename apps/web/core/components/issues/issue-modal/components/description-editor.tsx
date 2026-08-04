@@ -122,7 +122,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
     aiService
       .createGptTask(workspaceSlug.toString(), {
         prompt: issueName,
-        task: "Generate a proper description for this work item.",
+        task: "Gere uma descrição adequada para este chamado.",
       })
       .then((res) => {
         if (res.response === "")
@@ -130,7 +130,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
             type: TOAST_TYPE.ERROR,
             title: "Erro!",
             message:
-              "O título do item de trabalho não é informativo o suficiente para gerar a descrição. Tente com um título diferente.",
+              "O título do chamado não é informativo o suficiente para gerar a descrição. Tente com um título diferente.",
           });
         else handleAiAssistance(res.response_html);
       })
@@ -141,7 +141,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
           setToast({
             type: TOAST_TYPE.ERROR,
             title: "Erro!",
-            message: error || "You have reached the maximum number of requests of 50 requests per month per user.",
+            message: error || "Você atingiu o limite máximo de 50 solicitações por mês por usuário.",
           });
         else
           setToast({
@@ -222,7 +222,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
                     return asset_id;
                   } catch (error) {
                     console.log("Error in uploading issue asset:", error);
-                    throw new Error("Asset upload failed. Please try again later.");
+                    throw new Error("Falha ao enviar o arquivo. Tente novamente mais tarde.");
                   }
                 }}
                 duplicateFile={async (assetId: string) => {
@@ -237,7 +237,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
                     onAssetUpload(asset_id);
                     return asset_id;
                   } catch {
-                    throw new Error("Asset duplication failed. Please try again later.");
+                    throw new Error("Falha ao duplicar o arquivo. Tente novamente mais tarde.");
                   }
                 }}
               />

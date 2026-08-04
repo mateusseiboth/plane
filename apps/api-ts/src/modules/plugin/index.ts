@@ -42,7 +42,7 @@ export const pluginModule = new Elysia({ prefix: "/workspaces/:slug/plugins" })
     const member = await requireWorkspaceMember(ws.id, user.id);
     if (member.role < 20) {
       set.status = 403;
-      return { detail: "Only workspace admins can install plugins." };
+      return { detail: "Apenas administradores do workspace podem instalar plugins." };
     }
     const installed = await getInstalledPlugins(ws.id);
     if (!installed.includes(pluginId)) {
@@ -59,7 +59,7 @@ export const pluginModule = new Elysia({ prefix: "/workspaces/:slug/plugins" })
     const member = await requireWorkspaceMember(ws.id, user.id);
     if (member.role < 20) {
       set.status = 403;
-      return { detail: "Only workspace admins can uninstall plugins." };
+      return { detail: "Apenas administradores do workspace podem desinstalar plugins." };
     }
     const installed = await getInstalledPlugins(ws.id);
     const updated = installed.filter((id) => id !== pluginId);

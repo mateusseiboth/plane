@@ -2,8 +2,9 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
-import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
+import { getWorkspaceOrFail, getProjectOrFail , requireWorkspaceMember} from "@utils/workspace";
 import { saveAsset, serveAsset, copyAsset } from "@utils/storage";
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 
 const ENTITY_TYPE_MAP: Record<string, number> = {
   COMMENT_DESCRIPTION: 4, ISSUE_ATTACHMENT: 2, ISSUE_DESCRIPTION: 2,
@@ -31,8 +32,9 @@ export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/assets/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
-    if (!b.asset) { set.status = 400; return { detail: "asset (file path/key) is required." }; }
+    if (!b.asset) { set.status = 400; return { detail: "asset (caminho/chave do arquivo) é obrigatório." }; }
 
     const asset = await prisma.fileAsset.create({
       data: {
@@ -52,6 +54,7 @@ export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/assets/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
     const where: any = { workspaceId: ws.id, isDeleted: false };
     if (query.entity_type !== undefined) where.entityType = Number(query.entity_type);
     if (query.entity_id) where.entityId = query.entity_id;
@@ -64,20 +67,25 @@ export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/assets/:asset_id/", async ({ params: { slug, asset_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
     return prisma.fileAsset.findFirstOrThrow({ where: { id: asset_id, workspaceId: ws.id, isDeleted: false } });
   })
 
   .patch("/assets/:asset_id/", async ({ params: { slug, asset_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
     const data: any = {};
     if (b.is_uploaded !== undefined) data.isUploaded = b.is_uploaded;
     if (b.attributes !== undefined) data.attributes = b.attributes;
+    await prisma.fileAsset.findFirstOrThrow({ where: { id: asset_id, workspaceId: ws.id } });
     return prisma.fileAsset.update({ where: { id: asset_id }, data });
   })
 
   .delete("/assets/:asset_id/", async ({ params: { slug, asset_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    await prisma.fileAsset.findFirstOrThrow({ where: { id: asset_id, workspaceId: ws.id } });
     await prisma.fileAsset.update({ where: { id: asset_id }, data: { isDeleted: true, deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -105,7 +113,7 @@ export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
       const ws = await getWorkspaceOrFail(slug);
       await getProjectOrFail(ws.id, project_id, user.id);
       const b = body as any;
-      if (!b.asset) { set.status = 400; return { detail: "asset is required." }; }
+      if (!b.asset) { set.status = 400; return { detail: "asset é obrigatório." }; }
 
       const attachment = await prisma.issueAttachment.create({
         data: {
@@ -175,10 +183,20 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     return {status: "uploaded", asset_id};
   })
 
-  .get("/:asset_id/", async ({params: {slug, asset_id}, set}) => {
+  .get("/:asset_id/", async ({params: {slug, asset_id}, set, user, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     const asset = await prisma.fileAsset.findFirst({where: {id: asset_id, workspaceId: ws.id, isDeleted: false}});
-    if (!asset) { set.status = 404; return {detail: "Asset not found."}; }
+    if (!asset) { set.status = 404; return {detail: "Arquivo não encontrado."}; }
+    // LGPD: baixar um anexo é acesso a dado — registra quem, o quê e de onde.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ATTACHMENT,
+      entityId: asset.id,
+      action: AUDIT_ACTIONS.DOWNLOAD,
+      actor: user,
+      headers,
+      metadata: {nome: (asset.attributes as any)?.name ?? null, tipo: asset.mimeType},
+    });
     const fileResponse = await serveFile(asset_id, asset.mimeType);
     if (fileResponse) return fileResponse;
     return {id: asset.id, asset_url: `/media/${asset.asset}`, asset: asset.asset};
@@ -214,7 +232,7 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     const ws = await getWorkspaceOrFail(slug);
     const b = body as any;
     const original = await prisma.fileAsset.findFirst({where: {id: asset_id, workspaceId: ws.id}});
-    if (!original) { set.status = 404; return {detail: "Asset not found."}; }
+    if (!original) { set.status = 404; return {detail: "Arquivo não encontrado."}; }
     const dup = await prisma.fileAsset.create({
       data: {
         workspaceId: ws.id, projectId: b.project_id || original.projectId,
@@ -290,10 +308,20 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     return {status: "uploaded", asset_id};
   })
 
-  .get("/projects/:project_id/:asset_id/", async ({params: {slug, project_id, asset_id}, set}) => {
+  .get("/projects/:project_id/:asset_id/", async ({params: {slug, project_id, asset_id}, set, user, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     const asset = await prisma.fileAsset.findFirst({where: {id: asset_id, workspaceId: ws.id, isDeleted: false}});
-    if (!asset) { set.status = 404; return {detail: "Asset not found."}; }
+    if (!asset) { set.status = 404; return {detail: "Arquivo não encontrado."}; }
+    // LGPD: baixar um anexo é acesso a dado — registra quem, o quê e de onde.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ATTACHMENT,
+      entityId: asset.id,
+      action: AUDIT_ACTIONS.DOWNLOAD,
+      actor: user,
+      headers,
+      metadata: {nome: (asset.attributes as any)?.name ?? null, tipo: asset.mimeType},
+    });
     const fileResponse = await serveFile(asset_id, asset.mimeType);
     if (fileResponse) return fileResponse;
     return {id: asset.id, asset_url: `/media/${asset.asset}`, asset: asset.asset};
@@ -399,9 +427,20 @@ export const userAssetV2Module = new Elysia({ prefix: "/assets/v2/user-assets" }
     return {status: "uploaded", asset_id};
   })
 
-  .get("/:asset_id/", async ({params: {asset_id}, set}) => {
+  .get("/:asset_id/", async ({params: {asset_id}, set, user, headers}) => {
     const asset = await prisma.fileAsset.findFirst({where: {id: asset_id, isDeleted: false}});
-    if (!asset) { set.status = 404; return {detail: "Asset not found."}; }
+    if (!asset) { set.status = 404; return {detail: "Arquivo não encontrado."}; }
+    // LGPD: baixar um anexo é acesso a dado — registra quem, o quê e de onde.
+    // Esta rota não tem workspace no caminho; usa o do próprio arquivo.
+    if (asset.workspaceId) recordAudit({
+      workspaceId: asset.workspaceId,
+      entity: AUDIT_ENTITIES.ATTACHMENT,
+      entityId: asset.id,
+      action: AUDIT_ACTIONS.DOWNLOAD,
+      actor: user,
+      headers,
+      metadata: {nome: (asset.attributes as any)?.name ?? null, tipo: asset.mimeType},
+    });
     const fileResponse = await serveFile(asset_id, asset.mimeType);
     if (fileResponse) return fileResponse;
     return {id: asset.id, asset_url: `/media/${asset.asset}`};

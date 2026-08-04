@@ -67,7 +67,7 @@ export const ThemeSwitcher = observer(function ThemeSwitcher(props: {
           },
           error: {
             title: "Erro!",
-            message: () => "Failed to update theme. Please try again.",
+            message: () => "Não foi possível atualizar o tema. Tente novamente.",
           },
         });
         // Wait for the promise to resolve, then reload after showing toast

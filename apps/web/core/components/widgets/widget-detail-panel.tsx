@@ -24,18 +24,18 @@ export const WidgetDetailPanel: React.FC<WidgetDetailPanelProps> = ({ widget, on
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-        <Section title="Metadata">
-          <Row label="Version" value={widget.version} />
-          <Row label="Author" value={widget.author} />
+        <Section title="Metadados">
+          <Row label="Versão" value={widget.version} />
+          <Row label="Autor" value={widget.author} />
           <Row label="Status" value={widget.status} />
-          <Row label="Entry file" value={widget.entry_file} mono />
+          <Row label="Arquivo de entrada" value={widget.entry_file} mono />
           {widget.description && <Row label="Descrição" value={widget.description} />}
         </Section>
 
-        <Section title="Permissions">
+        <Section title="Permissões">
           <div className="flex flex-wrap gap-2">
             {widget.permissions.length === 0 ? (
-              <span className="text-sm text-neutral-500">None</span>
+              <span className="text-sm text-neutral-500">Nenhum</span>
             ) : (
               widget.permissions.map((p) => (
                 <span
@@ -49,15 +49,15 @@ export const WidgetDetailPanel: React.FC<WidgetDetailPanelProps> = ({ widget, on
           </div>
         </Section>
 
-        <Section title="Manifest (raw)">
+        <Section title="Manifesto (bruto)">
           <pre className="overflow-x-auto rounded bg-neutral-100 p-3 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
             {JSON.stringify(manifest, null, 2)}
           </pre>
         </Section>
 
-        <Section title="Timestamps">
-          <Row label="Created" value={new Date(widget.created_at).toLocaleString()} />
-          <Row label="Updated" value={new Date(widget.updated_at).toLocaleString()} />
+        <Section title="Datas">
+          <Row label="Criado em" value={new Date(widget.created_at).toLocaleString()} />
+          <Row label="Atualizado em" value={new Date(widget.updated_at).toLocaleString()} />
         </Section>
       </div>
     </div>

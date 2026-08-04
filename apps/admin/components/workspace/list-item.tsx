@@ -52,20 +52,20 @@ export const WorkspaceListItem = observer(function WorkspaceListItem({ workspace
         <div className="flex flex-col items-start gap-1">
           <div className="flex w-full flex-wrap items-center gap-2.5">
             <h3 className={`text-14 font-medium capitalize`}>{workspace.name}</h3>/
-            <Tooltip tooltipContent="The unique URL of your workspace">
+            <Tooltip tooltipContent="A URL exclusiva do seu workspace">
               <h4 className="text-13 text-tertiary">[{workspace.slug}]</h4>
             </Tooltip>
           </div>
           {workspace.owner.email && (
             <div className="flex items-center gap-1 text-11">
-              <h3 className="font-medium text-secondary">Owned by:</h3>
+              <h3 className="font-medium text-secondary">Pertence a:</h3>
               <h4 className="text-tertiary">{workspace.owner.email}</h4>
             </div>
           )}
           <div className="flex items-center gap-2.5 text-11">
             {workspace.total_projects !== null && (
               <span className="flex items-center gap-1">
-                <h3 className="font-medium text-secondary">Total projects:</h3>
+                <h3 className="font-medium text-secondary">Total de projetos:</h3>
                 <h4 className="text-tertiary">{workspace.total_projects}</h4>
               </span>
             )}
@@ -73,7 +73,7 @@ export const WorkspaceListItem = observer(function WorkspaceListItem({ workspace
               <>
                 •
                 <span className="flex items-center gap-1">
-                  <h3 className="font-medium text-secondary">Total members:</h3>
+                  <h3 className="font-medium text-secondary">Total de membros:</h3>
                   <h4 className="text-tertiary">{workspace.total_members}</h4>
                 </span>
               </>

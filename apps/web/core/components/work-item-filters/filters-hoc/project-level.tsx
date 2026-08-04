@@ -8,7 +8,7 @@ import {cloneDeep, isEqual} from "lodash-es";
 import {observer} from "mobx-react";
 import {useCallback, useMemo, useState} from "react";
 // plane imports
-import {EUserPermissionsLevel} from "@plane/constants";
+import {EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {setToast, TOAST_TYPE} from "@plane/propel/toast";
 import type {IProjectView, TWorkItemFilterExpression} from "@plane/types";
 import {EUserProjectRoles, EViewAccess} from "@plane/types";
@@ -16,6 +16,7 @@ import {EUserProjectRoles, EViewAccess} from "@plane/types";
 import {removeNillKeys} from "@/components/issues/issue-layouts/utils";
 import {CreateUpdateProjectViewModal} from "@/components/views/modal";
 // hooks
+import {useEntities} from "@/hooks/use-entities";
 import {useCycle} from "@/hooks/store/use-cycle";
 import {useLabel} from "@/hooks/store/use-label";
 import {useMember} from "@/hooks/store/use-member";
@@ -47,6 +48,7 @@ export const ProjectLevelWorkItemFiltersHOC = observer(function ProjectLevelWork
   const {data: currentUser} = useUser();
   const {allowPermissions} = useUserPermissions();
   const {getProjectCycleIds} = useCycle();
+  const {entities} = useEntities(workspaceSlug);
   const {getProjectLabelIds} = useLabel();
   const {
     project: {getProjectMemberIds},
@@ -55,14 +57,7 @@ export const ProjectLevelWorkItemFiltersHOC = observer(function ProjectLevelWork
   const {getProjectStateIds} = useProjectState();
   // derived values
   const hasProjectMemberLevelPermissions = allowPermissions(
-    [
-      EUserProjectRoles.ADMIN,
-      EUserProjectRoles.GESTOR_PROJETO,
-      EUserProjectRoles.MEMBER,
-      EUserProjectRoles.TI,
-      EUserProjectRoles.QUALIDADE,
-      EUserProjectRoles.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId,
@@ -188,6 +183,7 @@ export const ProjectLevelWorkItemFiltersHOC = observer(function ProjectLevelWork
         {...props}
         workspaceSlug={workspaceSlug}
         cycleIds={getProjectCycleIds(projectId) ?? undefined}
+        entities={entities}
         labelIds={getProjectLabelIds(projectId)}
         memberIds={getProjectMemberIds(projectId, false) ?? undefined}
         moduleIds={getProjectModuleIds(projectId) ?? undefined}

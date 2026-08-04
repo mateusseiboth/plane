@@ -15,12 +15,12 @@ export function SomethingWentWrongError() {
           <div className="grid h-32 w-32 place-items-center">
             <img
               src={SomethingWentWrongImage}
-              alt="Oops! Something went wrong"
+              alt="Ops! Algo deu errado"
               className="h-full w-full object-contain"
             />
           </div>
         </div>
-        <h1 className="mt-12 text-24 font-semibold">Oops! Something went wrong.</h1>
+        <h1 className="mt-12 text-24 font-semibold">Ops! Algo deu errado.</h1>
         <p className="mt-4 text-tertiary">O quadro público não existe. Verifique a URL.</p>
       </div>
     </div>

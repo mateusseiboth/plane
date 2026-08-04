@@ -1,17 +1,8 @@
 import { API_BASE_URL } from "@plane/constants";
+import type { TEntity } from "@plane/types";
 import { APIService } from "@/services/api.service";
 
-export type TEntity = {
-  id: string;
-  name: string;
-  entity_type?: number | null;
-  city?: string | null;
-  state?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  cnpj?: string | null;
-  is_active?: boolean;
-};
+export type { TEntity };
 
 const ENTITY_TYPE_LABELS: Record<number, string> = {
   0: "Prefeitura",

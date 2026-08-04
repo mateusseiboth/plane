@@ -37,9 +37,9 @@ const TOUR_STEPS: {
 }[] = [
   {
     key: "work-items",
-    title: "Planeje com itens de trabalho",
+    title: "Planeje com chamados",
     description:
-      "O item de trabalho é o bloco de construção do Avião. A maioria dos conceitos no Avião está associada a itens de trabalho e suas propriedades.",
+      "O chamado é o bloco de construção do Avião. A maioria dos conceitos no Avião está associada a chamados e suas propriedades.",
     image: IssuesTour,
     nextStep: "cycles",
   },
@@ -64,7 +64,7 @@ const TOUR_STEPS: {
     key: "views",
     title: "Visualizações",
     description:
-      "Crie filtros personalizados para exibir apenas os itens de trabalho que importam para você. Salve e compartilhe seus filtros com apenas alguns cliques.",
+      "Crie filtros personalizados para exibir apenas os chamados que importam para você. Salve e compartilhe seus filtros com apenas alguns cliques.",
     image: ViewsTour,
     prevStep: "modules",
     nextStep: "pages",
@@ -72,7 +72,7 @@ const TOUR_STEPS: {
   {
     key: "pages",
     title: "Documente com páginas",
-    description: "Use as Páginas para anotar rapidamente itens de trabalho quando estiver em uma reunião ou começando o dia.",
+    description: "Use as Páginas para anotar rapidamente chamados quando estiver em uma reunião ou começando o dia.",
     image: PagesTour,
     prevStep: "views",
   },

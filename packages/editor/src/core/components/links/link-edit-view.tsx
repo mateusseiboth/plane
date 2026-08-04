@@ -144,8 +144,8 @@ export function LinkEditView({ viewProps }: LinkEditViewProps) {
       }}
       tabIndex={0}
     >
-      <InputView label="URL" placeholder="Enter or paste URL" value={localUrl} onChange={setLocalUrl} autoFocus />
-      <InputView label="Text" placeholder="Enter Text to display" value={localText} onChange={handleTextChange} />
+      <InputView label="URL" placeholder="Digite ou cole a URL" value={localUrl} onChange={setLocalUrl} autoFocus />
+      <InputView label="Texto" placeholder="Digite o texto a exibir" value={localText} onChange={handleTextChange} />
       <div className="bg-strong mb-1 h-[1px] w-full gap-2" />
       <div className="flex items-center gap-2 text-13 text-secondary">
         <Link2Off size={14} className="inline-block" />

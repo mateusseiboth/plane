@@ -3,6 +3,7 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
+import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 
 export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:project_id" })
   .use(authPlugin)
@@ -21,10 +22,10 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .post("/cycles/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
 
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "Name is required." }; }
+    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
 
     const cycle = await prisma.cycle.create({
       data: {
@@ -54,7 +55,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .patch("/cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
 
     const b = body as any;
     const data: any = {};
@@ -70,7 +71,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .delete("/cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
     await prisma.cycle.update({ where: { id: cycle_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -91,7 +92,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   .post("/cycles/:cycle_id/issues/", async ({ params: { slug, project_id, cycle_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
 
     const issueIds: string[] = (body as any).issues ?? [];
     const existing = await prisma.cycleIssue.findMany({
@@ -106,13 +107,13 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     });
 
     set.status = 201;
-    return { message: `Added ${toCreate.length} issues.` };
+    return { message: `${toCreate.length} chamados adicionados.` };
   })
 
   .delete("/cycles/:cycle_id/issues/:issue_id/", async ({ params: { slug, project_id, cycle_id, issue_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permission denied." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
     await prisma.cycleIssue.updateMany({ where: { cycleId: cycle_id, issueId: issue_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;

@@ -31,7 +31,7 @@ export const IssueAssigneeActivity = observer(function IssueAssigneeActivity(pro
       ends={ends}
     >
       <>
-        {activity.old_value === "" ? `added a new assignee ` : `removed the assignee `}
+        {activity.old_value === "" ? `adicionou um novo responsável ` : `removeu o responsável `}
         <a
           href={`/${activity.workspace_detail?.slug}/profile/${activity.new_identifier ?? activity.old_identifier}`}
           target="_blank"
@@ -40,7 +40,7 @@ export const IssueAssigneeActivity = observer(function IssueAssigneeActivity(pro
         >
           {activity.new_value && activity.new_value !== "" ? activity.new_value : activity.old_value}
         </a>
-        {showIssue && (activity.old_value === "" ? ` to ` : ` from `)}
+        {showIssue && (activity.old_value === "" ? ` em ` : ` de `)}
         {showIssue && <IssueLink activityId={activityId} />}.
       </>
     </IssueActivityBlockComponent>

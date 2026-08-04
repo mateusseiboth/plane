@@ -122,7 +122,7 @@ export function WorkspaceCreateForm() {
           </div>
         </div>
         <div className="flex flex-col gap-1">
-          <h4 className="text-13 text-tertiary">Set your workspace&apos;s URL</h4>
+          <h4 className="text-13 text-tertiary">Defina a URL do seu workspace</h4>
           <div className="flex w-full items-center gap-0.5 rounded-md border-[0.5px] border-subtle px-3">
             <span className="text-13 whitespace-nowrap text-secondary">{workspaceBaseURL}</span>
             <Controller
@@ -151,7 +151,7 @@ export function WorkspaceCreateForm() {
           </div>
           {slugError && <p className="text-13 text-danger-primary">Esta URL já está em uso. Tente outra.</p>}
           {invalidSlug && (
-            <p className="text-13 text-danger-primary">{`URLs can contain only ( - ), ( _ ) and alphanumeric characters.`}</p>
+            <p className="text-13 text-danger-primary">{`A URL pode conter apenas ( - ), ( _ ) e caracteres alfanuméricos.`}</p>
           )}
           {errors.slug && <span className="text-11 text-danger-primary">{errors.slug.message}</span>}
         </div>

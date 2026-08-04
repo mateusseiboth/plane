@@ -43,7 +43,7 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const notif = await prisma.notification.findFirst({ where: { id: notification_id, receiverId: user.id } });
-    if (!notif) { set.status = 404; return { detail: "Notification not found." }; }
+    if (!notif) { set.status = 404; return { detail: "Notificação não encontrada." }; }
 
     const b = body as any;
     const data: any = {};

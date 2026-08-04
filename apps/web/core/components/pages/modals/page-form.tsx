@@ -127,7 +127,7 @@ export function PageForm(props: Props) {
             />
             {isTitleLengthMoreThan255Character && (
               <span className="text-11 text-danger-primary">
-                Max length of the name should be less than 255 characters
+                O nome deve ter no máximo 255 caracteres
               </span>
             )}
           </div>

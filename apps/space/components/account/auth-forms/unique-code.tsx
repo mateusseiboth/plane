@@ -141,7 +141,7 @@ export function AuthUniqueCodeForm(props: TAuthUniqueCodeForm) {
             {resendTimerCode > 0
               ? `Resend in ${resendTimerCode}s`
               : isRequestingNewCode
-                ? "Requesting new code"
+                ? "Solicitando novo código"
                 : "Resend"}
           </button>
         </div>

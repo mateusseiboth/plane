@@ -141,11 +141,11 @@ export function InstanceGithubConfigForm(props: Props) {
   const GITHUB_SERVICE_DETAILS: TCopyField[] = [
     {
       key: "Callback_URI",
-      label: "Callback URI",
+      label: "URI de callback",
       url: `${originURL}/auth/github/callback/`,
       description: (
         <>
-          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>Authorized Callback URI</CodeBlock>{" "}
+          Geraremos isto automaticamente. Cole isto no seu <CodeBlock darkerShade>URI de callback autorizada</CodeBlock>{" "}
           field{" "}
           <a
             tabIndex={-1}
@@ -168,7 +168,7 @@ export function InstanceGithubConfigForm(props: Props) {
       const response = await updateInstanceConfigurations(payload);
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Done!",
+        title: "Pronto!",
         message: "Sua autenticação do GitHub está configurada. Teste-a agora.",
       });
       reset({

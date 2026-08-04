@@ -29,7 +29,7 @@ export const NewUserPopup = observer(function NewUserPopup() {
         <div className="grow">
           <div className="text-14 font-semibold">Criar espaço de trabalho</div>
           <div className="py-2 text-13 font-medium text-tertiary">
-            Instance setup done! Welcome to Plane instance portal. Start your journey with by creating your first
+            Configuração da instância concluída! Bem-vindo ao portal da instância. Comece criando o seu primeiro
             workspace.
           </div>
           <div className="flex items-center gap-4 pt-2">
@@ -46,7 +46,7 @@ export const NewUserPopup = observer(function NewUserPopup() {
             src={resolveGeneralTheme(resolvedTheme) === "dark" ? TakeoffIconDark : TakeoffIconLight}
             height={80}
             width={80}
-            alt="Avião icon"
+            alt="Ícone do Avião"
           />
         </div>
       </div>

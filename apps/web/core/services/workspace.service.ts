@@ -26,6 +26,7 @@ import type {
   IWorkspaceSidebarNavigationItem,
   IWorkspaceSidebarNavigation,
   IWorkspaceUserPropertiesResponse,
+  TWorkspacePrintSettings,
 } from "@plane/types";
 // services
 import { APIService } from "@/services/api.service";
@@ -201,6 +202,25 @@ export class WorkspaceService extends APIService {
     }
   ): Promise<{ detail: string; provider: string; is_configured: boolean }> {
     return this.patch(`/api/workspaces/${workspaceSlug}/storage-config/`, data)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async getPrintSettings(workspaceSlug: string): Promise<TWorkspacePrintSettings> {
+    return this.get(`/api/workspaces/${workspaceSlug}/print-settings/`)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async updatePrintSettings(
+    workspaceSlug: string,
+    data: Partial<TWorkspacePrintSettings>
+  ): Promise<TWorkspacePrintSettings> {
+    return this.patch(`/api/workspaces/${workspaceSlug}/print-settings/`, data)
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;

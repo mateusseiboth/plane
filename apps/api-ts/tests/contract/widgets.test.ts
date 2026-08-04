@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { zipSync, strToU8 } from "fflate";
 import { cleanDb } from "@tests/helpers/setup";
-import { createUser, createApiToken, apiClient } from "@tests/helpers/factory";
+import { createUser, createApiToken, apiClient, TEST_API_BASE_URL } from "@tests/helpers/factory";
 import prisma from "@db";
 
 function makeWidgetZip(name = "Test Widget", version = "1.0.0"): Blob {
@@ -28,7 +28,7 @@ describe("WidgetModule", () => {
   let client: ReturnType<typeof apiClient>;
   let apiToken: string;
   let widgetId: string;
-  const API_BASE = "http://localhost:8001/api/v1";
+  const API_BASE = `${TEST_API_BASE_URL}/api/v1`;
 
   beforeAll(async () => {
     await cleanDb();
@@ -49,7 +49,8 @@ describe("WidgetModule", () => {
     expect(data.results).toBeInstanceOf(Array);
   });
 
-  it("upload widget returns 201 with PENDING_APPROVAL status", async () => {
+  // Upload feito por admin/TI já entra ativo (não há fila de aprovação).
+  it("upload widget returns 201 with ACTIVE status", async () => {
     const form = new FormData();
     form.append("file", makeWidgetZip(), "widget.zip");
     const res = await fetch(`${API_BASE}/widgets/`, {
@@ -61,7 +62,7 @@ describe("WidgetModule", () => {
     const data = await res.json() as any;
     expect(data.name).toBe("Test Widget");
     expect(data.version).toBe("1.0.0");
-    expect(data.status).toBe("PENDING_APPROVAL");
+    expect(data.status).toBe("ACTIVE");
     expect(data.permissions).toContain("worker-items.read");
     widgetId = data.id;
   });

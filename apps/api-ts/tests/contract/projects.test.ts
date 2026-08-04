@@ -10,6 +10,7 @@ import {
   createWorkspace,
   createProject,
   apiClient,
+  TEST_API_BASE_URL,
 } from "@tests/helpers/factory";
 
 describe("TestProjectListCreateAPIEndpoint", () => {
@@ -67,18 +68,19 @@ describe("TestProjectListCreateAPIEndpoint", () => {
     expect(res.status).toBe(409);
   });
 
-  it("list projects should return paginated results", async () => {
+  // A listagem de projetos devolve um array puro — é o formato que o frontend
+  // consome (`response.data`), não o envelope paginado.
+  it("list projects should return an array", async () => {
     const res = await client.get(projectsUrl());
     expect(res.status).toBe(200);
     const data = await res.json() as any;
-    expect(data.results).toBeInstanceOf(Array);
-    expect(typeof data.total_count).toBe("number");
-    expect(data.next_cursor).toBeDefined();
-    expect(data.prev_cursor).toBeDefined();
+    expect(data).toBeInstanceOf(Array);
+    expect(data.length).toBeGreaterThan(0);
+    expect(data[0].id).toBeDefined();
   });
 
   it("unauthenticated request should return 401", async () => {
-    const res = await fetch(`http://localhost:8001/api/v1/workspaces/${wsSlug}/projects/`, {
+    const res = await fetch(`${TEST_API_BASE_URL}/api/v1/workspaces/${wsSlug}/projects/`, {
       headers: { "Content-Type": "application/json" },
     });
     expect(res.status).toBe(401);

@@ -59,7 +59,7 @@ export function IssueLinkRoot(props: TIssueLinkRoot) {
           toggleIssueLinkModal(false);
         } catch (error: any) {
           setToast({
-            message: error?.data?.error ?? "The link could not be created",
+            message: error?.data?.error ?? "Não foi possível criar o link",
             type: TOAST_TYPE.ERROR,
             title: "Link não criado",
           });

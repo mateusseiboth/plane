@@ -7,7 +7,8 @@ import { nextProtocol } from "@/protocol";
 import { handleInboundClient, startBot, startNativeSession } from "@/bot/engine";
 import { availableAttendants } from "@/presence";
 import { deliverOutbound } from "@/outbound";
-import { persistAndBroadcast, serializeMessage, broadcastMessageEdit, broadcastMessageDelete } from "@/messages";
+import { persistAndBroadcast, serializeMessage } from "@/messages";
+import { applyProviderMutation, deleteMessage, editMessage } from "@/message-actions";
 import { routeQueuedSession, drainQueuesForWorkspace, assignSessionToAttendant } from "@/queue/router";
 import { getProvider } from "@/providers/provider";
 import { saveMedia, serveMedia } from "@/storage";
@@ -28,6 +29,7 @@ import {
   connectedUserIds,
 } from "@/ws/hub";
 import { clientPage } from "@/client-page";
+import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
@@ -90,6 +92,13 @@ async function closeSession(sessionId: string, closedById?: string | null) {
   });
   sendToSession(sessionId, { type: "session.closed", session_id: sessionId, protocol: s.protocol });
   sendToWorkspace(s.workspaceId, { type: "session.activity", session_id: sessionId });
+  recordChatAudit({
+    workspaceSlug: s.workspaceId,
+    sessionId,
+    action: CHAT_AUDIT_ACTIONS.CLOSE,
+    userId: closedById ?? null,
+    metadata: { protocolo: s.protocol, canal: s.channel },
+  });
   const cfg = await prisma.botConfig.findUnique({ where: { workspaceId: s.workspaceId } });
   await deliverOutbound(s as any, {
     sender: "system",
@@ -117,7 +126,11 @@ async function isWorkspaceManager(slug: string, userId: string): Promise<boolean
 }
 
 // ── WebSocket dispatch ──────────────────────────────────────────────────────────
-async function onWsMessage(ctx: { id: string; userId?: string; sessionId?: string; workspaceId: string }, raw: any) {
+async function onWsMessage(
+  ctx: { id: string; userId?: string; sessionId?: string; workspaceId: string },
+  raw: any,
+  reply: (data: unknown) => void
+) {
   let msg: any;
   try {
     msg = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -158,6 +171,16 @@ async function onWsMessage(ctx: { id: string; userId?: string; sessionId?: strin
       "attendant"
     );
   }
+  if (type === "client.edit" && ctx.sessionId && msg.message_id) {
+    const result = await editMessage(msg.message_id, msg.text ?? "", { kind: "client", sessionId: ctx.sessionId });
+    if (!result.ok) reply({ type: "error", action: "message.edit", message_id: msg.message_id, detail: result.reason });
+    return;
+  }
+  if (type === "client.delete" && ctx.sessionId && msg.message_id) {
+    const result = await deleteMessage(msg.message_id, { kind: "client", sessionId: ctx.sessionId });
+    if (!result.ok) reply({ type: "error", action: "message.delete", message_id: msg.message_id, detail: result.reason });
+    return;
+  }
   if (type === "client.end" && ctx.sessionId) {
     return void closeSession(ctx.sessionId, null);
   }
@@ -193,23 +216,14 @@ async function onWsMessage(ctx: { id: string; userId?: string; sessionId?: strin
     return sendToSession(sessionId, { type: "typing", who: "attendant", session_id: sessionId });
   }
   if (type === "agent.edit" && msg.message_id) {
-    const existing = await prisma.chatMessage.findUnique({ where: { id: msg.message_id } });
-    if (!existing) return;
-    // Preserve the prior version so admins can audit the edit trail.
-    const history = Array.isArray(existing.editHistory) ? (existing.editHistory as any[]) : [];
-    const updated = await prisma.chatMessage.update({
-      where: { id: msg.message_id },
-      data: {
-        text: msg.text ?? "",
-        editedAt: new Date(),
-        editHistory: [...history, { text: existing.text ?? "", edited_at: (existing.editedAt ?? existing.createdAt).toISOString() }],
-      },
-    });
-    return broadcastMessageEdit(updated.sessionId, updated);
+    const result = await editMessage(msg.message_id, msg.text ?? "", { kind: "attendant", userId: ctx.userId });
+    if (!result.ok) reply({ type: "error", action: "message.edit", message_id: msg.message_id, detail: result.reason });
+    return;
   }
   if (type === "agent.delete" && msg.message_id) {
-    const deleted = await prisma.chatMessage.update({ where: { id: msg.message_id }, data: { deletedAt: new Date() } });
-    return broadcastMessageDelete(deleted.sessionId, deleted);
+    const result = await deleteMessage(msg.message_id, { kind: "attendant", userId: ctx.userId });
+    if (!result.ok) reply({ type: "error", action: "message.delete", message_id: msg.message_id, detail: result.reason });
+    return;
   }
   if (type === "agent.read" && sessionId) {
     await prisma.chatReadState.upsert({
@@ -235,7 +249,7 @@ const app = new Elysia()
     }
     set.status = 500;
     console.error("[chat-error]", error);
-    return { detail: "Internal server error." };
+    return { detail: "Erro interno do servidor." };
   })
 
   .get("/health/", () => ({ status: "ok" }))
@@ -249,7 +263,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     const ticket = await signWsTicket(user.id, slug);
     return { ticket };
@@ -319,7 +333,7 @@ const app = new Elysia()
     const b = (body as any) ?? {};
     if (!b.workspace_id) {
       set.status = 400;
-      return { detail: "workspace_id is required." };
+      return { detail: "workspace_id é obrigatório." };
     }
     const browserId = b.browser_id || randomUUID();
 
@@ -360,7 +374,7 @@ const app = new Elysia()
   // ── History (no-reload load); client (token) or attendant (cookie) ──
   .get("/sessions/:id/messages/", async ({ params: { id }, query, headers }) => {
     const role = await authorizeSessionAccess(id, query, headers as any);
-    if (!role) return new Response(JSON.stringify({ detail: "Forbidden." }), { status: 403 });
+    if (!role) return new Response(JSON.stringify({ detail: "Acesso negado." }), { status: 403 });
     const full = role === "attendant"; // staff see deleted originals + edit history
     const messages = await prisma.chatMessage.findMany({ where: { sessionId: id }, orderBy: { createdAt: "asc" } });
     const session = await prisma.chatSession.findUnique({ where: { id }, include: { contact: true } });
@@ -368,10 +382,20 @@ const app = new Elysia()
   })
 
   // ── Read-only public view of a chat (for the editor chat-embed link) ──
-  .get("/sessions/by-protocol/:protocol/", async ({ params: { protocol } }) => {
+  .get("/sessions/by-protocol/:protocol/", async ({ params: { protocol }, headers }) => {
     const session = await prisma.chatSession.findUnique({ where: { protocol }, include: { contact: true } });
-    if (!session) return new Response(JSON.stringify({ detail: "Not found." }), { status: 404 });
+    if (!session) return new Response(JSON.stringify({ detail: "Não encontrado." }), { status: 404 });
     const messages = await prisma.chatMessage.findMany({ where: { sessionId: session.id }, orderBy: { createdAt: "asc" } });
+    // LGPD: abrir a transcrição é acesso ao conteúdo da conversa do cliente.
+    const viewer = await resolveAttendant(headers);
+    recordChatAudit({
+      workspaceSlug: session.workspaceId,
+      sessionId: session.id,
+      action: CHAT_AUDIT_ACTIONS.VIEW,
+      userId: viewer?.id ?? null,
+      headers,
+      metadata: { protocolo: session.protocol, canal: session.channel, mensagens: messages.length },
+    });
     // Staff transcript (shared via copy-link): show deleted originals + history.
     return { session: serializeSession(session), results: messages.map((m) => serializeMessage(m, { full: true })) };
   })
@@ -381,7 +405,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers as any);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     const status = (query as any).status as string | undefined;
 
@@ -445,7 +469,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -484,7 +508,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     if (!(await isWorkspaceManager(slug, user.id))) {
       set.status = 403;
@@ -498,7 +522,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     if (!(await isWorkspaceManager(slug, user.id))) {
       set.status = 403;
@@ -513,7 +537,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers as any);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     const b = (body as any) ?? {};
     const contact = await prisma.contact.findFirst({ where: { workspaceId: slug, id: b.contact_id } });
@@ -548,7 +572,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     let members: Array<{ id: string; name: string }> = [];
     try {
@@ -576,7 +600,7 @@ const app = new Elysia()
     const user = await resolveAttendant(headers);
     if (!user) {
       set.status = 401;
-      return { detail: "Not authenticated." };
+      return { detail: "Não autenticado." };
     }
     // Only admins / project managers (workspace role >= 15) may transfer.
     let isManager = false;
@@ -633,7 +657,7 @@ const app = new Elysia()
     const file = form.get("file");
     if (!(file instanceof Blob)) {
       set.status = 400;
-      return { detail: "file is required." };
+      return { detail: "file é obrigatório." };
     }
     const key = `${id}/${randomUUID()}`;
     await saveMedia(key, file);
@@ -642,7 +666,7 @@ const app = new Elysia()
   .get("/media/*", async ({ params, query }) => {
     const key = (params as any)["*"];
     const res = await serveMedia(key, (query as any).mime);
-    return res ?? new Response("Not found", { status: 404 });
+    return res ?? new Response("Não encontrado", { status: 404 });
   })
 
   // ── Rating: native client form submits its score + comment here ──
@@ -650,13 +674,13 @@ const app = new Elysia()
     const authed = await authorizeSessionAccess(id, query, headers as any);
     if (!authed) {
       set.status = 403;
-      return { detail: "Forbidden." };
+      return { detail: "Acesso negado." };
     }
     const b = (body as any) ?? {};
     const score = Number(b.score);
     if (!Number.isFinite(score) || score < 1 || score > 5) {
       set.status = 400;
-      return { detail: "score must be between 1 and 5." };
+      return { detail: "A nota deve estar entre 1 e 5." };
     }
     const session = await submitRating(id, score, b.comment ?? null);
     return { ok: true, rating_score: session.ratingScore, rating_comment: session.ratingComment };
@@ -669,6 +693,16 @@ const app = new Elysia()
   .post("/providers/zapi/webhook/:slug/", async ({ params: { slug }, body }) => {
     const resolved = await getProvider(slug);
     if (!resolved) return { ok: true };
+
+    // Edição/remoção feita pelo cliente no WhatsApp: aplica na mensagem existente
+    // (não cria mensagem nova) e propaga aos sockets.
+    const mutation = resolved.provider.parseWebhookMutation(body);
+    if (mutation) {
+      if (mutation.kind === "edit") await applyProviderMutation(mutation.externalId, { text: mutation.text });
+      else for (const id of mutation.externalIds) await applyProviderMutation(id, { deleted: true });
+      return { ok: true };
+    }
+
     const inbound = resolved.provider.parseWebhook(body);
     if (!inbound) return { ok: true };
 
@@ -841,7 +875,7 @@ const app = new Elysia()
     async message(ws, raw) {
       const ctx = await (ws.data as any).ctxPromise;
       if (!ctx) return;
-      await onWsMessage(ctx, raw).catch((e) => console.error("[ws]", e));
+      await onWsMessage(ctx, raw, (d) => ws.send(d)).catch((e) => console.error("[ws]", e));
     },
     async close(ws) {
       const ctx = await ((ws.data as any).ctxPromise ?? Promise.resolve(null));

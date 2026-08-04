@@ -8,7 +8,7 @@ import { useMemo } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
 // components
-import { EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import type { IState, TStateOperationsCallbacks } from "@plane/types";
 import { EUserProjectRoles } from "@plane/types";
 import { ProjectStateLoader, GroupList } from "@/components/project-states";
@@ -35,8 +35,7 @@ export const ProjectStateRoot = observer(function ProjectStateRoot(props: TProje
   } = useProjectState();
   const { allowPermissions } = useUserPermissions();
   // derived values
-  const isEditable = allowPermissions(
-    [EUserProjectRoles.ADMIN],
+  const isEditable = allowPermissions(PROJECT_CONFIG_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

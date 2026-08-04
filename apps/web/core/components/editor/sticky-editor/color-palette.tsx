@@ -13,42 +13,42 @@ export const STICKY_COLORS_LIST: {
 }[] = [
   {
     key: "gray",
-    label: "Gray",
+    label: "Cinza",
     backgroundColor: "var(--editor-colors-gray-background)",
   },
   {
     key: "peach",
-    label: "Peach",
+    label: "Pêssego",
     backgroundColor: "var(--editor-colors-peach-background)",
   },
   {
     key: "pink",
-    label: "Pink",
+    label: "Rosa",
     backgroundColor: "var(--editor-colors-pink-background)",
   },
   {
     key: "orange",
-    label: "Orange",
+    label: "Laranja",
     backgroundColor: "var(--editor-colors-orange-background)",
   },
   {
     key: "green",
-    label: "Green",
+    label: "Verde",
     backgroundColor: "var(--editor-colors-green-background)",
   },
   {
     key: "light-blue",
-    label: "Light blue",
+    label: "Azul claro",
     backgroundColor: "var(--editor-colors-light-blue-background)",
   },
   {
     key: "dark-blue",
-    label: "Dark blue",
+    label: "Azul escuro",
     backgroundColor: "var(--editor-colors-dark-blue-background)",
   },
   {
     key: "purple",
-    label: "Purple",
+    label: "Roxo",
     backgroundColor: "var(--editor-colors-purple-background)",
   },
 ];

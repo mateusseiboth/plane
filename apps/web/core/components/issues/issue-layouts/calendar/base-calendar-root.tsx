@@ -9,7 +9,7 @@ import { useCallback, useEffect } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EIssueGroupByToServerOptions, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { EIssueGroupByToServerOptions, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TGroupedIssues } from "@plane/types";
 import { EIssuesStoreType } from "@plane/types";
@@ -76,14 +76,7 @@ export const BaseCalendarRoot = observer(function BaseCalendarRoot(props: IBaseC
   const issueCalendarView = useCalendarView();
 
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT
   );
 
@@ -150,7 +143,7 @@ export const BaseCalendarRoot = observer(function BaseCalendarRoot(props: IBaseC
       setToast({
         title: "Erro!",
         type: TOAST_TYPE.ERROR,
-        message: err?.detail ?? "Failed to perform this action",
+        message: err?.detail ?? "Não foi possível executar esta ação",
       });
     });
   };

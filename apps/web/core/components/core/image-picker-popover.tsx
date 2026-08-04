@@ -140,7 +140,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
           console.error("Error uploading user cover image:", error);
           setIsImageUploading(false);
           setToast({
-            message: error?.error ?? "The image could not be uploaded",
+            message: error?.error ?? "Não foi possível enviar a imagem",
             type: TOAST_TYPE.ERROR,
             title: "Imagem não enviada",
           });
@@ -161,7 +161,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
           console.error("Error uploading project cover image:", error);
           setIsImageUploading(false);
           setToast({
-            message: error?.error ?? "The image could not be uploaded",
+            message: error?.error ?? "Não foi possível enviar a imagem",
             type: TOAST_TYPE.ERROR,
             title: "Imagem não enviada",
           });
@@ -239,7 +239,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
                           )}
                         />
                         <Button variant="primary" size="xl" onClick={() => setSearchParams(formData.search)}>
-                          Search
+                          Buscar
                         </Button>
                       </div>
                       {unsplashImages ? (
@@ -325,7 +325,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
                         ) : (
                           <div>
                             <span className="mt-2 block text-13 font-medium text-secondary">
-                              {isDragActive ? "Drop image here to upload" : "Drag & drop image here"}
+                              {isDragActive ? "Solte a imagem aqui para enviar" : "Drag & drop image here"}
                             </span>
                           </div>
                         )}
@@ -337,7 +337,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(props: Pr
                       <p className="text-13 text-danger-primary">
                         {fileRejections[0].errors[0].code === "file-too-large"
                           ? "The image size cannot exceed 5 MB."
-                          : "Please upload a file in a valid format."}
+                          : "Envie um arquivo em formato válido."}
                       </p>
                     )}
 

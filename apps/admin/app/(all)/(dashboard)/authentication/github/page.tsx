@@ -51,12 +51,12 @@ const InstanceGithubAuthenticationPage = observer(function InstanceGithubAuthent
     setPromiseToast(updateConfigPromise, {
       loading: "Saving Configuration",
       success: {
-        title: "Configuration saved",
+        title: "Configuração salva",
         message: () => `GitHub authentication is now ${value === "1" ? "active" : "disabled"}.`,
       },
       error: {
         title: "Erro",
-        message: () => "Failed to save configuration",
+        message: () => "Falha ao salvar a configuração",
       },
     });
 
@@ -83,7 +83,7 @@ const InstanceGithubAuthenticationPage = observer(function InstanceGithubAuthent
               src={resolveGeneralTheme(resolvedTheme) === "dark" ? githubDarkModeImage : githubLightModeImage}
               height={24}
               width={24}
-              alt="GitHub Logo"
+              alt="Logo do GitHub"
             />
           }
           config={

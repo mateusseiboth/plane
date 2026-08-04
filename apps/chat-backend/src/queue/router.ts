@@ -10,6 +10,7 @@ import { availableAttendants, isWithinBusinessHours } from "@/presence";
 import { persistAndBroadcast, sendToSession, sendToUser, sendToWorkspace } from "@/messages";
 import { connectedUserIds } from "@/ws/hub";
 import { attendantName } from "@/users";
+import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 
 /**
  * Assign a session to a specific attendant and announce it everywhere: the client
@@ -28,6 +29,14 @@ export async function assignSessionToAttendant(sessionId: string, userId: string
   sendToSession(sessionId, { type: "session.assigned", session_id: sessionId, attendant_id: userId });
   sendToWorkspace(session.workspaceId, { type: "session.activity", session_id: sessionId });
   await persistAndBroadcast({ sessionId, sender: "system", type: "event", text: `${name} iniciou o atendimento.` });
+  // LGPD: a partir daqui este atendente passa a ter acesso ao conteúdo da conversa.
+  recordChatAudit({
+    workspaceSlug: session.workspaceId,
+    sessionId,
+    action: CHAT_AUDIT_ACTIONS.ASSIGN,
+    userId,
+    metadata: { protocolo: session.protocol, canal: session.channel },
+  });
   return session;
 }
 

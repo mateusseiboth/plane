@@ -67,7 +67,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
     const b = body as any;
     if (!b.name || !b.provider_type) {
       set.status = 400;
-      return {detail: "name and provider_type are required."};
+      return {detail: "name e provider_type são obrigatórios."};
     }
 
     // If setting as default, unset others
@@ -96,7 +96,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
     } catch (e: any) {
       if (e?.code === "P2002") {
         set.status = 409;
-        return {detail: "AI provider with this name already exists."};
+        return {detail: "Já existe um provedor de IA com este nome."};
       }
       throw e;
     }
@@ -153,7 +153,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
     });
     if (!provider) {
       set.status = 400;
-      return {detail: "No active AI provider configured."};
+      return {detail: "Nenhum provedor de IA ativo configurado."};
     }
 
     const b = body as any;
@@ -165,7 +165,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
       return {response, task, model: provider.defaultModel};
     } catch (e: any) {
       set.status = 502;
-      return {detail: `AI provider error: ${e.message}`};
+      return {detail: `Erro no provedor de IA: ${e.message}`};
     }
   })
 
@@ -292,7 +292,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
     });
     if (!provider || !provider.apiKey) {
       set.status = 400;
-      return {detail: "No active AI provider configured."};
+      return {detail: "Nenhum provedor de IA ativo configurado."};
     }
 
     const b = body as any;
@@ -304,7 +304,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
       return {response, task, model: provider.defaultModel};
     } catch (e: any) {
       set.status = 502;
-      return {detail: `AI provider error: ${e.message}`};
+      return {detail: `Erro no provedor de IA: ${e.message}`};
     }
   });
 

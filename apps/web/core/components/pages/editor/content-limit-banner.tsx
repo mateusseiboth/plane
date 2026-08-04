@@ -28,7 +28,7 @@ export function ContentLimitBanner({ className, onDismiss }: Props) {
           type="button"
           onClick={onDismiss}
           className="ml-auto text-placeholder hover:text-secondary"
-          aria-label="Dismiss content limit warning"
+          aria-label="Dispensar aviso de limite de conteúdo"
         >
           ✕
         </button>

@@ -15,7 +15,7 @@ async function requireUser(headers: any, set: any) {
   const user = await resolveAttendant(headers);
   if (!user) {
     set.status = 401;
-    throw Object.assign(new Error("Not authenticated."), { status: 401 });
+    throw Object.assign(new Error("Não autenticado."), { status: 401 });
   }
   return user;
 }

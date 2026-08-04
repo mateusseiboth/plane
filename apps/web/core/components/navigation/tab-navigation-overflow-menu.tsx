@@ -67,7 +67,7 @@ export function TabNavigationOverflowMenu({ overflowItems, isActive, tabPreferen
                       onShow(item.key);
                     }}
                     className="invisible rounded-sm p-1 text-tertiary transition-colors group-hover/menu-item:visible hover:text-primary"
-                    title="Show"
+                    title="Exibir"
                   >
                     <Pin className="size-3" />
                   </button>

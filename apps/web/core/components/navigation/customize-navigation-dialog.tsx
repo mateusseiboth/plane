@@ -185,8 +185,8 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
           <div>
             <h2 className="text-18 font-semibold text-primary">{t("customize_navigation")}</h2>
             <p className="mt-1 text-13 text-tertiary">
-              Selected items will always stay visible in your sidebar. You can still find the others anytime from the
-              More menu. These changes are personal to you and won&apos;t affect anyone else on your workspace.
+              Os itens selecionados ficam sempre visíveis na barra lateral. Os demais continuam disponíveis no menu
+              Mais. Estas mudanças são pessoais e não afetam as outras pessoas do workspace.
             </p>
           </div>
           <button

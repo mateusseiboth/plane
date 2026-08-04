@@ -183,7 +183,7 @@ export const GeneralProfileSettingsForm = observer(function GeneralProfileSettin
       },
       error: {
         title: "Erro!",
-        message: () => `There was some error in updating your profile. Please try again.`,
+        message: () => `Ocorreu um erro ao atualizar seu perfil. Tente novamente.`,
       },
     });
   };

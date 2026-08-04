@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { SearchIcon } from "@plane/propel/icons";
@@ -53,7 +53,7 @@ export const ProjectMemberList = observer(function ProjectMemberList(props: TPro
     projectId ? getFilteredProjectMemberDetails(memberId, projectId.toString()) : null
   );
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT);
+  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT);
 
   // Handler for role filter updates
   const handleRoleFilterUpdate = (role: string) => {

@@ -11,7 +11,7 @@ import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Eye, ArrowRight, CalendarDays } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN, PROJECT_WORK_ROLES} from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { useTranslation } from "@plane/i18n";
 import { TransferIcon, WorkItemsIcon, MembersPropertyIcon } from "@plane/propel/icons";
@@ -97,14 +97,7 @@ export const CycleListItemAction = observer(function CycleListItemAction(props: 
   const projectUTCOffset = getProjectUTCOffset();
 
   const isEditingAllowed = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
+    PROJECT_WORK_ROLES,
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

@@ -53,6 +53,58 @@ type RecentActivityRecord =
 
 const QUICK_LINKS_STORAGE_KEY = "quick_links";
 
+// ── Print settings ───────────────────────────────────────────────────────────
+// Shape stored in WorkspaceSetting["print_settings"]. `logo_asset` is a
+// FileAsset id uploaded through the regular asset pipeline (assets/v2); the
+// serializer derives the public `logo_url` from it so the frontend never has to
+// know how assets are served.
+
+type PrintSettingsRecord = {
+  logo_asset: string | null;
+  logo_url: string | null;
+  header_text: string | null;
+  footer_text: string | null;
+  show_generated_at: boolean;
+};
+
+const PRINT_SETTINGS_KEY = "print_settings";
+
+function toNullableText(value: unknown, fallback: string | null): string | null {
+  if (value === undefined) return fallback;
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function readPrintSettings(value: unknown): PrintSettingsRecord {
+  const stored = (value as Partial<PrintSettingsRecord> | null | undefined) ?? {};
+  return {
+    logo_asset: toNullableText(stored.logo_asset, null),
+    logo_url: toNullableText(stored.logo_url, null),
+    header_text: toNullableText(stored.header_text, null),
+    footer_text: toNullableText(stored.footer_text, null),
+    show_generated_at: stored.show_generated_at === undefined ? true : Boolean(stored.show_generated_at),
+  };
+}
+
+function mergePrintSettings(value: unknown, body: unknown): PrintSettingsRecord {
+  const current = readPrintSettings(value);
+  const b = (body as Partial<PrintSettingsRecord> | null | undefined) ?? {};
+  return {
+    logo_asset: toNullableText(b.logo_asset, current.logo_asset),
+    logo_url: toNullableText(b.logo_url, current.logo_url),
+    header_text: toNullableText(b.header_text, current.header_text),
+    footer_text: toNullableText(b.footer_text, current.footer_text),
+    show_generated_at: b.show_generated_at === undefined ? current.show_generated_at : Boolean(b.show_generated_at),
+  };
+}
+
+function serializePrintSettings(workspaceSlug: string, value: unknown): PrintSettingsRecord {
+  const settings = readPrintSettings(value);
+  if (!settings.logo_asset) return settings;
+  return {...settings, logo_url: `/api/assets/v2/workspaces/${workspaceSlug}/${settings.logo_asset}/`};
+}
+
 function normalizeQuickLinkUrl(url: string) {
   const trimmed = url.trim();
   if (!trimmed) return trimmed;
@@ -215,7 +267,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const slug = (query.slug as string | undefined)?.toLowerCase();
     if (!slug) {
       set.status = 400;
-      return {error: "slug is required."};
+      return {error: "slug é obrigatório."};
     }
     const RESTRICTED = ["admin", "api", "auth", "plane", "god-mode", "spaces", "home", "login", "signup", "settings"];
     const taken = RESTRICTED.includes(slug) || (await prisma.workspace.findFirst({where: {slug}})) !== null;
@@ -239,17 +291,17 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const b = body as any;
     if (!b.name) {
       set.status = 400;
-      return {detail: "Name is required."};
+      return {detail: "O nome é obrigatório."};
     }
     if (!b.slug) {
       set.status = 400;
-      return {detail: "Slug is required."};
+      return {detail: "O slug é obrigatório."};
     }
 
     const exists = await prisma.workspace.findFirst({where: {slug: b.slug, deletedAt: null}});
     if (exists) {
       set.status = 409;
-      return {detail: "Workspace with this slug already exists."};
+      return {detail: "Já existe um workspace com este slug."};
     }
 
     const ws = await prisma.$transaction(async (tx) => {
@@ -278,7 +330,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const m = await requireWorkspaceWriter(ws.id, user.id);
     if (m.role < 20) {
       set.status = 403;
-      return {detail: "Only admins can update workspace settings."};
+      return {detail: "Apenas administradores podem atualizar as configurações do workspace."};
     }
     const b = body as any;
     const data: any = {};
@@ -297,7 +349,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const m = await requireWorkspaceWriter(ws.id, user.id);
     if (m.role < 20) {
       set.status = 403;
-      return {detail: "Only admins can delete workspaces."};
+      return {detail: "Apenas administradores podem excluir workspaces."};
     }
     await prisma.workspace.update({where: {id: ws.id}, data: {deletedAt: new Date()}});
     set.status = 204;
@@ -343,7 +395,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const m = await requireWorkspaceWriter(ws.id, user.id);
     if (m.role < 15) {
       set.status = 403;
-      return {detail: "Only members can invite others."};
+      return {detail: "Apenas membros podem convidar outras pessoas."};
     }
 
     const emails: Array<{email: string; role: number}> = (body as any).emails ?? [];
@@ -797,7 +849,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const slug = (query.slug as string | undefined)?.toLowerCase();
     if (!slug) {
       set.status = 400;
-      return {error: "slug is required."};
+      return {error: "slug é obrigatório."};
     }
     const RESTRICTED = ["admin", "api", "auth", "plane", "god-mode", "spaces", "home", "login", "signup", "settings"];
     const taken = RESTRICTED.includes(slug) || (await prisma.workspace.findFirst({where: {slug}})) !== null;
@@ -812,7 +864,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const invite = await prisma.workspaceMemberInvite.findUnique({where: {id: pk}});
     if (!invite) {
       set.status = 404;
-      return {detail: "Not found."};
+      return {detail: "Não encontrado."};
     }
     return invite;
   })
@@ -831,11 +883,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const invite = await prisma.workspaceMemberInvite.findUnique({where: {id: pk}});
     if (!invite) {
       set.status = 400;
-      return {detail: "Invalid invitation."};
+      return {detail: "Convite inválido."};
     }
     if (invite.email !== user.email) {
       set.status = 400;
-      return {detail: "Invitation is not for this email."};
+      return {detail: "O convite não é para este e-mail."};
     }
 
     await prisma.$transaction(async (tx) => {
@@ -849,7 +901,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         });
       }
     });
-    return {detail: "Joined workspace."};
+    return {detail: "Você entrou no workspace."};
   })
 
   // ── Members: specific member management ────────────────────────────────────
@@ -891,7 +943,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     });
     if (!m) {
       set.status = 404;
-      return {detail: "Not found."};
+      return {detail: "Não encontrado."};
     }
     return m;
   })
@@ -901,7 +953,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const caller = await requireWorkspaceWriter(ws.id, user.id);
     if (caller.role < 20) {
       set.status = 403;
-      return {detail: "Only admins can change member roles."};
+      return {detail: "Apenas administradores podem alterar funções de membros."};
     }
     const b = body as any;
     const data: any = {};
@@ -914,7 +966,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const caller = await requireWorkspaceWriter(ws.id, user.id);
     if (caller.role < 20) {
       set.status = 403;
-      return {detail: "Only admins can remove members."};
+      return {detail: "Apenas administradores podem remover membros."};
     }
     await prisma.workspaceMember.updateMany({
       where: {workspaceId: ws.id, memberId: pk},
@@ -1039,6 +1091,34 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return {detail: "Configuração de armazenamento salva.", provider, is_configured: provider === "s3"};
   })
 
+  // ── Print settings (logo/cabeçalho/rodapé usados na impressão) ─────────────
+  // Persisted in the shared WorkspaceSetting key/value table under
+  // `print_settings`. Any member reads it (every screen renders the print
+  // header); only workspace admins change it.
+  .get("/:slug/print-settings/", async ({params: {slug}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const setting = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY}});
+    return serializePrintSettings(slug, setting?.value);
+  })
+
+  .patch("/:slug/print-settings/", async ({params: {slug}, body, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const caller = await requireWorkspaceMember(ws.id, user.id);
+    if (caller.role < 20) {
+      set.status = 403;
+      return {detail: "Apenas administradores podem alterar as configurações de impressão."};
+    }
+    const existing = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY}});
+    const next = mergePrintSettings(existing?.value, body);
+    await prisma.workspaceSetting.upsert({
+      where: {workspaceId_key: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY}},
+      create: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY, value: next},
+      update: {value: next},
+    });
+    return serializePrintSettings(slug, next);
+  })
+
   // ── Chat plugin config (enable + plugin API/WS URL) ───────────────────────
   // Stored on Instance.configurations.chat. The chat plugin is shipped
   // installed-but-disabled; enabling it here points the UI at the chat backend.
@@ -1084,7 +1164,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     });
     if (!m) {
       set.status = 404;
-      return {detail: "Not a member."};
+      return {detail: "Você não é membro."};
     }
     return {
       id: m.id,
@@ -1313,7 +1393,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const draft = await prisma.draftIssue.findFirst({where: {id: pk, workspaceId: ws.id, deletedAt: null}});
     if (!draft) {
       set.status = 404;
-      return {detail: "Not found."};
+      return {detail: "Não encontrado."};
     }
     return draft;
   })
@@ -1344,13 +1424,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const draft = await prisma.draftIssue.findFirst({where: {id: draft_id, workspaceId: ws.id, deletedAt: null}});
     if (!draft) {
       set.status = 404;
-      return {detail: "Draft not found."};
+      return {detail: "Rascunho não encontrado."};
     }
 
     const project = await prisma.project.findFirst({where: {id: draft.projectId, deletedAt: null}});
     if (!project) {
       set.status = 400;
-      return {detail: "Project not found."};
+      return {detail: "Projeto não encontrado."};
     }
 
     const issue = await prisma.$transaction(async (tx) => {
@@ -1607,7 +1687,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .patch("/:slug/home-preferences/", async ({params: {slug}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return {detail: "Preferences updated."};
+    return {detail: "Preferências atualizadas."};
   })
 
   .get("/:slug/home-preferences/:key/", async ({params: {slug, key}, user}) => {
@@ -1650,14 +1730,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const b = body as any;
     if (!b.url) {
       set.status = 400;
-      return {error: "URL is required."};
+      return {error: "A URL é obrigatória."};
     }
 
     const url = normalizeQuickLinkUrl(String(b.url));
     const quickLinks = await getWorkspaceQuickLinks(ws.id, user.id);
     if (quickLinks.some((link) => link.url === url)) {
       set.status = 400;
-      return {error: "URL already exists for this workspace and owner"};
+      return {error: "Esta URL já existe para este workspace e proprietário"};
     }
 
     const newLink: QuickLinkRecord = {
@@ -1682,7 +1762,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const quickLink = quickLinks.find((link) => link.id === pk);
     if (!quickLink) {
       set.status = 404;
-      return {error: "Quick link not found."};
+      return {error: "Link rápido não encontrado."};
     }
     return serializeQuickLink(ws.slug, quickLink);
   })
@@ -1695,13 +1775,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const currentLink = quickLinks.find((link) => link.id === pk);
     if (!currentLink) {
       set.status = 404;
-      return {error: "Quick link not found."};
+      return {error: "Link rápido não encontrado."};
     }
 
     const nextUrl = b.url !== undefined ? normalizeQuickLinkUrl(String(b.url)) : currentLink.url;
     if (quickLinks.some((link) => link.id !== pk && link.url === nextUrl)) {
       set.status = 400;
-      return {error: "URL already exists for this workspace and owner"};
+      return {error: "Esta URL já existe para este workspace e proprietário"};
     }
 
     const updatedLink: QuickLinkRecord = {
@@ -1723,7 +1803,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const nextLinks = quickLinks.filter((link) => link.id !== pk);
     if (nextLinks.length === quickLinks.length) {
       set.status = 404;
-      return {error: "Quick link not found."};
+      return {error: "Link rápido não encontrado."};
     }
     await saveWorkspaceQuickLinks(ws.id, user.id, nextLinks);
     set.status = 204;

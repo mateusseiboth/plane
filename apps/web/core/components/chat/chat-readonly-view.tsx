@@ -7,6 +7,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChatTranscriptPrintDocument, PrintButton } from "@/components/print";
 import type { ChatMessage, ChatSession } from "@/services/chat.service";
 
 // Read-only full view of a chat by protocol. Anyone with the link can open it.
@@ -39,11 +40,21 @@ export function ChatReadOnlyView({ protocol }: { protocol: string }) {
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col">
-      <header className="border-b border-subtle p-4">
-        <h1 className="text-base font-semibold">{session.client_name || session.client_phone || "Atendimento"}</h1>
-        <p className="text-12 text-secondary">
-          Protocolo #{session.protocol} · {session.channel === "whatsapp" ? "WhatsApp" : "Chat"} · {session.status}
-        </p>
+      {/* LGPD: a transcrição contém dados do cliente — a impressão vai para a trilha. */}
+      <ChatTranscriptPrintDocument session={session} messages={messages} />
+      <header className="flex items-start justify-between gap-3 border-b border-subtle p-4">
+        <div>
+          <h1 className="text-base font-semibold">{session.client_name || session.client_phone || "Atendimento"}</h1>
+          <p className="text-12 text-secondary">
+            Protocolo #{session.protocol} · {session.channel === "whatsapp" ? "WhatsApp" : "Chat"} · {session.status}
+          </p>
+        </div>
+        <PrintButton
+          documentTitle={`Atendimento #${session.protocol}`}
+          auditEntity="chat_session"
+          auditEntityId={session.id}
+          auditMetadata={{ protocolo: session.protocol }}
+        />
       </header>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto bg-layer-1 p-4">
         {messages.map((m) => {

@@ -365,7 +365,7 @@ export class ProjectInboxStore implements IProjectInboxStore {
       console.error("Error fetching the intake issues", error);
       this.loader = undefined;
       this.error = {
-        message: "Erro ao buscar os itens de trabalho da admissão. Tente novamente mais tarde.",
+        message: "Erro ao buscar as solicitações. Tente novamente mais tarde.",
         status: "init-error",
       };
       throw error;
@@ -405,7 +405,7 @@ export class ProjectInboxStore implements IProjectInboxStore {
     } catch (error) {
       console.error("Error fetching the intake issues", error);
       this.error = {
-        message: "Erro ao buscar os itens de trabalho paginados da admissão. Tente novamente mais tarde.",
+        message: "Erro ao buscar mais solicitações. Tente novamente mais tarde.",
         status: "pagination-error",
       };
       throw error;

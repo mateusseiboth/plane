@@ -107,7 +107,7 @@ const EmojiReactionButton = React.forwardRef(function EmojiReactionButton(
   ref: React.ForwardedRef<HTMLButtonElement>
 ) {
   return (
-    <Tooltip tooltipContent="Add reaction">
+    <Tooltip tooltipContent="Adicionar reação">
       <IconButton
         ref={ref}
         icon={AddReactionIcon}

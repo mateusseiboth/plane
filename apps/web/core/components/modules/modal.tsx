@@ -70,7 +70,7 @@ export const CreateUpdateModuleModal = observer(function CreateUpdateModuleModal
         setToast({
           type: TOAST_TYPE.ERROR,
           title: "Erro!",
-          message: err?.detail ?? err?.error ?? "Module could not be created. Please try again.",
+          message: err?.detail ?? err?.error ?? "Não foi possível criar o módulo. Tente novamente.",
         });
       });
   };

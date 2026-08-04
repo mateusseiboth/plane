@@ -5,9 +5,18 @@ import {paginate} from "@utils/pagination";
 import {COMMENT_INCLUDE, ISSUE_INCLUDE, serializeComment, serializeIssue} from "@utils/serialize";
 import {diffChange, recordActivities, type ActivityChange} from "@utils/activity";
 import {applyIssueFilters, normalizeFilters} from "@utils/filters";
-import {canTransition, resolveRole, visibleStateIds} from "@utils/permission-checks";
+import {
+  EProjectAction,
+  canTransition,
+  requireOwnOrAll,
+  requireProjectAction,
+  resolveRole,
+  roleCan,
+  visibleStateIds,
+} from "@utils/permission-checks";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
 import {publishRealtime} from "@utils/realtime";
+import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit} from "@utils/audit";
 import {nextSequenceId} from "@utils/sequence";
 import {computeTargetDate} from "@utils/sla";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
@@ -40,7 +49,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     });
     if (!issue) {
       set.status = 404;
-      return {detail: "Issue not found."};
+      return {detail: "Chamado não encontrado."};
     }
     return {project_identifier: issue.project?.identifier ?? "", sequence_id: String(issue.sequenceId)};
   })
@@ -52,8 +61,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     // Build base where clause
     const where: any = {projectId: project_id, deletedAt: null, isDraft: false};
 
-    // Non-filter scalar params that are not part of the filter map
-    if (query.entity_id) where.entityId = query.entity_id;
+    // Non-filter scalar params that are not part of the filter map.
+    // `entity_id` is handled by normalizeFilters/applyIssueFilters below so it
+    // accepts both a single id and a CSV list from the work-item filter panel.
     if (query.legacy_ticket_number) where.legacyTicketNumber = query.legacy_ticket_number;
 
     // Parse the frontend `filters` JSON param (+ loose params) and apply it
@@ -169,14 +179,16 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     });
   })
 
-  .post("/", async ({params: {slug, project_id}, body, user, set}) => {
+  .post("/", async ({params: {slug, project_id}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    // D2: Atendimento (6) opens intakes through /inbox-issues/, never work items;
+    // Visualizador (5) creates nothing. Both lack ISSUE_CREATE.
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_CREATE);
 
     const b = body as any;
     if (!b.name) {
       set.status = 400;
-      return {detail: "Name is required."};
+      return {detail: "O nome é obrigatório."};
     }
 
     const defaultState = await prisma.state.findFirst({
@@ -259,35 +271,63 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
     publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, actor: user.id});
 
+    // LGPD: abertura de chamado é tratamento de dado pessoal do solicitante.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ISSUE,
+      entityId: issue.id,
+      action: AUDIT_ACTIONS.CREATE,
+      actor: user,
+      headers,
+      metadata: {project_id, sequence_id: issue.sequenceId, name: issue.name},
+    });
+
     set.status = 201;
     return serializeIssue(createdIssue);
   })
 
-  .get("/:issue_id", async ({params: {slug, project_id, issue_id}, user}) => {
+  .get("/:issue_id", async ({params: {slug, project_id, issue_id}, user, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const issue = await prisma.issue.findFirstOrThrow({
       where: {id: issue_id, projectId: project_id, deletedAt: null},
       include: ISSUE_INCLUDE,
     });
+    // LGPD: acesso a dado também é tratamento — quem abriu qual chamado, quando e de onde.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ISSUE,
+      entityId: issue.id,
+      action: AUDIT_ACTIONS.VIEW,
+      actor: user,
+      headers,
+      metadata: {project_id, sequence_id: issue.sequenceId},
+    });
     return serializeIssue(issue);
   })
 
-  .patch("/:issue_id", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
+  .patch("/:issue_id", async ({params: {slug, project_id, issue_id}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 5) {
-      set.status = 403;
-      return {detail: "Permission denied."};
-    }
 
-    const b = body as any;
-
-    // Snapshot the issue before mutation so we can log activity diffs afterwards.
+    // Snapshot the issue before mutation so we can log activity diffs afterwards
+    // (also used to resolve own-vs-any edit rights).
     const before = await prisma.issue.findFirst({
       where: {id: issue_id},
       include: {state: {select: {id: true, name: true, group: true}}},
     });
+
+    // Editing any work item needs ISSUE_EDIT_ALL; authors get by with
+    // ISSUE_EDIT_OWN. Visualizador (5) holds neither.
+    const {member} = await requireOwnOrAll(
+      ws.id,
+      project_id,
+      user.id,
+      before?.createdById,
+      EProjectAction.ISSUE_EDIT_OWN,
+      EProjectAction.ISSUE_EDIT_ALL,
+    );
+
+    const b = body as any;
 
     // Use unchecked scalar fields throughout (updatedById/stateId/entityId/parentId).
     // Mixing relation-style connects (e.g. updatedBy:{connect}) forces Prisma's
@@ -429,18 +469,56 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
     publishRealtime(ws.id, {entity: "issue", action: "update", project_id, id: issue_id, actor: user.id});
 
+    // LGPD: mudança de estado para concluído/cancelado é "encerrou o chamado";
+    // as demais alterações entram como update com o diff dos campos tocados.
+    const closing = targetState && (targetState.group === "completed" || targetState.group === "cancelled");
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ISSUE,
+      entityId: issue_id,
+      action: closing ? AUDIT_ACTIONS.CLOSE : newStateId !== undefined ? AUDIT_ACTIONS.STATE_CHANGE : AUDIT_ACTIONS.UPDATE,
+      actor: user,
+      headers,
+      changes: auditDiff(
+        {state: before?.state?.name ?? null, name: before?.name, priority: before?.priority},
+        {state: targetState?.name ?? before?.state?.name ?? null, name: b.name ?? before?.name, priority: b.priority ?? before?.priority},
+        ["state", "name", "priority"]
+      ),
+      metadata: {project_id, campos: Object.keys(b ?? {})},
+    });
+
     return serializeIssue(await prisma.issue.findFirstOrThrow({where: {id: issue_id}, include: ISSUE_INCLUDE}));
   })
 
-  .delete("/:issue_id", async ({params: {slug, project_id, issue_id}, user, set}) => {
+  .delete("/:issue_id", async ({params: {slug, project_id, issue_id}, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) {
-      set.status = 403;
-      return {detail: "Permission denied."};
+    const target = await prisma.issue.findFirst({
+      where: {id: issue_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
+      select: {createdById: true},
+    });
+    if (!target) {
+      set.status = 404;
+      return {detail: "Chamado não encontrado."};
     }
+    await requireOwnOrAll(
+      ws.id,
+      project_id,
+      user.id,
+      target.createdById,
+      EProjectAction.ISSUE_DELETE_OWN,
+      EProjectAction.ISSUE_DELETE_ALL,
+    );
     await prisma.issue.update({where: {id: issue_id}, data: {deletedAt: new Date()}});
     publishRealtime(ws.id, {entity: "issue", action: "delete", project_id, id: issue_id, actor: user.id});
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ISSUE,
+      entityId: issue_id,
+      action: AUDIT_ACTIONS.DELETE,
+      actor: user,
+      headers,
+      metadata: {project_id},
+    });
     set.status = 204;
     return null;
   })
@@ -466,14 +544,14 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     });
   })
 
-  .post("/:issue_id/comments/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
+  .post("/:issue_id/comments/", async ({params: {slug, project_id, issue_id}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.COMMENT_CREATE);
 
     const b = body as any;
     if (!b.comment_html && !b.comment) {
       set.status = 400;
-      return {detail: "Comment content is required."};
+      return {detail: "O conteúdo do comentário é obrigatório."};
     }
 
     const comment = await prisma.issueComment.create({
@@ -492,17 +570,42 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       include: COMMENT_INCLUDE,
     });
     publishRealtime(ws.id, {entity: "comment", action: "create", project_id, issue_id, id: comment.id, actor: user.id});
+    // LGPD: interação do usuário no chamado.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.COMMENT,
+      entityId: comment.id,
+      action: AUDIT_ACTIONS.COMMENT,
+      actor: user,
+      headers,
+      metadata: {project_id, issue_id, acesso: comment.access},
+    });
     set.status = 201;
     return serializeComment(comment);
   })
 
-  .patch("/:issue_id/comments/:comment_id/", async ({params: {issue_id, comment_id}, body, user}) => {
+  .patch("/:issue_id/comments/:comment_id/", async ({params: {slug, project_id, issue_id, comment_id}, body, user, set, headers}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const comment = await prisma.issueComment.findFirst({
+      where: {id: comment_id, issueId: issue_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
+    });
+    if (!comment) {
+      set.status = 404;
+      return {detail: "Comentário não encontrado."};
+    }
+    // Only the author may rewrite a comment (no role grants "edit anyone's comment").
+    if (comment.actorId !== user.id) {
+      set.status = 403;
+      return {detail: "Somente o autor pode editar o comentário."};
+    }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.COMMENT_EDIT_OWN);
+
     const b = body as any;
     const data: any = {updatedById: user.id, editedAt: new Date()};
 
     if (b.comment_html !== undefined) {
       // Snapshot current content as a version before overwriting
-      const existing = await prisma.issueComment.findFirst({where: {id: comment_id}});
+      const existing = comment;
       if (existing?.commentHtml && existing.commentHtml !== b.comment_html) {
         await prisma.issueCommentVersion.create({
           data: {commentId: comment_id, commentHtml: existing.commentHtml, editedById: user.id},
@@ -521,11 +624,22 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       id: comment_id,
       actor: user.id,
     });
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.COMMENT,
+      entityId: comment_id,
+      action: AUDIT_ACTIONS.UPDATE,
+      actor: user,
+      headers,
+      metadata: {project_id, issue_id},
+    });
     return serializeComment(updated);
   })
 
   // Comment version history
-  .get("/:issue_id/comments/:comment_id/versions/", async ({params: {comment_id}, user}) => {
+  .get("/:issue_id/comments/:comment_id/versions/", async ({params: {slug, project_id, comment_id}, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
     const versions = await prisma.issueCommentVersion.findMany({
       where: {commentId: comment_id},
       orderBy: {createdAt: "desc"},
@@ -540,8 +654,33 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     }));
   })
 
-  .delete("/:issue_id/comments/:comment_id/", async ({params: {issue_id, comment_id}, user, set}) => {
+  .delete("/:issue_id/comments/:comment_id/", async ({params: {slug, project_id, issue_id, comment_id}, user, set, headers}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const comment = await prisma.issueComment.findFirst({
+      where: {id: comment_id, issueId: issue_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
+    });
+    if (!comment) {
+      set.status = 404;
+      return {detail: "Comentário não encontrado."};
+    }
+    await requireOwnOrAll(
+      ws.id,
+      project_id,
+      user.id,
+      comment.actorId,
+      EProjectAction.COMMENT_DELETE_OWN,
+      EProjectAction.COMMENT_DELETE_ALL,
+    );
     const deleted = await prisma.issueComment.update({where: {id: comment_id}, data: {deletedAt: new Date()}});
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.COMMENT,
+      entityId: comment_id,
+      action: AUDIT_ACTIONS.DELETE,
+      actor: user,
+      headers,
+      metadata: {project_id, issue_id},
+    });
     publishRealtime((deleted as any).workspaceId, {
       entity: "comment",
       action: "delete",
@@ -595,11 +734,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
   .post("/:issue_id/links/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
     const b = body as any;
     if (!b.url) {
       set.status = 400;
-      return {detail: "URL is required."};
+      return {detail: "A URL é obrigatória."};
     }
     const link = await prisma.issueLink.create({
       data: {issueId: issue_id, workspaceId: ws.id, projectId: project_id, url: b.url, title: b.title ?? "", metadata: b.metadata ?? {}},
@@ -608,7 +747,16 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     return link;
   })
 
-  .delete("/:issue_id/links/:link_id/", async ({params: {link_id}, set}) => {
+  .delete("/:issue_id/links/:link_id/", async ({params: {slug, project_id, issue_id, link_id}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
+    const link = await prisma.issueLink.findFirst({
+      where: {id: link_id, issueId: issue_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
+    });
+    if (!link) {
+      set.status = 404;
+      return {detail: "Link não encontrado."};
+    }
     await prisma.issueLink.update({where: {id: link_id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
@@ -635,15 +783,15 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
   .post("/:issue_id/relations/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
     const b = body as any;
     if (!b.related_issue) {
       set.status = 400;
-      return {detail: "related_issue is required."};
+      return {detail: "related_issue é obrigatório."};
     }
     if (!b.relation_type) {
       set.status = 400;
-      return {detail: "relation_type is required."};
+      return {detail: "relation_type é obrigatório."};
     }
     const relation = await prisma.issueRelation.create({
       data: {issueId: issue_id, relatedIssueId: b.related_issue, workspaceId: ws.id, projectId: project_id, relationType: b.relation_type},
@@ -652,7 +800,16 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     return relation;
   })
 
-  .delete("/:issue_id/relations/:relation_id/", async ({params: {relation_id}, set}) => {
+  .delete("/:issue_id/relations/:relation_id/", async ({params: {slug, project_id, relation_id}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
+    const relation = await prisma.issueRelation.findFirst({
+      where: {id: relation_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
+    });
+    if (!relation) {
+      set.status = 404;
+      return {detail: "Relação não encontrada."};
+    }
     await prisma.issueRelation.update({where: {id: relation_id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
@@ -688,7 +845,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const v = await prisma.issueVersion.findFirst({where: {id: version_id, issueId: issue_id}});
     if (!v) {
       set.status = 404;
-      return {detail: "Not found."};
+      return {detail: "Não encontrado."};
     }
     return {
       id: v.id,
@@ -774,7 +931,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
   .post("/:issue_id/sub-issues/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
     const b = body as any;
     const subIssueIds: string[] = b.sub_issue_ids ?? [];
     if (subIssueIds.length) {
@@ -813,13 +970,13 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
   .post("/:issue_id/issue-relation/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
     const b = body as any;
     const relationType: string = b.relation_type;
     const ids: string[] = b.issues ?? (b.related_issue ? [b.related_issue] : []);
     if (!relationType || !ids.length) {
       set.status = 400;
-      return {detail: "relation_type and issues are required."};
+      return {detail: "relation_type e issues são obrigatórios."};
     }
     const created: any[] = [];
     for (const rid of ids) {
@@ -843,13 +1000,13 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
   // Remove a relation by (relation_type, related_issue) — also clears any inverse.
   .post("/:issue_id/remove-relation/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
     const b = body as any;
     const relationType: string = b.relation_type;
     const related: string = b.related_issue;
     if (!relationType || !related) {
       set.status = 400;
-      return {detail: "relation_type and related_issue are required."};
+      return {detail: "relation_type e related_issue são obrigatórios."};
     }
     const rev = RELATION_REVERSE[relationType] ?? relationType;
     await prisma.issueRelation.updateMany({
@@ -864,7 +1021,16 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     return null;
   })
 
-  .delete("/:issue_id/issue-relation/:relation_id/", async ({params: {relation_id}, set}) => {
+  .delete("/:issue_id/issue-relation/:relation_id/", async ({params: {slug, project_id, relation_id}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
+    const relation = await prisma.issueRelation.findFirst({
+      where: {id: relation_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
+    });
+    if (!relation) {
+      set.status = 404;
+      return {detail: "Relação não encontrada."};
+    }
     await prisma.issueRelation.update({where: {id: relation_id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
