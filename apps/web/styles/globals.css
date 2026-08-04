@@ -4,6 +4,7 @@
 @import "./power-k.css";
 @import "./emoji.css";
 @import "./print.css";
+@import "./plane-loader.css";
 @plugin "@tailwindcss/typography";
 
 /* stickies and editor colors */

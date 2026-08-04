@@ -23,7 +23,7 @@ import ogImage from "@/app/assets/og-image.png?url";
 import globalStyles from "@/styles/globals.css?url";
 import type { Route } from "./+types/root";
 // components
-import { LogoSpinner } from "@/components/common/logo-spinner";
+import { PlaneFlightLoader } from "@/components/common/plane-flight-loader";
 // local
 import { CustomErrorComponent } from "./error";
 import { AppProvider } from "./provider";
@@ -139,9 +139,7 @@ export function HydrateFallback() {
   if (typeof window === "undefined" || resolvedTheme === undefined) return <div />;
 
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-canvas">
-      <LogoSpinner />
-    </div>
+    <PlaneFlightLoader />
   );
 }
 

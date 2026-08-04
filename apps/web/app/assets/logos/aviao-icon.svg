@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="8.6 9.1 46.1 46.1" role="img" aria-label="Avião">
+  <title>Avião</title>
+  <defs>
+    <linearGradient id="aviaoIconBody" x1="14" y1="52" x2="52" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12315F" />
+      <stop offset="1" stop-color="#2BA6E0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Variante sem a rota de voo: em 16–32px os traços finos do arco viram ruído.
+       Só a silhueta, enquadrada justa — é a versão para favicon e sidebar. -->
+  <g transform="rotate(45 36 28) translate(2 -1) scale(0.94)">
+    <path
+      fill="url(#aviaoIconBody)"
+      d="M36 4c2.6 0 4.6 3.1 5.1 7.4L42 24.5l19.5 13.6c.9.6 1.5 1.7 1.5 2.8v3.4c0 .9-.9 1.6-1.8 1.3L42 39.4v8.2l6.6 5.6c.6.5.9 1.2.9 2v2.3c0 .8-.8 1.4-1.6 1.2L36 55.4l-11.9 3.3c-.8.2-1.6-.4-1.6-1.2v-2.3c0-.8.3-1.5.9-2l6.6-5.6v-8.2l-19.2 6.2c-.9.3-1.8-.4-1.8-1.3v-3.4c0-1.1.6-2.2 1.5-2.8L30 24.5l.9-13.1C31.4 7.1 33.4 4 36 4z"
+    />
+  </g>
+</svg>

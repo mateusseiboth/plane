@@ -27,29 +27,29 @@ type TAuthHeader = {
 const Titles = {
   [EAuthModes.SIGN_IN]: {
     [EAuthSteps.EMAIL]: {
-      header: "Trabalhe em todas as dimensões.",
+      header: "Seus chamados, do pedido à entrega.",
       subHeader: "Bem-vindo de volta ao Avião.",
     },
     [EAuthSteps.PASSWORD]: {
-      header: "Trabalhe em todas as dimensões.",
+      header: "Seus chamados, do pedido à entrega.",
       subHeader: "Bem-vindo de volta ao Avião.",
     },
     [EAuthSteps.UNIQUE_CODE]: {
-      header: "Trabalhe em todas as dimensões.",
+      header: "Seus chamados, do pedido à entrega.",
       subHeader: "Bem-vindo de volta ao Avião.",
     },
   },
   [EAuthModes.SIGN_UP]: {
     [EAuthSteps.EMAIL]: {
-      header: "Trabalhe em todas as dimensões.",
+      header: "Seus chamados, do pedido à entrega.",
       subHeader: "Crie sua conta Avião.",
     },
     [EAuthSteps.PASSWORD]: {
-      header: "Trabalhe em todas as dimensões.",
+      header: "Seus chamados, do pedido à entrega.",
       subHeader: "Crie sua conta Avião.",
     },
     [EAuthSteps.UNIQUE_CODE]: {
-      header: "Trabalhe em todas as dimensões.",
+      header: "Seus chamados, do pedido à entrega.",
       subHeader: "Crie sua conta Avião.",
     },
   },

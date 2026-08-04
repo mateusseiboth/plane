@@ -41,6 +41,11 @@ docker compose -f docker-compose-local.yml run --rm seeder
 > Conferir depois do build:
 > `grep -o 'VITE_API_BASE_URL[^,}]*' apps/web/build/client/assets/*.js` → deve
 > mostrar `VITE_API_BASE_URL||""`.
+>
+> **Atenção com o caminho do exclude:** os padrões do rsync são relativos à
+> RAIZ DA TRANSFERÊNCIA. Sincronizando `apps/web/ → .../apps/web/`, o padrão
+> `apps/web/.env` não casa com nada — ali o certo é `.env`. Sempre confira
+> `ls apps/web/.env` no servidor antes de buildar.
 
 ## Rebuild obrigatório das imagens de migração
 

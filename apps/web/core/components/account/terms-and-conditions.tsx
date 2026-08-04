@@ -19,7 +19,7 @@ const LEGAL_LINKS = {
 } as const;
 
 const MESSAGES = {
-  [EAuthModes.SIGN_UP]: "By creating an account",
+  [EAuthModes.SIGN_UP]: "Ao criar uma conta",
   [EAuthModes.SIGN_IN]: "Ao entrar",
 } as const;
 
@@ -36,8 +36,8 @@ export function TermsAndConditions({ authType = EAuthModes.SIGN_IN }: TermsAndCo
   return (
     <div className="flex items-center justify-center">
       <p className="text-center text-13 whitespace-pre-line text-tertiary">
-        {`${MESSAGES[authType]}, you understand and agree to \n our `}
-        <LegalLink href={LEGAL_LINKS.termsOfService}>Termos de serviço</LegalLink> and{" "}
+        {`${MESSAGES[authType]}, você declara estar de acordo com os \n nossos `}
+        <LegalLink href={LEGAL_LINKS.termsOfService}>Termos de serviço</LegalLink> e a{" "}
         <LegalLink href={LEGAL_LINKS.privacyPolicy}>Política de Privacidade</LegalLink>.
       </p>
     </div>

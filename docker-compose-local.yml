@@ -134,6 +134,10 @@ services:
     command: ["bun", "run", "--watch", "src/index.ts"]
     volumes:
       - ./apps/chat-backend/src:/app/src
+      # Anexos do chat gravados em disco. Sem este volume os arquivos ficam na
+      # camada gravável do container e somem em qualquer recriação — inclusive
+      # nos `docker compose run --rm` usados pelos importadores.
+      - chatmedia:/app/media
     restart: unless-stopped
     networks:
       - dev_env
@@ -249,6 +253,7 @@ volumes:
   redisdata:
   uploads:
   pgdata:
+  chatmedia:
 
 networks:
   dev_env:

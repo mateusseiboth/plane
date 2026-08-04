@@ -28,7 +28,7 @@
  */
 
 import prisma from "@db";
-import { saveMedia } from "@/storage";
+import { saveMedia, mediaExists } from "@/storage";
 import {
   externalMediaKey,
   legacyProtocol,
@@ -56,6 +56,10 @@ const MYSQL_CONFIG = {
 
 const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "quality";
 const DRY_RUN = process.env.DRY_RUN === "true";
+// Só regrava os binários dos anexos das mensagens já importadas. Serve para
+// recuperar o storage sem reprocessar milhões de registros — foi preciso quando
+// os arquivos foram gravados num container sem volume e sumiram na recriação.
+const ATTACHMENTS_ONLY = process.env.ATTACHMENTS_ONLY === "true";
 const BATCH_SIZE = Number(process.env.BATCH_SIZE ?? 200);
 const LIMIT_SESSIONS = Number(process.env.LIMIT_SESSIONS ?? 0);
 const SINCE = process.env.SINCE ?? "";
@@ -150,6 +154,14 @@ async function main() {
   };
   log("✅  MySQL conectado");
 
+  if (ATTACHMENTS_ONLY) {
+    await reimportAttachments(query);
+    await conn.end();
+    await prisma.$disconnect();
+    report();
+    return;
+  }
+
   const attendantByLegacyId = await loadAttendants(query);
   const projectBySistemaId = await loadProjects(query);
   const duplicatedProtocols = await loadDuplicatedProtocols(query);
@@ -210,6 +222,51 @@ async function main() {
   await conn.end();
   await prisma.$disconnect();
   report();
+}
+
+// ── Reimportação apenas dos anexos ────────────────────────────────────────────
+
+/**
+ * Percorre as mensagens já importadas que apontam para um arquivo local
+ * (`media_key` sem o prefixo `ext:`) e regrava o binário a partir do blob do
+ * legado. Idempotente: pula o que já existe no storage.
+ */
+async function reimportAttachments(query: <T>(sql: string, params?: any[]) => Promise<T[]>) {
+  const messages = await prisma.chatMessage.findMany({
+    where: { legacyId: { not: null }, mediaKey: { not: null }, NOT: { mediaKey: { startsWith: "ext:" } } },
+    select: { legacyId: true, mediaKey: true, externalId: true },
+  });
+  log(`📎  ${messages.length} mensagens com anexo local para verificar`);
+
+  let restored = 0;
+  let alreadyThere = 0;
+  for (const message of messages) {
+    if (!message.mediaKey || !message.externalId) continue;
+    if (await mediaExists(message.mediaKey)) {
+      alreadyThere++;
+      continue;
+    }
+    const [row] = await query<{ chat_arquivo: string | null; nome_arquivo: string | null; tipo_arquivo: string | null }>(
+      `SELECT chat_arquivo, nome_arquivo, tipo_arquivo FROM chat_mensagens_arq_zap WHERE chat_mensagens_id_zap = ? LIMIT 1`,
+      [message.externalId]
+    );
+    const attachment = parseLegacyAttachment(row?.chat_arquivo, {
+      nome: row?.nome_arquivo,
+      tipo: row?.tipo_arquivo,
+      legacyMessageId: Number(message.legacyId),
+    });
+    if (!attachment) {
+      stats.attachmentsMissing++;
+      continue;
+    }
+    const buffer = Buffer.from(attachment.base64, "base64");
+    if (!DRY_RUN) await saveMedia(message.mediaKey, buffer);
+    stats.attachmentsSaved++;
+    stats.attachmentsBytes += buffer.byteLength;
+    restored++;
+    if (restored % 500 === 0) log(`  … ${restored} anexos regravados`);
+  }
+  log(`✅  ${restored} anexos regravados, ${alreadyThere} já estavam no storage`);
 }
 
 // ── Pré-carregamentos ─────────────────────────────────────────────────────────

@@ -1,0 +1,99 @@
+/* Animação de carregamento: o avião decola à esquerda, cruza a tela, some pela
+   direita e volta para pousar no mesmo ponto de onde partiu — o ciclo fecha em
+   pouso + decolagem, em vez de o avião "teletransportar" de volta.
+
+   Mora em CSS (e não em JS) para começar a rodar já no primeiro paint: esta tela
+   aparece justamente enquanto a aplicação ainda não hidratou. */
+
+@keyframes aviao-flight {
+  /* Parado na cabeceira da pista. */
+  0% {
+    transform: translate3d(-16vw, 0, 0) rotate(0deg);
+  }
+  /* Corrida de decolagem, ainda no solo. */
+  12% {
+    transform: translate3d(-4vw, 0, 0) rotate(0deg);
+  }
+  /* Rotação: nariz sobe e a aeronave deixa o solo. */
+  22% {
+    transform: translate3d(8vw, -8vh, 0) rotate(-10deg);
+  }
+  /* Cruzeiro. */
+  48% {
+    transform: translate3d(55vw, -15vh, 0) rotate(-2deg);
+  }
+  /* Sai pela direita. */
+  68% {
+    transform: translate3d(120vw, -15vh, 0) rotate(-2deg);
+  }
+  /* Reposiciona fora do campo de visão — o salto acontece invisível. */
+  68.01% {
+    transform: translate3d(-45vw, -15vh, 0) rotate(5deg);
+  }
+  /* Aproximação: descendo em direção à pista. */
+  90% {
+    transform: translate3d(-26vw, -4vh, 0) rotate(5deg);
+  }
+  /* Toque no solo exatamente onde o ciclo começa: a volta é contínua. */
+  100% {
+    transform: translate3d(-16vw, 0, 0) rotate(0deg);
+  }
+}
+
+/* O rastro só existe em voo; no solo ele some. */
+@keyframes aviao-trail {
+  0%,
+  18% {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+  30%,
+  66% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  68%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+}
+
+@keyframes aviao-route-dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+.aviao-loader__track {
+  position: absolute;
+  left: 0;
+  animation: aviao-flight 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.aviao-loader__trail {
+  transform-origin: right center;
+  animation: aviao-trail 6s ease-in-out infinite;
+}
+
+.aviao-loader__route {
+  stroke-dasharray: 10 18;
+  animation: aviao-route-dash 1.2s linear infinite;
+}
+
+/* Acessibilidade: sem movimento, o avião fica pousado e visível. */
+@media (prefers-reduced-motion: reduce) {
+  .aviao-loader__track {
+    animation: none;
+    transform: translate3d(45vw, 0, 0);
+  }
+  .aviao-loader__trail,
+  .aviao-loader__route {
+    animation: none;
+  }
+  .aviao-loader__trail {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}

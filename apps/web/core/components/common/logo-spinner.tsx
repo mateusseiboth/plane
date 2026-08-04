@@ -5,12 +5,21 @@
  */
 
 // assets
-import NewLogo from "@/app/assets/images/new-logo.png?url";
+import AviaoMark from "@/app/assets/logos/aviao-mark.svg?url";
 
+/**
+ * Indicador de carregamento embutido (painéis, modais, listas). Para a tela cheia
+ * — enquanto a aplicação ainda não hidratou — use `PlaneFlightLoader`, que faz o
+ * avião cruzar a tela.
+ */
 export function LogoSpinner() {
   return (
     <div className="flex items-center justify-center">
-      <img src={NewLogo} alt="logo" className="h-6 w-auto object-contain sm:h-11" />
+      <img
+        src={AviaoMark}
+        alt="Carregando"
+        className="aviao-loader__bob h-6 w-auto object-contain sm:h-11"
+      />
     </div>
   );
 }

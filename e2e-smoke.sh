@@ -8,6 +8,15 @@ set -u
 API=${API:-http://localhost:8001}
 CHAT=${CHAT:-http://localhost:8002}
 WEB=${WEB:-http://localhost:3000}
+# Como consultar o banco do ambiente sob teste. O SQL vai por STDIN (e não como
+# argumento) porque, atravessando ssh, o shell remoto reparte os argumentos e o
+# psql recebe a consulta em pedaços.
+# Remoto: PSQL="ssh root@host docker exec -i plane-plane-db psql -U plane -d plane -tA"
+PSQL=${PSQL:-"docker exec -i plane-dev-db psql -U plane -d plane -tA"}
+db() { echo "$1" | $PSQL 2>/dev/null; }
+# Credenciais do usuário de Atendimento (checagem da regra D2). Vazio = pula.
+ATEND_EMAIL=${ATEND_EMAIL:-atendimento@quality.local}
+ATEND_PASS=${ATEND_PASS:-atendimento}
 PASS=0; FAIL=0
 ok()   { echo "  ✅ $1"; PASS=$((PASS+1)); }
 bad()  { echo "  ❌ $1"; FAIL=$((FAIL+1)); }
@@ -20,7 +29,7 @@ ADMIN_TOKEN=$(echo "$ADMIN" | python3 -c "import sys,json;print(json.load(sys.st
 [ -n "$ADMIN_TOKEN" ] && ok "login admin" || bad "login admin"
 
 ATEND=$(curl -s -X POST $API/auth/sign-in/ -H 'Content-Type: application/json' -H 'Accept: application/json' \
-  -d '{"email":"atendimento@quality.local","password":"atendimento"}')
+  -d "{\"email\":\"$ATEND_EMAIL\",\"password\":\"$ATEND_PASS\"}")
 ATEND_TOKEN=$(echo "$ATEND" | python3 -c "import sys,json;print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
 [ -n "$ATEND_TOKEN" ] && ok "login atendimento" || bad "login atendimento"
 
@@ -52,7 +61,7 @@ ISSUES=$(curl -s -H "$AC" "$API/api/v1/workspaces/quality/issues/")
 TOTAL=$(echo "$ISSUES" | python3 -c "import sys,json;print(json.load(sys.stdin).get('total_count',-1))" 2>/dev/null)
 [ "${TOTAL:-0}" -gt 0 ] && ok "chamados: $TOTAL" || bad "chamados: ${TOTAL:-erro}"
 
-EID=$(curl -s -H "$AC" "$API/api/v1/workspaces/quality/issues/?cursor=1:0:0" | python3 -c "
+EID=$(curl -s -H "$AC" "$API/api/v1/workspaces/quality/issues/?cursor=100:0:0" | python3 -c "
 import sys,json
 rs=json.load(sys.stdin).get('results',[])
 print(next((i.get('entity_id') for i in rs if i.get('entity_id')), ''))" 2>/dev/null)
@@ -67,18 +76,22 @@ else
 fi
 
 echo "── 4. Comentários e anexos migrados ───────────────────"
-COMMENTS=$(docker exec plane-dev-db psql -U plane -d plane -tAc "SELECT count(*) FROM issue_comments WHERE external_source='sac_migration';")
+COMMENTS=$(db "SELECT count(*) FROM issue_comments WHERE external_source='sac_migration';")
 [ "${COMMENTS:-0}" -gt 100 ] && ok "comentários migrados: $COMMENTS" || bad "comentários migrados: ${COMMENTS:-erro}"
-ATT=$(docker exec plane-dev-db psql -U plane -d plane -tAc "SELECT count(*) FROM issue_attachments WHERE external_source='sac_migration_file';")
+ATT=$(db "SELECT count(*) FROM issue_attachments WHERE external_source='sac_migration_file';")
 [ "${ATT:-0}" -gt 100 ] && ok "anexos catalogados: $ATT" || bad "anexos catalogados: ${ATT:-erro}"
-VIS=$(docker exec plane-dev-db psql -U plane -d plane -tAc "SELECT count(*) FROM technical_visits WHERE entity_id IS NOT NULL;")
+VIS=$(db "SELECT count(*) FROM technical_visits WHERE entity_id IS NOT NULL;")
 [ "${VIS:-0}" -gt 100 ] && ok "visitas com entidade: $VIS" || bad "visitas com entidade: ${VIS:-erro}"
 
 echo "── 5. Permissões ──────────────────────────────────────"
 PID=$(echo "$PROJ" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['id'] if d else '')" 2>/dev/null)
-CREATE=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "$TC" -H 'Content-Type: application/json' \
-  "$API/api/v1/workspaces/quality/projects/$PID/issues/" -d '{"name":"Atendimento nao pode criar"}')
-check "Atendimento NÃO cria chamado" "$CREATE" "403"
+if [ -n "$ATEND_TOKEN" ]; then
+  CREATE=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "$TC" -H 'Content-Type: application/json' \
+    "$API/api/v1/workspaces/quality/projects/$PID/issues/" -d '{"name":"Atendimento nao pode criar"}')
+  check "Atendimento NÃO cria chamado" "$CREATE" "403"
+else
+  echo "  ⏭  Atendimento NÃO cria chamado (sem usuário de atendimento neste ambiente)"
+fi
 
 ANON=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH -H 'Content-Type: application/json' \
   "$API/api/v1/instances/" -d '{"instance_name":"HACK"}')
@@ -98,7 +111,7 @@ CLIENTPAGE=$(curl -s "$CHAT/client?workspace=quality" | grep -c "client.edit")
 
 echo "── 7. Auditoria (LGPD) ────────────────────────────────"
 # Ver um chamado precisa virar registro de acesso na trilha.
-read -r AI AP < <(docker exec plane-dev-db psql -U plane -d plane -tAc "SELECT id, project_id FROM issues WHERE deleted_at IS NULL LIMIT 1;" | tr '|' ' ')
+read -r AI AP < <(db "SELECT id, project_id FROM issues WHERE deleted_at IS NULL LIMIT 1;" | tr '|' ' ')
 curl -s -o /dev/null -H "$AC" -H "X-Forwarded-For: 203.0.113.99" \
   "$API/api/v1/workspaces/quality/projects/$AP/issues/$AI/"
 sleep 2

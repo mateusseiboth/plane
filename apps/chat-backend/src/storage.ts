@@ -47,6 +47,18 @@ export async function saveMedia(key: string, data: Blob | Buffer): Promise<void>
   await writeFile(fp, buf);
 }
 
+/** O arquivo já está no storage? Usado para tornar a reimportação idempotente. */
+export async function mediaExists(key: string): Promise<boolean> {
+  if (client) {
+    try {
+      return await client.file(key).exists();
+    } catch {
+      return false;
+    }
+  }
+  return existsSync(path.join(MEDIA_ROOT, key));
+}
+
 export async function serveMedia(key: string, mime?: string | null): Promise<Response | null> {
   if (client) {
     try {

@@ -9,22 +9,22 @@ import { observer } from "mobx-react";
 import Link from "next/link";
 import { AUTH_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
-import { PlaneLockup } from "@plane/propel/icons";
+import AviaoLockup from "@/app/assets/logos/aviao-horizontal.svg?url";
 import { PageHead } from "@/components/core/page-title";
 import { EAuthModes } from "@/helpers/authentication.helper";
 import { useInstance } from "@/hooks/store/use-instance";
 
 const authContentMap = {
   [EAuthModes.SIGN_IN]: {
-    pageTitle: "Sign up",
+    pageTitle: "Criar conta",
     text: "auth.common.new_to_plane",
-    linkText: "Sign up",
+    linkText: "Criar conta",
     linkHref: "/sign-up",
   },
   [EAuthModes.SIGN_UP]: {
-    pageTitle: "Sign in",
+    pageTitle: "Entrar",
     text: "auth.common.already_have_an_account",
-    linkText: "Sign in",
+    linkText: "Entrar",
     linkHref: "/sign-in",
   },
 };
@@ -42,7 +42,7 @@ export const AuthHeader = observer(function AuthHeader({ type }: AuthHeaderProps
 
   return (
     <AuthHeaderBase
-      pageTitle={t(authContentMap[type].pageTitle)}
+      pageTitle={authContentMap[type].pageTitle}
       additionalAction={
         enableSignUpConfig && (
           <div className="flex flex-col items-end text-center text-13 font-medium text-tertiary sm:flex-row sm:items-center sm:gap-2">
@@ -52,7 +52,7 @@ export const AuthHeader = observer(function AuthHeader({ type }: AuthHeaderProps
               href={authContentMap[type].linkHref}
               className="text-body-sm-semibold text-accent-primary hover:underline"
             >
-              {t(authContentMap[type].linkText)}
+              {authContentMap[type].linkText}
             </Link>
           </div>
         )
@@ -73,7 +73,7 @@ export function AuthHeaderBase(props: TAuthHeaderBase) {
       <PageHead title={pageTitle + " - Avião"} />
       <div className="sticky top-0 flex w-full flex-shrink-0 items-center justify-between gap-6">
         <Link href="/">
-          <PlaneLockup height={20} width={95} className="text-primary" />
+          <img src={AviaoLockup} alt="Avião" className="h-6 w-auto text-primary" />
         </Link>
         {additionalAction}
       </div>
