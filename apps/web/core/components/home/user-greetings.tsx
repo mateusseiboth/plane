@@ -50,8 +50,10 @@ export function UserGreetingsView(props: IUserGreetingsView) {
 
   return (
     <div className="flex flex-col gap-0.5">
+      {/* A saudação vem inteira do i18n: montar "Bom" + "tarde" produzia
+          "Bom tarde", porque em português ela concorda com o gênero. */}
       <h1 className="text-24 font-semibold text-primary">
-        {t("good")} {t(periodo)}, {nome}
+        {t(`greeting_${periodo}`)}, {nome}
       </h1>
       <p className="flex flex-wrap items-center gap-x-2 text-13 text-secondary">
         <span aria-hidden>{emoji}</span>

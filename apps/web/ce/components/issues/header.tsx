@@ -110,7 +110,11 @@ export const IssuesHeader = observer(function IssuesHeader() {
         )}
       </Header.LeftItem>
       <Header.RightItem>
-        <div className="hidden gap-2 md:flex">
+        {/* No celular a barra inteira era escondida (`hidden md:flex`) e não
+            sobrava jeito de filtrar nem de trocar de layout. Agora ela aparece
+            em qualquer largura: os controles já se compactam para ícone, e o
+            que ainda não couber rola na horizontal. */}
+        <div className="flex min-w-0 gap-2 overflow-x-auto scrollbar-hide">
           <HeaderFilters
             projectId={projectId}
             currentProjectDetails={currentProjectDetails}

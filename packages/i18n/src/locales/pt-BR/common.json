@@ -946,5 +946,8 @@
       "description": "Exporte chamados para um arquivo JSON.",
       "short_description": "Exportar como JSON"
     }
-  }
+  },
+  "greeting_morning": "Bom dia",
+  "greeting_afternoon": "Boa tarde",
+  "greeting_evening": "Boa noite"
 }

@@ -180,7 +180,10 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
           </div>
         </Header.LeftItem>
         <Header.RightItem className="items-center">
-          <div className="hidden gap-2 md:flex">
+          {/* Antes escondida no celular (`hidden md:flex`): sem ela não havia como
+              filtrar nem trocar de layout fora do desktop. Os controles se
+              compactam para ícone e o excedente rola na horizontal. */}
+          <div className="flex min-w-0 gap-2 overflow-x-auto scrollbar-hide">
             <div className="hidden @4xl:flex">
               <LayoutSelection
                 layouts={[

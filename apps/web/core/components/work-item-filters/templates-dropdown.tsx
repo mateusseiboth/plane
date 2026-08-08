@@ -21,8 +21,12 @@ type TWorkItemFilterTemplatesDropdownProps = {
 const BUTTON_CLASSNAME =
   "flex h-7 items-center gap-1 rounded-md border border-subtle-1 px-2 py-0.5 text-12 text-secondary transition-all duration-200 cursor-pointer";
 
-const ACTIVE_BUTTON_CLASSNAME =
-  "border-accent-subtle-1 bg-accent-subtle text-accent-primary hover:bg-accent-subtle-hover";
+/** Mesmo realce dos atalhos de pessoa — ligado tem de saltar aos olhos. */
+const ACTIVE_BUTTON_CLASSNAME = [
+  "border border-accent-subtle-1 hover:border-accent-subtle-1",
+  "bg-accent-subtle hover:bg-accent-subtle-hover",
+  "font-medium text-accent-primary hover:text-accent-primary",
+].join(" ");
 
 /**
  * Sector filter templates. Lives next to the filters toggle, so every work item layout

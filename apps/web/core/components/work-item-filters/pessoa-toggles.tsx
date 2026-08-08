@@ -22,8 +22,18 @@ type TPessoaToggleProps = {
 const BUTTON_CLASSNAME =
   "flex h-7 items-center gap-1 rounded-md border border-subtle-1 px-2 py-0.5 text-12 text-secondary transition-all duration-200 cursor-pointer hover:bg-layer-1";
 
-const ACTIVE_BUTTON_CLASSNAME =
-  "border-accent-subtle-1 bg-accent-subtle text-accent-primary hover:bg-accent-subtle-hover";
+/**
+ * Ligado precisa ser inconfundível: uma listagem filtrada sem que a pessoa
+ * perceba parece uma listagem vazia. Reaproveitamos exatamente as classes que o
+ * botão de filtros (o funil) já usa para "ativo" — `border-accent-strong` e
+ * `ring-*` não existem no tema e saíam sem efeito nenhum, deixando o botão
+ * apenas acinzentado.
+ */
+const ACTIVE_BUTTON_CLASSNAME = [
+  "border border-accent-subtle-1 hover:border-accent-subtle-1",
+  "bg-accent-subtle hover:bg-accent-subtle-hover",
+  "font-medium text-accent-primary hover:text-accent-primary",
+].join(" ");
 
 type TAtalho = {
   property: TPessoaFilterProperty;
@@ -36,7 +46,16 @@ const ATALHO: Record<"assignee" | "createdBy", TAtalho> = {
   createdBy: { property: PESSOA_FILTER_PROPERTY.CREATED_BY, icon: PenLine, i18nKey: "common.opened_by_me_filter" },
 };
 
-function PessoaToggle({ filter, atalho }: TPessoaToggleProps & { atalho: TAtalho }) {
+/**
+ * Precisa ser `observer` por conta própria: é AQUI que as condições do filtro
+ * (observáveis do MobX) são lidas. Com o observer só no componente de fora, o
+ * botão montava com o estado certo e depois nunca mais atualizava — clicar
+ * aplicava o filtro, mas o realce de "ligado" jamais aparecia.
+ */
+const PessoaToggle = observer(function PessoaToggle({
+  filter,
+  atalho,
+}: TPessoaToggleProps & { atalho: TAtalho }) {
   const { t } = useTranslation();
   const { isAvailable, isActive, toggle } = usePessoaFilter(filter, atalho.property);
 
@@ -60,10 +79,13 @@ function PessoaToggle({ filter, atalho }: TPessoaToggleProps & { atalho: TAtalho
         {/* Em tela estreita a barra já disputa espaço com layout, modelos,
             exibição e o botão de novo chamado: fica só o ícone. */}
         <span className="hidden whitespace-nowrap @4xl:inline">{rotulo}</span>
+        {/* O ponto é o mesmo sinal que o botão de filtros usa: garante a
+            leitura de relance mesmo onde o rótulo está escondido. */}
+        {isActive && <span className="size-1.5 shrink-0 rounded-full bg-accent-primary" aria-hidden />}
       </button>
     </Tooltip>
   );
-}
+});
 
 /**
  * Atalhos "Meus chamados" e "Abertos por mim", lado a lado.
