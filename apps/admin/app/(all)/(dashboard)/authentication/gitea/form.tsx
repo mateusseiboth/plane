@@ -202,10 +202,10 @@ export function InstanceGiteaConfigForm(props: Props) {
                   loading={isSubmitting}
                   disabled={!isDirty}
                 >
-                  {isSubmitting ? "Saving" : "Save changes"}
+                  {isSubmitting ? "Salvando…" : "Salvar alterações"}
                 </Button>
                 <Link href="/authentication" className={getButtonStyling("secondary", "lg")} onClick={handleGoBack}>
-                  Go back
+                  Voltar
                 </Link>
               </div>
             </div>

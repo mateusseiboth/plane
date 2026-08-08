@@ -31,7 +31,7 @@ type TEmailSecurityKeys = "EMAIL_USE_TLS" | "EMAIL_USE_SSL" | "NONE";
 const EMAIL_SECURITY_OPTIONS: { [key in TEmailSecurityKeys]: string } = {
   EMAIL_USE_TLS: "TLS",
   EMAIL_USE_SSL: "SSL",
-  NONE: "No email security",
+  NONE: "Sem criptografia",
 };
 
 export function InstanceEmailForm(props: IInstanceEmailForm) {
@@ -82,7 +82,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
       label: "Endereço de e-mail do remetente",
       description:
         "Este é o e-mail que seus usuários verão ao receber mensagens desta instância. Você precisará verificar este endereço.",
-      placeholder: "no-reply@projectplane.so",
+      placeholder: "nao-responda@qualitysistemas.com.br",
       error: Boolean(errors.EMAIL_FROM),
       required: true,
     },
@@ -93,7 +93,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
       key: "EMAIL_HOST_USER",
       type: "text",
       label: "Usuário",
-      placeholder: "getitdone@projectplane.so",
+      placeholder: "suporte@qualitysistemas.com.br",
       error: Boolean(errors.EMAIL_HOST_USER),
       required: false,
     },
@@ -215,7 +215,7 @@ export function InstanceEmailForm(props: IInstanceEmailForm) {
           loading={isSubmitting}
           disabled={!isValid || !isDirty}
         >
-          {isSubmitting ? "Saving" : "Save changes"}
+          {isSubmitting ? "Salvando…" : "Salvar alterações"}
         </Button>
         <Button
           variant="secondary"

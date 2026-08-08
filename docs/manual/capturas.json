@@ -12,7 +12,7 @@
     },
     {
       "arquivo": "03-inicio.png",
-      "descricao": "Página inicial do espaço de trabalho",
+      "descricao": "Página inicial: indicadores do dia e a sua fila",
       "url": "/quality/"
     },
     {
@@ -22,12 +22,12 @@
     },
     {
       "arquivo": "05-visoes-globais.png",
-      "descricao": "Visões globais: chamados de todos os sistemas",
-      "url": "/quality/workspace-views/"
+      "descricao": "Visão global: chamados de todos os sistemas",
+      "url": "/quality/workspace-views/all-issues/"
     },
     {
       "arquivo": "06-solicitacoes.png",
-      "descricao": "Pedidos de chamado aguardando triagem",
+      "descricao": "Solicitações aguardando triagem",
       "url": "/quality/global-intake/"
     },
     {
@@ -61,98 +61,133 @@
       "url": "/quality/stickies/"
     },
     {
-      "arquivo": "12-atendimento.png",
-      "descricao": "Atendimento (chat)",
-      "url": "/quality/chat/"
-    },
-    {
       "arquivo": "13-relatorios.png",
-      "descricao": "Relatórios",
+      "descricao": "Relatórios gerenciais",
       "url": "/quality/reports/"
     },
     {
       "arquivo": "14-plugins.png",
-      "descricao": "Plugins instalados",
+      "descricao": "Loja de plugins",
       "url": "/quality/plugins/"
     },
     {
+      "arquivo": "15-widgets-dev.png",
+      "descricao": "Widgets: documentação para desenvolvedores",
+      "url": "/quality/developers/widgets"
+    },
+    {
+      "arquivo": "16-projetos-arquivados.png",
+      "descricao": "Sistemas arquivados",
+      "url": "/quality/projects/archives"
+    },
+    {
+      "arquivo": "12-atendimento.png",
+      "descricao": "Atendimento: filas de conversa",
+      "url": "/quality/chat/"
+    },
+    {
       "arquivo": "20-chamados-lista.png",
-      "descricao": "Chamados do sistema Contabilidade",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+      "descricao": "Chamados do sistema Contabilidade, em lista",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
     },
     {
       "arquivo": "21-filtros.png",
-      "descricao": "Barra de filtros: escolha o campo e o operador",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+      "descricao": "Barra de filtros: escolha o campo, o operador e o valor",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
     },
     {
       "arquivo": "22-filtros-modelos.png",
       "descricao": "Modelos de filtro prontos por setor",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
     },
     {
       "arquivo": "23-filtro-aplicado.png",
       "descricao": "Modelo aplicado: apenas chamados em Triagem",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
     },
     {
-      "arquivo": "24-kanban.png",
-      "descricao": "Quadro kanban por etapa",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+      "arquivo": "21b-meus-chamados.png",
+      "descricao": "Interruptor \"Meus chamados\" ligado",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
     },
     {
-      "arquivo": "28-calendario.png",
-      "descricao": "Calendário por data de entrega",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
-    },
-    {
-      "arquivo": "29-planilha.png",
-      "descricao": "Planilha: uma coluna por propriedade",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+      "arquivo": "21c-abertos-por-mim.png",
+      "descricao": "Interruptor \"Abertos por mim\" ligado",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
     },
     {
       "arquivo": "25-ciclos.png",
-      "descricao": "Ciclos",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/cycles"
+      "descricao": "Ciclos do sistema",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/cycles"
     },
     {
       "arquivo": "26-modulos.png",
-      "descricao": "Módulos",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/modules"
+      "descricao": "Módulos do sistema",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/modules"
     },
     {
       "arquivo": "27-triagem-projeto.png",
-      "descricao": "Pedidos de chamado do sistema",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/intake"
+      "descricao": "Solicitações do sistema",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/intake"
     },
     {
       "arquivo": "30-paginas.png",
       "descricao": "Páginas do sistema",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/pages"
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/pages"
     },
     {
-      "arquivo": "31-config-projeto.png",
-      "descricao": "Configurações do sistema",
-      "url": "/quality/settings/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877"
+      "arquivo": "30b-visualizacoes.png",
+      "descricao": "Visualizações salvas do sistema",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/views"
     },
     {
-      "arquivo": "32-config-etapas.png",
-      "descricao": "Etapas do fluxo",
-      "url": "/quality/settings/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/states"
-    },
-    {
-      "arquivo": "33-config-membros-projeto.png",
-      "descricao": "Membros do sistema",
-      "url": "/quality/settings/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/members"
+      "arquivo": "30c-arquivados.png",
+      "descricao": "Chamados arquivados",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/archives/issues"
     },
     {
       "arquivo": "34-chamado-detalhe.png",
-      "descricao": "Detalhe do chamado: propriedades, descrição e comentários",
-      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues/39f1c16a-cfcc-4a54-b1f5-e641459540f3"
+      "descricao": "Detalhe do chamado: propriedades, descrição e conversa",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues/10e8687c-0a07-45fb-8115-ae3f6cc0b806"
+    },
+    {
+      "arquivo": "31-config-projeto.png",
+      "descricao": "Configurações gerais do sistema",
+      "url": "/quality/settings/projects/996199d1-3b00-40eb-ba65-edc0031a363d"
+    },
+    {
+      "arquivo": "33-config-membros-projeto.png",
+      "descricao": "Membros do sistema e seus papéis",
+      "url": "/quality/settings/projects/996199d1-3b00-40eb-ba65-edc0031a363d/members"
+    },
+    {
+      "arquivo": "32-config-etapas.png",
+      "descricao": "Etapas do fluxo de trabalho",
+      "url": "/quality/settings/projects/996199d1-3b00-40eb-ba65-edc0031a363d/states"
+    },
+    {
+      "arquivo": "32b-config-etiquetas.png",
+      "descricao": "Etiquetas do sistema",
+      "url": "/quality/settings/projects/996199d1-3b00-40eb-ba65-edc0031a363d/labels"
+    },
+    {
+      "arquivo": "32c-config-estimativas.png",
+      "descricao": "Estimativas",
+      "url": "/quality/settings/projects/996199d1-3b00-40eb-ba65-edc0031a363d/estimates"
+    },
+    {
+      "arquivo": "32d-config-automacoes.png",
+      "descricao": "Automações",
+      "url": "/quality/settings/projects/996199d1-3b00-40eb-ba65-edc0031a363d/automations"
+    },
+    {
+      "arquivo": "32e-config-funcionalidades.png",
+      "descricao": "Funcionalidades ligadas no sistema",
+      "url": "/quality/settings/projects/996199d1-3b00-40eb-ba65-edc0031a363d/features/cycles"
     },
     {
       "arquivo": "40-config-geral.png",
-      "descricao": "Configurações do espaço de trabalho",
+      "descricao": "Configurações gerais do espaço de trabalho",
       "url": "/quality/settings/"
     },
     {
@@ -162,7 +197,7 @@
     },
     {
       "arquivo": "42-config-funcoes.png",
-      "descricao": "Funções: permissões e transições de etapa",
+      "descricao": "Funções: permissões por assunto e transições de etapa",
       "url": "/quality/settings/roles/"
     },
     {
@@ -182,17 +217,17 @@
     },
     {
       "arquivo": "46-config-chat.png",
-      "descricao": "Plugin de atendimento",
+      "descricao": "Atendimento: conexão com o WhatsApp e filas",
       "url": "/quality/settings/chat/"
     },
     {
       "arquivo": "47-config-sla.png",
-      "descricao": "SLA por prioridade",
+      "descricao": "SLA: prazo por etiqueta e ajuste por prioridade",
       "url": "/quality/settings/sla/"
     },
     {
       "arquivo": "48-config-armazenamento.png",
-      "descricao": "Armazenamento de anexos",
+      "descricao": "Armazenamento dos anexos",
       "url": "/quality/settings/storage/"
     },
     {
@@ -206,265 +241,169 @@
       "url": "/quality/settings/webhooks/"
     },
     {
+      "arquivo": "50b-config-ia.png",
+      "descricao": "Provedores de IA",
+      "url": "/quality/settings/ai/"
+    },
+    {
+      "arquivo": "50c-config-integracoes.png",
+      "descricao": "Integrações customizadas",
+      "url": "/quality/settings/integrations-custom/"
+    },
+    {
+      "arquivo": "50d-config-sistemas.png",
+      "descricao": "Sistemas do espaço de trabalho",
+      "url": "/quality/settings/projects/9660f579-8e4d-46a6-b8ce-823622390666/"
+    },
+    {
+      "arquivo": "12c-atendimento-painel.png",
+      "descricao": "Atendimento: painel com os números do dia",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "46a-chat-mensagens.png",
+      "descricao": "Atendimento: textos automáticos do bot",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "46b-chat-menu.png",
+      "descricao": "Atendimento: opções do menu e a fila de cada uma",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "46c-chat-filas.png",
+      "descricao": "Atendimento: filas e seus atendentes",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "46d-chat-fluxos.png",
+      "descricao": "Atendimento: fluxos de conversa",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "46e-chat-horarios.png",
+      "descricao": "Atendimento: horário de funcionamento",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "46f-chat-whatsapp.png",
+      "descricao": "Atendimento: conexão com o WhatsApp",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "70-modal-novo-chamado.png",
+      "descricao": "Modal de novo chamado",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
+    },
+    {
+      "arquivo": "71-editor-texto.png",
+      "descricao": "Editor de descrição: barra de formatação",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/issues"
+    },
+    {
+      "arquivo": "72-modal-nova-solicitacao.png",
+      "descricao": "Modal de nova solicitação",
+      "url": "/quality/projects/996199d1-3b00-40eb-ba65-edc0031a363d/intake"
+    },
+    {
+      "arquivo": "07b-visita-detalhe.png",
+      "descricao": "Detalhe de uma visita técnica",
+      "url": "/quality/visits/518e8d4a-f3b2-4e36-9e72-a4e63ecc87d1"
+    },
+    {
       "arquivo": "51-perfil.png",
-      "descricao": "Perfil: dados da conta e preferências",
+      "descricao": "Perfil: nome, avatar e fuso horário",
       "url": "/settings/profile/general/"
+    },
+    {
+      "arquivo": "51b-perfil-seguranca.png",
+      "descricao": "Perfil: senha e segurança",
+      "url": "/settings/profile/security/"
+    },
+    {
+      "arquivo": "51c-perfil-notificacoes.png",
+      "descricao": "Perfil: preferências de notificação",
+      "url": "/settings/profile/notifications/"
+    },
+    {
+      "arquivo": "51d-perfil-preferencias.png",
+      "descricao": "Perfil: tema e idioma",
+      "url": "/settings/profile/preferences/"
+    },
+    {
+      "arquivo": "51e-perfil-tokens.png",
+      "descricao": "Perfil: tokens de API",
+      "url": "/settings/profile/api-tokens/"
+    },
+    {
+      "arquivo": "59-god-login.png",
+      "descricao": "God-mode: entrada do painel da instância",
+      "url": "/god-mode/general/"
+    },
+    {
+      "arquivo": "60-god-geral.png",
+      "descricao": "God-mode: identificação e telemetria da instância",
+      "url": "/god-mode/general/"
+    },
+    {
+      "arquivo": "61-god-workspaces.png",
+      "descricao": "God-mode: espaços de trabalho da instância",
+      "url": "/god-mode/workspace/"
+    },
+    {
+      "arquivo": "62-god-email.png",
+      "descricao": "God-mode: servidor de e-mail (SMTP)",
+      "url": "/god-mode/email/"
+    },
+    {
+      "arquivo": "63-god-autenticacao.png",
+      "descricao": "God-mode: formas de entrar no sistema",
+      "url": "/god-mode/authentication/"
+    },
+    {
+      "arquivo": "64-god-ia.png",
+      "descricao": "God-mode: chave da IA",
+      "url": "/god-mode/ai/"
+    },
+    {
+      "arquivo": "65-god-imagens.png",
+      "descricao": "God-mode: banco de imagens de capa",
+      "url": "/god-mode/image/"
     }
   ],
-  "problemas": [],
-  "ingles": [
+  "problemas": [
     {
-      "frase": "Admin",
-      "telas": [
-        "03-inicio",
-        "29-planilha",
-        "33-config-membros-projeto",
-        "41-config-membros",
-        "51-perfil"
-      ]
-    },
+      "tipo": "ui",
+      "url": "/god-mode/",
+      "msg": "login falhou: TimeoutError: page.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name"
+    }
+  ],
+  "ingles": [
     {
       "frase": "Copiar link",
       "telas": [
-        "04-projetos"
-      ]
-    },
-    {
-      "frase": "Consulta do boletim do aluno.",
-      "telas": [
-        "04-projetos"
-      ]
-    },
-    {
-      "frase": "Repasses financeiros enviados para entidades do terceiro setor.",
-      "telas": [
-        "04-projetos"
-      ]
-    },
-    {
-      "frase": "Sistema de Controle do Almoxarifado",
-      "telas": [
-        "04-projetos"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE NOVO HORIZONTE DO SUL",
-      "telas": [
-        "07-visitas",
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Novo Horizonte Do Sul",
-      "telas": [
-        "07-visitas"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNCIPAL DE APARECIDA DO TABOADO",
-      "telas": [
-        "07-visitas",
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Aparecida Do Taboado",
-      "telas": [
-        "07-visitas"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE DOIS IRMAOS DO BURITI",
-      "telas": [
-        "07-visitas",
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Dora, Douglas Pinheiro do Amaral",
-      "telas": [
-        "07-visitas"
-      ]
-    },
-    {
-      "frase": "INST. DE PREV DOS SERV. PUBLICOS DO MUNICIPIO DE CAMAPUA",
-      "telas": [
-        "07-visitas",
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Insights do projeto",
-      "telas": [
-        "08-analytics"
-      ]
-    },
-    {
-      "frase": "Chamados no backlog",
-      "telas": [
-        "08b-analytics-chamados"
-      ]
-    },
-    {
-      "frase": "Temas do Kanban",
-      "telas": [
-        "14-plugins"
-      ]
-    },
-    {
-      "frase": "Personalize cores, fontes e layout do quadro Kanban. Inclui temas escuro, claro e modo de alto contraste.",
-      "telas": [
-        "14-plugins"
-      ]
-    },
-    {
-      "frase": "Natureza do aditivo divergente",
-      "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
-      ]
-    },
-    {
-      "frase": "Excluir reservado do contrato",
-      "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
-      ]
-    },
-    {
-      "frase": "saldo de 2025 divergente do saldo inicial de 2026",
-      "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
-      ]
-    },
-    {
-      "frase": "anexo 12 divergente do anexo 10",
-      "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
-      ]
-    },
-    {
-      "frase": "exclus~~ao da remessa do Registros contabeis Janeiro",
-      "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
-      ]
-    },
-    {
-      "frase": "PROBLEMAS NO ANEXO 14",
-      "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
-      ]
-    },
-    {
-      "frase": "Habilitar telas de preenchimento do BG com o mes encerrado",
-      "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
-      ]
-    },
-    {
-      "frase": "Set 2026 - Out 2026",
-      "telas": [
+        "04-projetos",
+        "05-visoes-globais",
         "20-chamados-lista",
         "21-filtros",
         "22-filtros-modelos",
         "23-filtro-aplicado",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
+        "21b-meus-chamados",
+        "21c-abertos-por-mim",
+        "70-modal-novo-chamado",
+        "71-editor-texto"
       ]
     },
     {
-      "frase": "Out 2026",
+      "frase": "— work items / chamados",
       "telas": [
-        "20-chamados-lista",
-        "21-filtros",
-        "22-filtros-modelos",
-        "23-filtro-aplicado",
-        "24-kanban",
-        "28-calendario",
-        "29-planilha"
+        "15-widgets-dev"
       ]
     },
     {
-      "frase": "inconsistencia ao importar saldo do exercicio anterior",
+      "frase": "npm create vite@latest meu-widget -- --template react-ts",
       "telas": [
-        "23-filtro-aplicado"
-      ]
-    },
-    {
-      "frase": "Atalhos do teclado",
-      "telas": [
-        "24-kanban",
-        "28-calendario"
-      ]
-    },
-    {
-      "frase": "admin@plane.so",
-      "telas": [
-        "29-planilha",
-        "33-config-membros-projeto",
-        "41-config-membros",
-        "44-config-auditoria",
-        "51-perfil"
-      ]
-    },
-    {
-      "frase": "Nome do projeto",
-      "telas": [
-        "31-config-projeto"
-      ]
-    },
-    {
-      "frase": "ID do projeto",
-      "telas": [
-        "31-config-projeto"
-      ]
-    },
-    {
-      "frase": "loureiro do nascimento",
-      "telas": [
-        "33-config-membros-projeto",
-        "41-config-membros"
-      ]
-    },
-    {
-      "frase": "luziane loureiro do nascimento",
-      "telas": [
-        "33-config-membros-projeto",
-        "41-config-membros"
+        "15-widgets-dev"
       ]
     },
     {
@@ -480,153 +419,26 @@
       ]
     },
     {
+      "frase": "Admin",
+      "telas": [
+        "33-config-membros-projeto",
+        "41-config-membros",
+        "46c-chat-filas"
+      ]
+    },
+    {
+      "frase": "admin@plane.so",
+      "telas": [
+        "33-config-membros-projeto",
+        "41-config-membros",
+        "44-config-auditoria",
+        "61-god-workspaces"
+      ]
+    },
+    {
       "frase": "guest",
       "telas": [
         "42-config-funcoes"
-      ]
-    },
-    {
-      "frase": "Gerenciar membros do sistema",
-      "telas": [
-        "42-config-funcoes"
-      ]
-    },
-    {
-      "frase": "Gerenciar etapas do sistema",
-      "telas": [
-        "42-config-funcoes"
-      ]
-    },
-    {
-      "frase": "ASSOCIACAO DAS PRIMEIRAS DAMAS DOS MUNICIPIOS DO ESTADO MT",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "ASSOCIACAO DOS MUNICIPIOS DE MATO GROSSO DO SUL",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Aparecida do Taboado/MS",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE BARAO DO MELGACO",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE BARRA DO BUGRES",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "BARRA DO BUGRES/MT",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE BOM JESUS DO ARAGUAIA",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Bom Jesus do Araguaia/MT",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE CHAPADAO DO SUL",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE GAUCHA DO NORTE",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE NOVA ALVORADA DO SUL",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Nova Alvorada do Sul/MS",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Novo Horizonte do Sul/MS",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE RIBAS DO RIO PARDO",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Ribas do Rio Pardo/MS",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE SANTA RITA DO TRIVELATO",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "SANTA RITA DO TRIVELATO/MT",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE SAO FELIX DO ARAGUAIA",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CAMARA MUNICIPAL DE SAO JOSE DO XINGU",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "CONSORCIO PUBLICO DE DESENVOLVIMENTO DO VALE DO IVINHEMA",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Nossa Senhora do Livramento/MT",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "DEFENSORIA PUBLICA DO ESTADO DE MATO GROSSO",
-      "telas": [
-        "43-config-entidades"
       ]
     },
     {
@@ -636,87 +448,81 @@
       ]
     },
     {
-      "frase": "INST. DE PREV. SOC. DOS SERV. MUN. DE N. ALV. DO SUL-PREVNAS",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "INST. DE PREV. SOCIAL DOS SERV MUN DE CHAPADAO DO SUL(IPMCS)",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "MUNICIPIO DE CHAPADAO DO SUL",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "MUNICIPIO DE NOVA ALVORADA DO SUL",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "PREFEITURA MUNICIPAL DE BOM JESUS DO ARAGUAIA",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "BOM JESUS DO ARAGUAIA/MT",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "PREFEITURA MUNICIPAL DE RIBAS DO RIO PARDO",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "RIBAS DO RIO PARDO/MS",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "UNIAO DAS CAMARAS DE VEREADORES DO ESTADO DE MS",
-      "telas": [
-        "43-config-entidades"
-      ]
-    },
-    {
-      "frase": "Entrou no sistema",
-      "telas": [
-        "44-config-auditoria"
-      ]
-    },
-    {
-      "frase": "URL da API do plugin",
-      "telas": [
-        "46-config-chat"
-      ]
-    },
-    {
-      "frase": "URL do WebSocket do plugin",
-      "telas": [
-        "46-config-chat"
-      ]
-    },
-    {
       "frase": "aplicada ao item e ajustado pela",
       "telas": [
         "47-config-sla"
       ]
     },
     {
-      "frase": "Desligado: arquivos ficam no disco local do servidor. Ligado: usa o bucket S3 configurado abaixo.",
+      "frase": "Confirmar contato (use {name})",
       "telas": [
-        "48-config-armazenamento"
+        "46a-chat-mensagens"
+      ]
+    },
+    {
+      "frase": "You can't yet delete workspaces and you can only go to the workspace if you are an Admin or a Member.",
+      "telas": [
+        "61-god-workspaces"
+      ]
+    },
+    {
+      "frase": "Set it up below and please test your settings before you save them.",
+      "telas": [
+        "62-god-email"
+      ]
+    },
+    {
+      "frase": "Choose an OpenAI engine.",
+      "telas": [
+        "64-god-ia"
+      ]
+    },
+    {
+      "frase": "Learn more",
+      "telas": [
+        "64-god-ia"
+      ]
+    },
+    {
+      "frase": "You will find your API key",
+      "telas": [
+        "64-god-ia"
+      ]
+    },
+    {
+      "frase": "here.",
+      "telas": [
+        "64-god-ia"
+      ]
+    },
+    {
+      "frase": "If you have a preferred AI models vendor, please get in",
+      "telas": [
+        "64-god-ia"
+      ]
+    },
+    {
+      "frase": "touch with us.",
+      "telas": [
+        "64-god-ia"
+      ]
+    },
+    {
+      "frase": "Image",
+      "telas": [
+        "65-god-imagens"
+      ]
+    },
+    {
+      "frase": "You will find your access key in your Unsplash developer console.",
+      "telas": [
+        "65-god-imagens"
+      ]
+    },
+    {
+      "frase": "Learn more.",
+      "telas": [
+        "65-god-imagens"
       ]
     }
   ]

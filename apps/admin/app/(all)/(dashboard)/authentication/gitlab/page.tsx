@@ -50,7 +50,7 @@ const InstanceGitlabAuthenticationPage = observer(function InstanceGitlabAuthent
       },
       error: {
         title: "Erro",
-        message: () => "Failed to save configuration",
+        message: () => "Falha ao salvar a configuração",
       },
     });
 

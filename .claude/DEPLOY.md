@@ -13,8 +13,11 @@ rsync -az --delete --exclude-from=deploy-excludes.txt ./ root@10.1.2.12:/root/pl
 # 2. Dependências (só quando package.json mudar)
 cd /root/plane && pnpm install
 
-# 3. Build do frontend — o Dockerfile.web.local só COPIA build/client, não builda
+# 3. Build do frontend — os Dockerfiles .local só COPIAM build/client, não buildam
 pnpm --filter web build
+# O admin (god-mode) PRECISA do base path, senão os assets são pedidos em
+# /assets/... , o nginx entrega o index.html do app web e a tela abre EM BRANCO.
+VITE_ADMIN_BASE_PATH=/god-mode pnpm --filter admin build
 
 # 4. Imagens
 docker compose -f docker-compose-local.yml build \
@@ -89,13 +92,19 @@ O `./e2e-smoke.sh` da raiz (25 verificações) roda contra qualquer ambiente.
 
 ```bash
 API=http://10.1.2.12 CHAT=http://10.1.2.12/chat-api WEB=http://10.1.2.12 \
-PSQL="sshpass -p '…' ssh root@10.1.2.12 docker exec -i plane-plane-db psql -U plane -d plane -tA" \
+PSQL="sshpass -p SENHA ssh -o StrictHostKeyChecking=no root@10.1.2.12 docker exec -i plane-plane-db psql -U plane -d plane -tA" \
 ./e2e-smoke.sh
 ```
 
 > Passar `API=.../api/v1` faz todas as URLs virarem `/api/v1/api/v1/…` (404), e
 > **esquecer o `PSQL`** faz as verificações de dados migrados consultarem o banco
 > LOCAL — elas passam sem tocar no servidor. Confira sempre os dois.
+>
+> **Nada de aspas dentro do `PSQL`.** O script expande `$PSQL` sem aspas para
+> separar os argumentos, e o bash faz *word splitting* mas **não** remove aspas
+> nessa expansão: `-p 'senha'` chega ao sshpass como `'senha'` com as aspas, o ssh
+> falha calado e as três verificações da seção 4 acusam "erro" como se os dados
+> migrados tivessem sumido.
 
 ## Armadilhas já resolvidas (não reintroduzir)
 
@@ -107,6 +116,11 @@ PSQL="sshpass -p '…' ssh root@10.1.2.12 docker exec -i plane-plane-db psql -U 
   memória (um `SELECT` só). `issue_comments` não tem índice por
   `(external_source, external_id)`; o `findFirst` por linha tornava a reimportação
   O(n²) (~8 h). Se um dia for preciso deduplicar no banco, crie o índice antes.
+- **God-mode em branco**: o admin é servido em `/god-mode/`, mas o Vite embute o
+  caminho dos assets no build. Sem `VITE_ADMIN_BASE_PATH=/god-mode` eles saem
+  como `/assets/…`, o nginx casa com o app web e devolve HTML no lugar de JS/CSS
+  (`Failed to load module script … MIME type "text/html"`). Confira depois do
+  build: `grep -o '"/god-mode/assets/[^"]*"' apps/admin/build/client/index.html`.
 - **Usuário que trocou de e-mail no legado**: a identidade é o id do SAC
   (`username = sac_<id>`), não o e-mail — senão o `create` estoura a unique de
   `username` e derruba a migração inteira.

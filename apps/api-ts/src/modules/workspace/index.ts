@@ -1,7 +1,7 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {Prisma} from "@prisma/client";
-import {applyIssueFilters, normalizeFilters} from "@utils/filters";
+import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
 import {paginate} from "@utils/pagination";
 import {nextSequenceId} from "@utils/sequence";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
@@ -2216,7 +2216,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
     const SUPPORTED_GROUP_BY = ["state_id", "priority", "state__group", "project_id"];
     if (groupBy && SUPPORTED_GROUP_BY.includes(groupBy)) {
-      const accessibleProjectIds = (where.projectId?.in as string[]) ?? userProjectIds;
+      // where.projectId é `{in: [...]}` no caso geral, mas vira string quando o
+      // pedido traz ?project_id= — ignorar essa forma fazia o agrupamento por
+      // projeto listar colunas fora do projeto escolhido.
+      const accessibleProjectIds =
+        typeof where.projectId === "string" ? [where.projectId] : ((where.projectId?.in as string[]) ?? userProjectIds);
       let groupValues: (string | null)[] = [];
       if (groupBy === "state_id") {
         const states = await prisma.state.findMany({
@@ -2239,15 +2243,15 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       const results: Record<string, any> = {};
       for (const gv of groupValues) {
         const groupWhere: any = {...where};
-        if (groupBy === "state_id") groupWhere.stateId = gv;
-        else if (groupBy === "priority") groupWhere.priority = gv;
-        else if (groupBy === "project_id") groupWhere.projectId = gv;
+        if (groupBy === "state_id") groupWhere.stateId = restringirAoGrupo(where.stateId, gv);
+        else if (groupBy === "priority") groupWhere.priority = restringirAoGrupo(where.priority, gv);
+        else if (groupBy === "project_id") groupWhere.projectId = restringirAoGrupo(where.projectId, gv);
         else if (groupBy === "state__group") {
           const stateIds = await prisma.state.findMany({
             where: {projectId: {in: accessibleProjectIds}, group: gv as string, deletedAt: null},
             select: {id: true},
           });
-          groupWhere.stateId = {in: stateIds.map((s) => s.id)};
+          groupWhere.stateId = restringirAoGrupo(where.stateId, stateIds.map((s) => s.id));
         }
         const [groupIssues, groupCount] = await Promise.all([
           prisma.issue.findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage}),

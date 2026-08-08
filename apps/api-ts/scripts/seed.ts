@@ -31,6 +31,18 @@ const ADMINS_EXTRAS = (process.env.EXTRA_ADMIN_EMAILS ?? "mateus@qualitysistemas
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+/**
+ * Conta de Atendimento usada pelo `e2e-smoke.sh` para provar a regra D2
+ * (Atendimento abre solicitação mas não cria chamado). Vinha sendo criada à
+ * mão e sumia a cada reset do banco, derrubando quatro verificações do smoke
+ * sem que nada estivesse quebrado de fato.
+ *
+ * Fora de ambiente de teste, desligue com `SEED_ATENDIMENTO=false`.
+ */
+const SEED_ATENDIMENTO = (process.env.SEED_ATENDIMENTO ?? "true") !== "false";
+const ATENDIMENTO_EMAIL = process.env.ATENDIMENTO_EMAIL ?? "atendimento@quality.local";
+const ATENDIMENTO_PASSWORD = process.env.ATENDIMENTO_PASSWORD ?? "atendimento";
+
 function log(msg: string) {
   console.log(`[seed] ${msg}`);
 }
@@ -96,7 +108,7 @@ async function main() {
   if (!existingInstance) {
     await prisma.instance.create({
       data: {
-        instanceName: "Plane",
+        instanceName: process.env.INSTANCE_NAME ?? "Avião",
         instanceId: `plane-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`,
         currentVersion: "0.23-dev",
         edition: "PLANE_COMMUNITY",
@@ -116,9 +128,18 @@ async function main() {
     for (const [chave, valor] of Object.entries(padrao)) {
       if (cfg[chave] === undefined) cfg[chave] = valor;
     }
+    // Instância criada antes da marca própria ficou com o nome do upstream. O
+    // nome aparece no god-mode e nos e-mails, então corrige — mas só quando ele
+    // ainda é o padrão herdado: nome escolhido pelo admin não se mexe.
+    const nomeHerdado = existingInstance.instanceName === "Plane";
     await prisma.instance.update({
       where: {id: existingInstance.id},
-      data: {isSetupDone: true, isSignupScreenVisited: true, configurations: cfg},
+      data: {
+        isSetupDone: true,
+        isSignupScreenVisited: true,
+        configurations: cfg,
+        ...(nomeHerdado && {instanceName: process.env.INSTANCE_NAME ?? "Avião"}),
+      },
     });
     log(`✅  Instance updated (setup done + configurações padrão garantidas)`);
   }
@@ -190,6 +211,46 @@ async function main() {
       });
     }
     log(`✅  Administrador da instância: ${email}`);
+  }
+
+  // 3a2. Conta de Atendimento (nível 6) para o smoke e para demonstração.
+  if (SEED_ATENDIMENTO) {
+    const hashAtendimento = await Bun.password.hash(ATENDIMENTO_PASSWORD, {algorithm: "bcrypt", cost: 12});
+    const existente = await prisma.user.findUnique({where: {email: ATENDIMENTO_EMAIL}});
+    const atendente = existente
+      ? await prisma.user.update({
+          where: {email: ATENDIMENTO_EMAIL},
+          data: {isActive: true, isEmailVerified: true},
+        })
+      : await prisma.user.create({
+          data: {
+            email: ATENDIMENTO_EMAIL,
+            username: ATENDIMENTO_EMAIL.split("@")[0],
+            password: hashAtendimento,
+            firstName: "Atendimento",
+            displayName: "Atendimento",
+            isActive: true,
+            isEmailVerified: true,
+            // `false` de propósito: a senha é conhecida e não pode ser
+            // sobrescrita pelo passo que reseta senhas auto-geradas.
+            isPasswordAutoset: false,
+            language: "pt-BR",
+          },
+        });
+
+    const vinculoAtendimento = await prisma.workspaceMember.findFirst({
+      where: {workspaceId: workspace.id, memberId: atendente.id, deletedAt: null},
+    });
+    if (vinculoAtendimento) {
+      if (vinculoAtendimento.role !== 6) {
+        await prisma.workspaceMember.update({where: {id: vinculoAtendimento.id}, data: {role: 6, isActive: true}});
+      }
+    } else {
+      await prisma.workspaceMember.create({
+        data: {workspaceId: workspace.id, memberId: atendente.id, role: 6, isActive: true},
+      });
+    }
+    log(`✅  Conta de Atendimento: ${ATENDIMENTO_EMAIL}`);
   }
 
   // 3b. Seed configurable roles (system roles + default visibility/transitions)

@@ -70,7 +70,7 @@ export const GeneralConfigurationForm = observer(function GeneralConfigurationFo
           />
 
           <div className="flex flex-col gap-1">
-            <h4 className="text-13 text-tertiary">Email</h4>
+            <h4 className="text-13 text-tertiary">E-mail</h4>
             <Input
               id="email"
               name="email"
@@ -107,18 +107,9 @@ export const GeneralConfigurationForm = observer(function GeneralConfigurationFo
               </div>
             </div>
             <div className="grow">
-              <div className="text-13 leading-5 font-medium text-primary">Let Avião collect anonymous usage data</div>
+              <div className="text-13 leading-5 font-medium text-primary">Permitir que o Avião colete dados de uso anônimos</div>
               <div className="text-11 leading-5 font-regular text-tertiary">
-                No PII is collected.This anonymized data is used to understand how you use Plane and build new features
-                in line with{" "}
-                <a
-                  href="https://developers.plane.so/self-hosting/telemetry"
-                  target="_blank"
-                  className="text-accent-primary hover:underline"
-                  rel="noreferrer"
-                >
-                  our Telemetry Policy.
-                </a>
+                Nenhum dado pessoal é coletado. As informações anônimas ajudam a entender como o sistema é usado.
               </div>
             </div>
           </div>
@@ -143,7 +134,7 @@ export const GeneralConfigurationForm = observer(function GeneralConfigurationFo
           }}
           loading={isSubmitting}
         >
-          {isSubmitting ? "Saving" : "Save changes"}
+          {isSubmitting ? "Salvando…" : "Salvar alterações"}
         </Button>
       </div>
     </div>

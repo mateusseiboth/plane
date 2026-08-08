@@ -196,10 +196,10 @@ export function WorkspaceCreateForm() {
           disabled={!isValid}
           loading={isSubmitting}
         >
-          {isSubmitting ? "Creating workspace" : "Criar espaço de trabalho"}
+          {isSubmitting ? "Criando…" : "Criar espaço de trabalho"}
         </Button>
         <Link className={getButtonStyling("secondary", "lg")} href="/workspace">
-          Go back
+          Voltar
         </Link>
       </div>
     </div>

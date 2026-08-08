@@ -7,7 +7,7 @@ import { projectModule } from "@modules/project";
 import { stateModule } from "@modules/state";
 import { labelModule, issueLabelModule } from "@modules/label";
 import { cycleModule } from "@modules/cycle";
-import { issueModule } from "@modules/issue";
+import { archivedIssuesModule, issueModule } from "@modules/issue";
 import { memberModule } from "@modules/member";
 import { moduleModule } from "@modules/module";
 import { pageModule } from "@modules/page";
@@ -165,6 +165,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(cycleModule)
   .use(moduleModule)
   .use(issueModule)
+  .use(archivedIssuesModule)
   .use(pageModule)
   .use(memberModule)
   .use(entityModule)

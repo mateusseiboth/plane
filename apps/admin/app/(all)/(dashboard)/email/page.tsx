@@ -65,7 +65,7 @@ const InstanceEmailPage = observer(function InstanceEmailPage(_props: Route.Comp
           <>
             O Avião pode enviar e-mails úteis para você e seus usuários a partir da sua própria instância, sem acessar a Internet.
             <div className="text-13 font-regular text-tertiary">
-              Set it up below and please test your settings before you save them.&nbsp;
+              Configure abaixo e teste o envio antes de salvar.&nbsp;
               <span className="text-danger-primary">Configurações incorretas podem causar falhas e erros no envio de e-mails.</span>
             </div>
           </>

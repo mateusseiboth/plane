@@ -53,14 +53,14 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
     const updateConfigPromise = updateInstanceConfigurations(payload);
 
     setPromiseToast(updateConfigPromise, {
-      loading: "Saving configuration",
+      loading: "Salvando configuração",
       success: {
         title: "Sucesso",
-        message: () => "Configuration saved successfully",
+        message: () => "Configuração salva com sucesso",
       },
       error: {
         title: "Erro",
-        message: () => "Failed to save configuration",
+        message: () => "Falha ao salvar a configuração",
       },
     });
 
@@ -125,8 +125,8 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
                   )}
                 </div>
                 <div className={cn("text-11 leading-5 font-regular text-tertiary")}>
-                  You can&apos;t yet delete workspaces and you can only go to the workspace if you are an Admin or a
-                  Member.
+                  Ainda não é possível excluir espaços de trabalho por aqui, e só dá para entrar num deles se você for
+                  administrador ou membro.
                 </div>
               </div>
               <div className="flex items-center gap-2">

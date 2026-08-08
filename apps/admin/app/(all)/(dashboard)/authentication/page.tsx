@@ -74,10 +74,10 @@ const InstanceAuthenticationPage = observer(function InstanceAuthenticationPage(
       const updateConfigPromise = updateInstanceConfigurations(payload);
 
       setPromiseToast(updateConfigPromise, {
-        loading: "Saving configuration",
+        loading: "Salvando configuração",
         success: {
           title: "Sucesso",
-          message: () => "Configuration saved successfully",
+          message: () => "Configuração salva com sucesso",
         },
         error: {
           title: "Erro",

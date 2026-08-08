@@ -4,7 +4,7 @@ import {Prisma} from "@prisma/client/extension";
 import {paginate} from "@utils/pagination";
 import {COMMENT_INCLUDE, ISSUE_INCLUDE, serializeComment, serializeIssue} from "@utils/serialize";
 import {diffChange, recordActivities, type ActivityChange} from "@utils/activity";
-import {applyIssueFilters, normalizeFilters} from "@utils/filters";
+import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
 import {
   EProjectAction,
   canTransition,
@@ -15,7 +15,7 @@ import {
 } from "@utils/permission-checks";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
 import {publishRealtime} from "@utils/realtime";
-import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit} from "@utils/audit";
+import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, clientIp, recordAudit} from "@utils/audit";
 import {nextSequenceId} from "@utils/sequence";
 import {computeTargetDate} from "@utils/sla";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
@@ -57,8 +57,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const ws = await getWorkspaceOrFail(slug);
     const {member} = await getProjectOrFail(ws.id, project_id, user.id);
 
-    // Build base where clause
-    const where: any = {projectId: project_id, deletedAt: null, isDraft: false};
+    // Chamado arquivado sai da listagem normal — ele tem tela própria em
+    // /archives/issues. Sem este recorte, arquivar não muda nada na prática.
+    const where: any = {projectId: project_id, deletedAt: null, isDraft: false, archivedAt: null};
 
     // Non-filter scalar params that are not part of the filter map.
     // `entity_id` is handled by normalizeFilters/applyIssueFilters below so it
@@ -136,14 +137,14 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       for (const gv of groupValues) {
         const groupWhere: any = {...where};
 
-        if (groupBy === "state_id") groupWhere.stateId = gv;
-        else if (groupBy === "priority") groupWhere.priority = gv;
+        if (groupBy === "state_id") groupWhere.stateId = restringirAoGrupo(where.stateId, gv);
+        else if (groupBy === "priority") groupWhere.priority = restringirAoGrupo(where.priority, gv);
         else if (groupBy === "state__group") {
           const stateIds = await prisma.state.findMany({
             where: {projectId: project_id, group: gv as string, deletedAt: null},
             select: {id: true},
           });
-          groupWhere.stateId = {in: stateIds.map((s: any) => s.id)};
+          groupWhere.stateId = restringirAoGrupo(where.stateId, stateIds.map((s: any) => s.id));
         }
 
         const [groupIssues, groupCount] = await Promise.all([
@@ -518,6 +519,85 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
   })
 
   // Comments ─────────────────────────────────────────────────────────────────
+
+  // ── Arquivo ───────────────────────────────────────────────────────────────
+  // A interface já oferecia "Arquivar" e a tela de arquivados, mas não existia
+  // backend nenhum: a tela quebrava com NOT_FOUND e o botão não fazia efeito.
+
+  .post("/:issue_id/archive/", async ({params: {slug, project_id, issue_id}, user, set, headers}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const issue = await prisma.issue.findFirst({where: {id: issue_id, projectId: project_id, deletedAt: null}});
+    if (!issue) {
+      set.status = 404;
+      return {detail: "Chamado não encontrado."};
+    }
+    // Arquivar tira o chamado da listagem: exige o mesmo poder de editar.
+    await requireOwnOrAll(
+      ws.id,
+      project_id,
+      user.id,
+      issue.createdById,
+      EProjectAction.ISSUE_EDIT_OWN,
+      EProjectAction.ISSUE_EDIT_ALL,
+    );
+    const archivedAt = new Date();
+    await prisma.issue.update({where: {id: issue_id}, data: {archivedAt}});
+    recordAudit({
+      action: AUDIT_ACTIONS.UPDATE,
+      entity: AUDIT_ENTITIES.ISSUE,
+      entityId: issue_id,
+      actorId: user.id,
+      workspaceId: ws.id,
+      projectId: project_id,
+      ip: clientIp(headers),
+      changes: {archived: {de: false, para: true}},
+    });
+    return {archived_at: archivedAt.toISOString()};
+  })
+
+  .delete("/:issue_id/archive/", async ({params: {slug, project_id, issue_id}, user, set, headers}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const issue = await prisma.issue.findFirst({where: {id: issue_id, projectId: project_id, deletedAt: null}});
+    if (!issue) {
+      set.status = 404;
+      return {detail: "Chamado não encontrado."};
+    }
+    await requireOwnOrAll(
+      ws.id,
+      project_id,
+      user.id,
+      issue.createdById,
+      EProjectAction.ISSUE_EDIT_OWN,
+      EProjectAction.ISSUE_EDIT_ALL,
+    );
+    await prisma.issue.update({where: {id: issue_id}, data: {archivedAt: null}});
+    recordAudit({
+      action: AUDIT_ACTIONS.UPDATE,
+      entity: AUDIT_ENTITIES.ISSUE,
+      entityId: issue_id,
+      actorId: user.id,
+      workspaceId: ws.id,
+      projectId: project_id,
+      ip: clientIp(headers),
+      changes: {archived: {de: true, para: false}},
+    });
+    set.status = 204;
+    return null;
+  })
+
+  .get("/:issue_id/archive/", async ({params: {slug, project_id, issue_id}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const issue = await prisma.issue.findFirst({
+      where: {id: issue_id, projectId: project_id, deletedAt: null, archivedAt: {not: null}},
+      include: ISSUE_INCLUDE,
+    });
+    if (!issue) {
+      set.status = 404;
+      return {detail: "Chamado arquivado não encontrado."};
+    }
+    return serializeIssue(issue);
+  })
 
   .get("/:issue_id/comments/", async ({params: {slug, project_id, issue_id}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
@@ -1028,4 +1108,30 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     await prisma.issueRelation.update({where: {id: relation_id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
+  });
+
+/**
+ * Listagem de chamados arquivados.
+ *
+ * Prefixo próprio porque a rota é `/projects/:id/archived-issues/`, fora do
+ * `/issues` do módulo acima. Sem ela a tela "Arquivados" quebrava com NOT_FOUND.
+ */
+export const archivedIssuesModule = new Elysia({prefix: "/workspaces/:slug/projects/:project_id/archived-issues"})
+  .use(authPlugin)
+
+  .get("/", async ({params: {slug, project_id}, user, query}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+
+    const where: any = {projectId: project_id, deletedAt: null, isDraft: false, archivedAt: {not: null}};
+    const filters = normalizeFilters(query as Record<string, unknown>);
+    await applyIssueFilters(where, filters, {projectId: project_id});
+
+    return paginate({
+      query: (skip, take) =>
+        prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy: {archivedAt: "desc"}}),
+      count: () => prisma.issue.count({where}),
+      cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializeIssue),
+    });
   });

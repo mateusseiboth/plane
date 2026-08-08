@@ -58,14 +58,14 @@ export function InstanceImageConfigForm(props: IInstanceImageConfigForm) {
           label="Chave de acesso da sua conta Unsplash"
           description={
             <>
-              You will find your access key in your Unsplash developer console.&nbsp;
+              A chave de acesso fica no console de desenvolvedor do Unsplash.&nbsp;
               <a
                 href="https://unsplash.com/documentation#creating-a-developer-account"
                 target="_blank"
                 className="text-accent-primary hover:underline"
                 rel="noreferrer"
               >
-                Learn more.
+                Saiba mais.
               </a>
             </>
           }
@@ -77,7 +77,7 @@ export function InstanceImageConfigForm(props: IInstanceImageConfigForm) {
 
       <div>
         <Button variant="primary" size="lg" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
-          {isSubmitting ? "Saving" : "Save changes"}
+          {isSubmitting ? "Salvando…" : "Salvar alterações"}
         </Button>
       </div>
     </div>

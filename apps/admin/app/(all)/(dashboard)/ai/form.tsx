@@ -44,14 +44,14 @@ export function InstanceAIForm(props: IInstanceAIForm) {
       label: "Modelo de LLM",
       description: (
         <>
-          Choose an OpenAI engine.{" "}
+          Escolha um modelo da OpenAI.{" "}
           <a
             href="https://platform.openai.com/docs/models/overview"
             target="_blank"
             className="text-accent-primary hover:underline"
             rel="noreferrer"
           >
-            Learn more
+            Saiba mais
           </a>
         </>
       ),
@@ -65,14 +65,14 @@ export function InstanceAIForm(props: IInstanceAIForm) {
       label: "Chave de API",
       description: (
         <>
-          You will find your API key{" "}
+          A chave de API fica{" "}
           <a
             href="https://platform.openai.com/api-keys"
             target="_blank"
             className="text-accent-primary hover:underline"
             rel="noreferrer"
           >
-            here.
+            aqui.
           </a>
         </>
       ),
@@ -122,15 +122,15 @@ export function InstanceAIForm(props: IInstanceAIForm) {
 
       <div className="flex flex-col items-start gap-4">
         <Button variant="primary" size="lg" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
-          {isSubmitting ? "Saving" : "Salvar alterações"}
+          {isSubmitting ? "Salvando…" : "Salvar alterações"}
         </Button>
 
         <div className="relative inline-flex items-center gap-1.5 rounded-sm border border-accent-subtle bg-accent-subtle px-4 py-2 text-caption-sm-regular text-accent-secondary">
           <Lightbulb className="size-4" />
           <div>
-            If you have a preferred AI models vendor, please get in{" "}
-            <a className="font-medium underline" href="https://plane.so/contact">
-              touch with us.
+            Prefere outro fornecedor de modelos de IA? Entre em{" "}
+            <a className="font-medium underline" href="https://www.qualitysistemas.com.br">
+              contato conosco.
             </a>
           </div>
         </div>

@@ -263,3 +263,32 @@ export async function applyIssueFilters(
 
   return where;
 }
+
+/**
+ * Combina a restrição de UM grupo (uma coluna do quadro) com a que o filtro já
+ * impôs ao mesmo campo, em vez de substituí-la.
+ *
+ * As respostas agrupadas montavam cada coluna com `{...where, stateId: <estados
+ * do grupo>}`, o que apagava o `stateId` vindo do filtro. Resultado visível:
+ * filtrar por "Triagem" devolvia `total_count: 23` e, ao lado, as colunas
+ * "Em andamento 1573" e "Concluído 49370" — a listagem parecia ignorar o filtro.
+ *
+ * Interseção vazia é um resultado legítimo: significa que aquela coluna não tem
+ * nada dentro do filtro, e `{in: []}` é exatamente o que a consulta precisa.
+ */
+export function restringirAoGrupo(doFiltro: unknown, doGrupo: unknown): unknown {
+  const lista = (v: unknown): string[] | null => {
+    if (typeof v === "string") return [v];
+    if (Array.isArray(v)) return v as string[];
+    if (v && typeof v === "object" && Array.isArray((v as {in?: unknown}).in)) return (v as {in: string[]}).in;
+    return null;
+  };
+
+  const grupo = lista(doGrupo);
+  if (!grupo) return doGrupo;
+
+  const filtro = lista(doFiltro);
+  if (!filtro) return {in: grupo};
+
+  return {in: grupo.filter((v) => filtro.includes(v))};
+}

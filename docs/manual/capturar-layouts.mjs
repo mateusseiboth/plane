@@ -44,7 +44,7 @@ const alvos = [
   ["kanban", "24-kanban"],
   ["calendar", "28-calendario"],
   ["spreadsheet", "29-planilha"],
-  ["gantt", "24b-gantt"],
+  ["gantt_chart", "24b-gantt"],
 ];
 for (const [chave, arquivo] of alvos) {
   const botao = p.locator(`button[data-layout="${chave}"]`).first();

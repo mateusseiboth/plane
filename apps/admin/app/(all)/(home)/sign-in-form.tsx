@@ -143,7 +143,7 @@ export function InstanceSignInForm() {
                 name="email"
                 type="email"
                 inputSize="md"
-                placeholder="name@company.com"
+                placeholder="nome@empresa.com.br"
                 value={formData.email}
                 onChange={(e) => handleFormChange("email", e.target.value)}
                 autoComplete="off"

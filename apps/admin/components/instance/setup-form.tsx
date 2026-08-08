@@ -218,7 +218,7 @@ export function InstanceSetupForm() {
                 name="email"
                 type="email"
                 inputSize="md"
-                placeholder="name@company.com"
+                placeholder="nome@empresa.com.br"
                 value={formData.email}
                 onChange={(e) => handleFormChange("email", e.target.value)}
                 hasError={errorData.type && errorData.type === EErrorCodes.INVALID_EMAIL ? true : false}
@@ -355,7 +355,7 @@ export function InstanceSetupForm() {
                 Allow Avião to anonymously collect usage events.{" "}
                 <a
                   tabIndex={-1}
-                  href="https://developers.plane.so/self-hosting/telemetry"
+                  href="https://www.qualitysistemas.com.br"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:text-blue-600 flex-shrink-0 text-13 font-medium"
