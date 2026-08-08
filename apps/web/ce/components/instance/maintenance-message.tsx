@@ -4,12 +4,14 @@
  * See the LICENSE file for details.
  */
 
+import { APP_NAME, SUPPORT_EMAIL } from "@plane/constants";
+
 export function MaintenanceMessage() {
   const linkMap = [
     {
       key: "mail_to",
       label: "Falar com o suporte",
-      value: "mailto:support@plane.so",
+      value: `mailto:${SUPPORT_EMAIL}`,
     },
   ];
 
@@ -17,7 +19,7 @@ export function MaintenanceMessage() {
     <>
       <div className="flex flex-col gap-2.5">
         <h1 className="text-left text-18 font-semibold text-primary">
-          &#x1F6A7; Parece que o Plane não iniciou corretamente!
+          &#x1F6A7; Parece que o {APP_NAME} não iniciou corretamente!
         </h1>
         <span className="text-left text-14 font-medium text-secondary">
           Alguns serviços podem não ter iniciado. Verifique os logs dos containers para identificar e resolver o

@@ -40,9 +40,11 @@ export class ProjectStateService extends APIService {
       });
   }
 
+  // The API answers with `{ results: [state] }`. Without unwrapping it here the store
+  // keyed the intake state by `undefined`, so no project ever found its triage state.
   async getIntakeState(workspaceSlug: string, projectId: string): Promise<IIntakeState> {
     return this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/intake-state/`)
-      .then((response) => response?.data)
+      .then((response) => response?.data?.results?.[0] ?? response?.data)
       .catch((error) => {
         throw error?.response?.data;
       });

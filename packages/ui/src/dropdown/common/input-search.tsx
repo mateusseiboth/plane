@@ -58,7 +58,7 @@ export function InputSearch(props: IInputSearch) {
         )}
         value={query}
         onChange={(e) => updateQuery(e.target.value)}
-        placeholder={inputPlaceholder ?? "Search"}
+        placeholder={inputPlaceholder ?? "Buscar"}
         onKeyDown={searchInputKeyDown}
       />
     </div>

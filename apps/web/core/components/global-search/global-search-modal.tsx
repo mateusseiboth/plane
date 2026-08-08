@@ -125,7 +125,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                     ref={inputRef}
                     value={query}
                     onChange={(e) => { setQuery(e.target.value); setSelected(0); }}
-                    placeholder="Buscar work items, intakes, chamados legados… (#1234-2026)"
+                    placeholder="Buscar chamados, solicitações, chamados legados… (#1234-2026)"
                     className="flex-1 bg-transparent text-15 text-primary outline-none placeholder:text-tertiary"
                   />
                   {loading && <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />}
@@ -141,7 +141,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                 <div className="max-h-[60vh] overflow-y-auto p-2">
                   {!query && (
                     <p className="px-4 py-6 text-center text-13 text-secondary">
-                      Digite para buscar work items, intakes, chamados legados ou identificadores de projeto.
+                      Digite para buscar chamados, solicitações, chamados legados ou identificadores de sistema.
                     </p>
                   )}
                   {query && !loading && allResults.length === 0 && (

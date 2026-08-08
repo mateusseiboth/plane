@@ -92,12 +92,12 @@ export const getGroupByColumns = ({
   isEpic = false,
   projectId,
 }: TGetGroupByColumns): IGroupByColumn[] | undefined => {
-  // If no groupBy is specified and includeNone is true, return "All Issues" group
+  // Sem agrupamento: um único grupo que reúne tudo.
   if (!groupBy && includeNone) {
     return [
       {
         id: "All Issues",
-        name: `All ${isEpic ? "Epics" : "work items"}`,
+        name: isEpic ? "Todas as épicas" : "Todos os chamados",
         payload: {},
         icon: undefined,
       },

@@ -67,7 +67,7 @@ export const CreateIssueToastActionItems = observer(function CreateIssueToastAct
         rel="noopener noreferrer"
         className="rounded-sm px-2 py-1 font-medium text-accent-primary hover:bg-surface-2"
       >
-        {`View ${isEpic ? "epic" : "work item"}`}
+        {`Abrir ${isEpic ? "épica" : "chamado"}`}
       </a>
 
       {copied ? (

@@ -22,7 +22,7 @@ export const useTimeZoneConverter = (projectId: string) => {
    * @returns The formatted date
    */
   const renderFormattedDateInUserTimezone = useCallback(
-    (date: string, formatToken: string = "MMM dd, yyyy") => {
+    (date: string, formatToken: string = "dd MMM yyyy") => {
       // return if undefined
       if (!date || !userTimezone) return;
       // convert the date to the user's timezone

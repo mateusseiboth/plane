@@ -13,6 +13,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { DOCS_URL } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Dialog, EDialogWidth } from "@plane/propel/dialog";
@@ -68,19 +69,19 @@ const BUILTIN_REGISTRY: TPlugin[] = [
   {
     id: "github-integration",
     name: "GitHub Integration",
-    description: "Vincule commits, PRs e issues do GitHub a work items do Avião. Visualize o status do repositório diretamente no painel.",
+    description: "Vincule commits, PRs e issues do GitHub a chamados do Avião. Visualize o status do repositório diretamente no painel.",
     version: "1.0.0",
     author: "Avião Team",
     category: "integration",
     tags: ["github", "vcs", "devops"],
-    docsUrl: "https://docs.plane.so/integrations/github",
+    docsUrl: DOCS_URL,
     stars: 342,
     isOfficial: true,
   },
   {
     id: "slack-notifications",
     name: "Slack Notifications",
-    description: "Receba notificações de work items, comentários e atualizações de status diretamente no Slack.",
+    description: "Receba notificações de chamados, comentários e atualizações de status diretamente no Slack.",
     version: "1.2.0",
     author: "Avião Team",
     category: "integration",
@@ -101,7 +102,7 @@ const BUILTIN_REGISTRY: TPlugin[] = [
   {
     id: "recurring-issues",
     name: "Tarefas Recorrentes",
-    description: "Crie work items que se repetem automaticamente com base em intervalos configuráveis (diário, semanal, mensal).",
+    description: "Crie chamados que se repetem automaticamente com base em intervalos configuráveis (diário, semanal, mensal).",
     version: "1.1.0",
     author: "Comunidade",
     category: "automation",
@@ -132,7 +133,7 @@ const BUILTIN_REGISTRY: TPlugin[] = [
   {
     id: "bulk-import",
     name: "Importação em Massa",
-    description: "Importe work items de CSV, Excel ou JSON. Suporta mapeamento de campos e importação incremental.",
+    description: "Importe chamados de CSV, Excel ou JSON. Suporta mapeamento de campos e importação incremental.",
     version: "1.3.0",
     author: "Comunidade",
     category: "utility",
@@ -429,14 +430,14 @@ const PluginsPage = observer(function PluginsPage({ params }: Route.ComponentPro
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <PageHead title={`${currentWorkspace?.name ?? ""} - Plugin Store`} />
+      <PageHead title={`${currentWorkspace?.name ?? ""} - Loja de plugins`} />
 
       {/* Header */}
       <div className="flex items-center justify-between border-b border-subtle px-6 py-4">
         <div className="flex items-center gap-3">
           <Puzzle className="h-6 w-6 text-accent-primary" />
           <div>
-            <h1 className="text-lg font-semibold">Plugin Store</h1>
+            <h1 className="text-lg font-semibold">Loja de plugins</h1>
             <p className="text-xs text-secondary-text">
               {installedCount > 0
                 ? `${installedCount} plugin(s) instalado(s) · ${plugins.length} disponíveis`

@@ -6,13 +6,6 @@ import { APIService } from "@/services/api.service";
 // do backend (apps/api-ts/src/modules/roles). Admin-only.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type TRoleVisibility = {
-  id?: string;
-  group: string;
-  state_name: string | null;
-  can_view: boolean;
-};
-
 export type TRoleTransition = {
   id?: string;
   from_group: string;
@@ -30,7 +23,7 @@ export type TWorkflowRole = {
   is_system: boolean;
   permissions: string[];
   workspace_id: string;
-  visibility: TRoleVisibility[];
+  /** Única regra por papel que existe no produto: quem participa do projeto vê tudo. */
   transitions: TRoleTransition[];
 };
 
@@ -61,10 +54,6 @@ export class RolesService extends APIService {
 
   remove(slug: string, id: string): Promise<void> {
     return this.delete(`/api/workspaces/${slug}/roles/${id}/`).then(() => undefined);
-  }
-
-  setVisibility(slug: string, id: string, visibility: TRoleVisibility[]): Promise<TWorkflowRole> {
-    return this.put(`/api/workspaces/${slug}/roles/${id}/visibility/`, { visibility }).then((r) => r?.data);
   }
 
   setTransitions(slug: string, id: string, transitions: TRoleTransition[]): Promise<TWorkflowRole> {

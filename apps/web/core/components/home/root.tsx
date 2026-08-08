@@ -11,18 +11,16 @@ import useSWR from "swr";
 import { ContentWrapper } from "@plane/ui";
 // hooks
 import { useHome } from "@/hooks/store/use-home";
-import { useUserProfile, useUser } from "@/hooks/store/user";
+import { useUserProfile } from "@/hooks/store/user";
 // plane web imports
 import { HomePeekOverviewsRoot } from "@/plane-web/components/home";
 import { TourRoot } from "@/plane-web/components/onboarding/tour/root";
 // local imports
 import { DashboardWidgets } from "./home-dashboard-widgets";
-import { UserGreetingsView } from "./user-greetings";
 
 export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
   // store hooks
   const { workspaceSlug } = useParams();
-  const { data: currentUser } = useUser();
   const { data: currentUserProfile, updateTourCompleted } = useUserProfile();
   const { fetchWidgets } = useHome();
 
@@ -54,9 +52,11 @@ export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
       )}
       <>
         <HomePeekOverviewsRoot />
-        <ContentWrapper className="mx-auto scrollbar-hide gap-6 bg-surface-1 px-page-x">
-          <div className="mx-auto w-full max-w-[800px]">
-            {currentUser && <UserGreetingsView user={currentUser} />}
+        {/* A home usava uma coluna de 800px centralizada: numa tela larga
+            sobravam faixas enormes de vazio dos dois lados. Agora ela ocupa a
+            largura útil, com um teto que evita linhas longas demais. */}
+        <ContentWrapper className="scrollbar-hide gap-6 bg-surface-1 px-page-x">
+          <div className="mx-auto w-full max-w-[1440px] pb-10">
             <DashboardWidgets />
           </div>
         </ContentWrapper>

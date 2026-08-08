@@ -13,7 +13,7 @@ import { useMemo, useState } from "react";
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
-import { Input } from "@plane/ui";
+import { CustomSelect, Input } from "@plane/ui";
 // components
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
 import { PageHead } from "@/components/core/page-title";
@@ -27,6 +27,46 @@ import { useUserPermissions } from "@/hooks/store/user";
 import { auditService, type TAuditFilters } from "@/services/audit.service";
 // local imports
 import { AuditoriaWorkspaceSettingsHeader } from "./header";
+
+/**
+ * Campo de seleção dos filtros da trilha.
+ *
+ * Usa o `CustomSelect` do design system em vez do `<select>` nativo: o nativo
+ * não herda o tema, e no modo escuro o menu abria com fundo branco e texto
+ * branco — praticamente ilegível.
+ */
+function FiltroSelect(props: {
+  id: string;
+  rotulo: string;
+  valor: string;
+  rotuloVazio: string;
+  opcoes: Record<string, string>;
+  onChange: (valor: string) => void;
+}) {
+  const {id, rotulo, valor, rotuloVazio, opcoes, onChange} = props;
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-13 font-medium text-secondary" htmlFor={id}>
+        {rotulo}
+      </label>
+      <CustomSelect
+        value={valor}
+        onChange={onChange}
+        label={<span className="truncate">{opcoes[valor] ?? rotuloVazio}</span>}
+        buttonClassName="h-8 w-52 rounded-md border border-subtle bg-surface-1 px-2 text-13 text-primary"
+        maxHeight="lg"
+        input
+      >
+        <CustomSelect.Option value="">{rotuloVazio}</CustomSelect.Option>
+        {Object.entries(opcoes).map(([value, label]) => (
+          <CustomSelect.Option key={value} value={value}>
+            {label}
+          </CustomSelect.Option>
+        ))}
+      </CustomSelect>
+    </div>
+  );
+}
 
 /** Rótulos em português para o vocabulário fechado da trilha. */
 const ACTION_LABELS: Record<string, string> = {
@@ -149,49 +189,29 @@ function AuditoriaSettingsPage() {
 
       <div className="flex flex-col gap-4 py-2">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-13 font-medium text-secondary" htmlFor="audit-action">
-              Ação
-            </label>
-            <select
-              id="audit-action"
-              className="h-8 rounded-md border border-subtle bg-surface px-2 text-sm text-primary"
-              value={action}
-              onChange={(e) => {
-                setAction(e.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="">Todas</option>
-              {Object.entries(ACTION_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FiltroSelect
+            id="audit-action"
+            rotulo="Ação"
+            valor={action}
+            rotuloVazio="Todas"
+            opcoes={ACTION_LABELS}
+            onChange={(v) => {
+              setAction(v);
+              setPage(0);
+            }}
+          />
 
-          <div className="flex flex-col gap-1">
-            <label className="text-13 font-medium text-secondary" htmlFor="audit-entity">
-              Tipo de registro
-            </label>
-            <select
-              id="audit-entity"
-              className="h-8 rounded-md border border-subtle bg-surface px-2 text-sm text-primary"
-              value={entity}
-              onChange={(e) => {
-                setEntity(e.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="">Todos</option>
-              {Object.entries(ENTITY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FiltroSelect
+            id="audit-entity"
+            rotulo="Tipo de registro"
+            valor={entity}
+            rotuloVazio="Todos"
+            opcoes={ENTITY_LABELS}
+            onChange={(v) => {
+              setEntity(v);
+              setPage(0);
+            }}
+          />
 
           <div className="flex flex-col gap-1">
             <label className="text-13 font-medium text-secondary" htmlFor="audit-actor">

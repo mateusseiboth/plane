@@ -15,28 +15,28 @@ export const generateWeeks = (startOfWeek: EStartOfTheWeek = EStartOfTheWeek.SUN
 ];
 
 export const weeks: WeekMonthDataType[] = [
-  { key: 0, shortTitle: "sun", title: "sunday", abbreviation: "Su" },
-  { key: 1, shortTitle: "mon", title: "monday", abbreviation: "M" },
-  { key: 2, shortTitle: "tue", title: "tuesday", abbreviation: "T" },
-  { key: 3, shortTitle: "wed", title: "wednesday", abbreviation: "W" },
-  { key: 4, shortTitle: "thurs", title: "thursday", abbreviation: "Th" },
-  { key: 5, shortTitle: "fri", title: "friday", abbreviation: "F" },
-  { key: 6, shortTitle: "sat", title: "saturday", abbreviation: "Sa" },
+  { key: 0, shortTitle: "dom", title: "domingo", abbreviation: "D" },
+  { key: 1, shortTitle: "seg", title: "segunda-feira", abbreviation: "S" },
+  { key: 2, shortTitle: "ter", title: "terça-feira", abbreviation: "T" },
+  { key: 3, shortTitle: "qua", title: "quarta-feira", abbreviation: "Q" },
+  { key: 4, shortTitle: "qui", title: "quinta-feira", abbreviation: "Q" },
+  { key: 5, shortTitle: "sex", title: "sexta-feira", abbreviation: "S" },
+  { key: 6, shortTitle: "sáb", title: "sábado", abbreviation: "S" },
 ];
 
 export const months: WeekMonthDataType[] = [
-  { key: 0, shortTitle: "jan", title: "january", abbreviation: "Jan" },
-  { key: 1, shortTitle: "feb", title: "february", abbreviation: "Feb" },
-  { key: 2, shortTitle: "mar", title: "march", abbreviation: "Mar" },
-  { key: 3, shortTitle: "apr", title: "april", abbreviation: "Apr" },
-  { key: 4, shortTitle: "may", title: "may", abbreviation: "May" },
-  { key: 5, shortTitle: "jun", title: "june", abbreviation: "Jun" },
-  { key: 6, shortTitle: "jul", title: "july", abbreviation: "Jul" },
-  { key: 7, shortTitle: "aug", title: "august", abbreviation: "Aug" },
-  { key: 8, shortTitle: "sept", title: "september", abbreviation: "Sept" },
-  { key: 9, shortTitle: "oct", title: "october", abbreviation: "Oct" },
-  { key: 10, shortTitle: "nov", title: "november", abbreviation: "Nov" },
-  { key: 11, shortTitle: "dec", title: "december", abbreviation: "Dec" },
+  { key: 0, shortTitle: "jan", title: "janeiro", abbreviation: "Jan" },
+  { key: 1, shortTitle: "fev", title: "fevereiro", abbreviation: "Fev" },
+  { key: 2, shortTitle: "mar", title: "março", abbreviation: "Mar" },
+  { key: 3, shortTitle: "abr", title: "abril", abbreviation: "Abr" },
+  { key: 4, shortTitle: "mai", title: "maio", abbreviation: "Mai" },
+  { key: 5, shortTitle: "jun", title: "junho", abbreviation: "Jun" },
+  { key: 6, shortTitle: "jul", title: "julho", abbreviation: "Jul" },
+  { key: 7, shortTitle: "ago", title: "agosto", abbreviation: "Ago" },
+  { key: 8, shortTitle: "set", title: "setembro", abbreviation: "Set" },
+  { key: 9, shortTitle: "out", title: "outubro", abbreviation: "Out" },
+  { key: 10, shortTitle: "nov", title: "novembro", abbreviation: "Nov" },
+  { key: 11, shortTitle: "dez", title: "dezembro", abbreviation: "Dez" },
 ];
 
 export const quarters: WeekMonthDataType[] = [
@@ -50,17 +50,9 @@ export const charCapitalize = (word: string) => `${word.charAt(0).toUpperCase()}
 
 export const bindZero = (value: number) => (value > 9 ? `${value}` : `0${value}`);
 
-export const timePreview = (date: Date) => {
-  let hours = date.getHours();
-  const amPm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-
-  let minutes: number | string = date.getMinutes();
-  minutes = bindZero(minutes);
-
-  return `${bindZero(hours)}:${minutes} ${amPm}`;
-};
+/** Hora no formato brasileiro (24h) — AM/PM não é usado aqui. */
+export const timePreview = (date: Date) =>
+  `${bindZero(date.getHours())}:${bindZero(date.getMinutes())}`;
 
 export const datePreview = (date: Date, includeTime: boolean = false) => {
   const day = date.getDate();
@@ -68,7 +60,8 @@ export const datePreview = (date: Date, includeTime: boolean = false) => {
   month = months[month];
   const year = date.getFullYear();
 
-  return `${charCapitalize(month?.shortTitle)} ${day}, ${year}${includeTime ? `, ${timePreview(date)}` : ``}`;
+  // Ordem brasileira: dia, mês, ano.
+  return `${day} ${month?.shortTitle} ${year}${includeTime ? `, ${timePreview(date)}` : ``}`;
 };
 
 // context data

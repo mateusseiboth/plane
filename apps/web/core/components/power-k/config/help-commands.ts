@@ -4,7 +4,8 @@
  * See the LICENSE file for details.
  */
 
-import { FileText, GithubIcon, MessageSquare, Rocket } from "lucide-react";
+import { Bug, FileText, Rocket } from "lucide-react";
+import { DOCS_URL, SUPPORT_EMAIL } from "@plane/constants";
 // components
 import type { TPowerKCommandConfig } from "@/components/power-k/core/types";
 // hooks
@@ -37,20 +38,7 @@ export const usePowerKHelpCommands = (): TPowerKCommandConfig[] => {
       i18n_title: "power_k.help_actions.open_plane_documentation",
       icon: FileText,
       action: () => {
-        window.open("https://docs.plane.so/", "_blank", "noopener,noreferrer");
-      },
-      isEnabled: () => true,
-      isVisible: () => true,
-      closeOnSelect: true,
-    },
-    {
-      id: "join_forum",
-      type: "action",
-      group: "help",
-      i18n_title: "power_k.help_actions.join_forum",
-      icon: MessageSquare,
-      action: () => {
-        window.open("https://forum.plane.so", "_blank", "noopener,noreferrer");
+        window.open(DOCS_URL, "_blank", "noopener,noreferrer");
       },
       isEnabled: () => true,
       isVisible: () => true,
@@ -61,9 +49,9 @@ export const usePowerKHelpCommands = (): TPowerKCommandConfig[] => {
       type: "action",
       group: "help",
       i18n_title: "power_k.help_actions.report_bug",
-      icon: GithubIcon,
+      icon: Bug,
       action: () => {
-        window.open("https://github.com/makeplane/plane/issues/new/choose", "_blank", "noopener,noreferrer");
+        window.open(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Avião — relato de problema")}`, "_blank");
       },
       isEnabled: () => true,
       isVisible: () => true,

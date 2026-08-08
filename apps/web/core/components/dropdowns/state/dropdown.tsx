@@ -22,30 +22,41 @@ type TWorkItemStateDropdownProps = Omit<
 };
 
 export const StateDropdown = observer(function StateDropdown(props: TWorkItemStateDropdownProps) {
-  const { projectId, stateIds: propsStateIds, value: currentStateId } = props;
+  const { projectId, disabled = false, stateIds: propsStateIds, value: currentStateId } = props;
   // router params
   const { workspaceSlug } = useParams();
   // states
   const [stateLoader, setStateLoader] = useState(false);
   // store hooks
   const { fetchProjectStates, getProjectStateIds, getStateById } = useProjectState();
-  const { canMoveToState, role } = useProjectRolePermissions(projectId ?? undefined);
+  const { canMoveToState, isPermissionsLoading, role } = useProjectRolePermissions(projectId ?? undefined);
   // derived values
   const allStateIds = propsStateIds ?? getProjectStateIds(projectId) ?? [];
 
   const currentState = currentStateId ? getStateById(currentStateId) : undefined;
   const fromGroup = currentState?.group ?? "backlog";
 
-  // Filter available states based on role-based transition rules
+  // Filtra os destinos pelas transições configuradas para a função do usuário.
+  // Enquanto essa configuração não chega, não filtra nada — o dropdown fica
+  // desabilitado em vez de exibir uma lista calculada com dados incompletos.
   const stateIds = useMemo(() => {
-    if (!role) return allStateIds;
+    if (!role || isPermissionsLoading) return allStateIds;
     return allStateIds.filter((id) => {
       if (id === currentStateId) return true; // always allow current state
       const targetState = getStateById(id);
       if (!targetState) return false;
       return canMoveToState(fromGroup, targetState.group, currentState?.name, targetState.name);
     });
-  }, [allStateIds, currentStateId, fromGroup, currentState?.name, canMoveToState, getStateById, role]);
+  }, [
+    allStateIds,
+    currentStateId,
+    fromGroup,
+    currentState?.name,
+    canMoveToState,
+    getStateById,
+    isPermissionsLoading,
+    role,
+  ]);
 
   // fetch states if not provided
   const onDropdownOpen = async () => {
@@ -59,6 +70,7 @@ export const StateDropdown = observer(function StateDropdown(props: TWorkItemSta
   return (
     <WorkItemStateDropdownBase
       {...props}
+      disabled={disabled || isPermissionsLoading}
       getStateById={getStateById}
       isInitializing={stateLoader}
       stateIds={stateIds}

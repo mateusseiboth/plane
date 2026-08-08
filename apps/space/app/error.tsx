@@ -4,6 +4,7 @@
  * See the LICENSE file for details.
  */
 
+import { SUPPORT_EMAIL } from "@plane/constants";
 // ui
 import { Button } from "@plane/propel/button";
 
@@ -16,23 +17,18 @@ function ErrorPage() {
     <div className="grid h-screen place-items-center bg-surface-1 p-4">
       <div className="space-y-8 text-center">
         <div className="space-y-2">
-          <h3 className="text-16 font-semibold">Yikes! That doesn{"'"}t look good.</h3>
+          <h3 className="text-16 font-semibold">Ops! Algo deu errado por aqui.</h3>
           <p className="mx-auto text-13 text-secondary md:w-1/2">
-            That crashed Plane, pun intended. No worries, though. Our engineers have been notified. If you have more
-            details, please write to{" "}
-            <a href="mailto:support@plane.so" className="text-accent-primary">
-              support@plane.so
-            </a>{" "}
-            or on our{" "}
-            <a href="https://forum.plane.so" target="_blank" className="text-accent-primary" rel="noopener noreferrer">
-              Forum
+            O erro já foi registrado e nossa equipe foi avisada. Se puder descrever o que estava fazendo, escreva para{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent-primary">
+              {SUPPORT_EMAIL}
             </a>
             .
           </p>
         </div>
         <div className="flex items-center justify-center gap-2">
           <Button variant="primary" size="lg" onClick={handleRetry}>
-            Refresh
+            Atualizar
           </Button>
           {/* <Button variant="secondary" size="lg" onClick={() => {}}>
             Sair

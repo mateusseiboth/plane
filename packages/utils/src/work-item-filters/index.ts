@@ -5,3 +5,5 @@
  */
 
 export * from "./configs";
+export * from "./pessoa-filters";
+export * from "./templates";

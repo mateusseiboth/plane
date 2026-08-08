@@ -1,0 +1,18 @@
+# Padrões relativos à RAIZ DA TRANSFERÊNCIA do rsync.
+# Sempre sincronize a partir da raiz do repositório para que estes casem.
+.git/
+node_modules/
+.turbo/
+.react-router/
+.next/
+coverage/
+apps/web/build/
+apps/web/.env
+apps/admin/.env
+apps/space/.env
+apps/api-ts/.env
+apps/chat-backend/.env
+apps/chat-backend/media/
+apps/chat-backend/generated/
+docs/manual/img/
+*.log

@@ -464,6 +464,36 @@
     "completed_at": "Concluído em",
     "layout": "Layout",
     "filters": "Filtros",
+    "filter_templates": {
+      "label": "Modelos",
+      "tooltip": "Filtros prontos por setor",
+      "unavailable": "Nenhum modelo disponível para este projeto",
+      "clear": "Limpar filtros",
+      "triage": {
+        "label": "Triagem",
+        "description": "Chamados aguardando triagem"
+      },
+      "it": {
+        "label": "TI",
+        "description": "A Fazer, Em Desenvolvimento e Em Teste"
+      },
+      "quality": {
+        "label": "Qualidade",
+        "description": "Triagem, Em Análise e Em Teste"
+      },
+      "support": {
+        "label": "Atendimento",
+        "description": "Triagem mais chamados concluídos e cancelados"
+      },
+      "in_progress": {
+        "label": "Em andamento",
+        "description": "Tudo que já foi iniciado"
+      },
+      "completed": {
+        "label": "Concluídos",
+        "description": "Chamados já finalizados"
+      }
+    },
     "display": "Exibir",
     "load_more": "Carregar mais",
     "activity": "Atividade",
@@ -742,7 +772,15 @@
     "invalid_filter_tooltip": "Esta condição de filtro não é mais válida. A propriedade pode ter sido excluída ou seu acesso a ela pode ter mudado.",
     "all_filters_applied": "Todos os filtros aplicados",
     "filter_configuration_error": "Erro na configuração do filtro",
-    "filter_configuration_error_message": "Este filtro não está configurado corretamente e não pode ser aplicado"
+    "filter_configuration_error_message": "Este filtro não está configurado corretamente e não pode ser aplicado",
+    "my_work_items_filter": {
+      "label": "Meus chamados",
+      "tooltip": "Mostrar só os chamados atribuídos a mim"
+    },
+    "opened_by_me_filter": {
+      "label": "Abertos por mim",
+      "tooltip": "Mostrar só os chamados que eu abri"
+    }
   },
   "chart": {
     "x_axis": "Eixo X",

@@ -1,0 +1,723 @@
+{
+  "capturas": [
+    {
+      "arquivo": "01-login.png",
+      "descricao": "Tela de entrada: informe o e-mail corporativo",
+      "url": "/"
+    },
+    {
+      "arquivo": "02-login-senha.png",
+      "descricao": "Segundo passo: a senha da conta",
+      "url": "/"
+    },
+    {
+      "arquivo": "03-inicio.png",
+      "descricao": "Página inicial do espaço de trabalho",
+      "url": "/quality/"
+    },
+    {
+      "arquivo": "04-projetos.png",
+      "descricao": "Lista de sistemas (cada sistema é um projeto)",
+      "url": "/quality/projects/"
+    },
+    {
+      "arquivo": "05-visoes-globais.png",
+      "descricao": "Visões globais: chamados de todos os sistemas",
+      "url": "/quality/workspace-views/"
+    },
+    {
+      "arquivo": "06-solicitacoes.png",
+      "descricao": "Pedidos de chamado aguardando triagem",
+      "url": "/quality/global-intake/"
+    },
+    {
+      "arquivo": "07-visitas.png",
+      "descricao": "Visitas técnicas",
+      "url": "/quality/visits/"
+    },
+    {
+      "arquivo": "08-analytics.png",
+      "descricao": "Análises: visão geral do espaço de trabalho",
+      "url": "/quality/analytics/overview/"
+    },
+    {
+      "arquivo": "08b-analytics-chamados.png",
+      "descricao": "Análises: aba de chamados",
+      "url": "/quality/analytics/work-items/"
+    },
+    {
+      "arquivo": "09-notificacoes.png",
+      "descricao": "Central de notificações",
+      "url": "/quality/notifications/"
+    },
+    {
+      "arquivo": "10-rascunhos.png",
+      "descricao": "Rascunhos",
+      "url": "/quality/drafts/"
+    },
+    {
+      "arquivo": "11-notas.png",
+      "descricao": "Notas rápidas",
+      "url": "/quality/stickies/"
+    },
+    {
+      "arquivo": "12-atendimento.png",
+      "descricao": "Atendimento (chat)",
+      "url": "/quality/chat/"
+    },
+    {
+      "arquivo": "13-relatorios.png",
+      "descricao": "Relatórios",
+      "url": "/quality/reports/"
+    },
+    {
+      "arquivo": "14-plugins.png",
+      "descricao": "Plugins instalados",
+      "url": "/quality/plugins/"
+    },
+    {
+      "arquivo": "20-chamados-lista.png",
+      "descricao": "Chamados do sistema Contabilidade",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+    },
+    {
+      "arquivo": "21-filtros.png",
+      "descricao": "Barra de filtros: escolha o campo e o operador",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+    },
+    {
+      "arquivo": "22-filtros-modelos.png",
+      "descricao": "Modelos de filtro prontos por setor",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+    },
+    {
+      "arquivo": "23-filtro-aplicado.png",
+      "descricao": "Modelo aplicado: apenas chamados em Triagem",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+    },
+    {
+      "arquivo": "24-kanban.png",
+      "descricao": "Quadro kanban por etapa",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+    },
+    {
+      "arquivo": "28-calendario.png",
+      "descricao": "Calendário por data de entrega",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+    },
+    {
+      "arquivo": "29-planilha.png",
+      "descricao": "Planilha: uma coluna por propriedade",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues"
+    },
+    {
+      "arquivo": "25-ciclos.png",
+      "descricao": "Ciclos",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/cycles"
+    },
+    {
+      "arquivo": "26-modulos.png",
+      "descricao": "Módulos",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/modules"
+    },
+    {
+      "arquivo": "27-triagem-projeto.png",
+      "descricao": "Pedidos de chamado do sistema",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/intake"
+    },
+    {
+      "arquivo": "30-paginas.png",
+      "descricao": "Páginas do sistema",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/pages"
+    },
+    {
+      "arquivo": "31-config-projeto.png",
+      "descricao": "Configurações do sistema",
+      "url": "/quality/settings/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877"
+    },
+    {
+      "arquivo": "32-config-etapas.png",
+      "descricao": "Etapas do fluxo",
+      "url": "/quality/settings/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/states"
+    },
+    {
+      "arquivo": "33-config-membros-projeto.png",
+      "descricao": "Membros do sistema",
+      "url": "/quality/settings/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/members"
+    },
+    {
+      "arquivo": "34-chamado-detalhe.png",
+      "descricao": "Detalhe do chamado: propriedades, descrição e comentários",
+      "url": "/quality/projects/f6e75eac-23d2-41de-8edb-a5856f5a8877/issues/39f1c16a-cfcc-4a54-b1f5-e641459540f3"
+    },
+    {
+      "arquivo": "40-config-geral.png",
+      "descricao": "Configurações do espaço de trabalho",
+      "url": "/quality/settings/"
+    },
+    {
+      "arquivo": "41-config-membros.png",
+      "descricao": "Membros e papéis",
+      "url": "/quality/settings/members/"
+    },
+    {
+      "arquivo": "42-config-funcoes.png",
+      "descricao": "Funções: permissões e transições de etapa",
+      "url": "/quality/settings/roles/"
+    },
+    {
+      "arquivo": "43-config-entidades.png",
+      "descricao": "Entidades (clientes atendidos)",
+      "url": "/quality/settings/entities/"
+    },
+    {
+      "arquivo": "44-config-auditoria.png",
+      "descricao": "Trilha de auditoria (LGPD)",
+      "url": "/quality/settings/auditoria/"
+    },
+    {
+      "arquivo": "45-config-impressao.png",
+      "descricao": "Impressão: logo, cabeçalho e rodapé",
+      "url": "/quality/settings/print/"
+    },
+    {
+      "arquivo": "46-config-chat.png",
+      "descricao": "Plugin de atendimento",
+      "url": "/quality/settings/chat/"
+    },
+    {
+      "arquivo": "47-config-sla.png",
+      "descricao": "SLA por prioridade",
+      "url": "/quality/settings/sla/"
+    },
+    {
+      "arquivo": "48-config-armazenamento.png",
+      "descricao": "Armazenamento de anexos",
+      "url": "/quality/settings/storage/"
+    },
+    {
+      "arquivo": "49-config-exportacoes.png",
+      "descricao": "Exportações",
+      "url": "/quality/settings/exports/"
+    },
+    {
+      "arquivo": "50-config-webhooks.png",
+      "descricao": "Webhooks",
+      "url": "/quality/settings/webhooks/"
+    },
+    {
+      "arquivo": "51-perfil.png",
+      "descricao": "Perfil: dados da conta e preferências",
+      "url": "/settings/profile/general/"
+    }
+  ],
+  "problemas": [],
+  "ingles": [
+    {
+      "frase": "Admin",
+      "telas": [
+        "03-inicio",
+        "29-planilha",
+        "33-config-membros-projeto",
+        "41-config-membros",
+        "51-perfil"
+      ]
+    },
+    {
+      "frase": "Copiar link",
+      "telas": [
+        "04-projetos"
+      ]
+    },
+    {
+      "frase": "Consulta do boletim do aluno.",
+      "telas": [
+        "04-projetos"
+      ]
+    },
+    {
+      "frase": "Repasses financeiros enviados para entidades do terceiro setor.",
+      "telas": [
+        "04-projetos"
+      ]
+    },
+    {
+      "frase": "Sistema de Controle do Almoxarifado",
+      "telas": [
+        "04-projetos"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE NOVO HORIZONTE DO SUL",
+      "telas": [
+        "07-visitas",
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Novo Horizonte Do Sul",
+      "telas": [
+        "07-visitas"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNCIPAL DE APARECIDA DO TABOADO",
+      "telas": [
+        "07-visitas",
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Aparecida Do Taboado",
+      "telas": [
+        "07-visitas"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE DOIS IRMAOS DO BURITI",
+      "telas": [
+        "07-visitas",
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Dora, Douglas Pinheiro do Amaral",
+      "telas": [
+        "07-visitas"
+      ]
+    },
+    {
+      "frase": "INST. DE PREV DOS SERV. PUBLICOS DO MUNICIPIO DE CAMAPUA",
+      "telas": [
+        "07-visitas",
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Insights do projeto",
+      "telas": [
+        "08-analytics"
+      ]
+    },
+    {
+      "frase": "Chamados no backlog",
+      "telas": [
+        "08b-analytics-chamados"
+      ]
+    },
+    {
+      "frase": "Temas do Kanban",
+      "telas": [
+        "14-plugins"
+      ]
+    },
+    {
+      "frase": "Personalize cores, fontes e layout do quadro Kanban. Inclui temas escuro, claro e modo de alto contraste.",
+      "telas": [
+        "14-plugins"
+      ]
+    },
+    {
+      "frase": "Natureza do aditivo divergente",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "Excluir reservado do contrato",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "saldo de 2025 divergente do saldo inicial de 2026",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "anexo 12 divergente do anexo 10",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "exclus~~ao da remessa do Registros contabeis Janeiro",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "PROBLEMAS NO ANEXO 14",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "Habilitar telas de preenchimento do BG com o mes encerrado",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "Set 2026 - Out 2026",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "23-filtro-aplicado",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "Out 2026",
+      "telas": [
+        "20-chamados-lista",
+        "21-filtros",
+        "22-filtros-modelos",
+        "23-filtro-aplicado",
+        "24-kanban",
+        "28-calendario",
+        "29-planilha"
+      ]
+    },
+    {
+      "frase": "inconsistencia ao importar saldo do exercicio anterior",
+      "telas": [
+        "23-filtro-aplicado"
+      ]
+    },
+    {
+      "frase": "Atalhos do teclado",
+      "telas": [
+        "24-kanban",
+        "28-calendario"
+      ]
+    },
+    {
+      "frase": "admin@plane.so",
+      "telas": [
+        "29-planilha",
+        "33-config-membros-projeto",
+        "41-config-membros",
+        "44-config-auditoria",
+        "51-perfil"
+      ]
+    },
+    {
+      "frase": "Nome do projeto",
+      "telas": [
+        "31-config-projeto"
+      ]
+    },
+    {
+      "frase": "ID do projeto",
+      "telas": [
+        "31-config-projeto"
+      ]
+    },
+    {
+      "frase": "loureiro do nascimento",
+      "telas": [
+        "33-config-membros-projeto",
+        "41-config-membros"
+      ]
+    },
+    {
+      "frase": "luziane loureiro do nascimento",
+      "telas": [
+        "33-config-membros-projeto",
+        "41-config-membros"
+      ]
+    },
+    {
+      "frase": "Adicionar link",
+      "telas": [
+        "34-chamado-detalhe"
+      ]
+    },
+    {
+      "frase": "Log de tempo",
+      "telas": [
+        "34-chamado-detalhe"
+      ]
+    },
+    {
+      "frase": "guest",
+      "telas": [
+        "42-config-funcoes"
+      ]
+    },
+    {
+      "frase": "Gerenciar membros do sistema",
+      "telas": [
+        "42-config-funcoes"
+      ]
+    },
+    {
+      "frase": "Gerenciar etapas do sistema",
+      "telas": [
+        "42-config-funcoes"
+      ]
+    },
+    {
+      "frase": "ASSOCIACAO DAS PRIMEIRAS DAMAS DOS MUNICIPIOS DO ESTADO MT",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "ASSOCIACAO DOS MUNICIPIOS DE MATO GROSSO DO SUL",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Aparecida do Taboado/MS",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE BARAO DO MELGACO",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE BARRA DO BUGRES",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "BARRA DO BUGRES/MT",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE BOM JESUS DO ARAGUAIA",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Bom Jesus do Araguaia/MT",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE CHAPADAO DO SUL",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE GAUCHA DO NORTE",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE NOVA ALVORADA DO SUL",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Nova Alvorada do Sul/MS",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Novo Horizonte do Sul/MS",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE RIBAS DO RIO PARDO",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Ribas do Rio Pardo/MS",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE SANTA RITA DO TRIVELATO",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "SANTA RITA DO TRIVELATO/MT",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE SAO FELIX DO ARAGUAIA",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CAMARA MUNICIPAL DE SAO JOSE DO XINGU",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "CONSORCIO PUBLICO DE DESENVOLVIMENTO DO VALE DO IVINHEMA",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Nossa Senhora do Livramento/MT",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "DEFENSORIA PUBLICA DO ESTADO DE MATO GROSSO",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Escola I. ETE ARE",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "INST. DE PREV. SOC. DOS SERV. MUN. DE N. ALV. DO SUL-PREVNAS",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "INST. DE PREV. SOCIAL DOS SERV MUN DE CHAPADAO DO SUL(IPMCS)",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "MUNICIPIO DE CHAPADAO DO SUL",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "MUNICIPIO DE NOVA ALVORADA DO SUL",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "PREFEITURA MUNICIPAL DE BOM JESUS DO ARAGUAIA",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "BOM JESUS DO ARAGUAIA/MT",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "PREFEITURA MUNICIPAL DE RIBAS DO RIO PARDO",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "RIBAS DO RIO PARDO/MS",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "UNIAO DAS CAMARAS DE VEREADORES DO ESTADO DE MS",
+      "telas": [
+        "43-config-entidades"
+      ]
+    },
+    {
+      "frase": "Entrou no sistema",
+      "telas": [
+        "44-config-auditoria"
+      ]
+    },
+    {
+      "frase": "URL da API do plugin",
+      "telas": [
+        "46-config-chat"
+      ]
+    },
+    {
+      "frase": "URL do WebSocket do plugin",
+      "telas": [
+        "46-config-chat"
+      ]
+    },
+    {
+      "frase": "aplicada ao item e ajustado pela",
+      "telas": [
+        "47-config-sla"
+      ]
+    },
+    {
+      "frase": "Desligado: arquivos ficam no disco local do servidor. Ligado: usa o bucket S3 configurado abaixo.",
+      "telas": [
+        "48-config-armazenamento"
+      ]
+    }
+  ]
+}

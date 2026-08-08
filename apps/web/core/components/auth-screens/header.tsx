@@ -16,13 +16,14 @@ import { useInstance } from "@/hooks/store/use-instance";
 
 const authContentMap = {
   [EAuthModes.SIGN_IN]: {
-    pageTitle: "Criar conta",
+    // O título nomeia a tela ATUAL; o link é que leva ao outro fluxo.
+    pageTitle: "Entrar",
     text: "auth.common.new_to_plane",
     linkText: "Criar conta",
     linkHref: "/sign-up",
   },
   [EAuthModes.SIGN_UP]: {
-    pageTitle: "Entrar",
+    pageTitle: "Criar conta",
     text: "auth.common.already_have_an_account",
     linkText: "Entrar",
     linkHref: "/sign-in",

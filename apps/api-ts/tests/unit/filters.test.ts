@@ -233,6 +233,54 @@ describe("applyIssueFilters", () => {
     expect(halfBad.targetDate).toEqual({lte: new Date("2026-03-01")});
   });
 
+  /**
+   * O painel de filtros manda as duas bordas do intervalo como entradas
+   * separadas ("<data>;after,<data>;before") — `toArray` quebra na vírgula.
+   * Lendo só a primeira entrada e tratando o token como se fosse data, o
+   * intervalo virava igualdade na data inicial e a listagem voltava vazia.
+   */
+  describe("intervalo em entradas separadas", () => {
+    const alvo = async (valor: string) =>
+      (await applyIssueFilters({}, normalizeFilters({target_date: valor}), scopeProject())).targetDate;
+
+    it("monta gte/lte a partir dos tokens after/before", async () => {
+      expect(await alvo("2026-01-01;after,2026-01-31;before")).toEqual({
+        gte: new Date("2026-01-01"),
+        lte: new Date("2026-01-31"),
+      });
+    });
+
+    it("aceita apenas o limite inferior", async () => {
+      expect(await alvo("2026-01-01;after")).toEqual({gte: new Date("2026-01-01")});
+    });
+
+    it("aceita apenas o limite superior", async () => {
+      expect(await alvo("2026-01-31;before")).toEqual({lte: new Date("2026-01-31")});
+    });
+
+    it("reconhece os apelidos from/to e gte/lte", async () => {
+      expect(await alvo("2026-04-01;from,2026-04-30;to")).toEqual({
+        gte: new Date("2026-04-01"),
+        lte: new Date("2026-04-30"),
+      });
+      expect(await alvo("2026-05-01;GTE,2026-05-31;LTE")).toEqual({
+        gte: new Date("2026-05-01"),
+        lte: new Date("2026-05-31"),
+      });
+    });
+
+    it("duas datas sem token também formam intervalo, na ordem certa", async () => {
+      expect(await alvo("2026-06-30,2026-06-01")).toEqual({
+        gte: new Date("2026-06-01"),
+        lte: new Date("2026-06-30"),
+      });
+    });
+
+    it("uma data com token desconhecido continua sendo igualdade", async () => {
+      expect(await alvo("2026-07-15;seila")).toEqual(new Date("2026-07-15"));
+    });
+  });
+
   it("um where sem filtros permanece intocado", async () => {
     const where = await applyIssueFilters({projectId}, normalizeFilters({page: "2"}), scopeProject());
     expect(where).toEqual({projectId});

@@ -14,51 +14,51 @@ export const MONTHS_LIST: {
   };
 } = {
   1: {
-    shortTitle: "Jan",
+    shortTitle: "jan",
     title: "Janeiro",
   },
   2: {
-    shortTitle: "Feb",
+    shortTitle: "fev",
     title: "Fevereiro",
   },
   3: {
-    shortTitle: "Mar",
+    shortTitle: "mar",
     title: "Março",
   },
   4: {
-    shortTitle: "Apr",
+    shortTitle: "abr",
     title: "Abril",
   },
   5: {
-    shortTitle: "May",
-    title: "May",
+    shortTitle: "mai",
+    title: "Maio",
   },
   6: {
-    shortTitle: "Jun",
+    shortTitle: "jun",
     title: "Junho",
   },
   7: {
-    shortTitle: "Jul",
+    shortTitle: "jul",
     title: "Julho",
   },
   8: {
-    shortTitle: "Aug",
+    shortTitle: "ago",
     title: "Agosto",
   },
   9: {
-    shortTitle: "Sep",
+    shortTitle: "set",
     title: "Setembro",
   },
   10: {
-    shortTitle: "Oct",
+    shortTitle: "out",
     title: "Outubro",
   },
   11: {
-    shortTitle: "Nov",
+    shortTitle: "nov",
     title: "Novembro",
   },
   12: {
-    shortTitle: "Dec",
+    shortTitle: "dez",
     title: "Dezembro",
   },
 };
@@ -71,37 +71,37 @@ export const DAYS_LIST: {
   };
 } = {
   1: {
-    shortTitle: "Sun",
+    shortTitle: "dom",
     title: "Domingo",
     value: EStartOfTheWeek.SUNDAY,
   },
   2: {
-    shortTitle: "Mon",
+    shortTitle: "seg",
     title: "Segunda-feira",
     value: EStartOfTheWeek.MONDAY,
   },
   3: {
-    shortTitle: "Tue",
+    shortTitle: "ter",
     title: "Terça-feira",
     value: EStartOfTheWeek.TUESDAY,
   },
   4: {
-    shortTitle: "Wed",
+    shortTitle: "qua",
     title: "Quarta-feira",
     value: EStartOfTheWeek.WEDNESDAY,
   },
   5: {
-    shortTitle: "Thu",
+    shortTitle: "qui",
     title: "Quinta-feira",
     value: EStartOfTheWeek.THURSDAY,
   },
   6: {
-    shortTitle: "Fri",
+    shortTitle: "sex",
     title: "Sexta-feira",
     value: EStartOfTheWeek.FRIDAY,
   },
   7: {
-    shortTitle: "Sat",
+    shortTitle: "sáb",
     title: "Sábado",
     value: EStartOfTheWeek.SATURDAY,
   },

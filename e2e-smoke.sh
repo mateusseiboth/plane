@@ -41,6 +41,12 @@ check "login com senha errada é rejeitado" "$BAD" "403"
 AC="Cookie: plane_auth=$ADMIN_TOKEN"
 TC="Cookie: plane_auth=$ATEND_TOKEN"
 
+# O frontend chama /api/... (o proxy reescreve para /api/v1/...). Um deploy já
+# quebrou só esse caminho — o site inteiro caiu na tela de "instância não
+# iniciada" enquanto /api/v1/ respondia 200 e o e2e passava.
+REWRITE=$(curl -s -o /dev/null -w "%{http_code}" "$API/api/instances/")
+check "proxy reescreve /api/ para /api/v1/" "$REWRITE" "200"
+
 echo "── 2. Dados migrados do legado ────────────────────────"
 PROJ=$(curl -s -H "$AC" "$API/api/v1/workspaces/quality/projects/")
 NPROJ=$(echo "$PROJ" | python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d) if isinstance(d,list) else -1)" 2>/dev/null)

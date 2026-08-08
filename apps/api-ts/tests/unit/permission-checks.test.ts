@@ -12,7 +12,6 @@ import {
   requireOwnOrAll,
   requireProjectAction,
   resolveRole,
-  visibleStateIds,
 } from "@utils/permission-checks";
 import {DEFAULT_STATES} from "@utils/project-defaults";
 import {seedWorkflowRoles} from "@utils/permissions";
@@ -187,44 +186,7 @@ describe("permission-checks", () => {
     });
   });
 
-  describe("visibleStateIds", () => {
-    it("null (vê tudo) para papel irrestrito", async () => {
-      const admin = await resolveRole(workspaceId, 20);
-      expect(await visibleStateIds(admin, projectId)).toBeNull();
-    });
-
-    it("null para papel não semeado (sem id)", async () => {
-      const other = await createWorkspace((await createUser()).id);
-      const unseeded = await resolveRole(other.id, 15);
-      expect(await visibleStateIds(unseeded, projectId)).toBeNull();
-    });
-
-    it("Qualidade não enxerga A Fazer nem Em Desenvolvimento", async () => {
-      const role = await resolveRole(workspaceId, 8);
-      const ids = await visibleStateIds(role, projectId);
-      const names = await prisma.state.findMany({where: {id: {in: ids!}}, select: {name: true}});
-      const visible = names.map((s) => s.name);
-      expect(visible).toContain("Em Análise");
-      expect(visible).toContain("Concluído");
-      expect(visible).not.toContain("A Fazer");
-      expect(visible).not.toContain("Em Desenvolvimento");
-    });
-
-    it("TI enxerga A Fazer/Em Desenvolvimento mas não Em Análise", async () => {
-      const role = await resolveRole(workspaceId, 12);
-      const ids = await visibleStateIds(role, projectId);
-      const names = (await prisma.state.findMany({where: {id: {in: ids!}}, select: {name: true}})).map((s) => s.name);
-      expect(names).toContain("A Fazer");
-      expect(names).toContain("Em Desenvolvimento");
-      expect(names).not.toContain("Em Análise");
-    });
-
-    it("papel semeado sem nenhuma regra vê tudo", async () => {
-      const member = await resolveRole(workspaceId, 15);
-      expect(await visibleStateIds(member, projectId)).toBeNull();
-    });
-  });
-
+  
   describe("canTransition", () => {
     const s = (group: string, name: string) => ({group, name});
 

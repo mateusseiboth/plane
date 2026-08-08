@@ -347,6 +347,10 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/print",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/print/page.tsx"
           ),
+          route(
+            ":workspaceSlug/settings/auditoria",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/auditoria/page.tsx"
+          ),
         ]),
 
         // --------------------------------------------------------------------
@@ -457,6 +461,9 @@ export const coreRoutes: RouteConfigEntry[] = [
   // API tokens redirect: /:workspaceSlug/settings/api-tokens
   // → /settings/profile/api-tokens
   route(":workspaceSlug/settings/api-tokens", "routes/redirects/core/api-tokens.tsx"),
+
+  // Profile settings redirect: /settings/profile → /settings/profile/general
+  route("settings/profile", "routes/redirects/core/settings-profile.tsx"),
 
   // Inbox redirect: /:workspaceSlug/projects/:projectId/inbox
   // → /:workspaceSlug/projects/:projectId/intake

@@ -87,7 +87,7 @@ export const IssuesSidebarBlock = observer(function IssuesSidebarBlock(props: Pr
           {duration && (
             <div className="flex-shrink-0 text-13 text-secondary">
               <span>
-                {duration} day{duration > 1 ? "s" : ""}
+                {duration} dia{duration > 1 ? "s" : ""}
               </span>
             </div>
           )}

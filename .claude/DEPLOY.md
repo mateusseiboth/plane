@@ -84,9 +84,18 @@ curl -o /dev/null -w "%{http_code}\n" http://10.1.2.12/api/v1/health/      # 200
 curl -o /dev/null -w "%{http_code}\n" http://10.1.2.12/chat-api/health/    # 200
 ```
 
-Login (`admin@plane.so`) e confira que `/api/v1/workspaces/quality/audit-logs/`,
-`/print-settings/` e `/entities/` respondem 200. O `./e2e-smoke.sh` da raiz roda
-contra qualquer ambiente via `API=... CHAT=... WEB=... ./e2e-smoke.sh`.
+O `./e2e-smoke.sh` da raiz (25 verificações) roda contra qualquer ambiente.
+`API` é a **origem**, não o prefixo — o script já acrescenta `/api/v1` e `/auth`:
+
+```bash
+API=http://10.1.2.12 CHAT=http://10.1.2.12/chat-api WEB=http://10.1.2.12 \
+PSQL="sshpass -p '…' ssh root@10.1.2.12 docker exec -i plane-plane-db psql -U plane -d plane -tA" \
+./e2e-smoke.sh
+```
+
+> Passar `API=.../api/v1` faz todas as URLs virarem `/api/v1/api/v1/…` (404), e
+> **esquecer o `PSQL`** faz as verificações de dados migrados consultarem o banco
+> LOCAL — elas passam sem tocar no servidor. Confira sempre os dois.
 
 ## Armadilhas já resolvidas (não reintroduzir)
 

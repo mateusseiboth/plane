@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react";
-import { Plus, Trash2, X, Shield } from "lucide-react";
-import { EProjectAction, PROJECT_ACTION_LABELS } from "@plane/constants";
+import { ArrowRight, Plus, Trash2, X, Shield } from "lucide-react";
+import { EProjectAction, PROJECT_ACTION_GROUPS, PROJECT_ACTION_LABELS } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { Dialog, EDialogWidth } from "@plane/propel/dialog";
+import { CustomSelect, ToggleSwitch } from "@plane/ui";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
 import { PageHead } from "@/components/core/page-title";
@@ -11,21 +12,37 @@ import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { STATE_GROUP_LABELS, WORKFLOW_STATE_TEMPLATE } from "@/constants/workflow-roles";
 import rolesService, { type TWorkflowRole, type TRoleTransition } from "@/services/roles.service";
 
-// Standard state template (matches DEFAULT_STATES in the backend migration).
-const STATE_TEMPLATE: { group: string; name: string; group_label: string }[] = [
-  { group: "triage", name: "Triagem", group_label: "Triagem" },
-  { group: "backlog", name: "Pendências", group_label: "Backlog" },
-  { group: "unstarted", name: "A Fazer", group_label: "Não iniciado" },
-  { group: "started", name: "Em Análise", group_label: "Em andamento" },
-  { group: "started", name: "Em Desenvolvimento", group_label: "Em andamento" },
-  { group: "started", name: "Em Teste", group_label: "Em andamento" },
-  { group: "completed", name: "Concluído", group_label: "Concluído" },
-  { group: "cancelled", name: "Cancelado", group_label: "Cancelado" },
-];
-
 const ACTION_KEYS = Object.values(EProjectAction) as string[];
+
+/**
+ * Seletor de etapa das transições.
+ *
+ * `CustomSelect` em vez do `<select>` nativo: o nativo ignora o tema e, no modo
+ * escuro, abre com fundo branco e texto branco.
+ */
+function EtapaSelect(props: { valor: string; opcoes: { value: string; label: string }[]; onChange: (v: string) => void }) {
+  const { valor, opcoes, onChange } = props;
+  const atual = opcoes.find((o) => o.value === valor);
+  return (
+    <CustomSelect
+      value={valor}
+      onChange={onChange}
+      label={<span className="truncate">{atual?.label ?? "Escolher etapa"}</span>}
+      buttonClassName="h-7 w-56 rounded-md border border-subtle bg-surface-2 px-2 text-12 text-primary"
+      maxHeight="lg"
+      input
+    >
+      {opcoes.map((o) => (
+        <CustomSelect.Option key={o.value} value={o.value}>
+          {o.label}
+        </CustomSelect.Option>
+      ))}
+    </CustomSelect>
+  );
+}
 
 function CreateRoleModal({
   slug,
@@ -124,10 +141,8 @@ const WorkspaceRolesPage = observer(() => {
 
   // editable local copies for the selected role
   const [perms, setPerms] = useState<Set<string>>(new Set());
-  const [visible, setVisible] = useState<Set<string>>(new Set()); // key = `${group}::${name}`
   const [transitions, setTransitions] = useState<TRoleTransition[]>([]);
   const [savingPerms, setSavingPerms] = useState(false);
-  const [savingVis, setSavingVis] = useState(false);
   const [savingTrans, setSavingTrans] = useState(false);
 
   const canManage = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
@@ -151,22 +166,6 @@ const WorkspaceRolesPage = observer(() => {
   useEffect(() => {
     if (!selected) return;
     setPerms(new Set(selected.permissions));
-    // empty visibility means "sees everything" → pre-check all states for clarity
-    if (selected.visibility.length === 0) {
-      setVisible(new Set(STATE_TEMPLATE.map((s) => `${s.group}::${s.name}`)));
-    } else {
-      setVisible(
-        new Set(
-          selected.visibility
-            .filter((v) => v.can_view)
-            .flatMap((v) =>
-              v.state_name
-                ? [`${v.group}::${v.state_name}`]
-                : STATE_TEMPLATE.filter((s) => s.group === v.group).map((s) => `${s.group}::${s.name}`)
-            )
-        )
-      );
-    }
     setTransitions(selected.transitions);
   }, [selected]);
 
@@ -179,10 +178,11 @@ const WorkspaceRolesPage = observer(() => {
       return next;
     });
 
-  const toggleVisible = (key: string) =>
-    setVisible((prev) => {
+  /** Marca ou desmarca um grupo inteiro de uma vez. */
+  const alternarGrupo = (acoes: string[], marcar: boolean) =>
+    setPerms((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      for (const acao of acoes) (marcar ? next.add(acao) : next.delete(acao));
       return next;
     });
 
@@ -197,25 +197,6 @@ const WorkspaceRolesPage = observer(() => {
       setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "Falha ao salvar permissões." });
     } finally {
       setSavingPerms(false);
-    }
-  };
-
-  const saveVisibility = async () => {
-    if (!selected) return;
-    setSavingVis(true);
-    try {
-      const rows = STATE_TEMPLATE.filter((s) => visible.has(`${s.group}::${s.name}`)).map((s) => ({
-        group: s.group,
-        state_name: s.name,
-        can_view: true,
-      }));
-      await rolesService.setVisibility(slug, selected.id, rows);
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Salvo", message: "Visibilidade atualizada." });
-      await load();
-    } catch {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "Falha ao salvar visibilidade." });
-    } finally {
-      setSavingVis(false);
     }
   };
 
@@ -257,7 +238,10 @@ const WorkspaceRolesPage = observer(() => {
     }
   };
 
-  const stateForSelect = STATE_TEMPLATE.map((s) => ({ value: `${s.group}::${s.name}`, label: `${s.name} (${s.group_label})` }));
+  const stateForSelect = WORKFLOW_STATE_TEMPLATE.map((s) => ({
+    value: `${s.group}::${s.name}`,
+    label: `${s.name} (${STATE_GROUP_LABELS[s.group] ?? s.group})`,
+  }));
   const parseStateKey = (k: string) => {
     const [group, name] = k.split("::");
     return { group, name };
@@ -275,7 +259,8 @@ const WorkspaceRolesPage = observer(() => {
               <Shield className="h-5 w-5" /> Funções e permissões
             </h3>
             <p className="text-xs text-secondary-text">
-              Crie funções, defina o que cada uma pode fazer, quais quadros vê e quais transições de etapa pode realizar.
+              Crie funções, defina o que cada uma pode fazer e quais transições de etapa pode realizar. Quem participa do
+              projeto enxerga todos os chamados, em qualquer etapa.
             </p>
           </div>
           <Button variant="primary" prependIcon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
@@ -287,36 +272,72 @@ const WorkspaceRolesPage = observer(() => {
           <div className="py-8 text-center text-sm text-secondary-text">Carregando...</div>
         ) : (
           <div className="flex gap-4">
-            {/* role list */}
-            <div className="w-56 shrink-0 space-y-1">
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setSelectedId(r.id)}
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                    selectedId === r.id ? "bg-surface-3 text-primary" : "text-secondary-text hover:bg-surface-2"
-                  }`}
-                >
-                  <span>{r.name}</span>
-                  {r.is_system && <span className="text-[10px] uppercase text-secondary-text">sistema</span>}
-                </button>
-              ))}
+            {/* Lista de funções — ordenada pelo nível, que é a hierarquia real. */}
+            <div className="w-64 shrink-0 space-y-1">
+              {[...roles]
+                .sort((a, b) => a.level - b.level)
+                .map((r) => {
+                  const ativa = selectedId === r.id;
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => setSelectedId(r.id)}
+                      aria-pressed={ativa}
+                      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                        ativa
+                          ? "border-accent-subtle-1 bg-accent-subtle"
+                          : "border-transparent hover:border-subtle hover:bg-surface-2"
+                      }`}
+                    >
+                      <span
+                        className={`grid size-7 shrink-0 place-items-center rounded-md text-11 font-semibold ${
+                          ativa ? "bg-accent-primary text-white" : "bg-surface-3 text-secondary-text"
+                        }`}
+                        title={`Nível ${r.level}`}
+                      >
+                        {r.level}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className={`block truncate text-13 ${ativa ? "font-medium text-primary" : "text-primary"}`}>
+                          {r.name}
+                        </span>
+                        <span className="block truncate text-11 text-tertiary">
+                          {r.permissions.length} permissã{r.permissions.length === 1 ? "o" : "es"}
+                          {r.is_system ? " · do sistema" : ""}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
             </div>
 
             {/* role editor */}
             {selected ? (
               <div className="flex-1 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-base font-medium text-primary">{selected.name}</p>
-                    <p className="text-xs text-secondary-text">
-                      chave: {selected.key} · nível: {selected.level}
-                    </p>
+                <div className="flex items-start justify-between gap-4 rounded-lg border border-subtle bg-surface-2 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-15 font-medium text-primary">{selected.name}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded bg-surface-3 px-1.5 py-0.5 text-11 text-secondary-text">
+                        nível {selected.level}
+                      </span>
+                      <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-11 text-secondary-text">
+                        {selected.key}
+                      </span>
+                      {selected.is_system && (
+                        <span className="rounded bg-surface-3 px-1.5 py-0.5 text-11 text-secondary-text">
+                          função do sistema
+                        </span>
+                      )}
+                      <span className="text-11 text-tertiary">
+                        {perms.size} de {ACTION_KEYS.length} permissões
+                      </span>
+                    </div>
                   </div>
                   {!selected.is_system && (
                     <button
                       onClick={() => deleteRole(selected)}
-                      className="rounded p-1.5 text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      className="shrink-0 rounded p-1.5 text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                       title="Excluir função"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -324,52 +345,57 @@ const WorkspaceRolesPage = observer(() => {
                   )}
                 </div>
 
-                {/* Permissions */}
-                <section>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-primary">Permissões</h4>
+                {/* Permissões, agrupadas por assunto: a grade corrida de 28
+                    caixas não dizia o que era de chamado, de comentário ou de
+                    administração. */}
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-13 font-semibold text-primary">Permissões</h4>
                     <Button variant="primary" size="sm" loading={savingPerms} onClick={savePerms}>
                       Salvar permissões
                     </Button>
                   </div>
-                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                    {ACTION_KEYS.map((key) => (
-                      <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-surface-2">
-                        <input type="checkbox" checked={perms.has(key)} onChange={() => togglePerm(key)} />
-                        <span className="text-primary">{PROJECT_ACTION_LABELS[key as EProjectAction] ?? key}</span>
-                      </label>
-                    ))}
-                  </div>
-                </section>
 
-                {/* Visibility */}
-                <section>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-primary">Quadros visíveis</h4>
-                    <Button variant="primary" size="sm" loading={savingVis} onClick={saveVisibility}>
-                      Salvar visibilidade
-                    </Button>
-                  </div>
-                  <p className="mb-2 text-[11px] text-secondary-text">
-                    Marque os estados que esta função pode ver no board. (Todos marcados = vê tudo.)
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
-                    {STATE_TEMPLATE.map((s) => {
-                      const key = `${s.group}::${s.name}`;
-                      return (
-                        <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-surface-2">
-                          <input type="checkbox" checked={visible.has(key)} onChange={() => toggleVisible(key)} />
-                          <span className="text-primary">{s.name}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
+                  {PROJECT_ACTION_GROUPS.map((grupo) => {
+                    const marcadas = grupo.actions.filter((a) => perms.has(a)).length;
+                    const todasMarcadas = marcadas === grupo.actions.length;
+                    return (
+                      <div key={grupo.label} className="overflow-hidden rounded-lg border border-subtle">
+                        <div className="flex items-center justify-between gap-3 border-b border-subtle bg-surface-2 px-3 py-2">
+                          <span className="text-12 font-medium text-primary">{grupo.label}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-11 text-tertiary">
+                              {marcadas}/{grupo.actions.length}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => alternarGrupo(grupo.actions, !todasMarcadas)}
+                              className="rounded px-1.5 py-0.5 text-11 text-accent-primary hover:bg-accent-subtle"
+                            >
+                              {todasMarcadas ? "Desmarcar todas" : "Marcar todas"}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2">
+                          {grupo.actions.map((key) => (
+                            <label
+                              key={key}
+                              className="flex cursor-pointer items-center justify-between gap-3 border-b border-subtle px-3 py-2 last:border-b-0 hover:bg-surface-2 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0"
+                            >
+                              <span className="text-12 text-primary">{PROJECT_ACTION_LABELS[key] ?? key}</span>
+                              <ToggleSwitch value={perms.has(key)} onChange={() => togglePerm(key)} size="sm" />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </section>
 
                 {/* Transitions */}
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-primary">Transições de etapa permitidas</h4>
+                    <h4 className="text-13 font-semibold text-primary">Transições de etapa permitidas</h4>
                     <div className="flex gap-2">
                       <Button variant="secondary" size="sm" prependIcon={<Plus className="h-3.5 w-3.5" />} onClick={addTransition}>
                         Adicionar
@@ -379,50 +405,46 @@ const WorkspaceRolesPage = observer(() => {
                       </Button>
                     </div>
                   </div>
-                  <p className="mb-2 text-[11px] text-secondary-text">
-                    Vazio = sem restrição via tabela (use a permissão “Mover para qualquer estado” para acesso total).
-                  </p>
-                  <div className="space-y-2">
-                    {transitions.length === 0 && <p className="text-xs text-secondary-text">Nenhuma transição definida.</p>}
-                    {transitions.map((t, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <select
-                          value={`${t.from_group}::${t.from_state_name ?? ""}`}
-                          onChange={(e) => {
-                            const { group, name } = parseStateKey(e.target.value);
-                            updateTransition(idx, { from_group: group, from_state_name: name });
-                          }}
-                          className="rounded border border-subtle bg-surface-2 px-2 py-1 text-xs text-primary outline-none"
+                  <div className="overflow-hidden rounded-lg border border-subtle">
+                    <p className="border-b border-subtle bg-surface-2 px-3 py-2 text-11 text-secondary-text">
+                      Sem nenhuma linha, esta função não move chamado por tabela — quem precisa de acesso total usa a
+                      permissão <strong className="text-primary">Mover para qualquer etapa</strong>.
+                    </p>
+                    {transitions.length === 0 ? (
+                      <p className="px-3 py-6 text-center text-12 text-tertiary">Nenhuma transição definida.</p>
+                    ) : (
+                      transitions.map((t, idx) => (
+                        <div
+                          key={idx}
+                          className="flex flex-wrap items-center gap-2 border-b border-subtle px-3 py-2 last:border-b-0"
                         >
-                          {stateForSelect.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="text-xs text-secondary-text">→</span>
-                        <select
-                          value={`${t.to_group}::${t.to_state_name ?? ""}`}
-                          onChange={(e) => {
-                            const { group, name } = parseStateKey(e.target.value);
-                            updateTransition(idx, { to_group: group, to_state_name: name });
-                          }}
-                          className="rounded border border-subtle bg-surface-2 px-2 py-1 text-xs text-primary outline-none"
-                        >
-                          {stateForSelect.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => removeTransition(idx)}
-                          className="rounded p-1 text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          <EtapaSelect
+                            valor={`${t.from_group}::${t.from_state_name ?? ""}`}
+                            opcoes={stateForSelect}
+                            onChange={(v) => {
+                              const { group, name } = parseStateKey(v);
+                              updateTransition(idx, { from_group: group, from_state_name: name });
+                            }}
+                          />
+                          <ArrowRight className="size-3.5 shrink-0 text-tertiary" />
+                          <EtapaSelect
+                            valor={`${t.to_group}::${t.to_state_name ?? ""}`}
+                            opcoes={stateForSelect}
+                            onChange={(v) => {
+                              const { group, name } = parseStateKey(v);
+                              updateTransition(idx, { to_group: group, to_state_name: name });
+                            }}
+                          />
+                          <button
+                            onClick={() => removeTransition(idx)}
+                            className="ml-auto rounded p-1 text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                            title="Remover transição"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </section>
               </div>

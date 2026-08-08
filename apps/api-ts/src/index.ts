@@ -18,6 +18,8 @@ import { entityModule } from "@modules/entity";
 // assetModule imported below (combined with v2)
 import { inviteModule } from "@modules/invite";
 import { analyticsModule } from "@modules/analytics";
+import { advanceAnalyticsModule } from "@modules/analytics/advance";
+import { homeModule } from "@modules/home";
 import { webhookModule } from "@modules/webhook";
 import { notificationModule } from "@modules/notification";
 import { gitIntegrationModule } from "@modules/integration/git";
@@ -169,6 +171,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(assetModule)
   .use(inviteModule)
   .use(analyticsModule)
+  .use(advanceAnalyticsModule)
+  .use(homeModule)
   .use(webhookModule)
   .use(notificationModule)
   .use(gitIntegrationModule)

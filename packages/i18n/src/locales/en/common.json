@@ -464,6 +464,36 @@
     "completed_at": "Completed at",
     "layout": "Layout",
     "filters": "Filters",
+    "filter_templates": {
+      "label": "Templates",
+      "tooltip": "Ready-made filters by sector",
+      "unavailable": "No template available for this project",
+      "clear": "Clear filters",
+      "triage": {
+        "label": "Triage",
+        "description": "Work items waiting to be triaged"
+      },
+      "it": {
+        "label": "IT",
+        "description": "To Do, In Development and In Test"
+      },
+      "quality": {
+        "label": "Quality",
+        "description": "Triage, In Review and In Test"
+      },
+      "support": {
+        "label": "Support",
+        "description": "Triage plus completed and cancelled work items"
+      },
+      "in_progress": {
+        "label": "In progress",
+        "description": "Everything already started"
+      },
+      "completed": {
+        "label": "Completed",
+        "description": "Work items already completed"
+      }
+    },
     "display": "Display",
     "load_more": "Load more",
     "activity": "Activity",
@@ -742,7 +772,15 @@
     "invalid_filter_tooltip": "This filter condition is no longer valid. The property may have been deleted or your access to it may have changed.",
     "all_filters_applied": "All filters applied",
     "filter_configuration_error": "Filter configuration error",
-    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied"
+    "filter_configuration_error_message": "This filter is not properly configured and cannot be applied",
+    "my_work_items_filter": {
+      "label": "My work items",
+      "tooltip": "Show only work items assigned to me"
+    },
+    "opened_by_me_filter": {
+      "label": "Opened by me",
+      "tooltip": "Show only work items I created"
+    }
   },
   "chart": {
     "x_axis": "X-axis",

@@ -40,7 +40,7 @@ export function EmojiReactionPicker(props: EmojiReactionPickerProps) {
     onChange,
     placement = "bottom-start",
     searchDisabled = false,
-    searchPlaceholder = "Search",
+    searchPlaceholder = "Buscar",
     side = "bottom",
     align = "start",
   } = props;

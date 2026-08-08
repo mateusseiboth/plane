@@ -4,21 +4,44 @@
  * See the LICENSE file for details.
  */
 
-import { differenceInDays, format, formatDistanceToNow, isAfter, isEqual, isValid, parseISO } from "date-fns";
+import {
+  differenceInDays,
+  format,
+  formatDistanceToNow,
+  isAfter,
+  isEqual,
+  isValid,
+  parseISO,
+  setDefaultOptions,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { isNumber } from "lodash-es";
+
+/**
+ * O produto é pt-BR. Sem isto o date-fns usa o inglês embutido e a interface
+ * mostrava "May 08, 2008" e "about 18 years ago" no meio de telas traduzidas.
+ * `setDefaultOptions` vale para TODO o date-fns do bundle, inclusive as chamadas
+ * feitas fora deste arquivo — por isso mora aqui, no módulo que todos importam.
+ */
+setDefaultOptions({ locale: ptBR });
+
+/** Ordem brasileira: dia, mês abreviado, ano. */
+const FORMATO_DATA = "dd MMM yyyy";
+/** Mesma ordem, sem o ano (usado em intervalos dentro do mesmo ano). */
+const FORMATO_DATA_SEM_ANO = "dd MMM";
 
 // Format Date Helpers
 /**
- * @returns {string | null} formatted date in the desired format or platform default format (MMM dd, yyyy)
+ * @returns {string | undefined} data formatada no token pedido ou no padrão pt-BR (dd MMM yyyy)
  * @description Returns date in the formatted format
  * @param {Date | string} date
- * @param {string} formatToken (optional) // default MMM dd, yyyy
- * @example renderFormattedDate("2024-01-01", "MM-DD-YYYY") // Jan 01, 2024
- * @example renderFormattedDate("2024-01-01") // Jan 01, 2024
+ * @param {string} formatToken (opcional) // padrão dd MMM yyyy
+ * @example renderFormattedDate("2024-01-01", "dd/MM/yyyy") // 01/01/2024
+ * @example renderFormattedDate("2024-01-01") // 01 jan 2024
  */
 export const renderFormattedDate = (
   date: string | Date | undefined | null,
-  formatToken: string = "MMM dd, yyyy"
+  formatToken: string = FORMATO_DATA
 ): string | undefined => {
   // Parse the date to check if it is valid
   const parsedDate = getDate(date);
@@ -28,20 +51,19 @@ export const renderFormattedDate = (
   if (!isValid(parsedDate)) return; // Return null for invalid dates
   let formattedDate;
   try {
-    // Format the date in the format provided or default format (MMM dd, yyyy)
+    // Formata no token pedido
     formattedDate = format(parsedDate, formatToken);
   } catch (_e) {
-    // Format the date in format (MMM dd, yyyy) in case of any error
-    formattedDate = format(parsedDate, "MMM dd, yyyy");
+    // Token inválido: cai no padrão
+    formattedDate = format(parsedDate, FORMATO_DATA);
   }
   return formattedDate;
 };
 
 /**
- * @returns {string} formatted date in the format of MMM dd
- * @description Returns date in the formatted format
+ * @returns {string} data sem o ano (dd MMM)
  * @param {string | Date} date
- * @example renderShortDateFormat("2024-01-01") // Jan 01
+ * @example renderFormattedDateWithoutYear("2024-01-01") // 01 jan
  */
 export const renderFormattedDateWithoutYear = (date: string | Date): string => {
   // Parse the date to check if it is valid
@@ -50,8 +72,8 @@ export const renderFormattedDateWithoutYear = (date: string | Date): string => {
   if (!parsedDate) return "";
   // Check if the parsed date is valid before formatting
   if (!isValid(parsedDate)) return ""; // Return empty string for invalid dates
-  // Format the date in short format (MMM dd)
-  const formattedDate = format(parsedDate, "MMM dd");
+  // Formato curto (dd MMM)
+  const formattedDate = format(parsedDate, FORMATO_DATA_SEM_ANO);
   return formattedDate;
 };
 
@@ -483,11 +505,11 @@ export const checkDateCriteria = (dateToCheck: Date | null, filterDate: Date, ty
 };
 
 /**
- * Formats merged date range display with smart formatting
- * - Single date: "Jan 24, 2025"
- * - Same year, same month: "Jan 24 - 28, 2025"
- * - Same year, different month: "Jan 24 - Feb 6, 2025"
- * - Different year: "Dec 28, 2024 - Jan 4, 2025"
+ * Intervalo de datas em português, encurtando o que se repete.
+ * - Data única:                "24 jan 2025"
+ * - Mesmo mês e ano:           "24 - 28 jan 2025"
+ * - Mesmo ano, meses distintos: "24 jan - 06 fev 2025"
+ * - Anos distintos:             "28 dez 2024 - 04 jan 2025"
  */
 export const formatDateRange = (
   parsedStartDate: Date | null | undefined,
@@ -500,12 +522,12 @@ export const formatDateRange = (
 
   // If only start date is provided
   if (parsedStartDate && !parsedEndDate) {
-    return format(parsedStartDate, "MMM dd, yyyy");
+    return format(parsedStartDate, FORMATO_DATA);
   }
 
   // If only end date is provided
   if (!parsedStartDate && parsedEndDate) {
-    return format(parsedEndDate, "MMM dd, yyyy");
+    return format(parsedEndDate, FORMATO_DATA);
   }
 
   // If both dates are provided
@@ -519,19 +541,19 @@ export const formatDateRange = (
     if (startYear === endYear && startMonth === endMonth) {
       const startDay = format(parsedStartDate, "dd");
       const endDay = format(parsedEndDate, "dd");
-      return `${format(parsedStartDate, "MMM")} ${startDay} - ${endDay}, ${startYear}`;
+      return `${startDay} - ${endDay} ${format(parsedStartDate, "MMM")} ${startYear}`;
     }
 
     // Same year, different month
     if (startYear === endYear) {
-      const startFormatted = format(parsedStartDate, "MMM dd");
-      const endFormatted = format(parsedEndDate, "MMM dd");
-      return `${startFormatted} - ${endFormatted}, ${startYear}`;
+      const startFormatted = format(parsedStartDate, FORMATO_DATA_SEM_ANO);
+      const endFormatted = format(parsedEndDate, FORMATO_DATA_SEM_ANO);
+      return `${startFormatted} - ${endFormatted} ${startYear}`;
     }
 
     // Different year
-    const startFormatted = format(parsedStartDate, "MMM dd, yyyy");
-    const endFormatted = format(parsedEndDate, "MMM dd, yyyy");
+    const startFormatted = format(parsedStartDate, FORMATO_DATA);
+    const endFormatted = format(parsedEndDate, FORMATO_DATA);
     return `${startFormatted} - ${endFormatted}`;
   }
 

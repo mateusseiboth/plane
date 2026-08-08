@@ -1,14 +1,13 @@
 // Configurable roles / workflow (H1–H3).
 //
 // The action catalogue mirrors packages/constants/src/project-permissions.ts.
-// Defaults seed the 7 system roles plus the granular board-visibility and
-// state-transition rules described by the product owner. Everything here is just
+// Defaults seed the 7 system roles plus the state-transition matrix. Everything here is just
 // the *default*; admins edit the live config (WorkflowRole / RoleStateVisibility
 // / RoleStateTransition rows) through the roles API.
 //
-// Visibility semantics: if a role has ZERO visibility rows it sees everything
-// (open by default). If it has any rows, they form an allow-list — the role sees
-// only the listed (group, stateName) combinations.
+// Visibilidade: NÃO existe recorte por papel. Quem participa do projeto vê todos
+// os chamados, em qualquer etapa; o recorte por setor é feito por FILTRO (há
+// templates prontos na UI). O que o papel controla é o que ele pode MOVER.
 //
 // Transition semantics: roles whose permissions include STATE_MOVE_UNRESTRICTED
 // move freely. Otherwise a transition is allowed only if a matching
@@ -160,34 +159,7 @@ export const STATE = {
   CANCELADO: "Cancelado",
 } as const;
 
-export type VisibilityRule = {group: string; stateName?: string | null};
 export type TransitionRule = {fromGroup: string; fromStateName?: string | null; toGroup: string; toStateName?: string | null};
-
-// Allow-list visibility for the restricted roles. Roles not listed here see all.
-export const DEFAULT_VISIBILITY: Record<string, VisibilityRule[]> = {
-  qualidade: [
-    {group: "backlog"}, // Pendências
-    {group: "triage"}, // intake (Triagem)
-    {group: "started", stateName: STATE.EM_ANALISE},
-    {group: "started", stateName: STATE.EM_TESTE},
-    {group: "completed"},
-    {group: "cancelled"},
-    // NB: Qualidade does NOT see "A Fazer" (unstarted) nor "Em Desenvolvimento".
-  ],
-  ti: [
-    {group: "unstarted"}, // A Fazer
-    {group: "started", stateName: STATE.EM_DESENVOLVIMENTO},
-    {group: "started", stateName: STATE.EM_TESTE}, // TI vê e envia para testes
-    {group: "completed"},
-    {group: "cancelled"},
-    // NB: TI does NOT see "Em Análise" (Qualidade's lane) by default.
-  ],
-  atendimento: [
-    {group: "triage"},
-    {group: "completed"},
-    {group: "cancelled"},
-  ],
-};
 
 // Default transition matrix for non-unrestricted roles. Admin/Gestor move freely.
 export const DEFAULT_TRANSITIONS: Record<string, TransitionRule[]> = {
@@ -281,22 +253,11 @@ export async function seedWorkflowRoles(db: any, workspaceId: string): Promise<R
     keyToId[def.key] = role.id;
   }
 
-  // By default we only seed visibility/transition rows for a role that has none,
+  // By default we only seed transition rows for a role that has none,
   // so admin edits made through the roles API survive restarts. Set
   // RESEED_WORKFLOW=true to force the code defaults back onto the system roles
-  // (use after changing DEFAULT_VISIBILITY / DEFAULT_TRANSITIONS).
+  // (use after changing DEFAULT_TRANSITIONS).
   const reseed = process.env.RESEED_WORKFLOW === "true";
-
-  for (const [key, rules] of Object.entries(DEFAULT_VISIBILITY)) {
-    const roleId = keyToId[key];
-    if (!roleId) continue;
-    const count = await db.roleStateVisibility.count({where: {roleId}});
-    if (count > 0 && !reseed) continue;
-    if (count > 0) await db.roleStateVisibility.deleteMany({where: {roleId}});
-    await db.roleStateVisibility.createMany({
-      data: rules.map((r) => ({roleId, workspaceId, group: r.group, stateName: r.stateName ?? null, canView: true})),
-    });
-  }
 
   for (const [key, rules] of Object.entries(DEFAULT_TRANSITIONS)) {
     const roleId = keyToId[key];

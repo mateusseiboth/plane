@@ -104,19 +104,19 @@ export const ANALYTICS_INSIGHTS_FIELDS: Record<TAnalyticsTabsBase, IInsightField
 
 export const ANALYTICS_DURATION_FILTER_OPTIONS = [
   {
-    name: "Yesterday",
+    name: "Ontem",
     value: "yesterday",
   },
   {
-    name: "Last 7 days",
+    name: "Últimos 7 dias",
     value: "last_7_days",
   },
   {
-    name: "Last 30 days",
+    name: "Últimos 30 dias",
     value: "last_30_days",
   },
   {
-    name: "Last 3 months",
+    name: "Últimos 3 meses",
     value: "last_3_months",
   },
 ];
@@ -124,66 +124,66 @@ export const ANALYTICS_DURATION_FILTER_OPTIONS = [
 export const ANALYTICS_X_AXIS_VALUES: { value: ChartXAxisProperty; label: string }[] = [
   {
     value: ChartXAxisProperty.STATES,
-    label: "State name",
+    label: "Etapa",
   },
   {
     value: ChartXAxisProperty.STATE_GROUPS,
-    label: "State group",
+    label: "Grupo de etapa",
   },
   {
     value: ChartXAxisProperty.PRIORITY,
-    label: "Priority",
+    label: "Prioridade",
   },
   {
     value: ChartXAxisProperty.LABELS,
-    label: "Label",
+    label: "Etiqueta",
   },
   {
     value: ChartXAxisProperty.ASSIGNEES,
-    label: "Assignee",
+    label: "Responsável",
   },
   {
     value: ChartXAxisProperty.ESTIMATE_POINTS,
-    label: "Estimate point",
+    label: "Ponto de estimativa",
   },
   {
     value: ChartXAxisProperty.CYCLES,
-    label: "Cycle",
+    label: "Ciclo",
   },
   {
     value: ChartXAxisProperty.MODULES,
-    label: "Module",
+    label: "Módulo",
   },
   {
     value: ChartXAxisProperty.COMPLETED_AT,
-    label: "Completed date",
+    label: "Data de conclusão",
   },
   {
     value: ChartXAxisProperty.TARGET_DATE,
-    label: "Due date",
+    label: "Data de entrega",
   },
   {
     value: ChartXAxisProperty.START_DATE,
-    label: "Start date",
+    label: "Data de início",
   },
   {
     value: ChartXAxisProperty.CREATED_AT,
-    label: "Created date",
+    label: "Data de criação",
   },
 ];
 
 export const ANALYTICS_Y_AXIS_VALUES: { value: ChartYAxisMetric; label: string }[] = [
   {
     value: ChartYAxisMetric.WORK_ITEM_COUNT,
-    label: "Work item",
+    label: "Chamado",
   },
   {
     value: ChartYAxisMetric.ESTIMATE_POINT_COUNT,
-    label: "Estimate",
+    label: "Estimativa",
   },
   {
     value: ChartYAxisMetric.EPIC_WORK_ITEM_COUNT,
-    label: "Epic",
+    label: "Épica",
   },
 ];
 

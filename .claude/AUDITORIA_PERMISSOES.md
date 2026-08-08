@@ -398,3 +398,23 @@ cp node_modules/.../@prisma/client/runtime/query_compiler_fast_bg.postgresql.was
 ```
 
 O servidor está no ar (`/api/v1/health/` → 200) e os dados de teste da auditoria foram removidos.
+
+---
+
+## 7. Mudança de modelo — 04/08/2026
+
+**Visibilidade por papel foi REMOVIDA do produto.** Quem participa do projeto vê todos os
+chamados em qualquer etapa; o recorte por setor virou **filtro** (templates prontos na UI,
+em todos os layouts). Saíram: o filtro por `visibleStateIds` na listagem, `DEFAULT_VISIBILITY`,
+o endpoint `PUT /roles/:id/visibility/`, o model `RoleStateVisibility` e a tabela.
+
+**Transições continuam** e passaram a ser a **única** regra por papel, com fonte única:
+`role_state_transitions` (semeada por `DEFAULT_TRANSITIONS`, aplicada por `canTransition()`,
+exposta em `GET /workspaces/:slug/roles/`). O frontend consome essa matriz.
+
+Eliminada a duplicação: `packages/constants` mantinha 7 ações sintéticas (`STATE_TRIAGE_TO_REVIEWING`,
+`STATE_ANY_TO_CANCELLED`, …) e a função `canTransitionState()` — uma segunda matriz de transição
+que **o backend nunca conheceu**, usada como fallback no `use-project-role-permissions` e como
+matriz exibida na tela de permissões por projeto. Tudo removido em favor da configuração real.
+
+Cobertura: `apps/api-ts/tests/contract/state-visibility.test.ts`.

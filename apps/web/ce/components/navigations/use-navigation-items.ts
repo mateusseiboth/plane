@@ -30,7 +30,7 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
       {
         i18n_key: "sidebar.work_items",
         key: "work_items",
-        name: "Work items",
+        name: "Chamados",
         href: `/${workspaceSlug}/projects/${projectId}/issues`,
         icon: WorkItemsIcon,
         access: [

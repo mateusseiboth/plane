@@ -66,7 +66,7 @@ export const ActiveCycleProductivity = observer(function ActiveCycleProductivity
                 {estimateType === "points" ? (
                   <span>{`Pending points - ${cycle.backlog_estimate_points + cycle.unstarted_estimate_points + cycle.started_estimate_points}`}</span>
                 ) : (
-                  <span>{`Pending work items - ${cycle.backlog_issues + cycle.unstarted_issues + cycle.started_issues}`}</span>
+                  <span>{`Chamados pendentes - ${cycle.backlog_issues + cycle.unstarted_issues + cycle.started_issues}`}</span>
                 )}
               </div>
 

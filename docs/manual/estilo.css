@@ -1,0 +1,229 @@
+/* Estilo do manual impresso. Usado pelo gerar-pdf.sh (pandoc → HTML → Chrome). */
+
+@page {
+  size: A4;
+  margin: 16mm 13mm 18mm 13mm;
+}
+
+:root {
+  --azul-escuro: #12315f;
+  --azul-claro: #2ba6e0;
+  --texto: #1b2430;
+  --secundario: #5a6675;
+  --borda: #dfe4ea;
+  --fundo-suave: #f5f8fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: var(--texto);
+  margin: 0;
+}
+
+/* ── Capa ────────────────────────────────────────────────────────────────── */
+
+.capa {
+  height: 250mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  page-break-after: always;
+}
+
+.capa .marca {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 28px;
+}
+
+.capa h1 {
+  font-size: 34pt;
+  margin: 0 0 6px;
+  color: var(--azul-escuro);
+  border: 0;
+  padding: 0;
+}
+
+.capa .subtitulo {
+  font-size: 14pt;
+  color: var(--secundario);
+  margin: 0 0 40px;
+}
+
+.capa .rodape-capa {
+  font-size: 10pt;
+  color: var(--secundario);
+}
+
+/* ── Títulos ─────────────────────────────────────────────────────────────── */
+
+h1 {
+  font-size: 22pt;
+  color: var(--azul-escuro);
+  border-bottom: 3px solid var(--azul-claro);
+  padding-bottom: 6px;
+  margin: 0 0 18px;
+  page-break-after: avoid;
+}
+
+h2 {
+  font-size: 15pt;
+  color: var(--azul-escuro);
+  margin: 26px 0 10px;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 12pt;
+  color: var(--texto);
+  margin: 20px 0 8px;
+  page-break-after: avoid;
+}
+
+p {
+  margin: 0 0 10px;
+  orphans: 3;
+  widows: 3;
+}
+
+/* ── Imagens ─────────────────────────────────────────────────────────────── */
+
+figure {
+  margin: 14px 0 18px;
+  page-break-inside: avoid;
+  text-align: center;
+}
+
+img {
+  max-width: 100%;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+}
+
+figcaption {
+  font-size: 8.5pt;
+  color: var(--secundario);
+  margin-top: 5px;
+  font-style: italic;
+}
+
+/* ── Tabelas ─────────────────────────────────────────────────────────────── */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 18px;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+
+th {
+  background: var(--azul-escuro);
+  color: #fff;
+  text-align: left;
+  padding: 7px 9px;
+  font-weight: 600;
+}
+
+td {
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--borda);
+  vertical-align: top;
+}
+
+tr:nth-child(even) td {
+  background: var(--fundo-suave);
+}
+
+/* ── Citações e código ───────────────────────────────────────────────────── */
+
+blockquote {
+  margin: 14px 0;
+  padding: 10px 14px;
+  background: var(--fundo-suave);
+  border-left: 4px solid var(--azul-claro);
+  color: var(--texto);
+  page-break-inside: avoid;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+pre {
+  background: var(--fundo-suave);
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 9pt;
+  overflow-x: auto;
+  page-break-inside: avoid;
+}
+
+code {
+  font-family: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+  font-size: 0.92em;
+  background: var(--fundo-suave);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+ul,
+ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+li {
+  margin-bottom: 4px;
+}
+
+strong {
+  color: var(--azul-escuro);
+}
+
+/* Quebra de página explícita (o \newpage do Markdown vira isto). */
+.quebra {
+  page-break-after: always;
+  height: 0;
+}
+
+/* ── Sumário ─────────────────────────────────────────────────────────────── */
+
+#TOC {
+  page-break-after: always;
+}
+
+#TOC > ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#TOC ul ul {
+  list-style: none;
+  padding-left: 16px;
+  font-size: 0.94em;
+  color: var(--secundario);
+}
+
+#TOC a {
+  color: var(--texto);
+  text-decoration: none;
+}
+
+#TOC li {
+  margin-bottom: 3px;
+}

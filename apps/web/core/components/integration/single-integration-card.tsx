@@ -37,12 +37,12 @@ const integrationDetails: { [key: string]: any } = {
   github: {
     logo: GithubLogo,
     installed: "Ative o GitHub em projetos individuais para sincronizar com repositórios específicos.",
-    notInstalled: "Connect with GitHub with your Avião workspace to sync project work items.",
+    notInstalled: "Conecte o GitHub ao seu espaço de trabalho do Avião para sincronizar os chamados do sistema.",
   },
   slack: {
     logo: SlackLogo,
     installed: "Ative o Slack em projetos individuais para sincronizar com canais específicos.",
-    notInstalled: "Connect with Slack with your Avião workspace to sync project work items.",
+    notInstalled: "Conecte o Slack ao seu espaço de trabalho do Avião para sincronizar os chamados do sistema.",
   },
 };
 

@@ -67,19 +67,6 @@ export async function requireOwnOrAll(
   throw {status: 403, message: "Sua função não permite esta ação."};
 }
 
-/** State ids a role may see within a project (null = no restriction / sees all). */
-export async function visibleStateIds(role: EffectiveRole, projectId: string): Promise<string[] | null> {
-  if (!role.id) return null;
-  if (roleCan(role, EProjectAction.STATE_MOVE_UNRESTRICTED)) return null;
-  const rules = await prisma.roleStateVisibility.findMany({where: {roleId: role.id, canView: true}});
-  if (!rules.length) return null; // no rows → sees everything
-  const states = await prisma.state.findMany({where: {projectId, deletedAt: null}, select: {id: true, name: true, group: true}});
-  const allowed = states.filter((s) =>
-    rules.some((r) => r.group === s.group && (r.stateName === null || r.stateName === s.name)),
-  );
-  return allowed.map((s) => s.id);
-}
-
 /** Whether a role may move an issue between two states. */
 export async function canTransition(
   role: EffectiveRole,

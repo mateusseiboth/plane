@@ -29,7 +29,7 @@ export const LayoutQuickActions = observer(function LayoutQuickActions(props: Pr
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: "Link copiado",
-        message: `${storeType === "EPIC" ? "Epics" : "Work items"} link copied to clipboard.`,
+        message: `Link ${storeType === "EPIC" ? "das épicas" : "dos chamados"} copiado.`,
       });
     });
 

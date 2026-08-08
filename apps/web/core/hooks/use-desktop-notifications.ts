@@ -87,7 +87,7 @@ export function useDesktopNotifications({
         const delta = count - lastUnreadCount.current;
         showNotification(
           `${delta} nova${delta > 1 ? "s" : ""} notificação${delta > 1 ? "ões" : ""}`,
-          "Você tem atualizações em work items que você segue.",
+          "Você tem atualizações em chamados que você segue.",
           "ws-notifications"
         );
       }

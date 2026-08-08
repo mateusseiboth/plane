@@ -1,5 +1,5 @@
 // Configurable roles / workflow management API (H5). Admin-only.
-// CRUD for WorkflowRole plus its board-visibility and state-transition matrices,
+// CRUD for WorkflowRole plus its state-transition matrix,
 // and a catalogue of available actions for the settings UI.
 import Elysia from "elysia";
 import {authPlugin} from "@middleware/auth";
@@ -20,12 +20,6 @@ function roleDto(r: any) {
     is_system: r.isSystem,
     permissions: (r.permissions as string[]) ?? [],
     workspace_id: r.workspaceId,
-    visibility: (r.visibility ?? []).map((v: any) => ({
-      id: v.id,
-      group: v.group,
-      state_name: v.stateName,
-      can_view: v.canView,
-    })),
     transitions: (r.transitions ?? []).map((t: any) => ({
       id: t.id,
       from_group: t.fromGroup,
@@ -59,7 +53,7 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
     await requireWorkspaceMember(ws.id, user.id);
     const roles = await prisma.workflowRole.findMany({
       where: {workspaceId: ws.id, deletedAt: null},
-      include: {visibility: true, transitions: true},
+      include: {transitions: true},
       orderBy: {level: "asc"},
     });
     return roles.map(roleDto);
@@ -88,7 +82,7 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
         isSystem: false,
         permissions: Array.isArray(b.permissions) ? b.permissions : [],
       },
-      include: {visibility: true, transitions: true},
+      include: {transitions: true},
     });
     set.status = 201;
     return roleDto(role);
@@ -99,7 +93,7 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
     await requireWorkspaceMember(ws.id, user.id);
     const role = await prisma.workflowRole.findFirst({
       where: {id: role_id, workspaceId: ws.id, deletedAt: null},
-      include: {visibility: true, transitions: true},
+      include: {transitions: true},
     });
     if (!role) {
       set.status = 404;
@@ -125,7 +119,7 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
     const role = await prisma.workflowRole.update({
       where: {id: role_id},
       data,
-      include: {visibility: true, transitions: true},
+      include: {transitions: true},
     });
     return roleDto(role);
   })
@@ -145,32 +139,6 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
     await prisma.workflowRole.update({where: {id: role_id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
-  })
-
-  // Replace the full visibility matrix for a role
-  .put("/:role_id/visibility/", async ({params: {slug, role_id}, body, user, set}) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireRoleAdmin(ws.id, user.id);
-    const target = await prisma.workflowRole.findFirst({where: {id: role_id, workspaceId: ws.id, deletedAt: null}});
-    if (!target) {
-      set.status = 404;
-      return {detail: "Função não encontrada."};
-    }
-    const rows: any[] = (body as any)?.visibility ?? [];
-    await prisma.$transaction([
-      prisma.roleStateVisibility.deleteMany({where: {roleId: role_id}}),
-      prisma.roleStateVisibility.createMany({
-        data: rows.map((r) => ({
-          roleId: role_id,
-          workspaceId: ws.id,
-          group: r.group,
-          stateName: r.state_name ?? null,
-          canView: r.can_view ?? true,
-        })),
-      }),
-    ]);
-    const role = await prisma.workflowRole.findFirst({where: {id: role_id}, include: {visibility: true, transitions: true}});
-    return roleDto(role);
   })
 
   // Replace the full transition matrix for a role
@@ -197,6 +165,6 @@ export const rolesModule = new Elysia({prefix: "/workspaces/:slug/roles"})
         })),
       }),
     ]);
-    const role = await prisma.workflowRole.findFirst({where: {id: role_id}, include: {visibility: true, transitions: true}});
+    const role = await prisma.workflowRole.findFirst({where: {id: role_id}, include: {transitions: true}});
     return roleDto(role);
   });

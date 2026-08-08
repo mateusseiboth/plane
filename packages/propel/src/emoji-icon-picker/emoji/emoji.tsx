@@ -15,7 +15,7 @@ type EmojiRootProps = {
 };
 
 export function EmojiRoot(props: EmojiRootProps) {
-  const { onChange, searchPlaceholder = "Search", searchDisabled = false } = props;
+  const { onChange, searchPlaceholder = "Buscar", searchDisabled = false } = props;
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const focusInput = () => {

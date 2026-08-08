@@ -11,7 +11,6 @@ import {
   ALL_ACTIONS,
   DEFAULT_ROLES,
   DEFAULT_TRANSITIONS,
-  DEFAULT_VISIBILITY,
   EProjectAction,
   STATE,
   roleCan,
@@ -92,31 +91,13 @@ describe("defaultRoleForLevel", () => {
   });
 });
 
-describe("DEFAULT_VISIBILITY / DEFAULT_TRANSITIONS", () => {
-  it("Qualidade não enxerga A Fazer nem Em Desenvolvimento", () => {
-    const rules = DEFAULT_VISIBILITY.qualidade;
-    expect(rules.some((r) => r.group === "unstarted")).toBe(false);
-    expect(rules.some((r) => r.stateName === STATE.EM_DESENVOLVIMENTO)).toBe(false);
-    expect(rules.some((r) => r.stateName === STATE.EM_ANALISE)).toBe(true);
-  });
-
-  it("TI não enxerga Em Análise (faixa da Qualidade)", () => {
-    const rules = DEFAULT_VISIBILITY.ti;
-    expect(rules.some((r) => r.stateName === STATE.EM_ANALISE)).toBe(false);
-    expect(rules.some((r) => r.stateName === STATE.EM_DESENVOLVIMENTO)).toBe(true);
-  });
-
-  it("Atendimento só vê triagem e os desfechos", () => {
-    expect(DEFAULT_VISIBILITY.atendimento.map((r) => r.group).sort()).toEqual([
-      "cancelled",
-      "completed",
-      "triage",
-    ]);
-  });
-
-  it("papéis irrestritos não têm regras de visibilidade (veem tudo)", () => {
-    expect(DEFAULT_VISIBILITY.admin).toBeUndefined();
-    expect(DEFAULT_VISIBILITY.gestor_projeto).toBeUndefined();
+describe("DEFAULT_TRANSITIONS", () => {
+  // Visibilidade por papel foi removida do produto: quem participa do projeto vê
+  // todos os chamados, em qualquer etapa. O recorte por setor virou filtro
+  // (templates prontos na UI). O que o papel controla é para onde pode MOVER.
+  it("não existe mais matriz de visibilidade exportada", async () => {
+    const mod = (await import("@utils/permissions")) as Record<string, unknown>;
+    expect(mod.DEFAULT_VISIBILITY).toBeUndefined();
   });
 
   it("Atendimento só transita dentro da triagem", () => {
@@ -166,9 +147,6 @@ describe("seedWorkflowRoles", () => {
     expect(roles.every((r) => r.isSystem)).toBe(true);
 
     const qualidade = roles.find((r) => r.key === "qualidade")!;
-    expect(await prisma.roleStateVisibility.count({where: {roleId: qualidade.id}})).toBe(
-      DEFAULT_VISIBILITY.qualidade.length,
-    );
     expect(await prisma.roleStateTransition.count({where: {roleId: qualidade.id}})).toBe(
       DEFAULT_TRANSITIONS.qualidade.length,
     );
@@ -198,8 +176,8 @@ describe("seedWorkflowRoles", () => {
     await seedWorkflowRoles(prisma, workspaceId);
     expect(await prisma.workflowRole.count({where: {workspaceId}})).toBe(7);
     const qualidade = await prisma.workflowRole.findFirstOrThrow({where: {workspaceId, key: "qualidade"}});
-    expect(await prisma.roleStateVisibility.count({where: {roleId: qualidade.id}})).toBe(
-      DEFAULT_VISIBILITY.qualidade.length,
+    expect(await prisma.roleStateTransition.count({where: {roleId: qualidade.id}})).toBe(
+      DEFAULT_TRANSITIONS.qualidade.length,
     );
   });
 

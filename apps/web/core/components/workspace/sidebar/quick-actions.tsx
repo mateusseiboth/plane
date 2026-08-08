@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, SIDEBAR_TRACKER_ELEMENTS, PROJECT_WORK_ROLES } from "@plane/constants";
+import { EProjectAction, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES, SIDEBAR_TRACKER_ELEMENTS, canPerform } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { AddWorkItemIcon } from "@plane/propel/icons";
 import type { TIssue } from "@plane/types";
@@ -46,14 +46,18 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
     EUserPermissionsLevel.WORKSPACE
   );
 
-  // D2 — usuários "Atendimento" (papel de projeto 6) criam intakes, não work items.
-  // É tratado como Atendimento quando seu papel mais alto entre os projetos é 6.
+  // D2 — quem só opera a mesa de atendimento abre SOLICITAÇÃO, não chamado.
+  // A decisão sai da capacidade (INTAKE_CREATE sem ISSUE_CREATE), não de comparar
+  // o papel com o número 6: papéis customizados também podem ter esse perfil, e o
+  // número deixaria todos eles de fora.
   const projectRoles = workspaceSlug ? getProjectRolesByWorkspaceSlug(workspaceSlug) : {};
-  const roleValues = Object.values(projectRoles ?? {}) as number[];
   const intakeProjectIds = Object.entries(projectRoles ?? {})
-    .filter(([, role]) => Number(role) === 6)
+    .filter(([, role]) => {
+      const level = Number(role);
+      return canPerform(level, EProjectAction.INTAKE_CREATE) && !canPerform(level, EProjectAction.ISSUE_CREATE);
+    })
     .map(([projectId]) => projectId);
-  const isAtendimento = roleValues.length > 0 && Math.max(...roleValues) === 6 && intakeProjectIds.length > 0;
+  const isAtendimento = !canCreateIssue && intakeProjectIds.length > 0;
 
   const disabled = joinedProjectIds.length === 0 || (!canCreateIssue && !isAtendimento);
 

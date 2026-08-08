@@ -49,7 +49,7 @@ export function MyWorkItemsWidget({ workspaceSlug }: THomeWidgetProps) {
         </Link>
       </div>
       {items.length === 0 && (
-        <p className="py-4 text-center text-13 text-secondary">Nenhum work item atribuído a você.</p>
+        <p className="py-4 text-center text-13 text-secondary">Nenhum chamado atribuído a você.</p>
       )}
       <div className="space-y-2">
         {items.slice(0, 8).map((issue) => (

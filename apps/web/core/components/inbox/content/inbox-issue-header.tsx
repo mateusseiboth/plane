@@ -183,7 +183,7 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
     }
     try {
       await inboxIssue?.updateIssue({ state_id: emTesteStateId });
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Devolvido", message: "Work item devolvido para Em Teste." });
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Devolvido", message: "Chamado devolvido para Em Teste." });
     } catch (err: unknown) {
       const error = err as { detail?: string };
       setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: error?.detail || "Não foi possível devolver para Em Teste." });

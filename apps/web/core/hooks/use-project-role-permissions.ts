@@ -4,22 +4,26 @@
  * Usage:
  *   const perms = useProjectRolePermissions();
  *   if (!perms.canWriteComments) return null;
+ *   if (perms.isPermissionsLoading) return <Disabled />;
  *   if (!perms.canMoveToState("triage", "unstarted")) return null;
+ *
+ * Transição de etapa é a única regra por papel que existe no produto, e a sua
+ * fonte única da verdade é a configuração de funções do workspace
+ * (`GET /roles/` → `role.transitions`), a mesma tabela `role_state_transitions`
+ * que o backend aplica em `canTransition()`. Não há matriz estática de fallback.
+ *
+ * Visibilidade por papel foi removida: quem participa do projeto enxerga todos
+ * os chamados, em qualquer etapa.
  */
 import { useParams } from "next/navigation";
 import { EUserProjectRoles } from "@plane/types";
-import {
-  EProjectAction,
-  canPerform,
-  canTransitionState,
-} from "@plane/constants";
+import { EProjectAction, canPerform } from "@plane/constants";
 import { useUserPermissions } from "@/hooks/store/user";
-import { EUserPermissionsLevel } from "@plane/constants";
 import { useWorkflowRole } from "@/hooks/use-workflow-role";
 
 export function useProjectRolePermissions(projectId?: string) {
   const { workspaceSlug, projectId: routerProjectId } = useParams();
-  const { allowPermissions, getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
+  const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
 
   const resolvedProjectId = projectId ?? routerProjectId?.toString();
   const slug = workspaceSlug?.toString() ?? "";
@@ -29,10 +33,9 @@ export function useProjectRolePermissions(projectId?: string) {
       ? (getProjectRoleByWorkspaceSlugAndProjectId(slug, resolvedProjectId) as EUserProjectRoles | undefined)
       : undefined;
 
-  // Role configurável do workspace (tela "Funções e permissões"). Quando
-  // carregada, é a fonte da verdade — o mapa estático vira apenas fallback,
-  // igual ao resolveRole/canTransition do backend.
-  const workflowRole = useWorkflowRole(slug, role);
+  // Role configurável do workspace (tela "Funções e permissões"). Espelha o
+  // resolveRole do backend: match por nível do papel legado.
+  const { workflowRole, isLoading: isPermissionsLoading } = useWorkflowRole(slug, role);
 
   const can = (action: EProjectAction): boolean => {
     if (!role) return false;
@@ -58,15 +61,33 @@ export function useProjectRolePermissions(projectId?: string) {
   const canAssignSelf     = can(EProjectAction.ISSUE_ASSIGN_SELF);
   const canAssignOthers   = can(EProjectAction.ISSUE_ASSIGN_OTHERS);
 
-  // ── State transitions — individual steps ─────────────────────────────────
-  const canMoveTriageToReviewing    = can(EProjectAction.STATE_TRIAGE_TO_REVIEWING);
-  const canMoveReviewingToTodo      = can(EProjectAction.STATE_REVIEWING_TO_TODO);
-  const canMoveTodoToInProgress     = can(EProjectAction.STATE_TODO_TO_IN_PROGRESS);
-  const canMoveInProgressToInTest   = can(EProjectAction.STATE_IN_PROGRESS_TO_IN_TEST);
-  const canMoveInTestToDone         = can(EProjectAction.STATE_IN_TEST_TO_DONE);
-  const canMoveInTestToInProgress   = can(EProjectAction.STATE_IN_TEST_TO_IN_PROGRESS);
-  const canCancelAnything           = can(EProjectAction.STATE_ANY_TO_CANCELLED);
+  // ── State transitions ────────────────────────────────────────────────────
   const canMoveUnrestricted         = can(EProjectAction.STATE_MOVE_UNRESTRICTED);
+
+  /**
+   * Verifica uma transição de etapa contra `role.transitions` — exatamente as
+   * linhas que o backend consulta em `canTransition()`.
+   *
+   * Enquanto a configuração de funções não chegou devolve `false`: quem chama
+   * deve usar `isPermissionsLoading` para desabilitar o controle em vez de
+   * receber uma resposta inventada.
+   */
+  const canMoveToState = (fromGroup: string, toGroup: string, fromName?: string, toName?: string): boolean => {
+    if (!role || isPermissionsLoading) return false;
+    if (fromName && toName && fromName === toName) return true; // no-op move
+    // Papel sem função configurada no workspace: o backend resolve para um papel
+    // sem `id` e libera a transição — o frontend acompanha, em vez de divergir.
+    if (!workflowRole) return true;
+    if (canMoveUnrestricted) return true;
+    return workflowRole.transitions.some(
+      (t) =>
+        t.allowed &&
+        t.from_group === fromGroup &&
+        (t.from_state_name === null || !fromName || t.from_state_name === fromName) &&
+        t.to_group === toGroup &&
+        (t.to_state_name === null || !toName || t.to_state_name === toName)
+    );
+  };
 
   // ── Comments ──────────────────────────────────────────────────────────────
   const canWriteComments        = can(EProjectAction.COMMENT_CREATE);
@@ -101,6 +122,8 @@ export function useProjectRolePermissions(projectId?: string) {
 
   return {
     role,
+    /** true enquanto a configuração de funções do workspace não chegou. */
+    isPermissionsLoading,
 
     // ── Viewing ──────────────────────────────────────────────────────────
     canViewIssues,
@@ -119,36 +142,8 @@ export function useProjectRolePermissions(projectId?: string) {
     canAssignOthers,
 
     // ── State transitions ────────────────────────────────────────────────
-    canMoveTriageToReviewing,
-    canMoveReviewingToTodo,
-    canMoveTodoToInProgress,
-    canMoveInProgressToInTest,
-    canMoveInTestToDone,
-    canMoveInTestToInProgress,
-    canCancelAnything,
     canMoveUnrestricted,
-
-    /**
-     * Generic state transition check. Com a role configurável carregada usa a
-     * tabela "Transições de etapa permitidas" (mesma lógica de canTransition no
-     * backend); sem ela, cai no mapa estático por grupo.
-     */
-    canMoveToState: (fromGroup: string, toGroup: string, fromName?: string, toName?: string): boolean => {
-      if (!role) return false;
-      if (workflowRole) {
-        if (workflowRole.permissions.includes(EProjectAction.STATE_MOVE_UNRESTRICTED)) return true;
-        if (fromName && toName && fromName === toName) return true;
-        return workflowRole.transitions.some(
-          (t) =>
-            t.allowed &&
-            t.from_group === fromGroup &&
-            (t.from_state_name === null || !fromName || t.from_state_name === fromName) &&
-            t.to_group === toGroup &&
-            (t.to_state_name === null || !toName || t.to_state_name === toName)
-        );
-      }
-      return canTransitionState(role, fromGroup, toGroup);
-    },
+    canMoveToState,
 
     /** Check any arbitrary action directly */
     canDo: (action: EProjectAction): boolean => can(action),

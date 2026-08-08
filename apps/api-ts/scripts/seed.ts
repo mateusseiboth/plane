@@ -21,10 +21,26 @@ const ADMIN_NAME = process.env.ADMIN_NAME ?? "Admin";
 const DEFAULT_USER_PASSWORD = process.env.DEFAULT_PASSWORD ?? "teste";
 const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "quality";
 const WORKSPACE_NAME = process.env.WORKSPACE_NAME ?? "Quality Workspace";
+/**
+ * Administradores da instância além do `ADMIN_EMAIL`. Entram como admin do
+ * espaço de trabalho e mantêm a senha que já tiverem — o seeder roda a cada
+ * `docker compose up` e não pode reverter a senha de ninguém.
+ */
+const ADMINS_EXTRAS = (process.env.EXTRA_ADMIN_EMAILS ?? "mateus@qualitysistemas.com.br")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 function log(msg: string) {
   console.log(`[seed] ${msg}`);
 }
+
+/** Configuração de fábrica da instância. */
+const DEFAULT_INSTANCE_CONFIG = () => ({
+  // SLA: ajuste de prazo (horas corridas) por prioridade — totalmente editável (C2)
+  priority_sla: {urgent: -8, high: -4, medium: 0, low: 8, none: 0},
+  chat: {enabled: true, api_url: "", ws_url: ""},
+});
 
 async function main() {
   log(`Starting seed...`);
@@ -70,6 +86,12 @@ async function main() {
   }
 
   // 2. Create or update the Instance record (required by frontend)
+  //
+  // O chat/atendimento vem LIGADO de fábrica: é parte do fluxo de trabalho aqui,
+  // e deixá-lo desligado fazia a tela de Atendimento abrir só com o aviso "o chat
+  // não está habilitado". As URLs ficam vazias de propósito — o frontend resolve
+  // /chat-api e /chat-ws contra a origem atual, então gravar host aqui só quebra
+  // quando o sistema é aberto por outro domínio.
   const existingInstance = await prisma.instance.findFirst();
   if (!existingInstance) {
     await prisma.instance.create({
@@ -83,19 +105,22 @@ async function main() {
         isSignupScreenVisited: true,
         isTelemetryEnabled: false,
         isSupportRequired: false,
-        // SLA: ajuste de prazo (horas corridas) por prioridade — totalmente editável (C2)
-        configurations: {priority_sla: {urgent: -8, high: -4, medium: 0, low: 8, none: 0}},
+        configurations: DEFAULT_INSTANCE_CONFIG(),
       },
     });
     log(`✅  Instance record created`);
   } else {
     const cfg = (existingInstance.configurations as any) ?? {};
-    if (!cfg.priority_sla) cfg.priority_sla = {urgent: -8, high: -4, medium: 0, low: 8, none: 0};
+    const padrao = DEFAULT_INSTANCE_CONFIG();
+    // Só preenche o que falta: configuração ajustada pelo admin não é sobrescrita.
+    for (const [chave, valor] of Object.entries(padrao)) {
+      if (cfg[chave] === undefined) cfg[chave] = valor;
+    }
     await prisma.instance.update({
       where: {id: existingInstance.id},
       data: {isSetupDone: true, isSignupScreenVisited: true, configurations: cfg},
     });
-    log(`✅  Instance updated (setup done + priority_sla ensured)`);
+    log(`✅  Instance updated (setup done + configurações padrão garantidas)`);
   }
 
   // 3. Create default workspace if doesn't exist
@@ -122,6 +147,49 @@ async function main() {
       data: {workspaceId: workspace.id, memberId: admin.id, role: 20, isActive: true},
     });
     log(`✅  Admin added as workspace owner`);
+  }
+
+  // 3a. Administradores extras da instância.
+  // Promove quem já existe (inclusive usuários vindos da migração do SAC) e cria
+  // quem ainda não existe, com a senha padrão — a flag isPasswordAutoset garante
+  // que ela deixa de ser tocada assim que a pessoa definir a própria.
+  for (const email of ADMINS_EXTRAS) {
+    const existente = await prisma.user.findUnique({where: {email}});
+    const extra = existente
+      ? await prisma.user.update({
+          where: {email},
+          data: {isSuperuser: true, isStaff: true, isInstanceAdmin: true, isActive: true, isEmailVerified: true},
+        })
+      : await prisma.user.create({
+          data: {
+            email,
+            username: email.split("@")[0],
+            password: await Bun.password.hash(DEFAULT_USER_PASSWORD, {algorithm: "bcrypt", cost: 12}),
+            firstName: email.split("@")[0],
+            displayName: email.split("@")[0],
+            isPasswordAutoset: true,
+            isSuperuser: true,
+            isStaff: true,
+            isInstanceAdmin: true,
+            isActive: true,
+            isEmailVerified: true,
+            language: "pt-BR",
+          },
+        });
+
+    const vinculo = await prisma.workspaceMember.findFirst({
+      where: {workspaceId: workspace.id, memberId: extra.id, deletedAt: null},
+    });
+    if (vinculo) {
+      if (vinculo.role !== 20) {
+        await prisma.workspaceMember.update({where: {id: vinculo.id}, data: {role: 20, isActive: true}});
+      }
+    } else {
+      await prisma.workspaceMember.create({
+        data: {workspaceId: workspace.id, memberId: extra.id, role: 20, isActive: true},
+      });
+    }
+    log(`✅  Administrador da instância: ${email}`);
   }
 
   // 3b. Seed configurable roles (system roles + default visibility/transitions)

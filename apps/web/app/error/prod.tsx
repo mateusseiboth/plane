@@ -6,6 +6,7 @@
 
 import { useTheme } from "next-themes";
 // plane imports
+import { SUPPORT_EMAIL, SUPPORT_SITE } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 // assets
 import maintenanceModeDarkModeImage from "@/app/assets/instance/maintenance-mode-dark.svg?url";
@@ -17,17 +18,12 @@ const linkMap = [
   {
     key: "mail_to",
     label: "Falar com o suporte",
-    value: "mailto:support@plane.so",
+    value: `mailto:${SUPPORT_EMAIL}`,
   },
   {
-    key: "status",
-    label: "Página de status",
-    value: "https://status.plane.so/",
-  },
-  {
-    key: "twitter_handle",
-    label: "@planepowers",
-    value: "https://x.com/planepowers",
+    key: "site",
+    label: "Quality Sistemas",
+    value: SUPPORT_SITE,
   },
 ];
 

@@ -37,6 +37,11 @@ export function LayoutSelection(props: Props) {
         <Tooltip key={layout.key} tooltipContent={t(layout.i18n_title)} isMobile={isMobile}>
           <button
             type="button"
+            // Os botões só têm ícone: sem rótulo acessível o leitor de tela lê
+            // "botão" e nada mais, e nenhum teste consegue alcançá-los.
+            aria-label={t(layout.i18n_title)}
+            aria-pressed={selectedLayout === layout.key}
+            data-layout={layout.key}
             className={cn(
               "group grid h-5.5 w-7 place-items-center overflow-hidden rounded-sm transition-all hover:bg-layer-transparent-hover",
               {

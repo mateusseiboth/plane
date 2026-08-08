@@ -227,10 +227,10 @@ export function CreateApiTokenForm(props: Props) {
               <span className="text-11 text-placeholder">
                 {expiredAt === "custom"
                   ? customDate
-                    ? `Expires ${renderFormattedDate(customDateFormatted ?? "")} at ${renderFormattedTime(customDateFormatted ?? "")}`
+                    ? `Expira em ${renderFormattedDate(customDateFormatted ?? "")} às ${renderFormattedTime(customDateFormatted ?? "")}`
                     : null
                   : expiredAt
-                    ? `Expires ${renderFormattedDate(expiryDate ?? "")} at ${renderFormattedTime(expiryDate ?? "")}`
+                    ? `Expira em ${renderFormattedDate(expiryDate ?? "")} às ${renderFormattedTime(expiryDate ?? "")}`
                     : null}
               </span>
             )}

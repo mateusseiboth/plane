@@ -197,26 +197,66 @@ export async function applyIssueFilters(
   if (stateIdSet.size) where.stateId = {in: [...stateIdSet]};
   else if (filters.state?.length || filters.state_group?.length) where.stateId = {in: []};
 
-  // date ranges: "after;before" or single date. Guards against invalid/empty dates
-  // (Prisma throws on Invalid Date), and supports Django-style "<token>;<date>" pairs.
+  // Datas. O front manda os limites de um intervalo como ENTRADAS SEPARADAS —
+  // `toArray` quebra a query em vírgulas —, cada uma no formato Django
+  // "<data>;<token>" (ex.: "2026-01-01;after,2026-01-31;before"). A versão
+  // anterior lia só `raw[0]` e ainda tratava o token como se fosse a segunda
+  // data: um intervalo virava igualdade na data inicial e devolvia 0 chamados.
   const valid = (s: string) => {
     const d = new Date(s);
     return isNaN(d.getTime()) ? null : d;
   };
+  /** Cada token diz qual borda do intervalo a data ocupa. */
+  const BORDA: Record<string, "gte" | "lte"> = {
+    after: "gte",
+    from: "gte",
+    start: "gte",
+    gte: "gte",
+    before: "lte",
+    to: "lte",
+    end: "lte",
+    lte: "lte",
+  };
   const applyDate = (field: string, raw: string[]) => {
-    if (!raw.length) return;
-    const parts = raw[0].split(";").map((p) => p.trim());
-    if (parts.length === 2) {
-      const a = valid(parts[0]);
-      const b = valid(parts[1]);
-      const range: any = {};
-      if (a) range.gte = a;
-      if (b) range.lte = b;
-      if (Object.keys(range).length) where[field] = range;
-    } else {
-      const d = valid(parts[0]);
-      if (d) where[field] = d;
+    const range: Record<string, Date> = {};
+    const soltas: Date[] = [];
+
+    for (const entrada of raw) {
+      const [primeira, segunda] = entrada.split(";").map((p) => p.trim());
+      const inicio = valid(primeira);
+      const fim = segunda ? valid(segunda) : null;
+
+      // "<data>;<data>" já traz o intervalo inteiro numa entrada só.
+      if (inicio && fim) {
+        range.gte = inicio;
+        range.lte = fim;
+        continue;
+      }
+      // "<lixo>;<data>" — só o limite superior é aproveitável.
+      if (fim) {
+        range.lte = fim;
+        continue;
+      }
+      if (!inicio) continue;
+
+      const borda = segunda ? BORDA[segunda.toLowerCase()] : undefined;
+      if (borda) range[borda] = inicio;
+      else soltas.push(inicio);
     }
+
+    // Duas datas sem token ("a,b") também descrevem um intervalo.
+    if (soltas.length >= 2) {
+      const ordenadas = [...soltas].sort((x, y) => x.getTime() - y.getTime());
+      range.gte ??= ordenadas[0];
+      range.lte ??= ordenadas[ordenadas.length - 1];
+      soltas.length = 0;
+    }
+
+    if (Object.keys(range).length) {
+      where[field] = range;
+      return;
+    }
+    if (soltas.length === 1) where[field] = soltas[0];
   };
   if (filters.target_date?.length) applyDate("targetDate", filters.target_date);
   if (filters.start_date?.length) applyDate("startDate", filters.start_date);

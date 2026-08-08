@@ -7,55 +7,64 @@
 // plane types
 import { useTranslation } from "@plane/i18n";
 import type { IUser } from "@plane/types";
-// plane ui
 // hooks
 import { useCurrentTime } from "@/hooks/use-current-time";
 
 export interface IUserGreetingsView {
   user: IUser;
+  /** Frase curta com o estado do dia, ao lado da data. */
+  resumo?: string;
 }
 
+/**
+ * Saudação do topo da home.
+ *
+ * Alinhada à esquerda, junto do resto do conteúdo: centralizada no meio de uma
+ * tela larga ela empurrava o conteúdo para baixo e deixava a página com cara de
+ * vazia. Data e hora saem em pt-BR — em en-US virava "Friday, Aug 7" no meio de
+ * uma interface toda em português.
+ */
 export function UserGreetingsView(props: IUserGreetingsView) {
-  const { user } = props;
-  // current time hook
+  const { user, resumo } = props;
   const { currentTime } = useCurrentTime();
-  // store hooks
   const { t } = useTranslation();
 
-  const hour = new Intl.DateTimeFormat("en-US", {
-    hour12: false,
-    hour: "numeric",
-  }).format(currentTime);
+  const hora = currentTime.getHours();
+  const periodo = hora < 12 ? "morning" : hora < 18 ? "afternoon" : "evening";
+  const emoji = periodo === "morning" ? "🌤️" : periodo === "afternoon" ? "🌥️" : "🌙";
 
-  const date = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(currentTime);
-
-  const weekDay = new Intl.DateTimeFormat("en-US", {
+  const dataLonga = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
+    day: "numeric",
+    month: "long",
   }).format(currentTime);
 
-  const timeString = new Intl.DateTimeFormat("en-US", {
-    timeZone: user?.user_timezone,
-    hour12: false, // Use 24-hour format
+  const horaTexto = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: user?.user_timezone || undefined,
+    hour12: false,
     hour: "2-digit",
     minute: "2-digit",
   }).format(currentTime);
 
-  const greeting = parseInt(hour, 10) < 12 ? "morning" : parseInt(hour, 10) < 18 ? "afternoon" : "evening";
+  const nome = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.display_name;
 
   return (
-    <div className="my-6 flex flex-col items-center">
-      <h2 className="text-center text-20 font-semibold">
-        {t("good")} {t(greeting)}, {user?.first_name} {user?.last_name}
-      </h2>
-      <h5 className="flex items-center gap-2 font-medium text-placeholder">
-        <div>{greeting === "morning" ? "🌤️" : greeting === "afternoon" ? "🌥️" : "🌙️"}</div>
-        <div>
-          {weekDay}, {date} {timeString}
-        </div>
-      </h5>
+    <div className="flex flex-col gap-0.5">
+      <h1 className="text-24 font-semibold text-primary">
+        {t("good")} {t(periodo)}, {nome}
+      </h1>
+      <p className="flex flex-wrap items-center gap-x-2 text-13 text-secondary">
+        <span aria-hidden>{emoji}</span>
+        <span className="first-letter:uppercase">{dataLonga}</span>
+        <span className="text-tertiary">·</span>
+        <span>{horaTexto}</span>
+        {resumo && (
+          <>
+            <span className="text-tertiary">·</span>
+            <span className="text-primary">{resumo}</span>
+          </>
+        )}
+      </p>
     </div>
   );
 }

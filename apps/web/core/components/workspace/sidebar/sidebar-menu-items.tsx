@@ -176,7 +176,7 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
                       <SidebarNavItem isActive={pathname?.startsWith(`/${workspaceSlug}/plugins`) ?? false}>
                         <div className="flex w-full items-center gap-1.5 truncate">
                           <Puzzle className="size-4 flex-shrink-0" />
-                          <span className="truncate text-13 font-medium">Plugin Store</span>
+                          <span className="truncate text-13 font-medium">Loja de plugins</span>
                         </div>
                       </SidebarNavItem>
                     </Link>
@@ -203,7 +203,7 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
                     )}
                   >
                     <Ellipsis className="size-4 flex-shrink-0" />
-                    <span>{isExtendedSidebarOpened ? "Hide" : "More"}</span>
+                    <span>{isExtendedSidebarOpened ? "Ocultar" : "Mais"}</span>
                   </button>
                 </SidebarNavItem>
               </>

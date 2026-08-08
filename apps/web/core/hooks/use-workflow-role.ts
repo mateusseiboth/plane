@@ -1,26 +1,40 @@
 /**
  * Hooks para as funções configuráveis (workflow roles) do workspace.
  *
- * O backend (apps/api-ts/src/modules/roles) armazena por workspace as roles
- * com permissões, visibilidade de quadros e transições de etapa editáveis na
- * tela de configurações. Estes hooks espelham `resolveRole` do backend:
- * a role efetiva do usuário é resolvida pelo `level` (papel numérico legado).
+ * `GET /api/v1/workspaces/:slug/roles/` é a fonte única da verdade das
+ * permissões e das transições de etapa: os mesmos registros que o backend lê em
+ * `resolveRole` / `canTransition`. Não existe matriz estática espelhada no
+ * frontend — enquanto a configuração não chega, os hooks informam `isLoading`
+ * para que a UI desabilite o controle em vez de adivinhar uma resposta.
+ *
+ * Visibilidade por papel não existe mais: quem participa do projeto vê todos os
+ * chamados, em qualquer etapa.
  */
 import useSWR from "swr";
 import rolesService, { type TWorkflowRole } from "@/services/roles.service";
 
-export function useWorkspaceWorkflowRoles(workspaceSlug?: string): TWorkflowRole[] | undefined {
-  const { data } = useSWR(
+export type TWorkspaceWorkflowRoles = {
+  roles: TWorkflowRole[] | undefined;
+  isLoading: boolean;
+};
+
+export type TResolvedWorkflowRole = {
+  workflowRole: TWorkflowRole | undefined;
+  isLoading: boolean;
+};
+
+export function useWorkspaceWorkflowRoles(workspaceSlug?: string): TWorkspaceWorkflowRoles {
+  const { data, isLoading } = useSWR(
     workspaceSlug ? `WORKSPACE_WORKFLOW_ROLES_${workspaceSlug}` : null,
     workspaceSlug ? () => rolesService.list(workspaceSlug) : null,
     { revalidateOnFocus: false, revalidateIfStale: false, errorRetryCount: 2 }
   );
-  return data;
+  return { roles: data, isLoading };
 }
 
 /** Role configurável efetiva do usuário no workspace (match por level, como o backend). */
-export function useWorkflowRole(workspaceSlug?: string, roleLevel?: number): TWorkflowRole | undefined {
-  const roles = useWorkspaceWorkflowRoles(workspaceSlug);
-  if (!roles || roleLevel === undefined) return undefined;
-  return roles.find((r) => r.level === roleLevel);
+export function useWorkflowRole(workspaceSlug?: string, roleLevel?: number): TResolvedWorkflowRole {
+  const { roles, isLoading } = useWorkspaceWorkflowRoles(workspaceSlug);
+  if (!roles || roleLevel === undefined) return { workflowRole: undefined, isLoading };
+  return { workflowRole: roles.find((r) => r.level === roleLevel), isLoading };
 }

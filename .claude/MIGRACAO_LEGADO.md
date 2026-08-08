@@ -31,6 +31,54 @@ Todos são **idempotentes** (dedupe por `external_source`/`external_id` ou
   `LIMIT_RECORDS` pequeno (que pega os mais novos) migra 0 pós-atendimentos.
 - `SKIP_COMMENTS` / `SKIP_VISITS`.
 
+### Etapa de destino de cada chamado
+
+O legado guarda o **setor onde o chamado está** (`chamados_setor`) e o
+**responsável de cada setor em colunas separadas**: `chamados_gdq` (Qualidade),
+`chamados_ti`, `chamados_ate` (Atendimento), `chamados_gp` (Gestão de Projetos).
+
+| Situação no SAC | Etapa no Avião |
+|---|---|
+| `encerrado` / `encerrado parcialmente` | Concluído |
+| setor TI | Em Desenvolvimento |
+| setor Qualidade **sem** responsável da Qualidade | **Triagem** |
+| setor Qualidade **com** responsável da Qualidade | **Em Análise** |
+| demais setores abertos | Em Desenvolvimento |
+
+**Triagem é a fila do que não tem dono** — essa é a definição do produto. A
+primeira versão do importador separava Triagem de Em Teste por "passou pelo TI
+em algum momento" (qualquer mensagem com setor TI), o que jogava na Triagem
+chamado que já estava com alguém da Qualidade.
+
+Duas sutilezas que custam caro se ignoradas:
+
+- `chamados_gdq` **nem sempre aponta para alguém da Qualidade** (há registros
+  apontando para atendimento, TI e GP). Só vale como dono quem tem
+  `usuarios_setor` de Qualidade — por isso o importador carrega o conjunto de
+  usuários da Qualidade antes do laço.
+- **O único assignee é o responsável do setor atual.** "Meu chamado" é o que eu
+  tenho de resolver agora — não o que eu já comentei um dia. A versão anterior
+  transformava todo participante de `mensagens` em responsável (3,5 por chamado,
+  11.979 com 5 ou mais) e o filtro "Meus chamados" devolvia tudo que a pessoa
+  tinha tocado. Solicitante e criador **não** entram: quem abriu fica em
+  `createdById` e o cliente aparece pela entidade.
+- O SELECT dos chamados monta as colunas de responsável a partir de
+  `COLUNAS_RESPONSAVEL_SQL` (derivado do mapa de setores). Listar à mão fez uma
+  rodada trazer só `chamados_gdq` — 9.432 responsáveis em vez de ~26.000, **sem
+  erro nenhum**. O importador loga `👤 N com responsável (X%)` e avisa abaixo de
+  50% justamente por isso.
+- Cobertura real esperada: **51%**. O resto se explica sozinho: `representante`
+  e `cliente` (9.296 chamados) não têm coluna de responsável; `chamados_ti` quase
+  nunca é preenchido; e donos que saíram da empresa (`usu_ativo = 0`) não são
+  migrados, o que tira ~11 mil chamados encerrados da conta.
+
+Conferência rápida depois de importar:
+
+```sql
+select s.name, count(*) from issues i join states s on s.id = i.state_id
+where i.deleted_at is null group by s.name order by count(*) desc;
+```
+
 ### Armadilhas já resolvidas
 
 - **P2000 (LengthMismatch)**: o legado não respeita os limites das colunas do

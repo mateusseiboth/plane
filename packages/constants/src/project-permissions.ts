@@ -5,7 +5,6 @@
  *  - EProjectAction  : every discrete action a user can perform
  *  - ROLE_PERMISSIONS: maps each role to the set of actions it may perform
  *  - canPerform()    : check helper used by the frontend hook and backend
- *  - canTransitionState() : derived from ROLE_PERMISSIONS for backward compat
  */
 import { EUserProjectRoles } from "@plane/types";
 
@@ -38,20 +37,6 @@ export enum EProjectAction {
 
   // ── State transitions (each step of the workflow) ──────────────────────────
   /** Triagem → Avaliando (quality review begins) */
-  STATE_TRIAGE_TO_REVIEWING     = "state.triage_reviewing",
-  /** Avaliando → A Fazer (approved by quality) */
-  STATE_REVIEWING_TO_TODO       = "state.reviewing_todo",
-  /** A Fazer → Em Andamento (IT starts work) */
-  STATE_TODO_TO_IN_PROGRESS     = "state.todo_in_progress",
-  /** Em Andamento → Em Teste (IT sends to testing) */
-  STATE_IN_PROGRESS_TO_IN_TEST  = "state.in_progress_in_test",
-  /** Em Teste → Concluído (IT closes after test passes) */
-  STATE_IN_TEST_TO_DONE         = "state.in_test_done",
-  /** Em Teste → Em Andamento (quality returns with error) */
-  STATE_IN_TEST_TO_IN_PROGRESS  = "state.in_test_in_progress",
-  /** Any state → Cancelado */
-  STATE_ANY_TO_CANCELLED        = "state.any_cancelled",
-  /** Move to any state — no workflow restrictions */
   STATE_MOVE_UNRESTRICTED       = "state.unrestricted",
 
   // ── Comments ───────────────────────────────────────────────────────────────
@@ -137,10 +122,6 @@ export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
   [EUserProjectRoles.QUALIDADE]: [
     ..._contributor,
     EProjectAction.ISSUE_EDIT_ALL,
-    EProjectAction.STATE_TRIAGE_TO_REVIEWING,
-    EProjectAction.STATE_REVIEWING_TO_TODO,
-    EProjectAction.STATE_IN_TEST_TO_IN_PROGRESS,   // return with error
-    EProjectAction.STATE_ANY_TO_CANCELLED,
     EProjectAction.INTAKE_REVIEW,
     EProjectAction.VIEW_CREATE,
   ],
@@ -151,13 +132,6 @@ export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
     EProjectAction.ISSUE_EDIT_ALL,
     EProjectAction.ISSUE_DELETE_OWN,
     EProjectAction.ISSUE_ASSIGN_OTHERS,
-    EProjectAction.STATE_TRIAGE_TO_REVIEWING,
-    EProjectAction.STATE_REVIEWING_TO_TODO,
-    EProjectAction.STATE_TODO_TO_IN_PROGRESS,
-    EProjectAction.STATE_IN_PROGRESS_TO_IN_TEST,
-    EProjectAction.STATE_IN_TEST_TO_DONE,
-    EProjectAction.STATE_IN_TEST_TO_IN_PROGRESS,
-    EProjectAction.STATE_ANY_TO_CANCELLED,
     EProjectAction.INTAKE_REVIEW,
     EProjectAction.CYCLE_MANAGE,
     EProjectAction.MODULE_MANAGE,
@@ -171,10 +145,6 @@ export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
     ..._contributor,
     EProjectAction.ISSUE_EDIT_ALL,
     EProjectAction.ISSUE_ASSIGN_OTHERS,
-    EProjectAction.STATE_TODO_TO_IN_PROGRESS,
-    EProjectAction.STATE_IN_PROGRESS_TO_IN_TEST,
-    EProjectAction.STATE_IN_TEST_TO_DONE,
-    EProjectAction.STATE_ANY_TO_CANCELLED,
     EProjectAction.CYCLE_MANAGE,
     EProjectAction.MODULE_MANAGE,
     EProjectAction.VIEW_CREATE,
@@ -187,13 +157,6 @@ export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
     EProjectAction.ISSUE_DELETE_OWN,
     EProjectAction.ISSUE_DELETE_ALL,
     EProjectAction.ISSUE_ASSIGN_OTHERS,
-    EProjectAction.STATE_TRIAGE_TO_REVIEWING,
-    EProjectAction.STATE_REVIEWING_TO_TODO,
-    EProjectAction.STATE_TODO_TO_IN_PROGRESS,
-    EProjectAction.STATE_IN_PROGRESS_TO_IN_TEST,
-    EProjectAction.STATE_IN_TEST_TO_DONE,
-    EProjectAction.STATE_IN_TEST_TO_IN_PROGRESS,
-    EProjectAction.STATE_ANY_TO_CANCELLED,
     EProjectAction.STATE_MOVE_UNRESTRICTED,
     EProjectAction.COMMENT_DELETE_ALL,
     EProjectAction.ATTACHMENT_DELETE_ALL,
@@ -219,53 +182,6 @@ export function canPerform(role: EUserProjectRoles | number, action: EProjectAct
   return allowed.includes(action);
 }
 
-/**
- * Returns whether the given role can move an issue from `fromGroup` to `toGroup`.
- * Derived from the ROLE_PERMISSIONS action matrix.
- */
-export function canTransitionState(
-  role: EUserProjectRoles | number,
-  fromGroup: string,
-  toGroup: string
-): boolean {
-  if (canPerform(role, EProjectAction.STATE_MOVE_UNRESTRICTED)) return true;
-
-  if (toGroup === "cancelled") return canPerform(role, EProjectAction.STATE_ANY_TO_CANCELLED);
-
-  if (fromGroup === "triage") {
-    if (toGroup === "triage") return true; // stay in triage (no-op)
-    if (toGroup === "unstarted") return canPerform(role, EProjectAction.STATE_TRIAGE_TO_REVIEWING);
-    return false;
-  }
-
-  if (fromGroup === "unstarted" && toGroup === "unstarted") {
-    // Avaliando → A Fazer (both unstarted, Qualidade approves)
-    return canPerform(role, EProjectAction.STATE_REVIEWING_TO_TODO);
-  }
-
-  if (fromGroup === "unstarted" && toGroup === "started") {
-    return canPerform(role, EProjectAction.STATE_TODO_TO_IN_PROGRESS);
-  }
-
-  if (fromGroup === "started" && toGroup === "started") {
-    // Two directions: In Progress → In Test (TI) or In Test → In Progress (Qualidade)
-    return (
-      canPerform(role, EProjectAction.STATE_IN_PROGRESS_TO_IN_TEST) ||
-      canPerform(role, EProjectAction.STATE_IN_TEST_TO_IN_PROGRESS)
-    );
-  }
-
-  if (fromGroup === "started" && toGroup === "completed") {
-    return canPerform(role, EProjectAction.STATE_IN_TEST_TO_DONE);
-  }
-
-  // backlog ↔ unstarted and other minor moves: allow for MEMBER+ (generous default)
-  if (["backlog", "unstarted"].includes(fromGroup) && ["backlog", "unstarted"].includes(toGroup)) {
-    return canPerform(role, EProjectAction.STATE_TODO_TO_IN_PROGRESS);
-  }
-
-  return false;
-}
 
 // ── Backward-compat role lists (used in a few older UI guards) ────────────────
 
@@ -336,41 +252,102 @@ export const ALL_PROJECT_ROLES = [
   EUserProjectRoles.GUEST,
 ];
 
-/** Human-readable label for each EProjectAction (for settings UI) */
+/** Rótulo de cada EProjectAction na tela de Funções. Vocabulário do produto:
+ *  "chamado" (work item) e "pedido de chamado" (intake). */
 export const PROJECT_ACTION_LABELS: Record<EProjectAction, string> = {
-  [EProjectAction.ISSUE_VIEW]:                  "Visualizar work items",
+  [EProjectAction.ISSUE_VIEW]:                  "Visualizar chamados",
   [EProjectAction.COMMENT_READ]:                "Ler comentários",
   [EProjectAction.ATTACHMENT_VIEW]:             "Visualizar anexos",
-  [EProjectAction.ISSUE_CREATE]:                "Criar work items",
-  [EProjectAction.ISSUE_EDIT_OWN]:              "Editar próprios work items",
-  [EProjectAction.ISSUE_EDIT_ALL]:              "Editar qualquer work item",
-  [EProjectAction.ISSUE_DELETE_OWN]:            "Excluir próprios work items",
-  [EProjectAction.ISSUE_DELETE_ALL]:            "Excluir qualquer work item",
-  [EProjectAction.ISSUE_ASSIGN_SELF]:           "Atribuir-se a um work item",
+  [EProjectAction.ISSUE_CREATE]:                "Criar chamados",
+  [EProjectAction.ISSUE_EDIT_OWN]:              "Editar os próprios chamados",
+  [EProjectAction.ISSUE_EDIT_ALL]:              "Editar qualquer chamado",
+  [EProjectAction.ISSUE_DELETE_OWN]:            "Excluir os próprios chamados",
+  [EProjectAction.ISSUE_DELETE_ALL]:            "Excluir qualquer chamado",
+  [EProjectAction.ISSUE_ASSIGN_SELF]:           "Atribuir-se a um chamado",
   [EProjectAction.ISSUE_ASSIGN_OTHERS]:         "Atribuir outros usuários",
-  [EProjectAction.STATE_TRIAGE_TO_REVIEWING]:   "Mover: Triagem → Avaliando",
-  [EProjectAction.STATE_REVIEWING_TO_TODO]:     "Mover: Avaliando → A Fazer",
-  [EProjectAction.STATE_TODO_TO_IN_PROGRESS]:   "Mover: A Fazer → Em Andamento",
-  [EProjectAction.STATE_IN_PROGRESS_TO_IN_TEST]:"Mover: Em Andamento → Em Teste",
-  [EProjectAction.STATE_IN_TEST_TO_DONE]:       "Mover: Em Teste → Concluído",
-  [EProjectAction.STATE_IN_TEST_TO_IN_PROGRESS]:"Mover: Em Teste → Em Andamento (devolução)",
-  [EProjectAction.STATE_ANY_TO_CANCELLED]:      "Cancelar work item",
-  [EProjectAction.STATE_MOVE_UNRESTRICTED]:     "Mover para qualquer estado",
+  [EProjectAction.STATE_MOVE_UNRESTRICTED]:     "Mover para qualquer etapa",
   [EProjectAction.COMMENT_CREATE]:              "Comentar",
-  [EProjectAction.COMMENT_EDIT_OWN]:            "Editar próprios comentários",
-  [EProjectAction.COMMENT_DELETE_OWN]:          "Excluir próprios comentários",
+  [EProjectAction.COMMENT_EDIT_OWN]:            "Editar os próprios comentários",
+  [EProjectAction.COMMENT_DELETE_OWN]:          "Excluir os próprios comentários",
   [EProjectAction.COMMENT_DELETE_ALL]:          "Excluir comentários de outros",
   [EProjectAction.ATTACHMENT_UPLOAD]:           "Enviar anexos",
-  [EProjectAction.ATTACHMENT_DELETE_OWN]:       "Remover próprios anexos",
+  [EProjectAction.ATTACHMENT_DELETE_OWN]:       "Remover os próprios anexos",
   [EProjectAction.ATTACHMENT_DELETE_ALL]:       "Remover qualquer anexo",
-  [EProjectAction.INTAKE_CREATE]:               "Abrir intake (chamado)",
-  [EProjectAction.INTAKE_REVIEW]:               "Revisar intakes (aceitar/recusar)",
+  [EProjectAction.INTAKE_CREATE]:               "Abrir pedido de chamado",
+  [EProjectAction.INTAKE_REVIEW]:               "Triar pedidos (aceitar/recusar)",
   [EProjectAction.CYCLE_MANAGE]:                "Gerenciar ciclos",
   [EProjectAction.MODULE_MANAGE]:               "Gerenciar módulos",
-  [EProjectAction.LABEL_MANAGE]:                "Gerenciar labels",
+  [EProjectAction.LABEL_MANAGE]:                "Gerenciar etiquetas",
   [EProjectAction.VIEW_CREATE]:                 "Criar visualizações salvas",
   [EProjectAction.PAGE_CREATE]:                 "Criar páginas",
-  [EProjectAction.MEMBER_MANAGE]:               "Gerenciar membros do projeto",
-  [EProjectAction.STATE_MANAGE]:                "Gerenciar estados do projeto",
-  [EProjectAction.PROJECT_SETTINGS]:            "Configurações do projeto",
+  [EProjectAction.MEMBER_MANAGE]:               "Gerenciar membros do sistema",
+  [EProjectAction.STATE_MANAGE]:                "Gerenciar etapas do sistema",
+  [EProjectAction.PROJECT_SETTINGS]:            "Configurações do sistema",
 };
+
+/**
+ * Permissões agrupadas por assunto, para a tela de Funções.
+ *
+ * Sem agrupamento a tela mostrava 28 caixas de seleção numa grade corrida de
+ * três colunas: nada indicava que "Excluir qualquer chamado" e "Excluir
+ * comentários de outros" são coisas diferentes, e a leitura virava uma
+ * varredura. A ordem aqui é a ordem em que a tela desenha.
+ */
+export const PROJECT_ACTION_GROUPS: { label: string; actions: EProjectAction[] }[] = [
+  {
+    label: "Chamados",
+    actions: [
+      EProjectAction.ISSUE_VIEW,
+      EProjectAction.ISSUE_CREATE,
+      EProjectAction.ISSUE_EDIT_OWN,
+      EProjectAction.ISSUE_EDIT_ALL,
+      EProjectAction.ISSUE_DELETE_OWN,
+      EProjectAction.ISSUE_DELETE_ALL,
+    ],
+  },
+  {
+    label: "Responsáveis e etapas",
+    actions: [
+      EProjectAction.ISSUE_ASSIGN_SELF,
+      EProjectAction.ISSUE_ASSIGN_OTHERS,
+      EProjectAction.STATE_MOVE_UNRESTRICTED,
+    ],
+  },
+  {
+    label: "Comentários",
+    actions: [
+      EProjectAction.COMMENT_READ,
+      EProjectAction.COMMENT_CREATE,
+      EProjectAction.COMMENT_EDIT_OWN,
+      EProjectAction.COMMENT_DELETE_OWN,
+      EProjectAction.COMMENT_DELETE_ALL,
+    ],
+  },
+  {
+    label: "Anexos",
+    actions: [
+      EProjectAction.ATTACHMENT_VIEW,
+      EProjectAction.ATTACHMENT_UPLOAD,
+      EProjectAction.ATTACHMENT_DELETE_OWN,
+      EProjectAction.ATTACHMENT_DELETE_ALL,
+    ],
+  },
+  {
+    label: "Solicitações",
+    actions: [EProjectAction.INTAKE_CREATE, EProjectAction.INTAKE_REVIEW],
+  },
+  {
+    label: "Organização do trabalho",
+    actions: [
+      EProjectAction.CYCLE_MANAGE,
+      EProjectAction.MODULE_MANAGE,
+      EProjectAction.LABEL_MANAGE,
+      EProjectAction.VIEW_CREATE,
+      EProjectAction.PAGE_CREATE,
+    ],
+  },
+  {
+    label: "Administração do sistema",
+    actions: [EProjectAction.MEMBER_MANAGE, EProjectAction.STATE_MANAGE, EProjectAction.PROJECT_SETTINGS],
+  },
+];

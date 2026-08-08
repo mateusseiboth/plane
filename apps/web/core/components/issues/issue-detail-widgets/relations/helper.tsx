@@ -26,7 +26,7 @@ export const useRelationOperations = (
   const { updateIssue, removeIssue } = useIssueDetail(issueServiceType);
   const { t } = useTranslation();
   // derived values
-  const entityName = issueServiceType === EIssueServiceType.ISSUES ? "Work item" : "Epic";
+  const entityName = issueServiceType === EIssueServiceType.ISSUES ? "Chamado" : "Épica";
 
   const issueOperations: TRelationIssueOperations = useMemo(
     () => ({

@@ -123,9 +123,9 @@ export const CommentCardDisplay = observer(function CommentCardDisplay(props: TC
         <div className="flex flex-1 flex-wrap items-center gap-1">
           <div className="text-caption-sm-medium">{displayName}</div>
           <div className="text-caption-sm-regular text-tertiary">
-            commented{" "}
+            comentou{" "}
             <Tooltip
-              tooltipContent={`${renderFormattedDate(comment.created_at)} at ${renderFormattedTime(comment.created_at)}`}
+              tooltipContent={`${renderFormattedDate(comment.created_at)} às ${renderFormattedTime(comment.created_at)}`}
               position="bottom"
             >
               <span className="text-tertiary">

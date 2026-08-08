@@ -1019,23 +1019,11 @@ model WorkflowRole {
   level       Int       @default(10) // hierarchy & legacy role-Int compatibility
   isSystem    Boolean   @default(false) @map("is_system")
   permissions Json      @default("[]") // array of EProjectAction strings
-  visibility       RoleStateVisibility[]
   transitions      RoleStateTransition[]
   workspaceMembers WorkspaceMember[]
   projectMembers   ProjectMember[]
   @@unique([workspaceId, key, deletedAt])
   @@map("workflow_roles")
-}
-
-model RoleStateVisibility {
-  id          String       @id @default(uuid()) @db.Uuid
-  role        WorkflowRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  roleId      String       @map("role_id") @db.Uuid
-  workspaceId String       @map("workspace_id") @db.Uuid
-  group       String // state group: backlog | unstarted | started | completed | cancelled | triage
-  stateName   String?      @map("state_name") // null = entire group
-  canView     Boolean      @default(true) @map("can_view")
-  @@map("role_state_visibility")
 }
 
 model RoleStateTransition {

@@ -12,7 +12,6 @@ import {
   requireProjectAction,
   resolveRole,
   roleCan,
-  visibleStateIds,
 } from "@utils/permission-checks";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
 import {publishRealtime} from "@utils/realtime";
@@ -70,14 +69,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const filters = normalizeFilters(query as Record<string, unknown>);
     await applyIssueFilters(where, filters, {projectId: project_id});
 
-    // Board visibility per role (H3): restrict to states this role may see.
-    const role = await resolveRole(ws.id, member.role, (member as any).workflowRoleId);
-    const allowedStates = await visibleStateIds(role, project_id);
-    if (allowedStates) {
-      const existing = where.stateId?.in as string[] | undefined;
-      const intersect = existing ? existing.filter((id) => allowedStates.includes(id)) : allowedStates;
-      where.stateId = {in: intersect};
-    }
+    // Quem participa do projeto enxerga TODOS os chamados, em qualquer etapa.
+    // O recorte por setor virou filtro (templates prontos na UI), não regra de
+    // visibilidade — antes o TI simplesmente não via o que estava em Triagem.
 
     // Order by
     const orderMap: Record<string, any> = {

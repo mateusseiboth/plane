@@ -11,6 +11,9 @@ import type { EIssuesStoreType } from "@plane/types";
 import { FiltersToggle } from "@/components/rich-filters/filters-toggle";
 // hooks
 import { useWorkItemFilters } from "@/hooks/store/work-item-filters/use-work-item-filters";
+// local imports
+import { PessoaFilterToggles } from "./pessoa-toggles";
+import { WorkItemFilterTemplatesDropdown } from "./templates-dropdown";
 
 type TWorkItemFiltersToggleProps = {
   entityType: EIssuesStoreType;
@@ -24,5 +27,11 @@ export const WorkItemFiltersToggle = observer(function WorkItemFiltersToggle(pro
   // derived values
   const filter = getFilter(entityType, entityId);
 
-  return <FiltersToggle filter={filter} />;
+  return (
+    <>
+      <PessoaFilterToggles filter={filter} />
+      <WorkItemFilterTemplatesDropdown filter={filter} />
+      <FiltersToggle filter={filter} />
+    </>
+  );
 });
