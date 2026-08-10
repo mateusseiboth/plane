@@ -43,6 +43,7 @@ import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-butt
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 
 const chatService = new ChatService();
 
@@ -1127,19 +1128,15 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 >
                   Link
                 </button>
-                <select
+                <SelectPesquisavel
                   value={intakeProjectId}
-                  onChange={(e) => setIntakeProjectId(e.target.value)}
-                  className="rounded-md border border-subtle bg-transparent px-2 py-1.5 text-12 text-secondary hover:bg-layer-1"
-                  title="Projeto para o intake"
-                >
-                  <option value="">Intake…</option>
-                  {(joinedProjectIds ?? []).map((pid) => (
-                    <option key={pid} value={pid}>
-                      {getProjectById(pid)?.name ?? pid}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setIntakeProjectId}
+                  opcoes={(joinedProjectIds ?? []).map((pid) => ({value: pid, label: getProjectById(pid)?.name ?? pid}))}
+                  opcaoVazia={{value: "", label: "Intake…"}}
+                  searchPlaceholder="Buscar sistema"
+                  className="w-44"
+                  buttonClassName="h-8 border-subtle bg-transparent text-12 hover:bg-layer-1"
+                />
                 {intakeProjectId && (
                   <button
                     onClick={createIntake}

@@ -20,6 +20,7 @@ import { Dialog, EDialogWidth } from "@plane/propel/dialog";
 import { PageHead } from "@/components/core/page-title";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import type { Route } from "./+types/page";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 
 // ── Plugin types ──────────────────────────────────────────────────────────────
 
@@ -468,16 +469,14 @@ const PluginsPage = observer(function PluginsPage({ params }: Route.ComponentPro
           />
         </div>
 
-        <select
+        <SelectPesquisavel
           value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value as TPluginCategory | "")}
-          className="rounded-md border border-subtle bg-surface-2 px-3 py-1.5 text-xs outline-none"
-        >
-          <option value="">Todas as categorias</option>
-          {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
+          onChange={(valor) => setFilterCategory(valor as TPluginCategory | "")}
+          opcoes={Object.entries(CATEGORY_LABELS).map(([k, v]) => ({value: k, label: v as string}))}
+          opcaoVazia={{value: "", label: "Todas as categorias"}}
+          className="w-48"
+          buttonClassName="h-8 text-xs"
+        />
 
         <button
           onClick={() => setFilterInstalled((v) => !v)}

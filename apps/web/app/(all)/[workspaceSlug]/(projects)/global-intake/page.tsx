@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Inbox, AlertCircle } from "lucide-react";
+import { Inbox, AlertCircle, Search } from "lucide-react";
 import { Intake } from "@plane/propel/icons";
 import { cn, calculateTimeAgo } from "@plane/utils";
 import { PageHead } from "@/components/core/page-title";
@@ -57,9 +57,16 @@ function GlobalIntakePage() {
   const { joinedProjectIds, getProjectById } = useProject();
   const { currentWorkspace } = useWorkspace();
 
-  const intakeProjects = (joinedProjectIds ?? [])
+  // A lista da barra lateral é longa (um item por sistema): sem busca, achar um
+  // sistema pelo nome vira rolagem no olho.
+  const [buscaProjeto, setBuscaProjeto] = useState("");
+  const todosProjetos = (joinedProjectIds ?? [])
     .map((id) => getProjectById(id))
     .filter((p) => !!p);
+  const termo = buscaProjeto.trim().toLowerCase();
+  const intakeProjects = termo
+    ? todosProjetos.filter((p) => `${p?.name ?? ""} ${p?.identifier ?? ""}`.toLowerCase().includes(termo))
+    : todosProjetos;
 
   const activeProject = selectedProjectId
     ? intakeProjects.find((p) => p?.id === selectedProjectId)
@@ -90,6 +97,15 @@ function GlobalIntakePage() {
           <Intake className="size-4 text-secondary" />
           <span className="text-13 font-semibold">Projetos</span>
         </div>
+        <div className="flex items-center gap-1.5 border-b border-subtle px-3 py-2">
+          <Search className="size-3.5 shrink-0 text-placeholder" />
+          <input
+            value={buscaProjeto}
+            onChange={(e) => setBuscaProjeto(e.target.value)}
+            placeholder="Buscar sistema"
+            className="w-full bg-transparent text-12 outline-none placeholder:text-placeholder"
+          />
+        </div>
         <div className="flex-1 overflow-y-auto py-2">
           {/* "All" option */}
           <Link
@@ -103,7 +119,9 @@ function GlobalIntakePage() {
             <span>Todos os projetos</span>
           </Link>
           {intakeProjects.length === 0 && (
-            <p className="px-4 py-3 text-xs text-secondary">Nenhum projeto encontrado.</p>
+            <p className="px-4 py-3 text-xs text-secondary">
+              {termo ? `Nenhum sistema com "${buscaProjeto}".` : "Nenhum projeto encontrado."}
+            </p>
           )}
           {intakeProjects.map((project) => {
             if (!project) return null;

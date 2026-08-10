@@ -12,6 +12,7 @@ import {Building2, Pencil, Plus, Search, Trash2, X} from "lucide-react";
 import {observer} from "mobx-react";
 import {useCallback, useEffect, useState} from "react";
 import type {Route} from "./+types/page";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 
 const ENTITY_TYPES: {value: number; label: string}[] = [
   {value: 0, label: "Prefeitura"},
@@ -164,21 +165,12 @@ function EntityModal({
 
             <div>
               <label className="mb-1 block text-xs font-medium text-secondary-text">Tipo</label>
-              <select
+              <SelectPesquisavel
                 value={form.entity_type ?? ""}
-                onChange={(e) => handle("entity_type", e.target.value !== "" ? Number(e.target.value) : null)}
-                className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none"
-              >
-                <option value="">Selecione o tipo</option>
-                {ENTITY_TYPES.map((t) => (
-                  <option
-                    key={t.value}
-                    value={t.value}
-                  >
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(valor) => handle("entity_type", valor !== "" ? Number(valor) : null)}
+                opcoes={ENTITY_TYPES.map((t) => ({value: t.value, label: t.label}))}
+                opcaoVazia={{value: "", label: "Selecione o tipo"}}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -404,21 +396,14 @@ const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({params}: 
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select
+          <SelectPesquisavel
             value={filterType ?? ""}
-            onChange={(e) => setFilterType(e.target.value !== "" ? Number(e.target.value) : null)}
-            className="rounded-md border border-subtle bg-surface-2 px-3 py-1.5 text-xs text-primary outline-none"
-          >
-            <option value="">Todos os tipos</option>
-            {ENTITY_TYPES.map((t) => (
-              <option
-                key={t.value}
-                value={t.value}
-              >
-                {t.label}
-              </option>
-            ))}
-          </select>
+            onChange={(valor) => setFilterType(valor !== "" ? Number(valor) : null)}
+            opcoes={ENTITY_TYPES.map((t) => ({value: t.value, label: t.label}))}
+            opcaoVazia={{value: "", label: "Todos os tipos"}}
+            className="w-44"
+            buttonClassName="h-8 text-xs"
+          />
         </div>
 
         <p className="text-xs text-secondary-text">{filtered.length} entidade(s)</p>

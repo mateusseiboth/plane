@@ -6,11 +6,11 @@
 
 import { Combobox } from "@headlessui/react";
 
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePopper } from "react-popper";
 import { useOutsideClickDetector } from "@plane/hooks";
-import { CheckIcon, ChevronDownIcon } from "@plane/propel/icons";
+import { CheckIcon, ChevronDownIcon, SearchIcon } from "@plane/propel/icons";
 // plane helpers
 // hooks
 import { useDropdownKeyDown } from "../hooks/use-dropdown-key-down";
@@ -21,6 +21,31 @@ import type { ICustomSelectItemProps, ICustomSelectProps } from "./helper";
 
 // Context to share the close handler with option components
 const DropdownContext = createContext<() => void>(() => {});
+
+/**
+ * A partir de quantas opções a caixa de busca aparece sozinha.
+ *
+ * Lista curta (prioridade, sim/não) não ganha nada com busca e só fica com um
+ * campo a mais para o olho percorrer. O `searchable` força o comportamento nos
+ * dois sentidos quando o chamador sabe melhor.
+ */
+const MINIMO_PARA_BUSCA = 6;
+
+/**
+ * Texto pesquisável de uma opção.
+ *
+ * As opções do CustomSelect são JSX arbitrário (ícone + rótulo + contador), não
+ * uma lista de `{value, label}`. Para filtrar sem obrigar todas as 34 telas que
+ * usam este componente a mudar de API, o texto é extraído da própria árvore
+ * renderizada. Quem tiver rótulo só em ícone pode passar `query` na opção.
+ */
+const textoDoNo = (no: React.ReactNode): string => {
+  if (no === null || no === undefined || typeof no === "boolean") return "";
+  if (typeof no === "string" || typeof no === "number") return String(no);
+  if (Array.isArray(no)) return no.map(textoDoNo).join(" ");
+  if (React.isValidElement(no)) return textoDoNo((no.props as { children?: React.ReactNode }).children);
+  return "";
+};
 
 function CustomSelect(props: ICustomSelectProps) {
   const {
@@ -39,13 +64,18 @@ function CustomSelect(props: ICustomSelectProps) {
     optionsClassName = "",
     value,
     tabIndex,
+    searchable,
+    searchPlaceholder = "Buscar",
+    noResultsMessage = "Nada encontrado",
   } = props;
   // states
   const [referenceElement, setReferenceElement] = useState<HTMLButtonElement | null>(null);
   const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [busca, setBusca] = useState("");
   // refs
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const buscaRef = useRef<HTMLInputElement | null>(null);
 
   const { styles, attributes } = usePopper(referenceElement, popperElement, {
     placement: placement ?? "bottom-start",
@@ -56,7 +86,10 @@ function CustomSelect(props: ICustomSelectProps) {
     if (referenceElement) referenceElement.focus();
   }, [referenceElement]);
 
-  const closeDropdown = useCallback(() => setIsOpen(false), []);
+  const closeDropdown = useCallback(() => {
+    setIsOpen(false);
+    setBusca("");
+  }, []);
   const handleKeyDown = useDropdownKeyDown(openDropdown, closeDropdown, isOpen);
   useOutsideClickDetector(dropdownRef, closeDropdown);
 
@@ -64,6 +97,25 @@ function CustomSelect(props: ICustomSelectProps) {
     if (isOpen) closeDropdown();
     else openDropdown();
   }, [closeDropdown, isOpen, openDropdown]);
+
+  const opcoes = React.Children.toArray(children).filter(React.isValidElement);
+  const mostrarBusca = searchable ?? opcoes.length >= MINIMO_PARA_BUSCA;
+  // Sem busca ativa renderiza `children` como veio: opções não-elemento
+  // (separadores, strings) continuam aparecendo exatamente como antes.
+  const opcoesVisiveis = !busca
+    ? children
+    : opcoes.filter((opcao) => {
+        const { query, children: conteudo } = opcao.props as { query?: string; children?: React.ReactNode };
+        return (query ?? textoDoNo(conteudo)).toLowerCase().includes(busca.toLowerCase());
+      });
+  const vazio = busca !== "" && Array.isArray(opcoesVisiveis) && opcoesVisiveis.length === 0;
+
+  // `openDropdown` devolve o foco ao botão; sem trazê-lo para cá, abrir e
+  // começar a digitar não escreve em lugar nenhum. O portal só existe depois da
+  // renderização, então o foco vai num efeito.
+  useEffect(() => {
+    if (isOpen && mostrarBusca) buscaRef.current?.focus();
+  }, [isOpen, mostrarBusca]);
 
   return (
     <DropdownContext.Provider value={closeDropdown}>
@@ -129,6 +181,19 @@ function CustomSelect(props: ICustomSelectProps) {
                 style={styles.popper}
                 {...attributes.popper}
               >
+                {mostrarBusca && (
+                  <div className="mb-2 flex items-center gap-1.5 rounded-sm border border-subtle px-2">
+                    <SearchIcon className="h-3.5 w-3.5 shrink-0 text-placeholder" strokeWidth={1.5} />
+                    <Combobox.Input
+                      ref={buscaRef}
+                      className="w-full bg-transparent py-1 text-11 text-secondary placeholder:text-placeholder focus:outline-none"
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder={searchPlaceholder}
+                      displayValue={() => busca}
+                    />
+                  </div>
+                )}
                 <div
                   className={cn("space-y-1 overflow-y-scroll", {
                     "max-h-60": maxHeight === "lg",
@@ -137,7 +202,7 @@ function CustomSelect(props: ICustomSelectProps) {
                     "max-h-28": maxHeight === "sm",
                   })}
                 >
-                  {children}
+                  {vazio ? <p className="px-1 py-1.5 text-placeholder italic">{noResultsMessage}</p> : opcoesVisiveis}
                 </div>
               </div>
             </Combobox.Options>,

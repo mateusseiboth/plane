@@ -13,6 +13,7 @@ import { ReportRenderer } from "@/components/reports/renderers";
 import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import reportsService, { type ReportFilters } from "@/services/reports.service";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 
 function ReportDetailPage() {
   const { workspaceSlug, reportId } = useParams() as { workspaceSlug: string; reportId: string };
@@ -137,18 +138,14 @@ function ReportDetailPage() {
           {showProject && (
             <div>
               <label className="mb-1 block text-11 text-secondary">Sistema</label>
-              <select
+              <SelectPesquisavel
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="min-w-[180px] rounded border border-subtle bg-surface-2 px-2 py-1.5 text-12 outline-none focus:border-accent-primary"
-              >
-                <option value="">Todos os sistemas</option>
-                {(workspaceProjectIds ?? []).map((id) => (
-                  <option key={id} value={id}>
-                    {getProjectById(id)?.name ?? id}
-                  </option>
-                ))}
-              </select>
+                onChange={setProjectId}
+                opcoes={(workspaceProjectIds ?? []).map((id) => ({value: id, label: getProjectById(id)?.name ?? id}))}
+                opcaoVazia={{value: "", label: "Todos os sistemas"}}
+                className="min-w-[180px]"
+                buttonClassName="h-8 text-12"
+              />
             </div>
           )}
           {showEntity && (

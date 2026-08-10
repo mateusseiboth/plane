@@ -14,6 +14,7 @@ import {EFileAssetType} from "@plane/types";
 import {cn} from "@plane/utils";
 import {Building2, Calendar, Check, ChevronLeft, Layers, Save} from "lucide-react";
 import {observer} from "mobx-react";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 import {useParams, useRouter} from "next/navigation";
 import {useEffect, useRef, useState} from "react";
 
@@ -331,21 +332,13 @@ function TechnicalVisitDetailPage() {
             </div>
             <div>
               <label className="mb-1 block text-12 text-secondary">Status</label>
-              <select
+              <SelectPesquisavel
                 value={form.status}
-                onChange={(e) => updateField("status", Number(e.target.value))}
+                onChange={(valor) => updateField("status", Number(valor))}
+                opcoes={STATUS_LABELS.map((label, index) => ({value: index, label}))}
                 disabled={!canEdit}
-                className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
-              >
-                {STATUS_LABELS.map((label, index) => (
-                  <option
-                    key={label}
-                    value={index}
-                  >
-                    {label}
-                  </option>
-                ))}
-              </select>
+                buttonClassName="disabled:opacity-60"
+              />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>

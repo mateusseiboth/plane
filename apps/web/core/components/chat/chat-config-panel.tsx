@@ -14,6 +14,7 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { useMember } from "@/hooks/store/use-member";
 // services
 import { chatApi } from "@/services/chat.service";
+import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 
 type Tab = "messages" | "menu" | "queues" | "flows" | "schedules" | "attendants" | "provider";
 const BASE_TABS: { key: Tab; label: string }[] = [
@@ -28,7 +29,6 @@ const BASE_TABS: { key: Tab; label: string }[] = [
 const ok = (m: string) => setToast({ type: TOAST_TYPE.SUCCESS, title: "Salvo", message: m });
 const err = (e: any) => setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Falhou." });
 
-// Solid theme background so native <select> option lists are readable in dark mode.
 const inputCls = "w-full rounded-md border border-subtle bg-surface-1 text-primary px-2 py-1.5 text-sm outline-none";
 const btn = "rounded-md bg-primary px-3 py-1.5 text-13 text-on-color";
 const btnGhost = "rounded-md border border-subtle px-3 py-1.5 text-13";
@@ -135,26 +135,36 @@ function MenuTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi> 
           <Field label="Tecla" w="w-16"><input className={inputCls} value={it.key} onChange={(e) => upd(setItems, idx, { key: e.target.value })} /></Field>
           <Field label="Rótulo" w="flex-1"><input className={inputCls} value={it.label} onChange={(e) => upd(setItems, idx, { label: e.target.value })} /></Field>
           <Field label="Ação" w="w-32">
-            <select className={inputCls} value={it.action} onChange={(e) => upd(setItems, idx, { action: e.target.value })}>
-              <option value="queue">Fila</option>
-              <option value="flow">Fluxo</option>
-              <option value="message">Mensagem</option>
-            </select>
+            <SelectPesquisavel
+              value={it.action}
+              onChange={(valor) => upd(setItems, idx, { action: valor })}
+              opcoes={[
+                { value: "queue", label: "Fila" },
+                { value: "flow", label: "Fluxo" },
+                { value: "message", label: "Mensagem" },
+              ]}
+            />
           </Field>
           {it.action === "queue" && (
             <Field label="Fila" w="w-40">
-              <select className={inputCls} value={it.queueId ?? ""} onChange={(e) => upd(setItems, idx, { queueId: e.target.value })}>
-                <option value="">—</option>
-                {queues.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
-              </select>
+              <SelectPesquisavel
+                value={it.queueId ?? ""}
+                onChange={(valor) => upd(setItems, idx, { queueId: valor })}
+                opcoes={queues.map((q: any) => ({ value: q.id, label: q.name }))}
+                opcaoVazia={{ value: "", label: "—" }}
+                searchPlaceholder="Buscar fila"
+              />
             </Field>
           )}
           {it.action === "flow" && (
             <Field label="Fluxo" w="w-40">
-              <select className={inputCls} value={it.flowId ?? ""} onChange={(e) => upd(setItems, idx, { flowId: e.target.value })}>
-                <option value="">—</option>
-                {flows.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
+              <SelectPesquisavel
+                value={it.flowId ?? ""}
+                onChange={(valor) => upd(setItems, idx, { flowId: valor })}
+                opcoes={flows.map((f: any) => ({ value: f.id, label: f.name }))}
+                opcaoVazia={{ value: "", label: "—" }}
+                searchPlaceholder="Buscar fluxo"
+              />
             </Field>
           )}
           {it.action === "message" && (
@@ -246,9 +256,12 @@ function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi>
             {(f.steps ?? []).map((step: any, si: number) => (
               <div key={si} className="flex flex-wrap items-center gap-2 rounded-md bg-layer-1 p-2">
                 <span className="text-12 text-tertiary">{si + 1}.</span>
-                <select className={inputCls + " w-56"} value={step.type} onChange={(e) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? { type: e.target.value } : s)))}>
-                  {Object.entries(STEP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                <SelectPesquisavel
+                  value={step.type}
+                  onChange={(valor) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? { type: valor } : s)))}
+                  opcoes={Object.entries(STEP_LABELS).map(([v, l]) => ({ value: v, label: l as string }))}
+                  className="w-56"
+                />
                 {(step.type === "message" || step.type === "ask" || step.type === "close") && (
                   <input
                     className={inputCls + " min-w-[12rem] flex-1"}
@@ -266,10 +279,14 @@ function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi>
                   />
                 )}
                 {step.type === "queue" && (
-                  <select className={inputCls + " w-44"} value={step.queueId ?? ""} onChange={(e) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? { ...s, queueId: e.target.value } : s)))}>
-                    <option value="">Selecione a fila…</option>
-                    {queues.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
-                  </select>
+                  <SelectPesquisavel
+                    value={step.queueId ?? ""}
+                    onChange={(valor) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? { ...s, queueId: valor } : s)))}
+                    opcoes={queues.map((q: any) => ({ value: q.id, label: q.name }))}
+                    opcaoVazia={{ value: "", label: "Selecione a fila…" }}
+                    searchPlaceholder="Buscar fila"
+                    className="w-44"
+                  />
                 )}
                 <button className={btnGhost} title="Remover etapa" onClick={() => setSteps(fi, f.steps.filter((_: any, i: number) => i !== si))}>×</button>
               </div>
@@ -326,7 +343,13 @@ function Rows({ title, list, set, addRow }: any) {
       <div className="mb-1 flex items-center justify-between"><span className="text-13 font-medium">{title}</span><button className={btnGhost} onClick={() => addRow(list, set)}>+ Linha</button></div>
       {list.map((row: any, idx: number) => (
         <div key={idx} className="mb-1 flex items-center gap-2">
-          <select className={inputCls + " w-20"} value={row.weekday} onChange={(e) => upd(set, idx, { weekday: e.target.value })}>{WD.map((w, i) => <option key={i} value={i}>{w}</option>)}</select>
+          <SelectPesquisavel
+            value={String(row.weekday)}
+            onChange={(valor) => upd(set, idx, { weekday: valor })}
+            opcoes={WD.map((w: string, i: number) => ({ value: String(i), label: w }))}
+            className="w-24"
+            searchable={false}
+          />
           <input type="time" className={inputCls + " w-28"} value={row.start_time} onChange={(e) => upd(set, idx, { start_time: e.target.value })} />
           <input type="time" className={inputCls + " w-28"} value={row.end_time} onChange={(e) => upd(set, idx, { end_time: e.target.value })} />
           <button className={btnGhost} onClick={() => set(list.filter((_: any, i: number) => i !== idx))}>×</button>

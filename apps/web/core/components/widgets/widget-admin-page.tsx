@@ -8,6 +8,7 @@ import React, { useState } from "react";
 import { WidgetDetailPanel } from "./widget-detail-panel";
 import { WidgetList } from "./widget-list";
 import { WidgetUploadModal } from "./widget-upload-modal";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 
 export const WidgetAdminPage: React.FC = observer(() => {
   const canManage = useCanManageExtensions();
@@ -73,17 +74,18 @@ export const WidgetAdminPage: React.FC = observer(() => {
           onChange={(e) => setSearch(e.target.value)}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
         />
-        <select
+        <SelectPesquisavel
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-        >
-          <option value="">Todos os status</option>
-          <option value="ACTIVE">Ativo</option>
-          <option value="INACTIVE">Inativo</option>
-          <option value="PENDING_APPROVAL">Pendente</option>
-          <option value="ARCHIVED">Arquivado</option>
-        </select>
+          onChange={setStatusFilter}
+          opcoes={[
+            {value: "ACTIVE", label: "Ativo"},
+            {value: "INACTIVE", label: "Inativo"},
+            {value: "PENDING_APPROVAL", label: "Pendente"},
+            {value: "ARCHIVED", label: "Arquivado"},
+          ]}
+          opcaoVazia={{value: "", label: "Todos os status"}}
+          className="w-44"
+        />
         <button
           onClick={refetch}
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"

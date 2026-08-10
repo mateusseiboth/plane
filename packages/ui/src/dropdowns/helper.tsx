@@ -65,6 +65,10 @@ export interface ICustomSelectProps extends IDropdownProps {
   children: React.ReactNode;
   value: any;
   onChange: any;
+  /** Força a caixa de busca. Omitido, ela aparece sozinha em listas longas. */
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  noResultsMessage?: string;
 }
 
 interface CustomSearchSelectProps {
@@ -100,6 +104,8 @@ export interface ICustomSelectItemProps {
   children: React.ReactNode;
   value: any;
   className?: string;
+  /** Texto usado na busca. Sem ele, vale o texto renderizado da opção. */
+  query?: string;
 }
 
 // Submenu interfaces

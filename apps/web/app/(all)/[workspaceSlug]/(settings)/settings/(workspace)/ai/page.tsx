@@ -9,6 +9,7 @@ import { cn } from "@plane/utils";
 import { PageHead } from "@/components/core/page-title";
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL } from "@plane/constants";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 
 // ── Service ──────────────────────────────────────────────────────────────────
 
@@ -77,9 +78,11 @@ function ProviderModal({ initial, onSave, onClose }: { initial?: any; onSave: (d
 
           <div>
             <label className="mb-1 block text-12 font-medium text-secondary">Tipo de Provedor *</label>
-            <select className="w-full rounded-lg border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary" value={form.provider_type} onChange={e => handleTypeChange(e.target.value)}>
-              {PROVIDER_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </select>
+            <SelectPesquisavel
+              value={form.provider_type}
+              onChange={handleTypeChange}
+              opcoes={PROVIDER_TYPES.map(p => ({value: p.value, label: p.label}))}
+            />
           </div>
 
           <div>
@@ -95,9 +98,11 @@ function ProviderModal({ initial, onSave, onClose }: { initial?: any; onSave: (d
           {form.provider_type === "custom" && (
             <div>
               <label className="mb-1 block text-12 font-medium text-secondary">Formato da resposta</label>
-              <select className="w-full rounded-lg border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary" value={form.response_format} onChange={e => setForm((f: any) => ({...f, response_format: e.target.value}))}>
-                {RESPONSE_FORMATS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
+              <SelectPesquisavel
+                value={form.response_format}
+                onChange={(valor) => setForm((f: any) => ({...f, response_format: valor}))}
+                opcoes={RESPONSE_FORMATS.map(r => ({value: r.value, label: r.label}))}
+              />
               <p className="mt-1 text-11 text-tertiary">Como ler a resposta do seu proxy/modelo.</p>
             </div>
           )}

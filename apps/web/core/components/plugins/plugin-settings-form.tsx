@@ -12,6 +12,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
+import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 
 type FieldType = "string" | "number" | "boolean" | "select" | "headers" | "secret";
 type ConfigField = {
@@ -141,14 +142,12 @@ const Field: React.FC<{ field: ConfigField; value: unknown; onChange: (v: unknow
     return (
       <div>
         {label}
-        <select className={inputCls} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>
-          <option value="">—</option>
-          {(field.options ?? []).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <SelectPesquisavel
+          value={String(value ?? "")}
+          onChange={onChange}
+          opcoes={(field.options ?? []).map((o) => ({value: o.value, label: o.label}))}
+          opcaoVazia={{value: "", label: "—"}}
+        />
         {field.description && <p className="mt-1 text-xs text-neutral-400">{field.description}</p>}
       </div>
     );
