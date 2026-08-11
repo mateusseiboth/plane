@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
-import { Contact, Pencil, Plus, Search, ToggleLeft, ToggleRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Contact, Pencil, Plus, Search, ToggleLeft, ToggleRight } from "lucide-react";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TEntityContact } from "@plane/types";
 // components
@@ -13,7 +13,7 @@ import { ContatoFormModal, mensagemDeErro } from "@/components/entity-contacts";
 // hooks
 import useDebounce from "@/hooks/use-debounce";
 import { useEntities } from "@/hooks/use-entities";
-import { useEntityContacts, useEntityContactTypes } from "@/hooks/use-entity-contacts";
+import { useEntityContactsPage, useEntityContactTypes } from "@/hooks/use-entity-contacts";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 // services
 import entityContactService, { type TEntityContactFilters } from "@/services/entity-contact.service";
@@ -47,6 +47,56 @@ function SituacaoBadge({ ativo }: { ativo: boolean }) {
   );
 }
 
+const POR_PAGINA = 50;
+
+/**
+ * Memoizada de propósito: sem isso, abrir um dropdown do filtro re-renderiza
+ * todas as linhas da página — foi o que travava a tela com a lista inteira.
+ */
+const LinhaDeContato = memo(function LinhaDeContato({
+  contact,
+  onEditar,
+  onAlternar,
+}: {
+  contact: TEntityContact;
+  onEditar: (contact: TEntityContact) => void;
+  onAlternar: (contact: TEntityContact) => void;
+}) {
+  const ativo = contact.is_active !== false;
+  return (
+    <tr className="transition-colors hover:bg-surface-2">
+      <td className="px-4 py-2.5 font-medium text-primary">{contact.name}</td>
+      <td className="px-4 py-2.5 text-secondary-text">{contact.type_name || "—"}</td>
+      <td className="px-4 py-2.5 text-secondary-text">{contact.entity_name || "—"}</td>
+      <td className="px-4 py-2.5 text-secondary-text">{contact.phone || "—"}</td>
+      <td className="px-4 py-2.5 text-secondary-text">{contact.email || "—"}</td>
+      <td className="px-4 py-2.5">
+        <SituacaoBadge ativo={ativo} />
+      </td>
+      <td className="px-4 py-2.5">
+        <div className="flex items-center justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => onEditar(contact)}
+            title="Editar contato"
+            className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-3 hover:text-primary"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onAlternar(contact)}
+            title={ativo ? "Desativar contato" : "Reativar contato"}
+            className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-3 hover:text-primary"
+          >
+            {ativo ? <ToggleRight className="h-3.5 w-3.5" /> : <ToggleLeft className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 function ContatosPage() {
   const { workspaceSlug } = useParams();
   const slug = workspaceSlug?.toString() ?? "";
@@ -70,28 +120,39 @@ function ContatosPage() {
     [buscaAdiada, entidadeId, tipoId, situacao]
   );
 
-  const { contacts, isLoading, error, refetch } = useEntityContacts(slug, filtros);
+  // Mudou o filtro, volta para a primeira página: o cursor da anterior aponta
+  // para uma consulta que não existe mais.
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  useEffect(() => setCursor(undefined), [filtros]);
+
+  const { contacts, total, nextCursor, prevCursor, hasNext, hasPrev, isLoading, error, refetch } =
+    useEntityContactsPage(slug, filtros, POR_PAGINA, cursor);
   const { entities } = useEntities(slug);
   const { types } = useEntityContactTypes(slug);
 
-  const alternarSituacao = async (contact: TEntityContact) => {
-    const ativar = contact.is_active === false;
-    try {
-      await entityContactService.update(slug, contact.id, { is_active: ativar });
-      setToast({
-        type: TOAST_TYPE.SUCCESS,
-        title: ativar ? "Reativado" : "Desativado",
-        message: `${contact.name} foi ${ativar ? "reativado" : "desativado"}.`,
-      });
-      refetch();
-    } catch (erro) {
-      setToast({
-        type: TOAST_TYPE.ERROR,
-        title: "Erro",
-        message: mensagemDeErro(erro, "Falha ao alterar a situação do contato."),
-      });
-    }
-  };
+  const abrirEdicao = useCallback((contact: TEntityContact) => setModal({ open: true, contact }), []);
+
+  const alternarSituacao = useCallback(
+    async (contact: TEntityContact) => {
+      const ativar = contact.is_active === false;
+      try {
+        await entityContactService.update(slug, contact.id, { is_active: ativar });
+        setToast({
+          type: TOAST_TYPE.SUCCESS,
+          title: ativar ? "Reativado" : "Desativado",
+          message: `${contact.name} foi ${ativar ? "reativado" : "desativado"}.`,
+        });
+        refetch();
+      } catch (erro) {
+        setToast({
+          type: TOAST_TYPE.ERROR,
+          title: "Erro",
+          message: mensagemDeErro(erro, "Falha ao alterar a situação do contato."),
+        });
+      }
+    },
+    [slug, refetch]
+  );
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Contatos` : "Contatos";
   const semFiltros = !filtros.search && !filtros.entity_id && !filtros.type_id && situacao === "todos";
@@ -106,7 +167,7 @@ function ContatosPage() {
           <div>
             <h1 className="text-lg font-semibold">Contatos</h1>
             <p className="text-13 text-secondary">
-              {contacts.length} contato{contacts.length !== 1 ? "s" : ""}
+              {total} contato{total !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -197,43 +258,43 @@ function ContatosPage() {
               </thead>
               <tbody className="divide-y divide-subtle">
                 {contacts.map((contact) => (
-                  <tr key={contact.id} className="transition-colors hover:bg-surface-2">
-                    <td className="px-4 py-2.5 font-medium text-primary">{contact.name}</td>
-                    <td className="px-4 py-2.5 text-secondary-text">{contact.type_name || "—"}</td>
-                    <td className="px-4 py-2.5 text-secondary-text">{contact.entity_name || "—"}</td>
-                    <td className="px-4 py-2.5 text-secondary-text">{contact.phone || "—"}</td>
-                    <td className="px-4 py-2.5 text-secondary-text">{contact.email || "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <SituacaoBadge ativo={contact.is_active !== false} />
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setModal({ open: true, contact })}
-                          title="Editar contato"
-                          className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-3 hover:text-primary"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => alternarSituacao(contact)}
-                          title={contact.is_active === false ? "Reativar contato" : "Desativar contato"}
-                          className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-3 hover:text-primary"
-                        >
-                          {contact.is_active === false ? (
-                            <ToggleLeft className="h-3.5 w-3.5" />
-                          ) : (
-                            <ToggleRight className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <LinhaDeContato
+                    key={contact.id}
+                    contact={contact}
+                    onEditar={abrirEdicao}
+                    onAlternar={alternarSituacao}
+                  />
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {!error && (hasPrev || hasNext) && (
+          <div className="mt-3 flex items-center justify-between text-xs text-secondary">
+            <span>
+              Mostrando {contacts.length} de {total}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={!hasPrev}
+                onClick={() => setCursor(prevCursor ?? undefined)}
+                className="inline-flex items-center gap-1 rounded border border-subtle px-2 py-1 disabled:opacity-40 enabled:hover:bg-surface-2"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Anterior
+              </button>
+              <button
+                type="button"
+                disabled={!hasNext}
+                onClick={() => setCursor(nextCursor ?? undefined)}
+                className="inline-flex items-center gap-1 rounded border border-subtle px-2 py-1 disabled:opacity-40 enabled:hover:bg-surface-2"
+              >
+                Próxima
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         )}
       </div>

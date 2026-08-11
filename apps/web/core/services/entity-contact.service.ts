@@ -24,6 +24,16 @@ export type TEntityContactFilters = {
   has_phone?: boolean;
 };
 
+/** Uma página da listagem. `cursor` é opaco: veio do servidor, volta pra ele. */
+export type TEntityContactPage = {
+  results: TEntityContact[];
+  total: number;
+  nextCursor: string | null;
+  prevCursor: string | null;
+  hasNext: boolean;
+  hasPrev: boolean;
+};
+
 /** Campos que o servidor aceita no POST/PATCH — `phone_digits` é derivado lá. */
 export type TEntityContactPayload = Partial<
   Pick<
@@ -70,6 +80,35 @@ export class EntityContactService extends APIService {
   async list(workspaceSlug: string, filters: TEntityContactFilters = {}): Promise<TEntityContact[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/entity-contacts/${toQuery(filters)}`)
       .then((res) => toList(res?.data))
+      .catch((err) => {
+        throw err?.response?.data;
+      });
+  }
+
+  /**
+   * Uma página por vez. A base tem 2.433 contatos vindos do SAC: pedir tudo
+   * derruba a tela — não pela rede, mas pelas 2.433 linhas na árvore, que
+   * fazem qualquer abertura de dropdown recalcular a tabela inteira.
+   */
+  async listPage(
+    workspaceSlug: string,
+    filters: TEntityContactFilters = {},
+    perPage = 50,
+    cursor?: string
+  ): Promise<TEntityContactPage> {
+    const query = toQuery({ ...filters, per_page: perPage, cursor });
+    return this.get(`/api/workspaces/${workspaceSlug}/entity-contacts/${query}`)
+      .then((res) => {
+        const d = res?.data ?? {};
+        return {
+          results: toList(d),
+          total: d.total_count ?? d.count ?? toList(d).length,
+          nextCursor: d.next_cursor ?? null,
+          prevCursor: d.prev_cursor ?? null,
+          hasNext: !!d.next_page_results,
+          hasPrev: !!d.prev_page_results,
+        };
+      })
       .catch((err) => {
         throw err?.response?.data;
       });
