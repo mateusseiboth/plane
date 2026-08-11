@@ -106,6 +106,37 @@ PSQL="sshpass -p SENHA ssh -o StrictHostKeyChecking=no root@10.1.2.12 docker exe
 > falha calado e as três verificações da seção 4 acusam "erro" como se os dados
 > migrados tivessem sumido.
 
+## Proxy HTTPS (10.1.2.8) — Nginx Proxy Manager
+
+`plane.qualitysistemas.inf.br` resolve para **10.1.2.8**, um Nginx Proxy Manager
+(container `reverse-proxy-app-1`, host 92) que encaminha para o 10.1.2.12:80.
+A mesma máquina serve vários sistemas da empresa — mexer ali afeta mais gente.
+
+O host 92 precisa de `proxy_buffering off` no `location /`. Sem isso o nginx
+segura os eventos do SSE e o tempo real morre **só pelo HTTPS**: pelo IP direto
+funciona, o que faz o problema parecer do aplicativo. Medida do sintoma —
+12 s escutando `/api/v1/workspaces/quality/realtime/stream/`:
+
+| caminho | recebido |
+|---|---|
+| `http://10.1.2.12` | 246 bytes (conecta + evento) |
+| `https://plane.qualitysistemas.inf.br` | **0 bytes** |
+
+```nginx
+location / {
+  proxy_http_version 1.1;
+  proxy_buffering off;      # ← sem isto o SSE não passa
+  proxy_cache off;
+  proxy_read_timeout 3600s;
+  include conf.d/include/proxy.conf;
+}
+```
+
+> **O certo é colar isso na aba _Advanced_ do host no painel** (`http://10.1.2.8:81`).
+> A edição direta em `/data/nginx/proxy_host/92.conf` funciona na hora, mas o
+> Nginx Proxy Manager regenera o arquivo a partir do banco dele assim que
+> alguém salvar o host pela interface — e o tempo real cai de novo, sem aviso.
+
 ## Armadilhas já resolvidas (não reintroduzir)
 
 - **Client do Prisma do chat**: gerado em `apps/chat-backend/generated/`, **fora de
