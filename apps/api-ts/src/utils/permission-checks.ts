@@ -3,7 +3,14 @@
 // utils/permissions.ts (pure data + seed) so the seed scripts stay decoupled
 // from the @db singleton.
 import prisma from "@db";
-import {EProjectAction, defaultRoleForLevel, roleCan, type EffectiveRole} from "@utils/permissions";
+import {
+  DEFAULT_TRANSITIONS,
+  EProjectAction,
+  defaultRoleForLevel,
+  roleCan,
+  type EffectiveRole,
+  type TransitionRule,
+} from "@utils/permissions";
 import {getProjectOrFail} from "@utils/workspace";
 
 export {roleCan, EProjectAction};
@@ -75,13 +82,24 @@ export async function canTransition(
 ): Promise<boolean> {
   if (roleCan(role, EProjectAction.STATE_MOVE_UNRESTRICTED)) return true;
   if (from.name === to.name) return true; // no-op move
-  if (!role.id) return true; // unseeded role → permissive (legacy behaviour)
-  const rows = await prisma.roleStateTransition.findMany({where: {roleId: role.id, allowed: true}});
-  return rows.some(
+
+  // Espaço de trabalho ainda sem as funções gravadas caía num `return true`:
+  // NENHUMA transição era barrada ali. A regra vale igual, só que lida da
+  // matriz padrão do código em vez do banco.
+  const regras: TransitionRule[] = role.id
+    ? (await prisma.roleStateTransition.findMany({where: {roleId: role.id, allowed: true}})).map((r) => ({
+        fromGroup: r.fromGroup,
+        fromStateName: r.fromStateName,
+        toGroup: r.toGroup,
+        toStateName: r.toStateName,
+      }))
+    : (DEFAULT_TRANSITIONS[role.key] ?? []);
+
+  return regras.some(
     (r) =>
       r.fromGroup === from.group &&
-      (r.fromStateName === null || r.fromStateName === from.name) &&
+      (!r.fromStateName || r.fromStateName === from.name) &&
       r.toGroup === to.group &&
-      (r.toStateName === null || r.toStateName === to.name),
+      (!r.toStateName || r.toStateName === to.name),
   );
 }

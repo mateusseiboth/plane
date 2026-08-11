@@ -1,4 +1,5 @@
 import prisma from "@db";
+import {prismaReal} from "@tests/helpers/prisma-real";
 import {mkdirSync} from "fs";
 import {tmpdir} from "os";
 import path from "path";
@@ -54,6 +55,6 @@ export async function cleanDb() {
   ];
 
   for (const accessor of accessors) {
-    await (prisma as any)[accessor].deleteMany().catch(() => {});
+    await (prismaReal() as any)[accessor].deleteMany().catch(() => {});
   }
 }

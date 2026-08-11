@@ -15,8 +15,11 @@ export const memberModule = new Elysia({prefix: "/workspaces/:slug"})
     await requireWorkspaceMember(ws.id, user.id);
     // Return only non-guest members (role > 5) or all active members
     // Excludes entity contacts migrated from SAC (role=5, externalSource=sac_migration)
+    // `member: {isActive: true}` deixa de fora quem foi desligado: a associação
+    // continua no banco para o histórico não perder o autor, mas a pessoa some
+    // das listas de escolher responsável, que é onde ela só atrapalha.
     const members = await prisma.workspaceMember.findMany({
-      where: {workspaceId: ws.id, isActive: true, deletedAt: null},
+      where: {workspaceId: ws.id, isActive: true, deletedAt: null, member: {isActive: true}},
       include: {
         member: {select: {id: true, email: true, displayName: true, avatar: true, avatarUrl: true, firstName: true, lastName: true}},
       },
@@ -77,7 +80,7 @@ export const memberModule = new Elysia({prefix: "/workspaces/:slug"})
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const members = await prisma.projectMember.findMany({
-      where: {projectId: project_id, isActive: true, deletedAt: null},
+      where: {projectId: project_id, isActive: true, deletedAt: null, member: {isActive: true}},
       include: {
         member: {
           select: {

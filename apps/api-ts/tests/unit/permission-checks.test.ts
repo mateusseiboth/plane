@@ -200,10 +200,13 @@ describe("permission-checks", () => {
       expect(await canTransition(guest, s("backlog", "Pendências"), s("backlog", "Pendências"))).toBe(true);
     });
 
-    it("papel não semeado é permissivo (comportamento legado)", async () => {
+    it("papel ainda não gravado no banco cai na matriz padrão, não em liberar tudo", async () => {
+      // Antes isto devolvia `true` para qualquer movimento: um espaço de
+      // trabalho sem as funções gravadas ficava SEM nenhuma restrição de etapa.
       const other = await createWorkspace((await createUser()).id);
-      const unseeded = await resolveRole(other.id, 15);
-      expect(await canTransition(unseeded, s("triage", "Triagem"), s("completed", "Concluído"))).toBe(true);
+      const naoSemeado = await resolveRole(other.id, 15);
+      expect(await canTransition(naoSemeado, s("triage", "Triagem"), s("completed", "Concluído"))).toBe(false);
+      expect(await canTransition(naoSemeado, s("triage", "Triagem"), s("unstarted", "A Fazer"))).toBe(true);
     });
 
     it("TI leva A Fazer → Em Desenvolvimento, mas não A Fazer → Concluído", async () => {
@@ -225,7 +228,15 @@ describe("permission-checks", () => {
 
     it("regra com toStateName null aceita qualquer estado do grupo destino", async () => {
       const ti = await resolveRole(workspaceId, 12);
-      expect(await canTransition(ti, s("started", "Em Teste"), s("completed", "Concluído"))).toBe(true);
+      expect(await canTransition(ti, s("started", "Em Desenvolvimento"), s("cancelled", "Cancelado"))).toBe(true);
+    });
+
+    it("TI entrega em Em Teste e não fecha: concluir é da Qualidade", async () => {
+      const ti = await resolveRole(workspaceId, 12);
+      expect(await canTransition(ti, s("started", "Em Desenvolvimento"), s("started", "Em Teste"))).toBe(true);
+      expect(await canTransition(ti, s("started", "Em Teste"), s("completed", "Concluído"))).toBe(false);
+      expect(await canTransition(ti, s("started", "Em Desenvolvimento"), s("triage", "Triagem"))).toBe(false);
+      expect(await canTransition(ti, s("started", "Em Desenvolvimento"), s("started", "Em Análise"))).toBe(false);
     });
 
     it("usa os ids de papel semeados (sanidade do fixture)", () => {

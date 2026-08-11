@@ -9,7 +9,7 @@
 import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@prisma/client";
 import {Pool} from "pg";
-import {seedWorkflowRoles} from "../src/utils/permissions";
+import {seedWorkflowRoles, sincronizarFuncaoNosProjetos} from "../src/utils/permissions";
 import {ensureProjectDefaults} from "../src/utils/project-defaults";
 
 const pool = new Pool({connectionString: process.env.DATABASE_URL});
@@ -265,6 +265,41 @@ async function main() {
       `${norm.statesRenamed} state(s) renamed, ${norm.statesCreated} created, ` +
       `${norm.intakesCreated} intake(s), ${norm.labelsCreated} label(s)`
   );
+
+  // 3c-bis. Alinhar a função de projeto à do espaço de trabalho.
+  //
+  // O quadro avalia as transições pela função do PROJETO, mas quem administra
+  // mexe na do espaço de trabalho (Configurações → Membros). Vínculos criados
+  // pela importação ficaram com função própria, então havia gente marcada como
+  // TI que no quadro agia como Gestor de Projeto — concluía chamado e devolvia
+  // para a Triagem. Isto reconcilia o que ficou para trás; o PATCH de membro já
+  // propaga daqui para a frente.
+  // O desalinho aparece em duas colunas: o nível (`role`) e o vínculo explícito
+  // com a função configurável (`workflow_role_id`). Quem manda é o vínculo, por
+  // isso a consulta também acusa quem tem o nível certo apontando para a função
+  // errada — o caso que passou batido na primeira tentativa de correção.
+  const desalinhados = await prisma.$queryRaw<Array<{member_id: string; role: number}>>`
+    SELECT pm.member_id, wm.role
+    FROM project_members pm
+    JOIN workspace_members wm ON wm.member_id = pm.member_id AND wm.workspace_id = pm.workspace_id
+    LEFT JOIN workflow_roles wr ON wr.id = pm.workflow_role_id
+    WHERE pm.workspace_id = ${workspace.id}::uuid
+      AND pm.deleted_at IS NULL
+      AND wm.is_active
+      AND (pm.role <> wm.role OR wr.level IS DISTINCT FROM wm.role)
+    GROUP BY pm.member_id, wm.role
+  `;
+  for (const {member_id, role} of desalinhados) {
+    await sincronizarFuncaoNosProjetos(prisma, workspace.id, member_id, role);
+    const funcao = await prisma.workflowRole.findFirst({where: {workspaceId: workspace.id, level: role, deletedAt: null}});
+    if (funcao) {
+      await prisma.workspaceMember.updateMany({
+        where: {workspaceId: workspace.id, memberId: member_id},
+        data: {workflowRoleId: funcao.id},
+      });
+    }
+  }
+  log(`✅  Funções de projeto alinhadas à do espaço de trabalho: ${desalinhados.length} usuário(s)`);
 
   // 3d. Give imported users that NEVER set their own password the default one, so
   // first logins are predictable. The seeder runs on every `docker compose up`, so

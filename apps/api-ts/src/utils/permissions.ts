@@ -179,7 +179,9 @@ export const DEFAULT_TRANSITIONS: Record<string, TransitionRule[]> = {
     // TI can also park work back in "A Fazer" (own to-do lane) from development.
     {fromGroup: "started", fromStateName: STATE.EM_DESENVOLVIMENTO, toGroup: "unstarted", toStateName: STATE.A_FAZER},
     {fromGroup: "started", fromStateName: STATE.EM_DESENVOLVIMENTO, toGroup: "started", toStateName: STATE.EM_TESTE},
-    {fromGroup: "started", fromStateName: STATE.EM_TESTE, toGroup: "completed"},
+    // Concluir é da Qualidade: o TI entrega em "Em Teste" e para por aí. A
+    // linha "Em Teste → concluído" existia aqui e deixava o TI fechar o próprio
+    // trabalho, que é justamente o que a separação de setores quer evitar.
     {fromGroup: "started", toGroup: "cancelled"},
     {fromGroup: "unstarted", toGroup: "cancelled"},
   ],
@@ -292,4 +294,30 @@ export async function seedWorkflowRoles(db: any, workspaceId: string): Promise<R
 
 export function roleCan(role: EffectiveRole, action: EProjectAction): boolean {
   return role.permissions.includes(action);
+}
+
+/**
+ * Deixa os vínculos de projeto de um membro coerentes com a função que ele tem
+ * no espaço de trabalho.
+ *
+ * São DUAS colunas, e as duas importam: `role` (o nível) e `workflowRoleId` (o
+ * vínculo explícito com a função configurável). Quem decide é o vínculo — ele
+ * tem prioridade em `resolveRole` —, então mexer só no nível não muda nada na
+ * prática. Era esse o buraco: pessoas marcadas como TI seguiam apontando para
+ * "Gestor de Projeto" e por isso concluíam chamado e devolviam para a Triagem.
+ */
+export async function sincronizarFuncaoNosProjetos(
+  db: {
+    workflowRole: {findFirst: (args: any) => Promise<any>};
+    projectMember: {updateMany: (args: any) => Promise<any>};
+  },
+  workspaceId: string,
+  memberId: string,
+  level: number,
+): Promise<void> {
+  const funcao = await db.workflowRole.findFirst({where: {workspaceId, level, deletedAt: null}});
+  await db.projectMember.updateMany({
+    where: {workspaceId, memberId, deletedAt: null},
+    data: {role: level, ...(funcao && {workflowRoleId: funcao.id})},
+  });
 }

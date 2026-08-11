@@ -3,7 +3,10 @@
  * Uses Prisma directly (same DB as the running API) to create seed data.
  */
 import { randomUUID } from "crypto";
-import prisma from "@db";
+import {prismaReal} from "@tests/helpers/prisma-real";
+
+// `prisma` aqui é sempre o cliente real — ver prisma-real.ts.
+const prisma = new Proxy({} as any, {get: (_, chave) => (prismaReal() as any)[chave]});
 
 export async function createUser(overrides: Partial<{
   email: string;

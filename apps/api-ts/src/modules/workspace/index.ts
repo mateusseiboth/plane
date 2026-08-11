@@ -3,6 +3,7 @@ import {authPlugin} from "@middleware/auth";
 import {Prisma} from "@prisma/client";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
 import {paginate} from "@utils/pagination";
+import {sincronizarFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {COMMENT_FTS_DOC_C, ensureSearchIndexes, ISSUE_FTS_DOC_I, PT_FTS_CONFIG} from "@utils/search";
@@ -958,7 +959,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = parseInt(b.role, 10);
-    return prisma.workspaceMember.updateMany({where: {workspaceId: ws.id, memberId: pk}, data});
+
+    // Quem manda no que a pessoa pode arrastar no quadro é a função do
+    // PROJETO, não a do espaço de trabalho. Sem propagar, o administrador
+    // marcava alguém como TI aqui, a tela passava a mostrar "TI" e no quadro
+    // nada mudava: o vínculo de projeto continuava com a função antiga e as
+    // transições eram avaliadas por ela. Foi assim que um TI concluiu e mandou
+    // chamado para a Triagem.
+    return prisma.$transaction(async (tx) => {
+      const atualizado = await tx.workspaceMember.updateMany({where: {workspaceId: ws.id, memberId: pk}, data});
+      if (data.role !== undefined) {
+        await tx.workspaceMember.updateMany({
+          where: {workspaceId: ws.id, memberId: pk},
+          data: {workflowRoleId: (await tx.workflowRole.findFirst({where: {workspaceId: ws.id, level: data.role, deletedAt: null}}))?.id ?? null},
+        });
+        await sincronizarFuncaoNosProjetos(tx as any, ws.id, pk, data.role);
+      }
+      return atualizado;
+    });
   })
 
   .delete("/:slug/members/:pk/", async ({params: {slug, pk}, user, set}) => {
