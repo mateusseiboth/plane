@@ -5,7 +5,7 @@ import prisma from "@db";
 import { resolveAttendant, signClientToken, verifyClientToken, signWsTicket, verifyWsTicket } from "@/auth";
 import { nextProtocol } from "@/protocol";
 import { handleInboundClient, startBot, startNativeSession } from "@/bot/engine";
-import { availableAttendants } from "@/presence";
+import { availableAttendants, inicioDoDiaNoFuso } from "@/presence";
 import { deliverOutbound } from "@/outbound";
 import { persistAndBroadcast, serializeMessage } from "@/messages";
 import { applyProviderMutation, deleteMessage, editMessage } from "@/message-actions";
@@ -477,9 +477,32 @@ const app = new Elysia()
     const isAdmin = role >= 20;
 
     const requested = status ? status.split(",") : null;
+    // A aba de encerrados mostra só o DIA CORRENTE: com o histórico do SAC são
+    // mais de cem mil conversas, e a lista virava um paredão onde o atendimento
+    // recém-fechado se perdia. Busca escrita ignora o recorte, para continuar
+    // achando protocolo antigo.
+    const busca = String((query as any).q ?? "").trim();
+    // Vale para QUALQUER consulta sem busca, não só para a aba de encerrados: a
+    // listagem traz no máximo 200 ordenadas por status, e "queued" vem depois de
+    // "closed" no alfabeto. Com cem mil encerradas, as conversas EM FILA eram
+    // empurradas para fora e a aba "Na fila" podia aparecer vazia com gente
+    // esperando.
+    const desde = busca ? null : await inicioDoDiaNoFuso(slug);
+    const recorteDeHoje = desde
+      ? { OR: [{ status: { not: "closed" } }, { status: "closed", closedAt: { gte: desde } }] }
+      : {};
+    const recorteDaBusca = busca
+      ? {
+          OR: [
+            { protocol: { contains: busca, mode: "insensitive" as const } },
+            { clientName: { contains: busca, mode: "insensitive" as const } },
+            { clientPhone: { contains: busca } },
+          ],
+        }
+      : {};
     let whereFilter: any;
     if (isAdmin) {
-      whereFilter = { workspaceId: slug, ...(requested ? { status: { in: requested } } : {}) };
+      whereFilter = { workspaceId: slug, ...(requested ? { status: { in: requested } } : {}), ...recorteDeHoje, ...recorteDaBusca };
     } else {
       // Own chats only; bot/queued are never visible to non-admins.
       const allowed = (requested ?? []).filter((s) => s !== "bot" && s !== "queued");
@@ -487,6 +510,8 @@ const app = new Elysia()
         workspaceId: slug,
         assignedAttendantId: user.id,
         status: requested ? { in: allowed } : { notIn: ["bot", "queued"] },
+        ...recorteDeHoje,
+        ...recorteDaBusca,
       };
     }
 

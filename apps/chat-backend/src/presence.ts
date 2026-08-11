@@ -61,6 +61,24 @@ function agoraNoFuso(fuso: string): {weekday: number; minutes: number} {
   return {weekday: DIAS[valor("weekday")] ?? 0, minutes: hora * 60 + Number(valor("minute"))};
 }
 
+/**
+ * Instante em que "hoje" começou, no fuso da empresa.
+ *
+ * A aba de encerrados mostra o dia corrente; calcular isso em UTC faria a lista
+ * virar às 21h locais, no meio do expediente de quem trabalha até mais tarde.
+ */
+export async function inicioDoDiaNoFuso(workspaceId: string): Promise<Date> {
+  const fuso = await fusoDoWorkspace(workspaceId);
+  const agora = new Date();
+  // Diferença entre o relógio do servidor e o do fuso, no instante de agora.
+  const deslocamento =
+    new Date(agora.toLocaleString("en-US", {timeZone: "UTC"})).getTime() -
+    new Date(agora.toLocaleString("en-US", {timeZone: fuso})).getTime();
+  const dataLocal = new Intl.DateTimeFormat("en-CA", {timeZone: fuso, year: "numeric", month: "2-digit", day: "2-digit"})
+    .format(agora);
+  return new Date(Date.parse(`${dataLocal}T00:00:00Z`) + deslocamento);
+}
+
 function toMinutes(hhmm: string): number {
   const [h, m] = (hhmm || "0:0").split(":").map(Number);
   return (h || 0) * 60 + (m || 0);

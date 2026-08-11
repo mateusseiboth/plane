@@ -606,7 +606,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
   const refreshSessions = useCallback(async () => {
     if (!api || !slug) return;
-    const { results } = await api.listSessions(slug);
+    // Na aba de encerrados a consulta é por status: o servidor devolve só o dia
+    // corrente, e o termo digitado é o que libera o histórico inteiro.
+    const soEncerrados = listFilterRef.current === "closed";
+    const { results } = await api.listSessions(
+      slug,
+      soEncerrados ? "closed" : undefined,
+      soEncerrados ? searchRef.current : undefined
+    );
     setSessions(results);
   }, [api, slug]);
 
@@ -633,6 +640,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
   // refs so the WS handler always sees the latest active session / refresher
   const activeRef = useRef<string | null>(null);
+  const listFilterRef = useRef<string>("active");
+  const searchRef = useRef<string>("");
   const refreshSessionsRef = useRef<typeof refreshSessions>();
   const sessionsRef = useRef<ChatSession[]>([]);
   useEffect(() => {
@@ -644,6 +653,15 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   useEffect(() => {
     sessionsRef.current = sessions;
   }, [sessions]);
+  // Trocar de aba ou digitar na busca refaz a consulta: na aba de encerrados os
+  // dois mudam o que o SERVIDOR devolve, não só o que a tela filtra. O atraso
+  // evita uma consulta por tecla.
+  useEffect(() => {
+    listFilterRef.current = listFilter;
+    searchRef.current = search;
+    const t = setTimeout(() => void refreshSessionsRef.current?.(), 300);
+    return () => clearTimeout(t);
+  }, [listFilter, search]);
 
   // Ask once for desktop-notification permission so inbound messages can alert
   // the attendant even when this tab is in the background.
@@ -678,10 +696,23 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const avisoDoSistemaIndisponivel =
     typeof window !== "undefined" && typeof Notification !== "undefined" && !window.isSecureContext;
 
-  // Sem contador no título: a soma pegava as não-lidas de TODAS as conversas
-  // devolvidas — inclusive as ~200 encerradas, que nunca tiveram marca de
-  // leitura — e mostrava coisas como "(2261) Atendimento". Com HTTPS a
-  // notificação do navegador funciona, que era o motivo de existir o contador.
+  /**
+   * Não-lidas no título — apenas de conversas ATIVAS.
+   *
+   * Somar tudo que a listagem devolve punha as ~200 encerradas na conta, e elas
+   * nunca tiveram marca de leitura: o título virava "(2261) Atendimento". O que
+   * interessa é o que está em atendimento agora.
+   */
+  const naoLidasAtivas = sessions
+    .filter((s) => s.status === "active")
+    .reduce((total, s) => total + (s.unread ?? 0), 0);
+  useEffect(() => {
+    const original = document.title.replace(/^\(\d+\)\s*/, "");
+    document.title = naoLidasAtivas > 0 ? `(${naoLidasAtivas}) ${original}` : original;
+    return () => {
+      document.title = original;
+    };
+  }, [naoLidasAtivas]);
 
   // Load config + connect the single attendant WebSocket.
   useEffect(() => {

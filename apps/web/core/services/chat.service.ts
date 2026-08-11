@@ -150,8 +150,15 @@ export function chatApi(apiUrl: string) {
   };
   return {
     base,
-    listSessions: (slug: string, status?: string): Promise<{ results: ChatSession[] }> =>
-      req(`/workspaces/${slug}/sessions/${status ? `?status=${status}` : ""}`),
+    listSessions: (slug: string, status?: string, busca?: string): Promise<{ results: ChatSession[] }> => {
+      // `q` vai ao servidor porque a aba de encerrados passou a trazer só o dia
+      // corrente: sem isso, procurar um protocolo de ontem não acharia nada.
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (busca?.trim()) params.set("q", busca.trim());
+      const query = params.toString();
+      return req(`/workspaces/${slug}/sessions/${query ? `?${query}` : ""}`);
+    },
     history: (sessionId: string): Promise<{ session: ChatSession; results: ChatMessage[] }> =>
       req(`/sessions/${sessionId}/messages/`),
     upload: async (sessionId: string, file: File) => {
