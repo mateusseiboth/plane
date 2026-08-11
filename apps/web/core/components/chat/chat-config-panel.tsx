@@ -15,6 +15,7 @@ import { useMember } from "@/hooks/store/use-member";
 // services
 import { chatApi } from "@/services/chat.service";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
+import { Search } from "lucide-react";
 
 type Tab = "messages" | "menu" | "queues" | "flows" | "schedules" | "attendants" | "provider";
 const BASE_TABS: { key: Tab; label: string }[] = [
@@ -45,7 +46,7 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl,
   const members = (workspaceMemberIds ?? [])
     .map((id) => getWorkspaceMemberDetails(id))
     .filter(Boolean)
-    .map((m: any) => ({ id: m.member.id, name: m.member.display_name || m.member.email }));
+    .map((m: any) => ({ id: m.member.id, name: m.member.display_name || m.member.email, email: m.member.email ?? "" }));
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -181,8 +182,92 @@ function MenuTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi> 
   );
 }
 
+
+type Membro = { id: string; name: string; email: string };
+
+/**
+ * Escolher atendentes numa lista de centenas de pessoas.
+ *
+ * Antes as duas abas despejavam TODOS os membros como botõezinhos redondos —
+ * uma parede de nomes de várias telas de altura, sem busca e sem separar quem
+ * já estava escolhido. Pior: o legado tem contas repetidas, então cinco linhas
+ * "Amanda Cristina da Silva Carvalho" apareciam idênticas e não dava para saber
+ * qual marcar. Daí o e-mail embaixo do nome.
+ */
+function SeletorDeAtendentes({
+  membros,
+  selecionados,
+  onAlternar,
+}: {
+  membros: Membro[];
+  selecionados: Set<string>;
+  onAlternar: (id: string) => void;
+}) {
+  const [busca, setBusca] = useState("");
+  const termo = busca.trim().toLowerCase();
+  const casa = (m: Membro) => !termo || `${m.name} ${m.email}`.toLowerCase().includes(termo);
+  // Escolhidos primeiro: são poucos e é o que se confere ao abrir a tela.
+  const escolhidos = membros.filter((m) => selecionados.has(m.id));
+  const restantes = membros.filter((m) => !selecionados.has(m.id) && casa(m));
+
+  return (
+    <div className="rounded-md border border-subtle">
+      <div className="flex items-center gap-2 border-b border-subtle px-3 py-2">
+        <Search className="size-3.5 shrink-0 text-secondary" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar pessoa por nome ou e-mail"
+          className="w-full bg-transparent text-13 outline-none placeholder:text-secondary"
+        />
+        <span className="shrink-0 text-11 text-secondary">
+          {escolhidos.length} de {membros.length}
+        </span>
+      </div>
+
+      {escolhidos.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 border-b border-subtle px-3 py-2">
+          {escolhidos.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => onAlternar(m.id)}
+              title={`Remover ${m.name}`}
+              className="flex items-center gap-1 rounded-full border border-accent-subtle-1 bg-accent-subtle px-2 py-0.5 text-11 text-accent-primary"
+            >
+              {m.name}
+              <span aria-hidden>×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="max-h-64 overflow-y-auto">
+        {restantes.length === 0 ? (
+          <p className="px-3 py-4 text-center text-12 text-secondary">
+            {termo ? `Ninguém com "${busca}".` : "Todo mundo já está nesta fila."}
+          </p>
+        ) : (
+          restantes.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => onAlternar(m.id)}
+              className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-layer-1"
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-13">{m.name}</span>
+                <span className="block truncate text-11 text-secondary">{m.email}</span>
+              </span>
+              <span className="shrink-0 text-11 text-accent-primary">adicionar</span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Queues + members ──────────────────────────────────────────────────────────
-function QueuesTab({ slug, api, members }: { slug: string; api: ReturnType<typeof chatApi>; members: { id: string; name: string }[] }) {
+function QueuesTab({ slug, api, members }: { slug: string; api: ReturnType<typeof chatApi>; members: Membro[] }) {
   const [queues, setQueues] = useState<any[]>([]);
   const [name, setName] = useState("");
   const load = useCallback(() => {
@@ -207,16 +292,11 @@ function QueuesTab({ slug, api, members }: { slug: string; api: ReturnType<typeo
             <span className="font-medium">{q.name}</span>
             <button className={btnGhost} onClick={() => api.deleteQueue(slug, q.id).then(load).catch(err)}>Excluir</button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {members.map((m) => {
-              const on = (q.members ?? []).some((x: any) => x.userId === m.id);
-              return (
-                <button key={m.id} onClick={() => toggleMember(q, m.id)} className={`rounded-full border px-2 py-1 text-12 ${on ? "border-primary bg-primary/10 text-primary" : "border-subtle text-secondary"}`}>
-                  {m.name}
-                </button>
-              );
-            })}
-          </div>
+          <SeletorDeAtendentes
+            membros={members}
+            selecionados={new Set((q.members ?? []).map((x: any) => x.userId as string))}
+            onAlternar={(id) => toggleMember(q, id)}
+          />
         </div>
       ))}
     </div>
@@ -360,7 +440,7 @@ function Rows({ title, list, set, addRow }: any) {
 }
 
 // ── Attendant visibility (admin only) ─────────────────────────────────────────
-function AttendantsTab({ slug, api, members }: { slug: string; api: ReturnType<typeof chatApi>; members: { id: string; name: string }[] }) {
+function AttendantsTab({ slug, api, members }: { slug: string; api: ReturnType<typeof chatApi>; members: Membro[] }) {
   const [invisible, setInvisible] = useState<Set<string>>(new Set());
   useEffect(() => {
     api
@@ -384,15 +464,39 @@ function AttendantsTab({ slug, api, members }: { slug: string; api: ReturnType<t
       })
       .catch(err);
   };
+  const [busca, setBusca] = useState("");
+  const termo = busca.trim().toLowerCase();
+  // Só quem está invisível + o que a busca pedir: listar as 282 pessoas de uma
+  // vez, todas "Visível", é uma parede que não diz nada.
+  const visiveis = members.filter((m) => invisible.has(m.id) || (termo && `${m.name} ${m.email}`.toLowerCase().includes(termo)));
+
   return (
     <div className="flex max-w-xl flex-col gap-2">
-      <p className="text-12 text-secondary">Atendentes invisíveis não recebem novos chats, mesmo conectados.</p>
-      {members.map((m) => (
-        <div key={m.id} className="flex items-center justify-between rounded-md border border-subtle p-2">
-          <span className="text-sm">{m.name}</span>
+      <p className="text-12 text-secondary">Atendente invisível não recebe novos chats, mesmo conectado.</p>
+      <div className="flex items-center gap-2 rounded-md border border-subtle px-3 py-2">
+        <Search className="size-3.5 shrink-0 text-secondary" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar pessoa por nome ou e-mail"
+          className="w-full bg-transparent text-13 outline-none placeholder:text-secondary"
+        />
+        <span className="shrink-0 text-11 text-secondary">{invisible.size} invisível(is)</span>
+      </div>
+      {visiveis.length === 0 && (
+        <p className="rounded-md border border-dashed border-subtle px-3 py-6 text-center text-12 text-secondary">
+          {termo ? `Ninguém com "${busca}".` : "Ninguém está invisível. Busque por alguém para deixar invisível."}
+        </p>
+      )}
+      {visiveis.map((m) => (
+        <div key={m.id} className="flex items-center justify-between gap-3 rounded-md border border-subtle p-2">
+          <span className="min-w-0">
+            <span className="block truncate text-13">{m.name}</span>
+            <span className="block truncate text-11 text-secondary">{m.email}</span>
+          </span>
           <button
             onClick={() => toggle(m.id)}
-            className={`rounded-full border px-3 py-1 text-12 ${invisible.has(m.id) ? "border-danger-strong text-danger-primary" : "border-subtle text-secondary"}`}
+            className={`shrink-0 rounded-full border px-3 py-1 text-12 ${invisible.has(m.id) ? "border-danger-strong text-danger-primary" : "border-subtle text-secondary"}`}
           >
             {invisible.has(m.id) ? "Invisível" : "Visível"}
           </button>

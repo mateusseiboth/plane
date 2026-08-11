@@ -243,7 +243,23 @@ export const instanceModule = new Elysia({prefix: "/instances"})
 
   // ── Admin sign-in ─────────────────────────────────────────────────────────────
 
-  .post("/admins/sign-in/", async ({body, set}) => {
+  /**
+   * Entrada do god-mode.
+   *
+   * O formulário é um POST de HTML puro (herança do Django, que respondia com
+   * redirecionamento). Devolver JSON para ele jogava o administrador numa
+   * página com o token cru na tela em vez de entrar no painel — a conta tinha
+   * acesso e mesmo assim parecia não funcionar. Quando quem chama é um
+   * navegador, a resposta volta a ser um redirecionamento; cliente de API que
+   * pede JSON continua recebendo JSON.
+   */
+  .post("/admins/sign-in/", async ({body, set, headers}) => {
+    const doNavegador = String(headers.accept ?? "").includes("text/html");
+    const paraOPainel = (erro?: string) => {
+      set.status = 302;
+      set.headers["Location"] = erro ? `/god-mode/?error_message=${encodeURIComponent(erro)}` : "/god-mode/";
+      return "";
+    };
     const instance = await prisma.instance.findFirst();
     if (!instance) {
       set.status = 400;
@@ -252,6 +268,7 @@ export const instanceModule = new Elysia({prefix: "/instances"})
 
     const b = body as any;
     if (!b.email || !b.password) {
+      if (doNavegador) return paraOPainel("email e password são obrigatórios.");
       set.status = 400;
       return {error: "email e password são obrigatórios."};
     }
@@ -259,14 +276,17 @@ export const instanceModule = new Elysia({prefix: "/instances"})
     const email = String(b.email).toLowerCase().trim();
     const user = await prisma.user.findUnique({where: {email}});
     if (!user || !user.password) {
+      if (doNavegador) return paraOPainel("Credenciais inválidas.");
       set.status = 403;
       return {error: "Credenciais inválidas."};
     }
     if (!user.isActive) {
+      if (doNavegador) return paraOPainel("Esta conta está desativada.");
       set.status = 403;
       return {error: "Esta conta está desativada."};
     }
     if (!user.isInstanceAdmin) {
+      if (doNavegador) return paraOPainel("É necessário ser administrador da instância.");
       set.status = 403;
       return {error: "É necessário ser administrador da instância."};
     }
@@ -279,6 +299,7 @@ export const instanceModule = new Elysia({prefix: "/instances"})
 
     const token = await signToken(user.id, user.email);
     set.headers["Set-Cookie"] = setCookieHeader(token);
+    if (doNavegador) return paraOPainel();
     return {...userDto(user), token};
   })
 
