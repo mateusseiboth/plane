@@ -268,13 +268,13 @@ function ContatosPage() {
             <table className="w-full min-w-225 table-fixed text-xs">
               <thead className="bg-surface-2 text-secondary-text">
                 <tr>
-                  <th className="w-[22%] px-4 py-2.5 text-left font-medium">Nome</th>
-                  <th className="w-[14%] px-4 py-2.5 text-left font-medium">Tipo</th>
-                  <th className="w-[24%] px-4 py-2.5 text-left font-medium">Entidade</th>
-                  <th className="w-[12%] px-4 py-2.5 text-left font-medium">Telefone</th>
-                  <th className="w-[18%] px-4 py-2.5 text-left font-medium">E-mail</th>
-                  <th className="w-[6%] px-4 py-2.5 text-left font-medium">Situação</th>
-                  <th className="w-[4%] px-4 py-2.5 text-right font-medium">Ações</th>
+                  <th className="w-[20%] px-4 py-2.5 text-left font-medium">Nome</th>
+                  <th className="w-[12%] px-4 py-2.5 text-left font-medium">Tipo</th>
+                  <th className="w-[22%] px-4 py-2.5 text-left font-medium">Entidade</th>
+                  <th className="w-[11%] px-4 py-2.5 text-left font-medium">Telefone</th>
+                  <th className="w-[17%] px-4 py-2.5 text-left font-medium">E-mail</th>
+                  <th className="w-[10%] px-4 py-2.5 text-left font-medium">Situação</th>
+                  <th className="w-[8%] px-4 py-2.5 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle">
