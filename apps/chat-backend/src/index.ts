@@ -442,7 +442,15 @@ const app = new Elysia()
     const sessions = await prisma.chatSession.findMany({
       where: whereFilter,
       include: { contact: true },
-      orderBy: [{ status: "asc" }, { lastClientMessageAt: "desc" }, { createdAt: "desc" }],
+      // `nulls: "last"` é o que faz a aba Encerrados mostrar o que acabou de ser
+      // encerrado. Sem isso o Postgres põe NULO primeiro na ordem decrescente, e
+      // as 13.202 conversas migradas do SAC sem `lastClientMessageAt` ocupavam as
+      // 200 vagas: quem encerrasse um atendimento não o encontrava mais.
+      orderBy: [
+        { status: "asc" },
+        { lastClientMessageAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
       take: 200,
     });
     // unread counts for this attendant
