@@ -514,6 +514,33 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     }
   }, []);
 
+  /**
+   * A aviso do navegador NÃO funciona fora de HTTPS.
+   *
+   * Servido em http://, o navegador marca a permissão como "denied" de saída e
+   * `Notification.requestPermission()` nem chega a perguntar — por isso o
+   * atendente não via aviso nenhum de mensagem nova. Não é algo que dê para
+   * resolver no código: depende de a instância passar a ser servida por HTTPS
+   * (ou ser aberta por localhost).
+   */
+  const avisoDoSistemaIndisponivel =
+    typeof window !== "undefined" && typeof Notification !== "undefined" && !window.isSecureContext;
+
+  /**
+   * Enquanto isso, o contador vai para o TÍTULO da aba.
+   *
+   * É o único canal que sobra quando a notificação do sistema está bloqueada:
+   * aparece na aba e na barra de tarefas mesmo com a janela atrás de outra.
+   */
+  const naoLidas = sessions.reduce((total, s) => total + (s.unread ?? 0), 0);
+  useEffect(() => {
+    const original = document.title.replace(/^\(\d+\)\s*/, "");
+    document.title = naoLidas > 0 ? `(${naoLidas}) ${original}` : original;
+    return () => {
+      document.title = original;
+    };
+  }, [naoLidas]);
+
   // Load config + connect the single attendant WebSocket.
   useEffect(() => {
     if (!slug) return;
@@ -947,6 +974,16 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
           </div>
         </div>
 
+        {avisoDoSistemaIndisponivel && (
+          <div
+            className="border-b border-subtle bg-warning-subtle px-3 py-2 text-11 leading-snug text-warning-primary"
+            title="O navegador só libera notificações do sistema em páginas HTTPS."
+          >
+            Avisos do sistema indisponíveis nesta conexão: o navegador só os libera em HTTPS. Enquanto isso, a contagem
+            de mensagens novas aparece no título da aba e toca um alerta.
+          </div>
+        )}
+
         {/* Search */}
         <div className="border-b border-subtle px-3 py-2">
           <div className="flex items-center gap-2 rounded-lg bg-layer-2 px-3 py-1.5">
@@ -1331,11 +1368,19 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                               : "rounded-bl-sm border border-subtle bg-surface-1 text-primary"
                           }`}
                         >
+                          {/* Teto de ALTURA, não só de largura: retrato alto passava
+                              da tela inteira e empurrava a conversa para longe. */}
                           {url && m.type === "image" && (
-                            <img src={url} className="mb-1 max-w-full rounded-xl" alt={m.media_name ?? ""} />
+                            <a href={url} target="_blank" rel="noreferrer" title="Abrir em tamanho real">
+                              <img
+                                src={url}
+                                className="mb-1 max-h-56 w-auto max-w-full cursor-zoom-in rounded-xl object-contain"
+                                alt={m.media_name ?? ""}
+                              />
+                            </a>
                           )}
                           {url && m.type === "video" && (
-                            <video src={url} controls className="mb-1 max-w-full rounded-xl" />
+                            <video src={url} controls className="mb-1 max-h-56 w-auto max-w-full rounded-xl" />
                           )}
                           {url && m.type === "audio" && <audio src={url} controls className="mb-1 max-w-full" />}
                           {url && m.type === "file" && (
