@@ -316,7 +316,22 @@ export const userModule = new Elysia({ prefix: "/users" })
     return { detail: "Onboarding concluído com sucesso." };
   })
 
+  // O frontend usa PATCH nestes dois (user.service.ts); só o POST tinha sido
+  // migrado, então concluir o onboarding e fechar o tour davam 404.
+  .patch("/me/onboard/", async ({ user, body }) => {
+    const b = body as any;
+    const data: any = {};
+    if (b.display_name !== undefined) data.displayName = b.display_name;
+    if (b.first_name !== undefined) data.firstName = b.first_name;
+    if (b.last_name !== undefined) data.lastName = b.last_name;
+    if (b.is_onboarded !== undefined) data.isOnboarded = b.is_onboarded;
+    await prisma.user.update({ where: { id: user.id }, data });
+    return { detail: "Onboarding concluído com sucesso." };
+  })
+
   .post("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marcado como concluído." }))
+
+  .patch("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marcado como concluído." }))
 
   // ── Update onboarding step ────────────────────────────────────────────────────
 

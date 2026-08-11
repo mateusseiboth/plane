@@ -351,7 +351,9 @@ export class IssueService extends APIService {
       issue_ids: string[];
     }
   ): Promise<any> {
-    return this.delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/bulk-delete-issues/`, data)
+    // O api-ts expõe como POST /issues/bulk-delete/ — o caminho antigo, do
+    // Django, nunca foi migrado e devolvia 404.
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/bulk-delete/`, data)
       .then(async (response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;
@@ -367,7 +369,7 @@ export class IssueService extends APIService {
   ): Promise<{
     archived_at: string;
   }> {
-    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/bulk-archive-issues/`, data)
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/bulk-archive/`, data)
       .then(async (response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;

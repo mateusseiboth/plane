@@ -16,6 +16,7 @@ import { paginate } from "@utils/pagination";
 import { nextSequenceId } from "@utils/sequence";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, getProjectOrFail } from "@utils/workspace";
+import { serializeIssue } from "@utils/serialize";
 
 
 /**
@@ -378,6 +379,31 @@ export const premiumModule = new Elysia()
     }
   })
 
+  /**
+   * Situação da inscrição do usuário atual.
+   *
+   * O frontend consulta este GET para desenhar o sino do chamado como "seguindo"
+   * ou "não seguindo". Ele não existia: a chamada dava 404 e o botão mostrava
+   * sempre o mesmo estado, independentemente da inscrição.
+   */
+  .get("/workspaces/:slug/projects/:project_id/issues/:issue_id/subscribe/", async ({ params: { slug, project_id, issue_id }, user }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const inscricao = await prisma.issueSubscriber.findFirst({
+      where: { issueId: issue_id, subscriberId: user.id, deletedAt: null },
+    });
+    return { subscribed: !!inscricao };
+  })
+
+  /** Cancelar a inscrição pelo mesmo caminho de criá-la, como o frontend faz. */
+  .delete("/workspaces/:slug/projects/:project_id/issues/:issue_id/subscribe/", async ({ params: { slug, project_id, issue_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    await prisma.issueSubscriber.updateMany({ where: { issueId: issue_id, subscriberId: user.id }, data: { deletedAt: new Date() } });
+    set.status = 204;
+    return null;
+  })
+
   .delete("/workspaces/:slug/projects/:project_id/issues/:issue_id/unsubscribe/", async ({ params: { slug, project_id, issue_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
@@ -389,6 +415,48 @@ export const premiumModule = new Elysia()
   // ─────────────────────────────────────────────────────────────────────────
   // BULK OPERATIONS
   // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Ajuste de datas em massa — é o que a linha do tempo usa ao arrastar várias
+   * barras de uma vez. Não tinha sido migrado: cada arrasto múltiplo dava 404 e
+   * as datas não gravavam.
+   */
+  .post("/workspaces/:slug/projects/:project_id/issue-dates/", async ({ params: { slug, project_id }, body, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const updates = ((body as any)?.updates ?? []) as Array<{id: string; start_date?: string | null; target_date?: string | null}>;
+    if (!Array.isArray(updates) || updates.length === 0) {
+      set.status = 400;
+      return { detail: "Informe ao menos uma alteração em `updates`." };
+    }
+    for (const u of updates) {
+      if (!u?.id) continue;
+      await prisma.issue.updateMany({
+        where: { id: u.id, projectId: project_id, workspaceId: ws.id, deletedAt: null },
+        data: {
+          ...(u.start_date !== undefined && { startDate: u.start_date ? new Date(u.start_date) : null }),
+          ...(u.target_date !== undefined && { targetDate: u.target_date ? new Date(u.target_date) : null }),
+        },
+      });
+    }
+    return { updated: updates.length };
+  })
+
+  /**
+   * Lixeira do projeto: chamados com exclusão lógica, para consulta e
+   * recuperação. A listagem normal filtra `deletedAt: null`, então sem esta
+   * rota não havia como enxergá-los.
+   */
+  .get("/workspaces/:slug/projects/:project_id/deleted-issues/", async ({ params: { slug, project_id }, user }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const excluidos = await prisma.issue.findMany({
+      where: { projectId: project_id, workspaceId: ws.id, deletedAt: { not: null } },
+      orderBy: { deletedAt: "desc" },
+      take: 200,
+    });
+    return { results: excluidos.map(serializeIssue), total_count: excluidos.length };
+  })
 
   .post("/workspaces/:slug/projects/:project_id/issues/bulk-update/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
@@ -506,6 +574,52 @@ export const premiumModule = new Elysia()
     });
     set.status = 201;
     return serializeView(view);
+  })
+
+  /**
+   * Detalhe, edição e remoção de uma visualização — inclusive no caminho com
+   * projeto, que é o que o frontend usa.
+   *
+   * Só existiam as versões de espaço de trabalho: abrir, renomear ou excluir
+   * uma visualização salva DENTRO de um sistema devolvia 404.
+   */
+  .get("/workspaces/:slug/views/:view_id/", async ({ params: { slug, view_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const view = await prisma.issueView.findFirst({ where: { id: view_id, workspaceId: ws.id, deletedAt: null } });
+    if (!view) { set.status = 404; return { detail: "Visualização não encontrada." }; }
+    return serializeView(view);
+  })
+
+  .get("/workspaces/:slug/projects/:project_id/views/:view_id/", async ({ params: { slug, project_id, view_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const view = await prisma.issueView.findFirst({ where: { id: view_id, projectId: project_id, deletedAt: null } });
+    if (!view) { set.status = 404; return { detail: "Visualização não encontrada." }; }
+    return serializeView(view);
+  })
+
+  .patch("/workspaces/:slug/projects/:project_id/views/:view_id/", async ({ params: { slug, project_id, view_id }, body, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const b = body as any;
+    const data: any = {};
+    if (b.name !== undefined) data.name = b.name;
+    if (b.description !== undefined) data.description = b.description;
+    if (b.filters !== undefined) data.filters = b.filters;
+    if (b.query_data !== undefined) data.queryData = b.query_data;
+    if (b.access !== undefined) data.access = b.access;
+    const {count} = await prisma.issueView.updateMany({ where: { id: view_id, projectId: project_id }, data });
+    if (!count) { set.status = 404; return { detail: "Visualização não encontrada." }; }
+    return serializeView(await prisma.issueView.findUnique({ where: { id: view_id } }));
+  })
+
+  .delete("/workspaces/:slug/projects/:project_id/views/:view_id/", async ({ params: { slug, project_id, view_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    await prisma.issueView.updateMany({ where: { id: view_id, projectId: project_id }, data: { deletedAt: new Date() } });
+    set.status = 204;
+    return null;
   })
 
   .patch("/workspaces/:slug/views/:view_id/", async ({ params: { slug, view_id }, body, user }) => {
