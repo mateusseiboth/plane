@@ -58,6 +58,17 @@ const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "quality";
 const DRY_RUN = process.env.DRY_RUN === "true";
 
 /** Níveis cujo acesso é recortado pelo vínculo. Os demais continuam vendo tudo. */
+/**
+ * Somar ao vínculo do SAC os sistemas em que a pessoa comprovadamente trabalha.
+ *
+ * `responsavel_sistema` descreve bem o TI, mas é raso para a Qualidade: bruna@
+ * aparece com UM sistema e tem 3.923 chamados atribuídos em 47; fabiane@ não
+ * tem vínculo nenhum e trabalhou em 50. Recortar só pela tabela cegaria o setor.
+ * Com esta opção o recorte tira o que a pessoa nunca tocou e mantém tudo que ela
+ * tocou.
+ */
+const INCLUIR_HISTORICO = process.env.INCLUIR_HISTORICO === "true";
+
 const NIVEIS_RECORTADOS = (process.env.NIVEIS_RECORTADOS ?? "12")
   .split(",")
   .map((n) => Number(n.trim()))
@@ -109,13 +120,36 @@ async function main() {
   });
   log(`✅  ${membros.length} pessoa(s) nos níveis recortados`);
 
+  // Projetos com rastro de trabalho: chamado atribuído ou aberto pela pessoa.
+  const historicoPorPessoa = new Map<string, Set<string>>();
+  if (INCLUIR_HISTORICO) {
+    const linhas = await prisma.$queryRaw<Array<{member_id: string; project_id: string}>>`
+      SELECT ia.assignee_id AS member_id, i.project_id
+      FROM issue_assignees ia JOIN issues i ON i.id = ia.issue_id
+      WHERE ia.deleted_at IS NULL AND i.deleted_at IS NULL
+      UNION
+      SELECT i.created_by_id AS member_id, i.project_id
+      FROM issues i WHERE i.created_by_id IS NOT NULL AND i.deleted_at IS NULL
+    `;
+    for (const {member_id, project_id} of linhas) {
+      if (!historicoPorPessoa.has(member_id)) historicoPorPessoa.set(member_id, new Set());
+      historicoPorPessoa.get(member_id)!.add(project_id);
+    }
+    log(`✅  Histórico de trabalho carregado para ${historicoPorPessoa.size} pessoa(s)`);
+  }
+
   const semVinculo: string[] = [];
   const recortados: Array<{email: string; fica: number; sai: number}> = [];
 
   for (const wm of membros) {
     const email = (wm.member.email ?? "").toLowerCase();
     const sistemas = sistemasPorEmail.get(email);
-    const permitidos = [...(sistemas ?? [])].map((s) => projetoPorSistema.get(s)).filter((id): id is string => !!id);
+    const permitidos = [
+      ...new Set([
+        ...[...(sistemas ?? [])].map((s) => projetoPorSistema.get(s)).filter((id): id is string => !!id),
+        ...(historicoPorPessoa.get(wm.memberId) ?? []),
+      ]),
+    ];
 
     if (permitidos.length === 0) {
       semVinculo.push(email);
