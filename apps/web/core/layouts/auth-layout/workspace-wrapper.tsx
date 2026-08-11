@@ -41,6 +41,7 @@ import {useWorkspace} from "@/hooks/store/use-workspace";
 import {useUser, useUserPermissions} from "@/hooks/store/user";
 import {usePlatformOS} from "@/hooks/use-platform-os";
 import {useRealtimeChannel} from "@/hooks/use-realtime";
+import {useAvisoDeChamado} from "@/hooks/use-aviso-de-chamado";
 
 interface IWorkspaceAuthWrapper {
   children: ReactNode;
@@ -53,6 +54,7 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
   const {workspaceSlug} = useParams();
   // open the realtime (SSE) channel for this workspace so views can live-update
   useRealtimeChannel(workspaceSlug?.toString());
+  useAvisoDeChamado(workspaceSlug?.toString());
   // store hooks
   const {signOut, data: currentUser} = useUser();
   const {fetchPartialProjects} = useProject();

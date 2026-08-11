@@ -16,7 +16,8 @@ export type RealtimeEntity =
   | "reaction"
   | "cycle"
   | "module"
-  | "state";
+  | "state"
+  | "notification";
 
 export type RealtimeAction = "create" | "update" | "delete";
 
@@ -26,6 +27,12 @@ export type RealtimeEvent = {
   project_id?: string | null;
   /** Primary id of the affected entity (issue id, comment id, …). */
   id?: string | null;
+  /**
+   * Para quem o evento interessa. Só as notificações usam: o barramento é por
+   * espaço de trabalho, então sem isto o sino de todo mundo piscaria a cada
+   * aviso de qualquer pessoa.
+   */
+  receiver?: string | null;
   /** Related issue id, when the entity hangs off an issue (comments, reactions). */
   issue_id?: string | null;
   /** Actor that triggered the change, so clients can ignore their own echoes. */

@@ -1,5 +1,7 @@
 // Notification helpers (D3).
+
 import prisma from "@db";
+import {publishRealtime} from "@utils/realtime";
 
 /**
  * Notify all Quality-team members of a project that a new intake was opened.
@@ -25,6 +27,7 @@ export async function notifyQualityOfIntake(opts: {
 
   if (!receivers.length) return;
 
+  avisarSino(opts.workspaceId, receivers);
   await prisma.notification.createMany({
     data: receivers.map((receiverId) => ({
       workspaceId: opts.workspaceId,
@@ -107,6 +110,7 @@ export async function notifyStateChange(opts: {
   });
   if (!ativos.length) return;
 
+  avisarSino(opts.workspaceId, ativos.map((a) => a.id));
   await prisma.notification.createMany({
     data: ativos.map(({id: receiverId}) => ({
       workspaceId: opts.workspaceId,
@@ -122,4 +126,18 @@ export async function notifyStateChange(opts: {
       triggered: "state",
     })),
   });
+}
+
+/**
+ * Acende o sino na hora.
+ *
+ * Gravar a notificação não bastava: a tela só a mostrava no próximo
+ * recarregamento, e o atendimento inteiro parecia não avisar nada. O
+ * barramento é por espaço de trabalho, então o `receiver` vai no evento e cada
+ * navegador ignora o que não é dele.
+ */
+function avisarSino(workspaceId: string, receivers: string[]): void {
+  for (const receiver of receivers) {
+    publishRealtime(workspaceId, {entity: "notification", action: "create", receiver});
+  }
 }

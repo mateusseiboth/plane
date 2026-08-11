@@ -33,6 +33,34 @@ import type { IQuickActionProps, TRenderQuickActions } from "../list/list-view-t
 import { getSourceFromDropPayload } from "../utils";
 import { KanBan } from "./default";
 import { KanBanSwimLanes } from "./swimlanes";
+import {useWorkItemFilterInstance} from "@/hooks/store/work-item-filters/use-work-item-filter-instance";
+import type {IWorkItemFilterInstance} from "@plane/shared-state";
+
+/**
+ * Quais colunas o quadro mostra quando se agrupa por etapa.
+ *
+ * São duas necessidades que parecem opostas e não são:
+ *
+ *   - **etapa vazia continua na tela**, porque não se arrasta um cartão para
+ *     uma coluna que não foi renderizada — com "Em Teste" escondido por estar
+ *     vazio, a Qualidade não tinha para onde levar o chamado;
+ *   - **etapa excluída pelo filtro some**, senão aplicar o modelo do setor
+ *     deixava "Triagem 0, Pendências 0, Em Análise 0" ocupando a tela.
+ *
+ * A regra que atende as duas: mostra o que o filtro PERMITE, mesmo sem itens.
+ * Sem filtro de etapa, permite tudo.
+ */
+const AGRUPAMENTOS_DE_ETAPA = ["state", "state_detail.group"];
+
+const etapasPermitidasPeloFiltro = (filtro: IWorkItemFilterInstance | undefined): string[] | undefined => {
+  const condicoes = filtro?.allConditions ?? [];
+  const valores = condicoes
+    .filter((c) => c.property === "state_id")
+    .flatMap((c) => (Array.isArray(c.value) ? c.value : [c.value]))
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+  return valores.length ? valores : undefined;
+};
+
 
 export type KanbanStoreType =
   | EIssuesStoreType.PROJECT
@@ -88,6 +116,7 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
 
   const { isDragging } = useKanbanView();
 
+  const filtroDeTrabalho = useWorkItemFilterInstance(storeType as never, projectId?.toString());
   const displayFilters = issuesFilter?.issueFilters?.displayFilters;
   const displayProperties = issuesFilter?.issueFilters?.displayProperties;
 
@@ -288,7 +317,13 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
                 handleCollapsedGroups={handleCollapsedGroups}
                 collapsedGroups={collapsedGroups}
                 enableQuickIssueCreate={enableQuickAdd}
-                showEmptyGroup={userDisplayFilters?.show_empty_groups ?? true}
+                showEmptyGroup={
+                  AGRUPAMENTOS_DE_ETAPA.includes(String(userDisplayFilters?.group_by)) ||
+                  (userDisplayFilters?.show_empty_groups ?? true)
+                }
+                gruposPermitidos={
+                  userDisplayFilters?.group_by === "state" ? etapasPermitidasPeloFiltro(filtroDeTrabalho) : undefined
+                }
                 quickAddCallback={quickAddIssue}
                 disableIssueCreation={!enableIssueCreation || !isEditingAllowed || isCompletedCycle}
                 canEditProperties={canEditProperties}

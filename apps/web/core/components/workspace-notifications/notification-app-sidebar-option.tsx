@@ -12,6 +12,8 @@ import { getNumberCount } from "@plane/utils";
 import { CountChip } from "@/components/common/count-chip";
 // hooks
 import { useWorkspaceNotifications } from "@/hooks/store/notifications";
+import { useRealtimeRefetch } from "@/hooks/use-realtime";
+import { useUser } from "@/hooks/store/user";
 
 type TNotificationAppSidebarOption = {
   workspaceSlug: string;
@@ -23,10 +25,21 @@ export const NotificationAppSidebarOption = observer(function NotificationAppSid
   const { workspaceSlug } = props;
   // hooks
   const { unreadNotificationsCount, getUnreadNotificationsCount } = useWorkspaceNotifications();
+  const { data: currentUser } = useUser();
 
   useSWR(
     workspaceSlug ? "WORKSPACE_UNREAD_NOTIFICATION_COUNT" : null,
     workspaceSlug ? () => getUnreadNotificationsCount(workspaceSlug) : null
+  );
+
+  // O contador reage ao tempo real; o aviso na área de trabalho fica em
+  // useAvisoDeChamado, montado no wrapper do espaço de trabalho — aqui dentro
+  // ele dependeria deste item da barra lateral estar renderizado.
+  useRealtimeRefetch(
+    (evento) => evento.entity === "notification" && !!currentUser?.id && evento.receiver === currentUser.id,
+    () => {
+      if (workspaceSlug) void getUnreadNotificationsCount(workspaceSlug);
+    }
   );
 
   // derived values

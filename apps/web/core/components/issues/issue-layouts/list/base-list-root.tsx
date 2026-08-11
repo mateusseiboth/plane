@@ -80,7 +80,11 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
   const orderBy = displayFilters?.order_by || undefined;
 
   const group_by = (displayFilters?.group_by || null) as GroupByColumnTypes | null;
-  const showEmptyGroup = displayFilters?.show_empty_groups ?? false;
+  // Mesma regra do quadro: agrupado por etapa, grupo vazio continua visível —
+  // é o que mostra que a etapa existe e para onde o chamado pode ir.
+  const showEmptyGroup =
+    ["state", "state_detail.group"].includes(String(displayFilters?.group_by)) ||
+    (displayFilters?.show_empty_groups ?? false);
 
   const { workspaceSlug, projectId } = useParams();
   const { updateFilters } = useIssuesActions(storeType);

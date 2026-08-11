@@ -39,6 +39,7 @@ import { KanbanGroup } from "./kanban-group";
 export interface IKanBan {
   issuesMap: IIssueMap;
   groupedIssueIds: TGroupedIssues | TSubGroupedIssues;
+  gruposPermitidos?: string[];
   getGroupIssueCount: (
     groupId: string | undefined,
     subGroupId: string | undefined,
@@ -74,6 +75,7 @@ export const KanBan = observer(function KanBan(props: IKanBan) {
     issuesMap,
     groupedIssueIds,
     getGroupIssueCount,
+    gruposPermitidos,
     displayProperties,
     sub_group_by,
     group_by,
@@ -106,12 +108,18 @@ export const KanBan = observer(function KanBan(props: IKanBan) {
 
   const { getIsWorkflowWorkItemCreationDisabled } = useWorkFlowFDragNDrop(group_by, sub_group_by);
 
-  const list = getGroupByColumns({
+  const todasAsColunas = getGroupByColumns({
     groupBy: group_by as GroupByColumnTypes,
     includeNone: true,
     isWorkspaceLevel: isWorkspaceLevel(storeType),
     isEpic: isEpic,
   });
+
+  // Etapa excluída pelo filtro não vira coluna. Sem isto, aplicar o modelo do
+  // setor deixava "Triagem 0, Pendências 0, Em Análise 0" na tela.
+  const list = gruposPermitidos?.length
+    ? todasAsColunas?.filter((coluna) => gruposPermitidos.includes(coluna.id))
+    : todasAsColunas;
 
   if (!list) return null;
 

@@ -11,7 +11,7 @@ import { useEffect, useRef } from "react";
 // affected data when a matching event arrives. See use-realtime usage in the
 // workspace wrapper (channel) and the layout/intake/activity roots (refetch).
 
-export type RealtimeEntity = "issue" | "comment" | "intake" | "reaction" | "cycle" | "module" | "state";
+export type RealtimeEntity = "issue" | "comment" | "intake" | "reaction" | "cycle" | "module" | "state" | "notification";
 export type RealtimeAction = "create" | "update" | "delete";
 
 export type RealtimeEvent = {
@@ -20,6 +20,9 @@ export type RealtimeEvent = {
   project_id?: string | null;
   id?: string | null;
   issue_id?: string | null;
+  /** Só as notificações usam: o barramento é do espaço de trabalho inteiro, e
+   *  sem isto o sino de todo mundo piscaria a cada aviso de qualquer pessoa. */
+  receiver?: string | null;
   actor?: string | null;
   ts?: number;
 };

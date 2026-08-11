@@ -78,7 +78,10 @@ export const WORK_ITEM_FILTER_TEMPLATES: TWorkItemFilterTemplate[] = [
     key: WORK_ITEM_FILTER_TEMPLATE_KEY.QUALITY,
     i18n_label: "common.filter_templates.quality.label",
     i18n_description: "common.filter_templates.quality.description",
-    stateNames: ["Triagem", "Em Análise", "Em Teste"],
+    // "Em Desenvolvimento" entra apesar de ser etapa do TI: é para onde a
+    // Qualidade DEVOLVE o chamado reprovado, e não se arrasta um cartão para
+    // uma coluna que o filtro tirou da tela.
+    stateNames: ["Triagem", "Em Análise", "Em Teste", "Em Desenvolvimento"],
     fallbackStateGroups: ["triage", "started"],
   },
   {
