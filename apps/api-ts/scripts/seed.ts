@@ -313,7 +313,10 @@ async function main() {
       deletedAt: null,
       isPasswordAutoset: true,
     },
-    data: {password: importedHash, isActive: true, isEmailVerified: true},
+    // NÃO mexe em `isActive`: quem está desligado no SAC, ou é contato externo
+    // (cliente, representante, candidato), entra desativado de propósito.
+    // Ligar aqui reativava todo mundo a cada `docker compose up`.
+    data: {password: importedHash, isEmailVerified: true},
   });
   log(`✅  Auto-set (never-changed) users primed with default password "${DEFAULT_USER_PASSWORD}": ${pwReset.count} user(s)`);
 
