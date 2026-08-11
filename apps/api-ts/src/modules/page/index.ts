@@ -2,8 +2,32 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
-import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import { getProjectOrFail, getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 
+
+/**
+ * Contexto mínimo que os handlers de página consomem. Tipar só o que é usado
+ * permite registrar a MESMA função nas duas árvores de rota (workspace e
+ * projeto), que diferem apenas pelo `project_id` a mais em `params`.
+ */
+type PageContext = {
+  params: Record<string, string>;
+  query: Record<string, string | undefined>;
+  body: unknown;
+  user: { id: string };
+  set: { status?: number | string };
+};
+
+/**
+ * Relações necessárias para serializar uma página. `projects` é obrigatório: o
+ * frontend monta a URL de toda ação seguinte (editar, travar, duplicar) a partir
+ * de `project_ids[0]`; sem ele a página até abre, mas nenhum botão funciona.
+ */
+const PAGE_RELATIONS = {
+  labels: { include: { label: true } },
+  projects: true,
+  children: { where: { deletedAt: null }, select: { id: true } },
+} as const;
 
 /**
  * Página no formato que o frontend consome (`TPage`, snake_case). O objeto cru do
@@ -39,177 +63,364 @@ function serializePage(p: any) {
   };
 }
 
+/**
+ * Versão no formato `TPageVersion`. A tela de histórico lê `description_html` e
+ * `last_saved_at`; devolvendo o objeto cru do Prisma a versão abre em branco.
+ */
+function serializePageVersion(v: any) {
+  return {
+    id: v.id,
+    page: v.pageId,
+    workspace: v.workspaceId,
+    owned_by: v.ownedById ?? null,
+    created_by: v.ownedById ?? null,
+    updated_by: v.ownedById ?? null,
+    last_saved_at: v.lastSavedAt,
+    description_binary: null,
+    description_html: v.descriptionHtml ?? "<p></p>",
+    description_json: v.descriptionJson ?? undefined,
+    description_stripped: v.descriptionStripped ?? "",
+    created_at: v.createdAt,
+    updated_at: v.createdAt,
+    deleted_at: null,
+  };
+}
+
+/**
+ * Autoriza a requisição no escopo em que ela chegou. Quando a URL traz
+ * `project_id` o acesso ao projeto também precisa valer — senão qualquer membro
+ * do workspace editaria páginas de projetos dos quais não participa.
+ * Devolve `isAdmin` porque a UI libera travar/arquivar/apagar para o dono OU
+ * para administradores; sem isso o admin veria o botão e levaria 403.
+ */
+async function resolveScope(params: Record<string, string>, userId: string) {
+  const ws = await getWorkspaceOrFail(params.slug);
+  const membership = await requireWorkspaceMember(ws.id, userId);
+  if (params.project_id) await getProjectOrFail(ws.id, params.project_id, userId, { allowInstanceAdmin: true });
+  return { ws, isAdmin: membership.role >= 20 };
+}
+
+/** Carrega a página com as relações da serialização, presa ao workspace da URL. */
+function loadPageOrFail(workspaceId: string, pageId: string) {
+  return prisma.page.findFirstOrThrow({
+    where: { id: pageId, workspaceId, deletedAt: null },
+    include: PAGE_RELATIONS,
+  });
+}
+
+/** Aplica um patch e já devolve a página no formato do frontend. */
+async function savePage(pageId: string, data: any) {
+  return serializePage(await prisma.page.update({ where: { id: pageId }, data, include: PAGE_RELATIONS }));
+}
+
+/**
+ * Guarda o conteúdo anterior antes de sobrescrever. O histórico é acessório:
+ * uma falha aqui não pode derrubar a edição do usuário.
+ */
+function snapshotVersion(page: any, userId: string) {
+  if (!page.descriptionHtml) return Promise.resolve();
+  return prisma.pageVersion
+    .create({
+      data: {
+        pageId: page.id,
+        workspaceId: page.workspaceId,
+        ownedById: userId,
+        lastSavedAt: new Date(),
+        descriptionJson: page.descriptionJson ?? undefined,
+        descriptionHtml: page.descriptionHtml,
+        descriptionStripped: page.descriptionStripped,
+      },
+    })
+    .then(() => undefined)
+    .catch(() => undefined);
+}
+
+const HTML_TAGS = /<[^>]+>/g;
+
+/** Só o dono ou um administrador do workspace mexe no ciclo de vida da página. */
+function canManage(page: { ownedById: string }, userId: string, isAdmin: boolean) {
+  return page.ownedById === userId || isAdmin;
+}
+
+// ── Handlers ────────────────────────────────────────────────────────────────
+// Cada handler é registrado nas DUAS árvores de rota (workspace e projeto).
+
+async function listWorkspacePages({ params, query, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  const where: any = { workspaceId: ws.id, deletedAt: null };
+  if (query.archived === "true") where.archivedAt = { not: null };
+  else where.archivedAt = null;
+  return paginate({
+    query: (skip, take) =>
+      prisma.page.findMany({ where, skip, take, include: PAGE_RELATIONS, orderBy: { updatedAt: "desc" } }),
+    count: () => prisma.page.count({ where }),
+    cursor: query.cursor,
+    transform: (items) => items.map(serializePage),
+  });
+}
+
+/**
+ * `ProjectPageService.fetchAll` itera o retorno com `for..of` e tipa como
+ * `TPage[]`: aqui a resposta é uma lista simples de páginas serializadas, não o
+ * envelope paginado (que a UI não consegue percorrer).
+ */
+async function listProjectPages({ params, query, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  const pages = await prisma.page.findMany({
+    where: {
+      workspaceId: ws.id,
+      deletedAt: null,
+      archivedAt: query.archived === "true" ? { not: null } : null,
+      projects: { some: { projectId: params.project_id } },
+    },
+    include: PAGE_RELATIONS,
+    orderBy: { updatedAt: "desc" },
+  });
+  return pages.map(serializePage);
+}
+
+async function createPage({ params, body, user, set }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  const b = (body ?? {}) as any;
+  if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
+  const page = await prisma.page.create({
+    data: {
+      workspaceId: ws.id,
+      ownedById: user.id,
+      name: b.name,
+      descriptionHtml: b.description_html ?? "<p></p>",
+      descriptionStripped: (b.description_html ?? "").replace(HTML_TAGS, ""),
+      descriptionJson: b.description ?? null,
+      access: b.access ?? 0,
+      color: b.color ?? "",
+      isGlobal: b.is_global ?? false,
+      parentId: b.parent ?? null,
+      createdById: user.id,
+    },
+  });
+
+  // Na árvore de projeto o vínculo vem da URL: o frontend cria a página sem
+  // mandar `project_ids` no corpo, e sem o vínculo ela some da listagem.
+  const projectIds: string[] = b.project_ids?.length ? b.project_ids : params.project_id ? [params.project_id] : [];
+  if (projectIds.length) {
+    await prisma.projectPage.createMany({
+      data: projectIds.map((pid) => ({ projectId: pid, pageId: page.id, workspaceId: ws.id })),
+      skipDuplicates: true,
+    });
+  }
+
+  set.status = 201;
+  return serializePage(await loadPageOrFail(ws.id, page.id));
+}
+
+async function getPage({ params, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  return serializePage(await loadPageOrFail(ws.id, params.page_id));
+}
+
+async function updatePage({ params, body, user, set }: PageContext) {
+  const { ws, isAdmin } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  if (page.isLocked && !canManage(page, user.id, isAdmin)) {
+    set.status = 403;
+    return { detail: "A página está bloqueada." };
+  }
+
+  const b = (body ?? {}) as any;
+  const data: any = { updatedById: user.id };
+  if (b.name !== undefined) data.name = b.name;
+  if (b.description_html !== undefined) {
+    data.descriptionHtml = b.description_html;
+    data.descriptionStripped = String(b.description_html).replace(HTML_TAGS, "");
+  }
+  if (b.description !== undefined) data.descriptionJson = b.description;
+  if (b.access !== undefined) data.access = b.access;
+  if (b.color !== undefined) data.color = b.color;
+  if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
+  if (b.parent_id !== undefined) data.parentId = b.parent_id;
+
+  await snapshotVersion(page, user.id);
+  return savePage(page.id, data);
+}
+
+async function deletePage({ params, user, set }: PageContext) {
+  const { ws, isAdmin } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  if (!canManage(page, user.id, isAdmin)) {
+    set.status = 403;
+    return { detail: "Apenas o dono da página pode excluí-la." };
+  }
+  await prisma.page.update({ where: { id: page.id }, data: { deletedAt: new Date() } });
+  set.status = 204;
+  return null;
+}
+
+/** Fábrica dos handlers de trava: muda só o valor gravado e a mensagem de erro. */
+const lockHandler = (locked: boolean) => async ({ params, user, set }: PageContext) => {
+  const { ws, isAdmin } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  if (!canManage(page, user.id, isAdmin)) {
+    set.status = 403;
+    return { detail: locked ? "Apenas o dono da página pode bloqueá-la." : "Apenas o dono da página pode desbloqueá-la." };
+  }
+  return savePage(page.id, { isLocked: locked });
+};
+
+/** Mesma ideia da trava: arquivar e desarquivar diferem só pelo `archivedAt`. */
+const archiveHandler = (archived: boolean) => async ({ params, user, set }: PageContext) => {
+  const { ws, isAdmin } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  if (!canManage(page, user.id, isAdmin)) {
+    set.status = 403;
+    return { detail: archived ? "Apenas o dono da página pode arquivá-la." : "Apenas o dono da página pode restaurá-la." };
+  }
+  return savePage(page.id, { archivedAt: archived ? new Date() : null });
+};
+
+async function updatePageAccess({ params, body, user, set }: PageContext) {
+  const { ws, isAdmin } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  if (!canManage(page, user.id, isAdmin)) {
+    set.status = 403;
+    return { detail: "Apenas o dono da página pode alterar o acesso." };
+  }
+  const access = Number((body as any)?.access ?? page.access);
+  return savePage(page.id, { access, updatedById: user.id });
+}
+
+async function listPageVersions({ params, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  await loadPageOrFail(ws.id, params.page_id);
+  const versions = await prisma.pageVersion.findMany({
+    where: { pageId: params.page_id, workspaceId: ws.id },
+    orderBy: { createdAt: "desc" },
+  });
+  // `fetchAllVersions` tipa o retorno como `TPageVersion[]`; o envelope paginado
+  // quebraria o `.map` da linha do tempo do histórico.
+  return versions.map(serializePageVersion);
+}
+
+async function getPageVersion({ params, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  return serializePageVersion(
+    await prisma.pageVersion.findFirstOrThrow({
+      where: { id: params.version_id, pageId: params.page_id, workspaceId: ws.id },
+    })
+  );
+}
+
+/**
+ * O servidor `live` e o fallback do editor pedem o documento Yjs em binário. O
+ * schema não guarda esse binário na Page, então respondemos com corpo vazio de
+ * propósito: os dois lados tratam `byteLength === 0` remontando o Yjs a partir
+ * de `description_html`. Devolver JSON aqui faria o editor abrir em branco.
+ */
+async function getPageDescription({ params, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  await loadPageOrFail(ws.id, params.page_id);
+  return new Response(new Uint8Array(), { headers: { "Content-Type": "application/octet-stream" } });
+}
+
+async function updatePageDescription({ params, body, user, set }: PageContext) {
+  const { ws, isAdmin } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  if (page.isLocked && !canManage(page, user.id, isAdmin)) {
+    set.status = 403;
+    return { detail: "A página está bloqueada." };
+  }
+
+  // `description_binary` é descartado: não existe coluna para o Yjs. HTML e JSON
+  // são a fonte da verdade e bastam para reconstruir o documento.
+  const b = (body ?? {}) as any;
+  const html: string = b.description_html ?? page.descriptionHtml;
+  await prisma.page.update({
+    where: { id: page.id },
+    data: {
+      descriptionHtml: html,
+      descriptionStripped: String(html).replace(HTML_TAGS, ""),
+      descriptionJson: b.description_json ?? undefined,
+      updatedById: user.id,
+    },
+  });
+  set.status = 204;
+  return null;
+}
+
+async function duplicatePage({ params, user, set }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  const original = await loadPageOrFail(ws.id, params.page_id);
+  const copy = await prisma.page.create({
+    data: {
+      workspaceId: ws.id,
+      ownedById: user.id,
+      createdById: user.id,
+      name: `${original.name} (cópia)`,
+      descriptionHtml: original.descriptionHtml,
+      descriptionStripped: original.descriptionStripped,
+      descriptionJson: original.descriptionJson ?? undefined,
+      access: original.access,
+      color: original.color,
+      isGlobal: original.isGlobal,
+      parentId: original.parentId,
+    },
+  });
+
+  // A cópia herda os vínculos de projeto do original, senão nasce fora de
+  // qualquer listagem de projeto e o usuário não a encontra.
+  const links = await prisma.projectPage.findMany({
+    where: { pageId: original.id },
+    select: { projectId: true },
+  });
+  if (links.length) {
+    await prisma.projectPage.createMany({
+      data: links.map((l) => ({ projectId: l.projectId, pageId: copy.id, workspaceId: ws.id })),
+      skipDuplicates: true,
+    });
+  }
+
+  set.status = 201;
+  return serializePage(await loadPageOrFail(ws.id, copy.id));
+}
+
 export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
 
   // ── Global pages (wiki) ───────────────────────────────────────────────────
 
-  .get("/pages/", async ({ params: { slug }, user, query }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const where: any = { workspaceId: ws.id, deletedAt: null };
-    if (query.archived === "true") where.archivedAt = { not: null };
-    else where.archivedAt = null;
-    return paginate({
-      query: (skip, take) =>
-        prisma.page.findMany({ where, skip, take, include: { labels: { include: { label: true } }, children: { where: { deletedAt: null }, select: { id: true, name: true } } }, orderBy: { updatedAt: "desc" } }),
-      count: () => prisma.page.count({ where }),
-      cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializePage),
-    });
-  })
-
-  .post("/pages/", async ({ params: { slug }, body, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
-    const page = await prisma.page.create({
-      data: {
-        workspaceId: ws.id,
-        ownedById: user.id,
-        name: b.name,
-        descriptionHtml: b.description_html ?? "<p></p>",
-        descriptionStripped: (b.description_html ?? "").replace(/<[^>]+>/g, ""),
-        descriptionJson: b.description ?? null,
-        access: b.access ?? 0,
-        color: b.color ?? "",
-        isGlobal: b.is_global ?? false,
-        parentId: b.parent ?? null,
-        createdById: user.id,
-      },
-    });
-
-    // Link to project if project_id provided
-    if (b.project_ids?.length) {
-      await prisma.projectPage.createMany({
-        data: b.project_ids.map((pid: string) => ({ projectId: pid, pageId: page.id, workspaceId: ws.id })),
-        skipDuplicates: true,
-      });
-    }
-
-    set.status = 201;
-    return page;
-  })
-
-  .get("/pages/:page_id/", async ({ params: { slug, page_id }, user }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    return serializePage(await prisma.page.findFirstOrThrow({
-      where: { id: page_id, workspaceId: ws.id, deletedAt: null },
-      include: { labels: { include: { label: true } }, children: { where: { deletedAt: null } }, versions: { orderBy: { createdAt: "desc" }, take: 1 } },
-    }));
-  })
-
-  .patch("/pages/:page_id/", async ({ params: { slug, page_id }, body, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const page = await prisma.page.findFirstOrThrow({ where: { id: page_id, workspaceId: ws.id } });
-    if (page.isLocked && page.ownedById !== user.id) { set.status = 403; return { detail: "A página está bloqueada." }; }
-
-    const b = body as any;
-    const data: any = { updatedById: user.id };
-    if (b.name !== undefined) data.name = b.name;
-    if (b.description_html !== undefined) {
-      data.descriptionHtml = b.description_html;
-      data.descriptionStripped = b.description_html.replace(/<[^>]+>/g, "");
-    }
-    if (b.description !== undefined) data.descriptionJson = b.description;
-    if (b.access !== undefined) data.access = b.access;
-    if (b.color !== undefined) data.color = b.color;
-    if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
-
-    // Save version snapshot before update
-    const old = await prisma.page.findUnique({ where: { id: page_id } });
-    if (old?.descriptionHtml) {
-      await prisma.pageVersion.create({
-        data: {
-          pageId: page_id,
-          workspaceId: ws.id,
-          ownedById: user.id,
-          lastSavedAt: new Date(),
-          descriptionJson: old.descriptionJson ?? undefined,
-          descriptionHtml: old.descriptionHtml,
-          descriptionStripped: old.descriptionStripped,
-        },
-      }).catch(() => {});
-    }
-
-    return serializePage(await prisma.page.update({ where: { id: page_id }, data }));
-  })
-
-  .delete("/pages/:page_id/", async ({ params: { slug, page_id }, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    await prisma.page.update({ where: { id: page_id }, data: { deletedAt: new Date() } });
-    set.status = 204;
-    return null;
-  })
-
-  // ── Lock / Unlock ──────────────────────────────────────────────────────────
-
-  .post("/pages/:page_id/lock/", async ({ params: { slug, page_id }, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const page = await prisma.page.findFirstOrThrow({ where: { id: page_id, workspaceId: ws.id } });
-    if (page.ownedById !== user.id) { set.status = 403; return { detail: "Apenas o dono da página pode bloqueá-la." }; }
-    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { isLocked: true } }));
-  })
-
-  .delete("/pages/:page_id/lock/", async ({ params: { slug, page_id }, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const page = await prisma.page.findFirstOrThrow({ where: { id: page_id, workspaceId: ws.id } });
-    if (page.ownedById !== user.id) { set.status = 403; return { detail: "Apenas o dono da página pode desbloqueá-la." }; }
-    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { isLocked: false } }));
-  })
-
-  // ── Archive / Unarchive ────────────────────────────────────────────────────
-
-  .post("/pages/:page_id/archive/", async ({ params: { slug, page_id }, user }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { archivedAt: new Date() } }));
-  })
-
-  .delete("/pages/:page_id/archive/", async ({ params: { slug, page_id }, user }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    return serializePage(await prisma.page.update({ where: { id: page_id }, data: { archivedAt: null } }));
-  })
-
-  // ── Versions ───────────────────────────────────────────────────────────────
-
-  .get("/pages/:page_id/versions/", async ({ params: { slug, page_id }, user, query }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const where = { pageId: page_id, workspaceId: ws.id };
-    return paginate({
-      query: (skip, take) => prisma.pageVersion.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
-      count: () => prisma.pageVersion.count({ where }),
-      cursor: query.cursor as string | undefined,
-    });
-  })
-
-  .get("/pages/:page_id/versions/:version_id/", async ({ params: { slug, page_id, version_id }, user }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    return prisma.pageVersion.findFirstOrThrow({ where: { id: version_id, pageId: page_id } });
-  })
+  .get("/pages/", listWorkspacePages)
+  .post("/pages/", createPage)
+  .get("/pages/:page_id/", getPage)
+  .patch("/pages/:page_id/", updatePage)
+  .delete("/pages/:page_id/", deletePage)
+  .post("/pages/:page_id/access/", updatePageAccess)
+  .post("/pages/:page_id/lock/", lockHandler(true))
+  .delete("/pages/:page_id/lock/", lockHandler(false))
+  .post("/pages/:page_id/archive/", archiveHandler(true))
+  .delete("/pages/:page_id/archive/", archiveHandler(false))
+  .get("/pages/:page_id/versions/", listPageVersions)
+  .get("/pages/:page_id/versions/:version_id/", getPageVersion)
+  .get("/pages/:page_id/description/", getPageDescription)
+  .patch("/pages/:page_id/description/", updatePageDescription)
+  .post("/pages/:page_id/duplicate/", duplicatePage)
 
   // ── Project-scoped pages ───────────────────────────────────────────────────
+  // O frontend (ProjectPageService / ProjectPageVersionService) e o servidor
+  // `live` falam sempre por esta árvore. São os MESMOS handlers das rotas de
+  // workspace: o `project_id` extra em `params` já é validado em `resolveScope`
+  // e a listagem é a única que precisa de consulta própria.
 
-  .get("/projects/:project_id/pages/", async ({ params: { slug, project_id }, user, query }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const where: any = {
-      page: { workspaceId: ws.id, deletedAt: null, archivedAt: null },
-      projectId: project_id,
-    };
-    return paginate({
-      query: (skip, take) =>
-        prisma.projectPage.findMany({ where, skip, take, include: { page: { include: { labels: { include: { label: true } } } } }, orderBy: { page: { updatedAt: "desc" } } }),
-      count: () => prisma.projectPage.count({ where }),
-      cursor: query.cursor as string | undefined,
-    });
-  });
+  .get("/projects/:project_id/pages/", listProjectPages)
+  .post("/projects/:project_id/pages/", createPage)
+  .get("/projects/:project_id/pages/:page_id/", getPage)
+  .patch("/projects/:project_id/pages/:page_id/", updatePage)
+  .delete("/projects/:project_id/pages/:page_id/", deletePage)
+  .post("/projects/:project_id/pages/:page_id/access/", updatePageAccess)
+  .post("/projects/:project_id/pages/:page_id/lock/", lockHandler(true))
+  .delete("/projects/:project_id/pages/:page_id/lock/", lockHandler(false))
+  .post("/projects/:project_id/pages/:page_id/archive/", archiveHandler(true))
+  .delete("/projects/:project_id/pages/:page_id/archive/", archiveHandler(false))
+  .get("/projects/:project_id/pages/:page_id/versions/", listPageVersions)
+  .get("/projects/:project_id/pages/:page_id/versions/:version_id/", getPageVersion)
+  .get("/projects/:project_id/pages/:page_id/description/", getPageDescription)
+  .patch("/projects/:project_id/pages/:page_id/description/", updatePageDescription)
+  .post("/projects/:project_id/pages/:page_id/duplicate/", duplicatePage);

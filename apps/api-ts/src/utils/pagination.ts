@@ -34,7 +34,8 @@ export async function paginate<T>(opts: {
   count: () => Promise<number>;
   cursor?: string;
   perPage?: number;
-  transform?: (items: T[]) => unknown;
+  /** Pode ser assíncrono: há transformações que precisam de uma consulta extra. */
+  transform?: (items: T[]) => unknown | Promise<unknown>;
 }): Promise<PaginatedResult<unknown>> {
   const perPage = Math.min(opts.perPage ?? 100, 1000);
   const parsed = opts.cursor ? parseCursor(opts.cursor) : { limit: perPage, page: 0, isPrev: false };
@@ -50,7 +51,7 @@ export async function paginate<T>(opts: {
   const hasNext = items.length > limit;
   const results = hasNext ? items.slice(0, limit) : items;
 
-  const transformed = opts.transform ? opts.transform(results) : results;
+  const transformed = opts.transform ? await opts.transform(results) : results;
 
   return {
     total_count: total,

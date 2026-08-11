@@ -4,7 +4,7 @@ import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, getProjectOrFail , requireWorkspaceMember} from "@utils/workspace";
 import { saveAsset, serveAsset, copyAsset } from "@utils/storage";
-import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit, type AuditActor } from "@utils/audit";
 
 const ENTITY_TYPE_MAP: Record<string, number> = {
   COMMENT_DESCRIPTION: 4, ISSUE_ATTACHMENT: 2, ISSUE_DESCRIPTION: 2,
@@ -25,7 +25,79 @@ function serveFile(assetId: string, mimeType?: string | null) {
 // Entity types enum: 0=workspace, 1=project, 2=issue, 3=page, 4=comment
 const ENTITY_TYPE = { WORKSPACE: 0, PROJECT: 1, ISSUE: 2, PAGE: 3, COMMENT: 4 };
 
-export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Nome de exibição do arquivo: o original do upload, com o caminho como reserva. */
+function assetFileName(asset: { asset: string; id: string; attributes: unknown }): string {
+  const original = (asset.attributes as any)?.name;
+  if (typeof original === "string" && original.trim()) return original.trim();
+  return asset.asset.split("/").pop() || asset.id;
+}
+
+/**
+ * Converte a resposta do storage em download ("salvar como") em vez de
+ * visualização inline. Reaproveita o corpo e os headers que `serveAsset` já
+ * montou (Content-Type e cache) e só acrescenta o Content-Disposition.
+ * O `filename*` em RFC 5987 preserva acentos; o `filename` simples é o
+ * fallback para clientes antigos, por isso vai sem caracteres não-ASCII.
+ */
+function asAttachment(response: Response, fileName: string): Response {
+  const headers = new Headers(response.headers);
+  const asciiName = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "");
+  headers.set(
+    "Content-Disposition",
+    `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
+  );
+  return new Response(response.body, { status: response.status, headers });
+}
+
+/**
+ * Fluxo comum das duas rotas de download (workspace e projeto): confere o
+ * registro, audita o acesso e devolve o binário como anexo.
+ * `null` significa "não achei" — quem chama responde 404.
+ */
+async function downloadWorkspaceAsset(opts: {
+  workspaceId: string;
+  assetId: string;
+  actor: AuditActor;
+  headers: Record<string, string | undefined>;
+  metadata?: Record<string, unknown>;
+}): Promise<Response | null> {
+  const asset = await prisma.fileAsset.findFirst({
+    where: { id: opts.assetId, workspaceId: opts.workspaceId, isDeleted: false },
+  });
+  if (!asset) return null;
+  // LGPD: baixar um anexo é acesso a dado — registra quem, o quê e de onde.
+  recordAudit({
+    workspaceId: opts.workspaceId,
+    entity: AUDIT_ENTITIES.ATTACHMENT,
+    entityId: asset.id,
+    action: AUDIT_ACTIONS.DOWNLOAD,
+    actor: opts.actor,
+    headers: opts.headers,
+    metadata: { nome: assetFileName(asset), tipo: asset.mimeType, ...opts.metadata },
+  });
+  // A chave no storage é o id do asset (ver saveFile/serveFile acima).
+  const fileResponse = await serveFile(asset.id, asset.mimeType);
+  if (!fileResponse) return null;
+  return asAttachment(fileResponse, assetFileName(asset));
+}
+
+/**
+ * As rotas legadas identificam o arquivo pelo último trecho da URL antiga
+ * (ex.: "<uuid>-foto.png"), que corresponde ao fim do campo `asset`. Alguns
+ * registros mais novos trazem o próprio id nessa posição, então aceitamos as
+ * duas formas — o id só entra no filtro quando é um UUID válido, porque a
+ * coluna é do tipo uuid e o Prisma recusaria qualquer outro texto.
+ */
+function legacyAssetMatch(assetKey: string) {
+  const alternativas: any[] = [{ asset: { endsWith: assetKey } }];
+  if (UUID_RE.test(assetKey)) alternativas.push({ id: assetKey });
+  return alternativas;
+}
+
+// Rotas de asset com escopo de workspace, resolvidas pelo slug.
+const workspaceAssetRoutes = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
 
   // ── Workspace-level file assets ───────────────────────────────────────────
@@ -142,6 +214,53 @@ export const assetModule = new Elysia({ prefix: "/workspaces/:slug" })
     }
   );
 
+// ── Rotas legadas de file-assets ──────────────────────────────────────────────
+// Ficam fora do prefixo "/workspaces/:slug" porque nos caminhos antigos a
+// palavra "file-assets" ocupa a posição do slug:
+//   /workspaces/file-assets/:workspace_id/:asset_key/
+// O editor ainda usa esses caminhos para imagens enviadas antes da API v2
+// (as que aparecem no documento como URL absoluta).
+const legacyFileAssetRoutes = new Elysia()
+  .use(authPlugin)
+
+  .delete("/workspaces/file-assets/:workspace_id/:asset_key/", async ({ params: { workspace_id, asset_key }, user, set }) => {
+    if (!UUID_RE.test(workspace_id)) { set.status = 400; return { detail: "Workspace inválido." }; }
+    await requireWorkspaceMember(workspace_id, user.id);
+    // Exclusão lógica, igual às demais rotas de asset: o editor permite desfazer.
+    await prisma.fileAsset.updateMany({
+      where: { workspaceId: workspace_id, OR: legacyAssetMatch(asset_key) },
+      data: { isDeleted: true, deletedAt: new Date() },
+    });
+    set.status = 204;
+    return null;
+  })
+
+  .post("/workspaces/file-assets/:workspace_id/:asset_key/restore/", async ({ params: { workspace_id, asset_key }, user, set }) => {
+    if (!UUID_RE.test(workspace_id)) { set.status = 400; return { detail: "Workspace inválido." }; }
+    await requireWorkspaceMember(workspace_id, user.id);
+    await prisma.fileAsset.updateMany({
+      where: { workspaceId: workspace_id, OR: legacyAssetMatch(asset_key) },
+      data: { isDeleted: false, deletedAt: null },
+    });
+    return { status: "restored" };
+  })
+
+  // Avatar/capa do próprio usuário: sem workspace no caminho, o dono é o
+  // vínculo em entityId — por isso ele entra no filtro (ninguém apaga o do outro).
+  .delete("/users/file-assets/:asset_key/", async ({ params: { asset_key }, user, set }) => {
+    await prisma.fileAsset.updateMany({
+      where: { entityId: user.id, OR: legacyAssetMatch(asset_key) },
+      data: { isDeleted: true, deletedAt: new Date() },
+    });
+    set.status = 204;
+    return null;
+  });
+
+// Reúne os dois conjuntos sob o mesmo export já registrado em src/index.ts.
+export const assetModule = new Elysia()
+  .use(workspaceAssetRoutes)
+  .use(legacyFileAssetRoutes);
+
 // ── assets/v2 — new attachment API (frontend calls /api/assets/v2/workspaces/...) ──────
 export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" })
   .use(authPlugin)
@@ -200,6 +319,14 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     const fileResponse = await serveFile(asset_id, asset.mimeType);
     if (fileResponse) return fileResponse;
     return {id: asset.id, asset_url: `/media/${asset.asset}`, asset: asset.asset};
+  })
+
+  // Download do anexo de workspace (botão "baixar" do editor).
+  .get("/download/:asset_id/", async ({params: {slug, asset_id}, set, user, headers}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const response = await downloadWorkspaceAsset({workspaceId: ws.id, assetId: asset_id, actor: user, headers});
+    if (!response) { set.status = 404; return {detail: "Arquivo não encontrado."}; }
+    return response;
   })
 
   .delete("/:asset_id/", async ({params: {slug, asset_id}, set}) => {
@@ -325,6 +452,24 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     const fileResponse = await serveFile(asset_id, asset.mimeType);
     if (fileResponse) return fileResponse;
     return {id: asset.id, asset_url: `/media/${asset.asset}`, asset: asset.asset};
+  })
+
+  // Download do anexo de projeto (botão "baixar" do editor).
+  .get("/projects/:project_id/download/:asset_id/", async ({params: {slug, project_id, asset_id}, set, user, headers}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const response = await downloadWorkspaceAsset({
+      workspaceId: ws.id, assetId: asset_id, actor: user, headers, metadata: {projeto: project_id},
+    });
+    if (!response) { set.status = 404; return {detail: "Arquivo não encontrado."}; }
+    return response;
+  })
+
+  // Exclusão lógica do anexo de projeto (o editor apaga a imagem removida do texto).
+  .delete("/projects/:project_id/:asset_id/", async ({params: {slug, asset_id}, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await prisma.fileAsset.updateMany({where: {id: asset_id, workspaceId: ws.id}, data: {isDeleted: true, deletedAt: new Date()}}).catch(() => {});
+    set.status = 204;
+    return null;
   })
 
   .post("/projects/:project_id/:asset_id/bulk/", async ({params: {slug}, body}) => {
