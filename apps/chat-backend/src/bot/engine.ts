@@ -5,6 +5,7 @@
 
 import prisma from "@db";
 import { deliverOutbound } from "@/outbound";
+import { buscarResponsavelPorTelefone } from "@/responsaveis";
 import { availableAttendants, isWithinBusinessHours } from "@/presence";
 import { routeQueuedSession, assignSessionToAttendant } from "@/queue/router";
 import { requestRating } from "@/rating";
@@ -34,6 +35,22 @@ async function findContact(session: any) {
   return null;
 }
 
+/**
+ * Quem está do outro lado do número.
+ *
+ * O Responsável cadastrado vem na frente do histórico do chat: é o cadastro
+ * oficial do cliente, escrito por gente, enquanto o contato do chat guarda o
+ * nome de perfil que o WhatsApp mandou ("Zé Celular"). É pelo nome do
+ * responsável que o bot pergunta "Você é {name}?".
+ */
+async function identificarPessoa(session: any) {
+  const [responsavel, contato] = await Promise.all([
+    buscarResponsavelPorTelefone(session.workspaceId, session.clientPhone),
+    findContact(session),
+  ]);
+  return { responsavel, contato, nome: responsavel?.name ?? contato?.name ?? null };
+}
+
 async function sendBot(session: any, text: string) {
   await deliverOutbound(session, { sender: "bot", type: "text", text });
 }
@@ -56,14 +73,23 @@ export async function startBot(sessionId: string) {
   const cfg = await getConfig(session.workspaceId);
   await sendBot(session, cfg.welcomeMessage);
 
-  const contact = await findContact(session);
-  if (contact?.name) {
-    await sendBot(session, render(cfg.confirmContactMessage, { name: contact.name }));
-    await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "confirm_contact", contactId: contact.id, clientName: contact.name } });
-  } else {
+  const { responsavel, contato, nome } = await identificarPessoa(session);
+  if (!nome) {
     await sendBot(session, cfg.askNameMessage);
     await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "awaiting_name" } });
+    return;
   }
+
+  await sendBot(session, render(cfg.confirmContactMessage, { name: nome }));
+  await prisma.chatSession.update({
+    where: { id: session.id },
+    data: {
+      botState: "confirm_contact",
+      clientName: nome,
+      ...(contato ? { contactId: contato.id } : {}),
+      ...(responsavel ? { entityContactId: responsavel.id } : {}),
+    },
+  });
 }
 
 /**
@@ -174,7 +200,13 @@ export async function handleInboundClient(sessionId: string, text: string) {
         contact = await prisma.contact.create({
           data: { workspaceId: session.workspaceId, name, phone: session.clientPhone ?? null },
         });
-      await prisma.chatSession.update({ where: { id: session.id }, data: { contactId: contact.id, clientName: name } });
+      // Quem digita o próprio nome aqui ou não tinha cadastro, ou disse que não
+      // é o responsável que identificamos: em qualquer dos casos o vínculo com
+      // o Responsável deixa de valer, e refazê-lo é papel do encerramento.
+      await prisma.chatSession.update({
+        where: { id: session.id },
+        data: { contactId: contact.id, clientName: name, entityContactId: null },
+      });
       await presentMenu({ ...session, contactId: contact.id, clientName: name });
       return;
     }

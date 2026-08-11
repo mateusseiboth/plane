@@ -2,6 +2,8 @@ export * from "./ui";
 export * from "./badges";
 export * from "./Logo";
 export * from "./Sheet";
+export * from "./ContactForm";
+export * from "./ContactSheet";
 export * from "./RichTextEditor";
 export * from "./WorkItemRow";
 export * from "./ProjectPicker";

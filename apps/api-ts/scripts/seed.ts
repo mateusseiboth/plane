@@ -56,6 +56,23 @@ function log(msg: string) {
   console.log(`[seed] ${msg}`);
 }
 
+/**
+ * Tipos de responsável do SAC (tabela `tipos_responsaveis`), com o id legado
+ * preservado. Os inativos entram desligados de propósito: continuam existindo
+ * para os registros antigos, mas não aparecem na hora de cadastrar alguém.
+ */
+const TIPOS_DE_RESPONSAVEL: Array<{legacyId: number; name: string; isActive?: boolean; isSystemUser?: boolean}> = [
+  {legacyId: 1, name: "Chefe Setor", isActive: false},
+  {legacyId: 2, name: "Prefeito (a)"},
+  {legacyId: 3, name: "Secretário (a)"},
+  {legacyId: 4, name: "Outros", isActive: false},
+  {legacyId: 5, name: "Presidente (a)"},
+  {legacyId: 6, name: "Servidor", isActive: false},
+  {legacyId: 7, name: "Técnico T.I.", isSystemUser: true},
+  {legacyId: 8, name: "Assessor Parlamentar"},
+  {legacyId: 9, name: "Usuário do Sistema", isSystemUser: true},
+];
+
 /** Configuração de fábrica da instância. */
 const DEFAULT_INSTANCE_CONFIG = () => ({
   // SLA: ajuste de prazo (horas corridas) por prioridade — totalmente editável (C2)
@@ -265,6 +282,28 @@ async function main() {
   // 3b. Seed configurable roles (system roles + default visibility/transitions)
   const roleIds = await seedWorkflowRoles(prisma, workspace.id);
   log(`✅  Workflow roles seeded (${Object.keys(roleIds).length} roles)`);
+
+  // 3b-bis. Tipos de responsável, com os mesmos ids do SAC (`legacy_id`) para
+  // que a importação dos responsáveis consiga reencontrá-los.
+  //
+  // Na atualização só o `legacy_id` é reafirmado: nome, situação e a marca de
+  // usuário do sistema são editáveis na tela e o seeder roda a cada subida —
+  // gravar tudo aqui desfaria o ajuste do administrador no próximo restart.
+  for (const tipo of TIPOS_DE_RESPONSAVEL) {
+    await prisma.entityContactType.upsert({
+      where: {workspaceId_name: {workspaceId: workspace.id, name: tipo.name}},
+      update: {legacyId: tipo.legacyId},
+      create: {
+        workspaceId: workspace.id,
+        name: tipo.name,
+        legacyId: tipo.legacyId,
+        sequence: tipo.legacyId,
+        isActive: tipo.isActive ?? true,
+        isSystemUser: tipo.isSystemUser ?? false,
+      },
+    });
+  }
+  log(`✅  Tipos de responsável: ${TIPOS_DE_RESPONSAVEL.length}`);
 
   // 3c. Normalize every existing project: pt-BR states, intake enabled, default labels.
   // Runs without MySQL, so the seeder (executed on every start) keeps projects correct.

@@ -1,7 +1,9 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
+import {serializarCiclos} from "@modules/cycle";
 import {Prisma} from "@prisma/client";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
+import {resolverOrdenacao} from "@utils/issue-order";
 import {paginate} from "@utils/pagination";
 import {sincronizarFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
@@ -1463,21 +1465,18 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     });
   })
 
-  .get("/:slug/cycles/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/cycles/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return paginate({
-      query: (skip, take) =>
-        prisma.cycle.findMany({
-          where: {workspaceId: ws.id, deletedAt: null},
-          skip,
-          take,
-          include: {project: {select: {id: true, name: true, identifier: true}}},
-          orderBy: {createdAt: "desc"},
-        }),
-      count: () => prisma.cycle.count({where: {workspaceId: ws.id, deletedAt: null}}),
-      cursor: query.cursor as string | undefined,
+    const cycles = await prisma.cycle.findMany({
+      where: {workspaceId: ws.id, deletedAt: null},
+      include: {project: {select: {id: true, name: true, identifier: true}}},
+      orderBy: {createdAt: "desc"},
     });
+    // Array puro em snake_case: `CycleService.getWorkspaceCycles` tipa o retorno
+    // como `ICycle[]` e o store percorre a resposta direto (fetchWorkspaceCycles).
+    // Mesma serialização das rotas de ciclo do projeto — ver @modules/cycle.
+    return serializarCiclos(cycles, ws.id, user.id);
   })
 
   // ── Favorites: patch / group ──────────────────────────────────────────────────
@@ -2215,18 +2214,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       labels: {where: {deletedAt: null}, select: {labelId: true}},
     };
 
-    // Convert snake_case order_by to camelCase for Prisma
-    const FIELD_MAP: Record<string, string> = {
-      sort_order: "sortOrder",
-      created_at: "createdAt",
-      updated_at: "updatedAt",
-      target_date: "targetDate",
-      completed_at: "completedAt",
-      sequence_id: "sequenceId",
-    };
-    const rawField = orderBy.startsWith("-") ? orderBy.slice(1) : orderBy;
-    const prismaField = FIELD_MAP[rawField] ?? rawField;
-    const sortDir = orderBy.startsWith("-") ? "desc" : "asc";
+    // `order_by` chega no vocabulário do front (snake_case, Django) — a
+    // tradução para o Prisma é a mesma das demais listagens.
+    const ordenacao = resolverOrdenacao(orderBy, {updatedAt: "desc"});
 
     const [issues, totalCount] = await Promise.all([
       prisma.issue.findMany({
@@ -2234,7 +2224,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         skip,
         take: perPage + 1,
         include: ISSUE_INCLUDE,
-        orderBy: {[prismaField]: sortDir},
+        orderBy: ordenacao,
       }),
       prisma.issue.count({where}),
     ]);
@@ -2310,18 +2300,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // "me" alias for assignees
     if (filters.assignees?.includes("me")) where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
 
-    const orderBy: any = {};
-    const order = (query.order_by as string) ?? "-updated_at";
-    const dir = order.startsWith("-") ? "desc" : "asc";
-    const field = order.replace(/^-/, "");
-    const fieldMap: Record<string, string> = {
-      updated_at: "updatedAt",
-      created_at: "createdAt",
-      priority: "priority",
-      state__name: "stateId",
-      sort_order: "sortOrder",
-    };
-    orderBy[fieldMap[field] ?? "updatedAt"] = dir;
+    const orderBy = resolverOrdenacao(query.order_by, {updatedAt: "desc"});
 
     // ── Grouped response (kanban / grouped list / grouped layouts) ─────────────
     const groupBy = query.group_by as string | undefined;
@@ -2452,18 +2431,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     else if (filters.project?.length) where.projectId = {in: filters.project.filter((p) => userProjectIds.includes(p))};
     if (filters.assignees?.includes("me")) where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
 
-    const orderBy: any = {};
-    const order = (query.order_by as string) ?? "-updated_at";
-    const dir = order.startsWith("-") ? "desc" : "asc";
-    const field = order.replace(/^-/, "");
-    const fieldMap: Record<string, string> = {
-      updated_at: "updatedAt",
-      created_at: "createdAt",
-      priority: "priority",
-      state__name: "stateId",
-      sort_order: "sortOrder",
-    };
-    orderBy[fieldMap[field] ?? "updatedAt"] = dir;
+    const orderBy = resolverOrdenacao(query.order_by, {updatedAt: "desc"});
 
     return paginate({
       query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),

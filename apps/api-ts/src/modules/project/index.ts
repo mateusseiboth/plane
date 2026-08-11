@@ -277,6 +277,35 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     return null;
   })
 
+  // ── Arquivar / restaurar projeto ────────────────────────────────────────────
+  // Espelha ProjectArchiveUnarchiveEndpoint do Django: arquivar carimba
+  // `archived_at` e tira o projeto dos favoritos; restaurar limpa a data.
+  // O projeto arquivado continua em /projects/details/ (é de lá que a tela de
+  // arquivados se alimenta) e sai de /projects/, usada pelos seletores.
+
+  .post("/:project_id/archive/", async ({ params: { slug, project_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+
+    const archivedAt = new Date();
+    await prisma.$transaction([
+      prisma.project.update({ where: { id: project_id }, data: { archivedAt } }),
+      prisma.userFavorite.deleteMany({ where: { workspaceId: ws.id, entityId: project_id } }),
+    ]);
+    return { archived_at: archivedAt.toISOString() };
+  })
+
+  .delete("/:project_id/archive/", async ({ params: { slug, project_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
+    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+
+    await prisma.project.update({ where: { id: project_id }, data: { archivedAt: null } });
+    set.status = 204;
+    return null;
+  })
+
   // ── Project members (plain array — frontend expects TProjectMembership[]) ────
 
   .get("/:project_id/members/", async ({ params: { slug, project_id }, user }) => {

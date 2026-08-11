@@ -9,6 +9,9 @@ import {
   AuthUser,
   DashboardResponse,
   Entity,
+  EntityContact,
+  EntityContactDraft,
+  EntityContactType,
   Label,
   Me,
   Member,
@@ -119,6 +122,25 @@ export const endpoints = {
       api.post<Entity>(`${V1}/workspaces/${slug}/entities/`, body),
     update: (slug: string, id: string, body: Partial<Entity>) =>
       api.patch<Entity>(`${V1}/workspaces/${slug}/entities/${id}/`, body),
+  },
+
+  /**
+   * Responsáveis das entidades. A listagem responde array puro enquanto não se
+   * pedir paginação (`per_page`/`cursor`), igual ao módulo de entidades.
+   */
+  entityContacts: {
+    list: (slug: string, params?: QueryParams) =>
+      api.get<EntityContact[]>(`${V1}/workspaces/${slug}/entity-contacts/`, { params }),
+    get: (slug: string, contactId: string) =>
+      api.get<EntityContact>(`${V1}/workspaces/${slug}/entity-contacts/${contactId}/`),
+    create: (slug: string, body: EntityContactDraft) =>
+      api.post<EntityContact>(`${V1}/workspaces/${slug}/entity-contacts/`, body),
+    update: (slug: string, contactId: string, body: Partial<EntityContactDraft>) =>
+      api.patch<EntityContact>(`${V1}/workspaces/${slug}/entity-contacts/${contactId}/`, body),
+    types: (slug: string) =>
+      api.get<EntityContactType[]>(`${V1}/workspaces/${slug}/entity-contact-types/`, {
+        params: { is_active: true },
+      }),
   },
 
   visits: {

@@ -24,7 +24,7 @@ import { serializeIssue } from "@utils/serialize";
  * `project`/`workspace` em vez de `projectId`/`workspaceId`). Devolver o objeto
  * do Prisma cru faz a tela de views perder projeto, filtros e travamento.
  */
-function serializeView(v: any) {
+function serializeView(v: any, isFavorite = false) {
   return {
     id: v.id,
     name: v.name,
@@ -39,7 +39,7 @@ function serializeView(v: any) {
     logo_props: (v.queryData as any)?.logo_props,
     is_global: v.isGlobal,
     is_locked: (v.queryData as any)?.is_locked ?? false,
-    is_favorite: false,
+    is_favorite: isFavorite,
     project: v.projectId ?? null,
     project_id: v.projectId ?? null,
     workspace: v.workspaceId,
@@ -50,6 +50,69 @@ function serializeView(v: any) {
     created_at: v.createdAt,
     updated_at: v.updatedAt,
   };
+}
+
+/** Bloco `*_detail` de usuário que o frontend espera (`IUserLite`). */
+function userLite(u: any) {
+  return {
+    id: u?.id ?? null,
+    display_name: u?.displayName ?? "",
+    first_name: u?.firstName ?? "",
+    last_name: u?.lastName ?? "",
+    email: u?.email ?? "",
+    avatar: u?.avatar ?? "",
+    avatar_url: u?.avatarUrl ?? null,
+  };
+}
+
+/**
+ * O Django guarda a lista de projetos exportados no próprio registro
+ * (ExporterHistory.project, um array). Aqui ela vive em `filters.project`;
+ * jobs antigos só têm `projectId`, então os dois casos viram array.
+ */
+function exportedProjectIds(job: any): string[] {
+  const fromFilters = (job.filters as any)?.project;
+  if (Array.isArray(fromFilters)) return fromFilters.map(String);
+  return job.projectId ? [job.projectId] : [];
+}
+
+/**
+ * Histórico de exportação no formato da tela "Exportações anteriores"
+ * (`IExportData`). `initiated_by_detail` nunca vem nulo: a tela desestrutura o
+ * objeto direto e quebraria com null.
+ */
+function serializeExportJob(job: any, initiators: Map<string, any>) {
+  return {
+    id: job.id,
+    created_at: job.createdAt,
+    updated_at: job.updatedAt,
+    project: exportedProjectIds(job),
+    provider: job.format,
+    status: job.status,
+    url: job.downloadUrl ?? "",
+    token: job.token ?? "",
+    created_by: job.createdById ?? null,
+    updated_by: job.createdById ?? null,
+    initiated_by: job.createdById ?? null,
+    initiated_by_detail: userLite(job.createdById ? initiators.get(job.createdById) : null),
+  };
+}
+
+const USER_LITE_SELECT = {
+  id: true, displayName: true, firstName: true, lastName: true, email: true, avatar: true, avatarUrl: true,
+} as const;
+
+/** Formatos aceitos na exportação — mesma lista do Django. */
+const EXPORT_PROVIDERS = ["csv", "xlsx", "json"];
+
+/** Ids das views que o usuário marcou como favoritas (tabela `user_favorites`). */
+async function favoriteViewIds(workspaceId: string, userId: string, viewIds: string[]): Promise<Set<string>> {
+  if (!viewIds.length) return new Set();
+  const favorites = await prisma.userFavorite.findMany({
+    where: {workspaceId, userId, entityType: "view", entityId: {in: viewIds}, deletedAt: null},
+    select: {entityId: true},
+  });
+  return new Set(favorites.map((f) => f.entityId));
 }
 
 export const premiumModule = new Elysia()
@@ -233,16 +296,61 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
+    // A tela de exportação manda {provider, project: string[], multiple};
+    // chamadas internas mais antigas mandam {format, project_id}.
+    const provider = b.provider ?? b.format ?? "csv";
+    if (!EXPORT_PROVIDERS.includes(provider)) {
+      set.status = 400;
+      return { detail: `Formato '${provider}' não suportado. Use csv, xlsx ou json.` };
+    }
+    const projectIds: string[] = Array.isArray(b.project) ? b.project : b.project_id ? [b.project_id] : [];
     const job = await prisma.exportJob.create({
       data: {
-        workspaceId: ws.id, projectId: b.project_id ?? null,
-        format: b.format ?? "csv", filters: b.filters ?? {},
+        workspaceId: ws.id, projectId: projectIds[0] ?? null,
+        format: provider,
+        // `project` fica nos filtros porque a exportação é de vários projetos e
+        // a coluna projectId só guarda um.
+        filters: { ...(b.filters ?? {}), project: projectIds, multiple: b.multiple ?? false, rich_filters: b.rich_filters ?? {} },
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         status: "queued", createdById: user.id,
       },
     });
     set.status = 201;
     return job;
+  })
+
+  /**
+   * Histórico de exportações (Django: ExportIssuesEndpoint.get). A tela
+   * "Exportações anteriores" pagina por cursor e mostra quem exportou, quantos
+   * projetos, o formato, o status e o link de download.
+   */
+  .get("/workspaces/:slug/export-issues/", async ({ params: { slug }, user, query }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const where = { workspaceId: ws.id };
+    const page = await paginate({
+      query: (skip, take) => prisma.exportJob.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
+      count: () => prisma.exportJob.count({ where }),
+      cursor: query.cursor as string | undefined,
+      perPage: Number(query.per_page) || undefined,
+      transform: async (jobs) => {
+        const ids = [...new Set(jobs.map((j: any) => j.createdById).filter(Boolean))] as string[];
+        const users = ids.length
+          ? await prisma.user.findMany({ where: { id: { in: ids } }, select: USER_LITE_SELECT })
+          : [];
+        const byId = new Map(users.map((u) => [u.id, u]));
+        return jobs.map((j) => serializeExportJob(j, byId));
+      },
+    });
+    // O paginador do Django devolve também count/total_pages/extra_stats, e o
+    // tipo IExportServiceResponse do frontend os declara.
+    const limitPorPagina = Number(page.next_cursor.split(":")[0]) || 100;
+    return {
+      ...page,
+      count: page.results.length,
+      total_pages: Math.ceil(page.total_count / limitPorPagina),
+      extra_stats: null,
+    };
   })
 
   .get("/workspaces/:slug/export-jobs/:job_id/", async ({ params: { slug, job_id }, user }) => {
@@ -536,7 +644,10 @@ export const premiumModule = new Elysia()
       query: (skip, take) => prisma.issueView.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
       count: () => prisma.issueView.count({ where }),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeView),
+      transform: async (items) => {
+        const favoritas = await favoriteViewIds(ws.id, user.id, items.map((v: any) => v.id));
+        return items.map((v: any) => serializeView(v, favoritas.has(v.id)));
+      },
     });
   })
 
@@ -560,7 +671,10 @@ export const premiumModule = new Elysia()
       query: (skip, take) => prisma.issueView.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
       count: () => prisma.issueView.count({ where }),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeView),
+      transform: async (items) => {
+        const favoritas = await favoriteViewIds(ws.id, user.id, items.map((v: any) => v.id));
+        return items.map((v: any) => serializeView(v, favoritas.has(v.id)));
+      },
     });
   })
 
@@ -588,7 +702,8 @@ export const premiumModule = new Elysia()
     await requireWorkspaceMember(ws.id, user.id);
     const view = await prisma.issueView.findFirst({ where: { id: view_id, workspaceId: ws.id, deletedAt: null } });
     if (!view) { set.status = 404; return { detail: "Visualização não encontrada." }; }
-    return serializeView(view);
+    const favoritas = await favoriteViewIds(ws.id, user.id, [view.id]);
+    return serializeView(view, favoritas.has(view.id));
   })
 
   .get("/workspaces/:slug/projects/:project_id/views/:view_id/", async ({ params: { slug, project_id, view_id }, user, set }) => {
@@ -596,7 +711,8 @@ export const premiumModule = new Elysia()
     await getProjectOrFail(ws.id, project_id, user.id);
     const view = await prisma.issueView.findFirst({ where: { id: view_id, projectId: project_id, deletedAt: null } });
     if (!view) { set.status = 404; return { detail: "Visualização não encontrada." }; }
-    return serializeView(view);
+    const favoritas = await favoriteViewIds(ws.id, user.id, [view.id]);
+    return serializeView(view, favoritas.has(view.id));
   })
 
   .patch("/workspaces/:slug/projects/:project_id/views/:view_id/", async ({ params: { slug, project_id, view_id }, body, user, set }) => {
@@ -639,6 +755,78 @@ export const premiumModule = new Elysia()
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     await prisma.issueView.update({ where: { id: view_id }, data: { deletedAt: new Date() } });
+    set.status = 204;
+    return null;
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // VIEWS FAVORITAS DO USUÁRIO
+  // Django: IssueViewFavoriteViewSet. Grava na mesma tabela dos demais
+  // favoritos (user_favorites, entity_type = "view"), então a barra lateral e
+  // estas rotas enxergam sempre o mesmo registro.
+  // Diferente do Django, basta ser membro do projeto: favoritar é preferência
+  // pessoal, como já acontece em /workspaces/:slug/user-favorites/.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  .get("/workspaces/:slug/projects/:project_id/user-favorite-views/", async ({ params: { slug, project_id }, user }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const views = await prisma.issueView.findMany({
+      where: { projectId: project_id, deletedAt: null },
+      select: { id: true, name: true },
+    });
+    const nomePorView = new Map(views.map((v) => [v.id, v.name]));
+    const favorites = await prisma.userFavorite.findMany({
+      where: {
+        workspaceId: ws.id, userId: user.id, entityType: "view",
+        entityId: { in: views.map((v) => v.id) }, deletedAt: null,
+      },
+      orderBy: { sequence: "asc" },
+    });
+    return favorites.map((f) => ({
+      id: f.id,
+      workspace: ws.id,
+      project_id,
+      entity_type: f.entityType,
+      entity_identifier: f.entityId,
+      view: f.entityId,
+      name: f.name || nomePorView.get(f.entityId) || "",
+      sequence: f.sequence,
+      created_at: f.createdAt.toISOString(),
+      updated_at: f.updatedAt.toISOString(),
+    }));
+  })
+
+  .post("/workspaces/:slug/projects/:project_id/user-favorite-views/", async ({ params: { slug, project_id }, body, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const viewId = (body as any)?.view;
+    if (!viewId) { set.status = 400; return { detail: "O campo `view` é obrigatório." }; }
+
+    const view = await prisma.issueView.findFirst({ where: { id: viewId, projectId: project_id, deletedAt: null } });
+    if (!view) { set.status = 404; return { detail: "Visualização não encontrada." }; }
+
+    // Favoritar duas vezes não pode duplicar a linha: a barra lateral mostraria
+    // a mesma view repetida e o desfavoritar deixaria sobra.
+    const jaFavorita = await prisma.userFavorite.findFirst({
+      where: { workspaceId: ws.id, userId: user.id, entityType: "view", entityId: viewId, deletedAt: null },
+    });
+    if (!jaFavorita) {
+      await prisma.userFavorite.create({
+        data: { workspaceId: ws.id, userId: user.id, entityType: "view", entityId: viewId, name: view.name },
+      });
+    }
+    set.status = 204;
+    return null;
+  })
+
+  .delete("/workspaces/:slug/projects/:project_id/user-favorite-views/:view_id/", async ({ params: { slug, project_id, view_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    const { count } = await prisma.userFavorite.deleteMany({
+      where: { workspaceId: ws.id, userId: user.id, entityType: "view", entityId: view_id },
+    });
+    if (!count) { set.status = 404; return { detail: "Favorito não encontrado." }; }
     set.status = 204;
     return null;
   })

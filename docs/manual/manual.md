@@ -438,7 +438,7 @@ Uma visita reúne:
 | **Município** | Onde a visita aconteceu. |
 | **Período** | Datas programada e executada. |
 | **Técnico responsável** | Quem foi a campo (pode haver um segundo técnico). |
-| **Contatos** | As pessoas da entidade que acompanharam. |
+| **Responsáveis** | Quem recebeu o técnico. Escolhidos entre os [Contatos](#contatos) da entidade, com cadastro na hora para quem ainda não existe. |
 | **Sistemas** | Quais produtos foram tratados na visita. |
 | **Resumo e conclusão** | O relato do que foi feito e o desfecho. |
 | **Motivos** | Classificação do porquê da visita. |
@@ -453,6 +453,35 @@ Uma visita reúne:
   cliente. Veja [Impressão](#impressão).
 - A visita registra **datas programada e executada separadas**. Preencher as
   duas é o que permite medir atraso de agenda depois.
+
+\newpage
+
+# Contatos
+
+O menu **Contatos** guarda as pessoas de carne e osso dentro de cada cliente: o
+prefeito, o secretário, o técnico de T.I. da prefeitura, o usuário do sistema.
+Antes elas eram redigitadas a cada visita, sem telefone e sem e-mail; agora são
+cadastro, com histórico. Os 2.433 responsáveis do SAC foram migrados.
+
+O menu fica no mesmo nível de Atendimento e **está aberto a todo mundo** — o
+cadastro nasce no encerramento de um atendimento ou no meio de uma visita, feito
+por quem está em campo.
+
+A listagem tem busca por **nome, e-mail ou telefone** e filtros por **entidade**,
+**tipo** (o papel da pessoa no órgão) e **situação** (ativos, inativos ou os
+dois). Cada linha permite editar e desativar. Desativar não apaga: o contato sai
+das listas de escolha mas continua no histórico das visitas em que aparece.
+
+**Onde mais eles aparecem**
+
+- Na tela de **Entidades** (Configurações → Entidades), ao editar uma entidade,
+  a lista dos contatos dela fica ali mesmo, com cadastro e edição no lugar.
+- Na **visita técnica**, no campo Responsáveis — inclusive com o botão
+  *Cadastrar contato* para quem recebeu o técnico e ainda não existe no sistema.
+
+**Dica** — os contatos migrados do SAC como texto solto continuam visíveis na
+visita, em uma linha própria. Não dá para reconstituí-los em pessoas, então eles
+convivem com os responsáveis escolhidos.
 
 \newpage
 

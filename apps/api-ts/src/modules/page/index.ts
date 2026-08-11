@@ -29,12 +29,18 @@ const PAGE_RELATIONS = {
   children: { where: { deletedAt: null }, select: { id: true } },
 } as const;
 
+/** `UserFavorite.entityType` das páginas — mesmo valor usado pelo Django. */
+const TIPO_FAVORITO_PAGINA = "page";
+
+/** Conjunto vazio reaproveitado: evita alocar um Set por página serializada. */
+const SEM_FAVORITOS: ReadonlySet<string> = new Set();
+
 /**
  * Página no formato que o frontend consome (`TPage`, snake_case). O objeto cru do
  * Prisma chega com `isLocked`/`descriptionHtml`/`ownedById`, que a UI lê como
  * `undefined` — bloqueio, conteúdo e dono somem da tela.
  */
-function serializePage(p: any) {
+function serializePage(p: any, favoritas: ReadonlySet<string> = SEM_FAVORITOS) {
   return {
     id: p.id,
     name: p.name,
@@ -45,7 +51,7 @@ function serializePage(p: any) {
     description_stripped: p.descriptionStripped ?? "",
     is_locked: p.isLocked ?? false,
     is_global: p.isGlobal ?? false,
-    is_favorite: false,
+    is_favorite: favoritas.has(p.id),
     archived_at: p.archivedAt ?? null,
     deleted_at: p.deletedAt ?? undefined,
     owned_by: p.ownedById ?? null,
@@ -108,9 +114,51 @@ function loadPageOrFail(workspaceId: string, pageId: string) {
   });
 }
 
+/**
+ * Filtro base das páginas vivas do workspace. Quando a URL traz `project_id` a
+ * consulta só enxerga páginas vinculadas àquele projeto.
+ */
+function escopoDePaginas(workspaceId: string, projectId?: string) {
+  return {
+    workspaceId,
+    deletedAt: null,
+    ...(projectId ? { projects: { some: { projectId } } } : {}),
+  };
+}
+
+/** Chave do favorito de página: um registro por (usuário, página). */
+function chaveFavorita(workspaceId: string, pageId: string, userId: string) {
+  return { workspaceId, userId, entityType: TIPO_FAVORITO_PAGINA, entityId: pageId };
+}
+
+/**
+ * Quais das páginas informadas o usuário marcou como favoritas. `is_favorite`
+ * vinha sempre `false`: a estrela apagava sozinha a cada recarga da listagem.
+ */
+async function favoritasDoUsuario(userId: string, pageIds: string[]): Promise<ReadonlySet<string>> {
+  if (!pageIds.length) return SEM_FAVORITOS;
+  const favoritos = await prisma.userFavorite.findMany({
+    where: { userId, entityType: TIPO_FAVORITO_PAGINA, entityId: { in: pageIds }, deletedAt: null },
+    select: { entityId: true },
+  });
+  return new Set(favoritos.map((f) => f.entityId));
+}
+
+/** Serializa uma página resolvendo antes se ela é favorita do usuário. */
+async function serializarPagina(page: any, userId: string) {
+  return serializePage(page, await favoritasDoUsuario(userId, [page.id]));
+}
+
+/** Serializa uma lista com uma única consulta de favoritos para todas. */
+async function serializarPaginas(pages: any[], userId: string) {
+  const favoritas = await favoritasDoUsuario(userId, pages.map((p) => p.id));
+  return pages.map((p) => serializePage(p, favoritas));
+}
+
 /** Aplica um patch e já devolve a página no formato do frontend. */
-async function savePage(pageId: string, data: any) {
-  return serializePage(await prisma.page.update({ where: { id: pageId }, data, include: PAGE_RELATIONS }));
+async function savePage(pageId: string, data: any, userId: string) {
+  const page = await prisma.page.update({ where: { id: pageId }, data, include: PAGE_RELATIONS });
+  return serializarPagina(page, userId);
 }
 
 /**
@@ -147,15 +195,13 @@ function canManage(page: { ownedById: string }, userId: string, isAdmin: boolean
 
 async function listWorkspacePages({ params, query, user }: PageContext) {
   const { ws } = await resolveScope(params, user.id);
-  const where: any = { workspaceId: ws.id, deletedAt: null };
-  if (query.archived === "true") where.archivedAt = { not: null };
-  else where.archivedAt = null;
+  const where: any = { ...escopoDePaginas(ws.id), archivedAt: query.archived === "true" ? { not: null } : null };
   return paginate({
     query: (skip, take) =>
       prisma.page.findMany({ where, skip, take, include: PAGE_RELATIONS, orderBy: { updatedAt: "desc" } }),
     count: () => prisma.page.count({ where }),
     cursor: query.cursor,
-    transform: (items) => items.map(serializePage),
+    transform: (items) => serializarPaginas(items, user.id),
   });
 }
 
@@ -168,15 +214,88 @@ async function listProjectPages({ params, query, user }: PageContext) {
   const { ws } = await resolveScope(params, user.id);
   const pages = await prisma.page.findMany({
     where: {
-      workspaceId: ws.id,
-      deletedAt: null,
+      ...escopoDePaginas(ws.id, params.project_id),
       archivedAt: query.archived === "true" ? { not: null } : null,
-      projects: { some: { projectId: params.project_id } },
     },
     include: PAGE_RELATIONS,
     orderBy: { updatedAt: "desc" },
   });
-  return pages.map(serializePage);
+  return serializarPaginas(pages, user.id);
+}
+
+/**
+ * `ProjectPageService.fetchArchived` alimenta a aba "Arquivadas" do wiki e tipa
+ * o retorno como `TPage[]` — a chamada não passa `?archived=true`, o filtro é a
+ * própria rota. Envelope paginado aqui deixaria a aba vazia.
+ */
+async function listArchivedPages({ params, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  const pages = await prisma.page.findMany({
+    where: { ...escopoDePaginas(ws.id, params.project_id), archivedAt: { not: null } },
+    include: PAGE_RELATIONS,
+    orderBy: { archivedAt: "desc" },
+  });
+  return serializarPaginas(pages, user.id);
+}
+
+/**
+ * `ProjectPageService.fetchFavorites`, também tipado como `TPage[]`. Só páginas
+ * ativas: arquivar remove o favorito, como no Django.
+ */
+async function listFavoritePages({ params, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  const favoritos = await prisma.userFavorite.findMany({
+    where: { workspaceId: ws.id, userId: user.id, entityType: TIPO_FAVORITO_PAGINA, deletedAt: null },
+    select: { entityId: true },
+    orderBy: { sequence: "asc" },
+  });
+  const ids = favoritos.map((f) => f.entityId);
+  if (!ids.length) return [];
+
+  const pages = await prisma.page.findMany({
+    where: { ...escopoDePaginas(ws.id, params.project_id), id: { in: ids }, archivedAt: null },
+    include: PAGE_RELATIONS,
+    orderBy: { updatedAt: "desc" },
+  });
+  const favoritas = new Set(ids);
+  return pages.map((p) => serializePage(p, favoritas));
+}
+
+/**
+ * Marca/desmarca a página como favorita. Fábrica porque as duas pontas só
+ * diferem pelo estado final — o frontend chama POST e DELETE na mesma URL e
+ * ignora o corpo da resposta.
+ */
+const favoriteHandler = (favoritar: boolean) => async ({ params, user, set }: PageContext) => {
+  const { ws } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  await (favoritar ? marcarFavorita(ws.id, page, user.id) : desmarcarFavorita(ws.id, page.id, user.id));
+  set.status = 204;
+  return null;
+};
+
+/**
+ * Idempotente e sem lixo: favoritar duas vezes não duplica a linha, e ligar a
+ * estrela de novo reaproveita o registro que o DELETE apenas marcou como
+ * excluído (senão cada clique deixaria uma linha morta em `user_favorites`).
+ */
+async function marcarFavorita(workspaceId: string, page: { id: string; name: string }, userId: string) {
+  const chave = chaveFavorita(workspaceId, page.id, userId);
+  const existente = await prisma.userFavorite.findFirst({ where: chave, orderBy: { createdAt: "desc" } });
+  if (existente?.deletedAt === null) return;
+  if (existente) {
+    await prisma.userFavorite.update({ where: { id: existente.id }, data: { deletedAt: null, name: page.name } });
+    return;
+  }
+  await prisma.userFavorite.create({ data: { ...chave, name: page.name } });
+}
+
+/** Exclusão lógica, como no resto do módulo de favoritos do workspace. */
+function desmarcarFavorita(workspaceId: string, pageId: string, userId: string) {
+  return prisma.userFavorite.updateMany({
+    where: { ...chaveFavorita(workspaceId, pageId, userId), deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
 }
 
 async function createPage({ params, body, user, set }: PageContext) {
@@ -210,12 +329,12 @@ async function createPage({ params, body, user, set }: PageContext) {
   }
 
   set.status = 201;
-  return serializePage(await loadPageOrFail(ws.id, page.id));
+  return serializarPagina(await loadPageOrFail(ws.id, page.id), user.id);
 }
 
 async function getPage({ params, user }: PageContext) {
   const { ws } = await resolveScope(params, user.id);
-  return serializePage(await loadPageOrFail(ws.id, params.page_id));
+  return serializarPagina(await loadPageOrFail(ws.id, params.page_id), user.id);
 }
 
 async function updatePage({ params, body, user, set }: PageContext) {
@@ -240,7 +359,7 @@ async function updatePage({ params, body, user, set }: PageContext) {
   if (b.parent_id !== undefined) data.parentId = b.parent_id;
 
   await snapshotVersion(page, user.id);
-  return savePage(page.id, data);
+  return savePage(page.id, data, user.id);
 }
 
 async function deletePage({ params, user, set }: PageContext) {
@@ -263,7 +382,7 @@ const lockHandler = (locked: boolean) => async ({ params, user, set }: PageConte
     set.status = 403;
     return { detail: locked ? "Apenas o dono da página pode bloqueá-la." : "Apenas o dono da página pode desbloqueá-la." };
   }
-  return savePage(page.id, { isLocked: locked });
+  return savePage(page.id, { isLocked: locked }, user.id);
 };
 
 /** Mesma ideia da trava: arquivar e desarquivar diferem só pelo `archivedAt`. */
@@ -274,7 +393,10 @@ const archiveHandler = (archived: boolean) => async ({ params, user, set }: Page
     set.status = 403;
     return { detail: archived ? "Apenas o dono da página pode arquivá-la." : "Apenas o dono da página pode restaurá-la." };
   }
-  return savePage(page.id, { archivedAt: archived ? new Date() : null });
+  // Página arquivada sai dos favoritos (mesma regra do Django): senão ela
+  // continuaria listada na barra lateral apontando para um item invisível.
+  if (archived) await desmarcarFavorita(ws.id, page.id, user.id);
+  return savePage(page.id, { archivedAt: archived ? new Date() : null }, user.id);
 };
 
 async function updatePageAccess({ params, body, user, set }: PageContext) {
@@ -285,7 +407,7 @@ async function updatePageAccess({ params, body, user, set }: PageContext) {
     return { detail: "Apenas o dono da página pode alterar o acesso." };
   }
   const access = Number((body as any)?.access ?? page.access);
-  return savePage(page.id, { access, updatedById: user.id });
+  return savePage(page.id, { access, updatedById: user.id }, user.id);
 }
 
 async function listPageVersions({ params, user }: PageContext) {
@@ -310,15 +432,30 @@ async function getPageVersion({ params, user }: PageContext) {
 }
 
 /**
- * O servidor `live` e o fallback do editor pedem o documento Yjs em binário. O
- * schema não guarda esse binário na Page, então respondemos com corpo vazio de
- * propósito: os dois lados tratam `byteLength === 0` remontando o Yjs a partir
- * de `description_html`. Devolver JSON aqui faria o editor abrir em branco.
+ * O servidor `live` e o fallback do editor pedem o estado do documento Yjs em
+ * binário puro (`Y.encodeStateAsUpdate`), não JSON. Página sem binário responde
+ * com corpo vazio de propósito: `apps/live` trata `byteLength === 0`
+ * reconstruindo o Yjs a partir de `description_html` e regravando aqui.
  */
 async function getPageDescription({ params, user }: PageContext) {
   const { ws } = await resolveScope(params, user.id);
-  await loadPageOrFail(ws.id, params.page_id);
-  return new Response(new Uint8Array(), { headers: { "Content-Type": "application/octet-stream" } });
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  return new Response(page.descriptionBinary ?? new Uint8Array(), {
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": 'attachment; filename="page_description.bin"',
+    },
+  });
+}
+
+/**
+ * `TDocumentPayload.description_binary` trafega em base64 (o `live` gera com
+ * `convertBinaryDataToBase64String`); a coluna guarda os bytes decodificados.
+ * Gravar a string crua faria o `Y.applyUpdate` do próximo fetch estourar.
+ */
+function decodificarBinario(valor: unknown): Uint8Array<ArrayBuffer> | undefined {
+  if (typeof valor !== "string") return undefined;
+  return Uint8Array.from(Buffer.from(valor, "base64"));
 }
 
 async function updatePageDescription({ params, body, user, set }: PageContext) {
@@ -329,8 +466,6 @@ async function updatePageDescription({ params, body, user, set }: PageContext) {
     return { detail: "A página está bloqueada." };
   }
 
-  // `description_binary` é descartado: não existe coluna para o Yjs. HTML e JSON
-  // são a fonte da verdade e bastam para reconstruir o documento.
   const b = (body ?? {}) as any;
   const html: string = b.description_html ?? page.descriptionHtml;
   await prisma.page.update({
@@ -339,6 +474,7 @@ async function updatePageDescription({ params, body, user, set }: PageContext) {
       descriptionHtml: html,
       descriptionStripped: String(html).replace(HTML_TAGS, ""),
       descriptionJson: b.description_json ?? undefined,
+      descriptionBinary: decodificarBinario(b.description_binary),
       updatedById: user.id,
     },
   });
@@ -346,9 +482,115 @@ async function updatePageDescription({ params, body, user, set }: PageContext) {
   return null;
 }
 
+/** Uma tag `<mention-component …>` do editor, com seus atributos. */
+const TAG_MENCAO = /<mention-component\b[^>]*>/gi;
+
+/** Lê um atributo da tag aceitando aspas simples ou duplas. */
+function atributo(tag: string, nome: string): string | undefined {
+  return tag.match(new RegExp(`\\b${nome}=["']([^"']*)["']`, "i"))?.[1];
+}
+
+/**
+ * Ids citados no HTML, na ordem em que aparecem e sem repetição. A menção vive
+ * dentro do próprio conteúdo (`entity_identifier`/`entity_name`): não há tabela
+ * de menções de página no schema.
+ */
+function idsMencionados(html: string, tipo: string): string[] {
+  const ids: string[] = [];
+  for (const tag of html.match(TAG_MENCAO) ?? []) {
+    if (atributo(tag, "entity_name") !== tipo) continue;
+    const id = atributo(tag, "entity_identifier");
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * Usuários mencionados na página, no formato `TUserMention` que o `live` usa
+ * para trocar a menção pelo nome ao exportar o PDF. Sem esta rota o export caía
+ * no `recoverWithDefault([])` e o PDF saía com o UUID cru no lugar do nome.
+ */
+async function listPageMentions({ params, query, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+
+  const ids = idsMencionados(page.descriptionHtml ?? "", query.mention_type ?? "user_mention");
+  if (!ids.length) return [];
+
+  const usuarios = await prisma.user.findMany({
+    where: { id: { in: ids }, deletedAt: null },
+    select: { id: true, displayName: true, avatarUrl: true, avatar: true },
+  });
+  const porId = new Map(usuarios.map((u) => [u.id, u]));
+  // `flatMap` preserva a ordem do texto e descarta id que não é de usuário
+  // (`mention_type` diferente de `user_mention` simplesmente não casa aqui).
+  return ids.flatMap((id) => {
+    const u = porId.get(id);
+    return u ? [{ id: u.id, display_name: u.displayName, avatar_url: u.avatarUrl ?? u.avatar ?? undefined }] : [];
+  });
+}
+
+/**
+ * Ids da página e de toda a sua descendência. A subárvore precisa acompanhar o
+ * move: uma sub-página deixada para trás apontaria para um pai de outro projeto
+ * e sumiria das duas listagens.
+ */
+async function subarvoreDePaginas(pageId: string): Promise<string[]> {
+  const linhas = await prisma.$queryRaw<{ id: string }[]>`
+    WITH RECURSIVE descendentes AS (
+      SELECT id FROM pages WHERE id = ${pageId}::uuid
+      UNION ALL
+      SELECT p.id FROM pages p JOIN descendentes d ON p.parent_id = d.id WHERE p.deleted_at IS NULL
+    )
+    SELECT id FROM descendentes
+  `;
+  return linhas.map((l) => l.id);
+}
+
+/**
+ * Move a página para outro projeto (`ProjectPageService.move`). Regras:
+ * - a página passa a valer só no destino — `project_ids[0]` monta toda URL da
+ *   UI, e um vínculo remanescente no projeto antigo levaria de volta para lá;
+ * - a subárvore vai junto, preservando a hierarquia interna;
+ * - o vínculo com um pai que ficou para trás é desfeito, como o Django faz ao
+ *   desarquivar uma página cujo pai continua arquivado.
+ */
+async function movePage({ params, body, user, set }: PageContext) {
+  const { ws, isAdmin } = await resolveScope(params, user.id);
+  const page = await loadPageOrFail(ws.id, params.page_id);
+  if (!canManage(page, user.id, isAdmin)) {
+    set.status = 403;
+    return { detail: "Apenas o dono da página pode movê-la." };
+  }
+
+  const destino = (body as any)?.new_project_id;
+  if (!destino) {
+    set.status = 400;
+    return { detail: "O projeto de destino é obrigatório." };
+  }
+  await getProjectOrFail(ws.id, destino, user.id, { allowInstanceAdmin: true });
+
+  const movidas = await subarvoreDePaginas(page.id);
+  const soltarDoPai = page.parentId ? { parentId: null } : {};
+
+  await prisma.$transaction([
+    prisma.projectPage.deleteMany({ where: { pageId: { in: movidas } } }),
+    prisma.projectPage.createMany({
+      data: movidas.map((id) => ({ projectId: destino, pageId: id, workspaceId: ws.id })),
+      skipDuplicates: true,
+    }),
+    prisma.page.update({ where: { id: page.id }, data: { ...soltarDoPai, updatedById: user.id } }),
+  ]);
+
+  return serializarPagina(await loadPageOrFail(ws.id, page.id), user.id);
+}
+
 async function duplicatePage({ params, user, set }: PageContext) {
   const { ws } = await resolveScope(params, user.id);
   const original = await loadPageOrFail(ws.id, params.page_id);
+  // `descriptionBinary` NÃO é copiado de propósito (mesma decisão do Django): o
+  // documento Yjs carrega o histórico de edição do original, e o `live` remonta
+  // um estado limpo a partir do HTML na primeira abertura da cópia.
   const copy = await prisma.page.create({
     data: {
       workspaceId: ws.id,
@@ -379,7 +621,7 @@ async function duplicatePage({ params, user, set }: PageContext) {
   }
 
   set.status = 201;
-  return serializePage(await loadPageOrFail(ws.id, copy.id));
+  return serializarPagina(await loadPageOrFail(ws.id, copy.id), user.id);
 }
 
 export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
@@ -389,6 +631,10 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/pages/", listWorkspacePages)
   .post("/pages/", createPage)
+  .get("/archived-pages/", listArchivedPages)
+  .get("/favorite-pages/", listFavoritePages)
+  .post("/favorite-pages/:page_id/", favoriteHandler(true))
+  .delete("/favorite-pages/:page_id/", favoriteHandler(false))
   .get("/pages/:page_id/", getPage)
   .patch("/pages/:page_id/", updatePage)
   .delete("/pages/:page_id/", deletePage)
@@ -401,6 +647,9 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
   .get("/pages/:page_id/versions/:version_id/", getPageVersion)
   .get("/pages/:page_id/description/", getPageDescription)
   .patch("/pages/:page_id/description/", updatePageDescription)
+  .post("/pages/:page_id/description/", updatePageDescription)
+  .get("/pages/:page_id/mentions/", listPageMentions)
+  .post("/pages/:page_id/move/", movePage)
   .post("/pages/:page_id/duplicate/", duplicatePage)
 
   // ── Project-scoped pages ───────────────────────────────────────────────────
@@ -411,6 +660,10 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/projects/:project_id/pages/", listProjectPages)
   .post("/projects/:project_id/pages/", createPage)
+  .get("/projects/:project_id/archived-pages/", listArchivedPages)
+  .get("/projects/:project_id/favorite-pages/", listFavoritePages)
+  .post("/projects/:project_id/favorite-pages/:page_id/", favoriteHandler(true))
+  .delete("/projects/:project_id/favorite-pages/:page_id/", favoriteHandler(false))
   .get("/projects/:project_id/pages/:page_id/", getPage)
   .patch("/projects/:project_id/pages/:page_id/", updatePage)
   .delete("/projects/:project_id/pages/:page_id/", deletePage)
@@ -423,4 +676,7 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
   .get("/projects/:project_id/pages/:page_id/versions/:version_id/", getPageVersion)
   .get("/projects/:project_id/pages/:page_id/description/", getPageDescription)
   .patch("/projects/:project_id/pages/:page_id/description/", updatePageDescription)
+  .post("/projects/:project_id/pages/:page_id/description/", updatePageDescription)
+  .get("/projects/:project_id/pages/:page_id/mentions/", listPageMentions)
+  .post("/projects/:project_id/pages/:page_id/move/", movePage)
   .post("/projects/:project_id/pages/:page_id/duplicate/", duplicatePage);

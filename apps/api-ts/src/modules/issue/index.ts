@@ -13,6 +13,8 @@ import {
   resolveRole,
   roleCan,
 } from "@utils/permission-checks";
+import {campoDeAtividade, pontoDoProjeto, type PontoDeEstimativa} from "@utils/estimate";
+import {resolverOrdenacao} from "@utils/issue-order";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
 import {notifyStateChange} from "@utils/notifications";
 import {publishRealtime} from "@utils/realtime";
@@ -75,24 +77,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     // O recorte por setor virou filtro (templates prontos na UI), não regra de
     // visibilidade — antes o TI simplesmente não via o que estava em Triagem.
 
-    // Order by
-    const orderMap: Record<string, any> = {
-      "-created_at": {createdAt: "desc"},
-      created_at: {createdAt: "asc"},
-      "-updated_at": {updatedAt: "desc"},
-      updated_at: {updatedAt: "asc"},
-      "-priority": {priority: "desc"},
-      priority: {priority: "asc"},
-      "-target_date": {targetDate: "desc"},
-      target_date: {targetDate: "asc"},
-      "-start_date": {startDate: "desc"},
-      start_date: {startDate: "asc"},
-      sort_order: {sortOrder: "asc"},
-      "-sort_order": {sortOrder: "desc"},
-      sequence_id: {sequenceId: "asc"},
-      "-sequence_id": {sequenceId: "desc"},
-    };
-    const orderBy = orderMap[(query.order_by as string) ?? "-created_at"] ?? {createdAt: "desc"};
+    // Ordenação — mapa compartilhado (@utils/issue-order), o mesmo usado pelas
+    // listagens de espaço de trabalho, para que `estimate_point__key` e amigos
+    // funcionem em todas elas.
+    const orderBy = resolverOrdenacao(query.order_by, {createdAt: "desc"});
 
     const perPage = Number(query.per_page ?? 30);
     const groupBy = query.group_by as string | undefined;
@@ -191,6 +179,18 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       where: {projectId: project_id, default: true, deletedAt: null},
     });
 
+    // Ponto de estimativa: o front manda o id em `estimate_point`. Só vale um
+    // ponto de estimativa DESTE projeto — id estrangeiro é erro do cliente.
+    const pontoPedido = b.estimate_point !== undefined ? b.estimate_point : b.estimate_point_id;
+    let ponto: PontoDeEstimativa | null = null;
+    if (pontoPedido) {
+      ponto = await pontoDoProjeto(project_id, String(pontoPedido));
+      if (!ponto) {
+        set.status = 400;
+        return {detail: "O ponto de estimativa não pertence a uma estimativa deste projeto."};
+      }
+    }
+
     const issue = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Per-project sequence number (e.g. CONTAB-12). Computed inside the
       // transaction so concurrent creates don't both read the same max.
@@ -213,6 +213,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
           startDate: b.start_date ? new Date(b.start_date) : null,
           targetDate: b.target_date ? new Date(b.target_date) : null,
           isDraft: b.is_draft ?? false,
+          estimatePointId: ponto?.id ?? null,
           entityId: b.entity_id || null,
           legacyTicketNumber: b.legacy_ticket_number ?? null,
           externalSource: b.external_source ?? null,
@@ -260,10 +261,12 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       if (auto) createdIssue = await prisma.issue.update({where: {id: issue.id}, data: {targetDate: auto}, include: ISSUE_INCLUDE});
     }
 
-    await recordActivities(
-      {issueId: issue.id, workspaceId: ws.id, projectId: project_id, actorId: user.id},
-      [{verb: "created", field: "issue", comment: "created the work item"}],
-    );
+    await recordActivities({issueId: issue.id, workspaceId: ws.id, projectId: project_id, actorId: user.id}, [
+      {verb: "created", field: "issue", comment: "created the work item"},
+      ...(ponto
+        ? [{field: campoDeAtividade(ponto.tipo), newValue: ponto.value, comment: "updated the estimate point"}]
+        : []),
+    ]);
 
     publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, actor: user.id});
 
@@ -309,7 +312,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     // (also used to resolve own-vs-any edit rights).
     const before = await prisma.issue.findFirst({
       where: {id: issue_id},
-      include: {state: {select: {id: true, name: true, group: true}}},
+      include: {
+        state: {select: {id: true, name: true, group: true}},
+        estimatePoint: {select: {id: true, value: true, estimate: {select: {type: true}}}},
+      },
     });
 
     // Editing any work item needs ISSUE_EDIT_ALL; authors get by with
@@ -360,6 +366,20 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const entityIdValue = b.entity_id ?? b.entityId;
     if (entityIdValue !== undefined) {
       data.entityId = entityIdValue || null;
+    }
+    // Ponto de estimativa: id vazio/nulo limpa o campo; id preenchido precisa
+    // ser de uma estimativa deste projeto.
+    const pontoPedido = b.estimate_point !== undefined ? b.estimate_point : b.estimate_point_id;
+    let pontoNovo: PontoDeEstimativa | null = null;
+    if (pontoPedido !== undefined) {
+      if (pontoPedido) {
+        pontoNovo = await pontoDoProjeto(project_id, String(pontoPedido));
+        if (!pontoNovo) {
+          set.status = 400;
+          return {detail: "O ponto de estimativa não pertence a uma estimativa deste projeto."};
+        }
+      }
+      data.estimatePointId = pontoNovo?.id ?? null;
     }
     if (b.legacy_ticket_number !== undefined) data.legacyTicketNumber = b.legacy_ticket_number;
     if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
@@ -452,6 +472,17 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       if (b.parent_id !== undefined) {
         const c = diffChange("parent", before.parentId, b.parent_id, "updated the parent");
         if (c) changes.push(c);
+      }
+      if (pontoPedido !== undefined && before.estimatePointId !== (pontoNovo?.id ?? null)) {
+        // O histórico mostra o rótulo do ponto ("5", "M"), não o uuid.
+        const tipo = pontoNovo?.tipo ?? before.estimatePoint?.estimate?.type;
+        changes.push({
+          verb: pontoNovo ? "updated" : "removed",
+          field: campoDeAtividade(tipo),
+          oldValue: before.estimatePoint?.value ?? null,
+          newValue: pontoNovo?.value ?? null,
+          comment: "updated the estimate point",
+        });
       }
       if (newAssignees !== undefined) changes.push({field: "assignees", comment: "updated the assignees"});
       if (newLabels !== undefined) changes.push({field: "labels", comment: "updated the labels"});

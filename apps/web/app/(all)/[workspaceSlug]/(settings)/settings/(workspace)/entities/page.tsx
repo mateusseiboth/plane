@@ -13,6 +13,7 @@ import {observer} from "mobx-react";
 import {useCallback, useEffect, useState} from "react";
 import type {Route} from "./+types/page";
 import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
+import {ContatosDaEntidade} from "@/components/entity-contacts";
 
 const ENTITY_TYPES: {value: number; label: string}[] = [
   {value: 0, label: "Prefeitura"},
@@ -242,6 +243,15 @@ function EntityModal({
                 Ativa
               </label>
             </div>
+
+            {/* As pessoas dentro do órgão só existem depois que ele existe. */}
+            {entity && (
+              <ContatosDaEntidade
+                workspaceSlug={workspaceSlug}
+                entityId={entity.id}
+                className="border-t border-subtle pt-4"
+              />
+            )}
           </div>
 
           <div className="mt-6 flex justify-end gap-2">

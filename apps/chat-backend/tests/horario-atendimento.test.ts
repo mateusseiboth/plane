@@ -7,6 +7,8 @@
  * atendimento" em plena manhã de trabalho.
  */
 import { afterEach, describe, expect, it, mock } from "bun:test";
+import * as dbVerdadeiro from "@db";
+import * as hubVerdadeiro from "@/ws/hub";
 
 const HORARIO_COMERCIAL = [1, 2, 3, 4, 5].map((weekday) => ({ weekday, start_time: "07:30", end_time: "17:30" }));
 const ALMOCO = [1, 2, 3, 4, 5].map((weekday) => ({ weekday, start_time: "11:30", end_time: "13:00" }));
@@ -44,6 +46,12 @@ describe("isWithinBusinessHours", () => {
   afterEach(() => {
     restauradores.splice(0).forEach((r) => r());
     mock.restore();
+    // `mock.restore()` NÃO desfaz `mock.module`: o dublê do banco continua no
+    // lugar do módulo real para o resto do processo. Sem devolver os módulos
+    // verdadeiros aqui, todo arquivo de teste que rodar depois deste recebe um
+    // `prisma` sem models e falha com "undefined is not an object".
+    mock.module("@db", () => dbVerdadeiro);
+    mock.module("@/ws/hub", () => hubVerdadeiro);
   });
 
   const cenario = async (instante: string, fuso = "America/Campo_Grande", config?: Record<string, unknown> | null) => {

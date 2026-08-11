@@ -45,6 +45,7 @@ describe("Rotas de listagem", () => {
   let workspaceId: string;
   let projectId: string;
   let otherProjectId: string;
+  let cycleId: string;
   let entityAtiva: string;
   let entityInativa: string;
   let technicianId: string;
@@ -69,7 +70,7 @@ describe("Rotas de listagem", () => {
     await createLabel(projectId, workspaceId, {name: "Correção", slaHours: 16});
     await createLabel(projectId, workspaceId, {name: "Melhoria"});
     await createState(projectId, workspaceId, {name: "Aguardando cliente", group: "backlog"});
-    await createCycle(projectId, workspaceId, admin.id, {name: "Ciclo 1"});
+    cycleId = (await createCycle(projectId, workspaceId, admin.id, {name: "Ciclo 1"})).id;
     await createModule(projectId, workspaceId, {name: "Módulo 1"});
     await createSticky(workspaceId, admin.id, {title: "Lembrete"});
     await createIssue(projectId, workspaceId, {name: "Chamado listável", sequenceId: 1});
@@ -163,6 +164,13 @@ describe("Rotas de listagem", () => {
 
   describe("rotas que devolvem ARRAY puro", () => {
     const arrayRoutes: [string, () => string][] = [
+      // O store percorre a resposta com `for..of`; envelope aqui quebra a tela.
+      ["páginas do projeto", () => proj("/pages/")],
+      // `fetchArchived`/`fetchFavorites` tipam o retorno como `TPage[]`.
+      ["páginas arquivadas do projeto", () => proj("/archived-pages/")],
+      ["páginas favoritas do projeto", () => proj("/favorite-pages/")],
+      ["páginas arquivadas do workspace", () => ws("/archived-pages/")],
+      ["páginas favoritas do workspace", () => ws("/favorite-pages/")],
       ["workspaces do usuário", () => "/workspaces/"],
       ["projetos", () => ws("/projects/")],
       ["membros do workspace", () => ws("/members/")],
@@ -177,12 +185,25 @@ describe("Rotas de listagem", () => {
       ["tipos de chamado", () => ws("/issue-types/")],
       ["propriedades de chamado", () => ws("/issue-properties/")],
       ["papéis do workspace", () => ws("/roles/")],
+      // `fetchWorkspaceCycles` também percorre o corpo direto — mesma
+      // serialização `ICycle` da listagem do projeto.
+      ["ciclos do workspace", () => ws("/cycles/")],
+      // `cycle.store.ts` faz `response.forEach(...)` direto no corpo em
+      // fetchAllCycles/fetchActiveCycle, e o CycleService tipa o retorno como
+      // `ICycle[]` — envelope aqui deixava o quadro de ciclos vazio.
+      ["ciclos do projeto", () => proj("/cycles/")],
+      // Mesmo motivo em fetchArchivedCycles.
+      ["ciclos arquivados do projeto", () => proj("/archived-cycles/")],
+      // `CycleService.addCycleToFavorites` e o painel de favoritos leem a lista
+      // direto; ainda não existia rota.
+      ["ciclos favoritos do projeto", () => proj("/user-favorite-cycles/")],
       ["estados do projeto", () => proj("/states/")],
       ["labels do projeto", () => proj("/labels/")],
       ["módulos do projeto", () => proj("/modules/")],
       ["estimativas do projeto", () => proj("/estimates/")],
       ["membros do projeto", () => proj("/members/")],
       ["intakes do projeto", () => proj("/intakes/")],
+      ["views favoritas do projeto", () => proj("/user-favorite-views/")],
       ["deploy boards do projeto", () => proj("/deploy-boards/")],
       ["meus workspaces", () => "/users/me/workspaces/"],
       ["meus convites", () => "/users/me/workspaces/invitations/"],
@@ -216,7 +237,6 @@ describe("Rotas de listagem", () => {
   describe("rotas que devolvem ENVELOPE paginado", () => {
     const envelopeRoutes: [string, () => string][] = [
       ["membros de projeto (workspace)", () => ws("/project-members/")],
-      ["ciclos do workspace", () => ws("/cycles/")],
       ["módulos do workspace", () => ws("/modules/")],
       ["stickies", () => ws("/stickies/")],
       ["favoritos", () => ws("/favorites/")],
@@ -230,13 +250,16 @@ describe("Rotas de listagem", () => {
       ["páginas do workspace", () => ws("/pages/")],
       ["webhooks", () => ws("/webhooks/")],
       ["jobs de importação", () => ws("/import-jobs/")],
+      // A tela "Exportações anteriores" navega por next_cursor/prev_cursor.
+      ["histórico de exportações", () => ws("/export-issues/")],
       ["analytic views", () => ws("/analytic-view/")],
       ["notificações", () => ws("/users/notifications/")],
       ["chamados do projeto", () => proj("/issues/")],
-      ["ciclos do projeto", () => proj("/cycles/")],
+      // Os chamados de um ciclo continuam em envelope: o store de chamados lê
+      // `results`/`total_count` para paginar o quadro.
+      ["chamados do ciclo", () => proj(`/cycles/${cycleId}/cycle-issues/`)],
       ["convites do projeto", () => proj("/invitations/")],
       ["views do projeto", () => proj("/views/")],
-      ["páginas do projeto", () => proj("/pages/")],
       ["inbox do projeto", () => proj("/inbox-issues/")],
       ["intake work items", () => proj("/intake-work-items/")],
       ["widgets", () => "/widgets/"],

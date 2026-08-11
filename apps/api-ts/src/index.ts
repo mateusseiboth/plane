@@ -15,6 +15,7 @@ import { workspaceModule } from "@modules/workspace";
 import { userModule } from "@modules/user";
 import { authModule, sessionAuthModule } from "@modules/auth";
 import { entityModule } from "@modules/entity";
+import { entityContactModule } from "@modules/entity-contact";
 // assetModule imported below (combined with v2)
 import { inviteModule } from "@modules/invite";
 import { analyticsModule } from "@modules/analytics";
@@ -169,6 +170,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(pageModule)
   .use(memberModule)
   .use(entityModule)
+  .use(entityContactModule)
   .use(assetModule)
   .use(inviteModule)
   .use(analyticsModule)

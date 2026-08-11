@@ -206,6 +206,72 @@ export async function configureWorkspace(workspace: string, zapiBaseUrl: string)
   });
 }
 
+// ── Fixtures das tabelas do Plane (api-ts) ────────────────────────────────────
+// O chat casa o WhatsApp com `entity_contacts`, que guarda o UUID do workspace.
+// Como o slug de teste não existe em `workspaces`, quem quiser exercitar a
+// identificação por telefone precisa criar o workspace de verdade antes.
+
+export async function criarWorkspacePlane(slug: string): Promise<string> {
+  const id = crypto.randomUUID();
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO workspaces (id, created_at, updated_at, name, slug, timezone)
+     VALUES ($1::uuid, now(), now(), $2, $2, 'America/Sao_Paulo')
+     ON CONFLICT (slug) DO NOTHING`,
+    id,
+    slug
+  );
+  const linhas = (await prisma.$queryRaw`
+    SELECT id::text AS id FROM workspaces WHERE slug = ${slug} LIMIT 1`) as Array<{ id: string }>;
+  return linhas[0]!.id;
+}
+
+export async function criarEntidade(workspaceId: string, nome: string): Promise<string> {
+  const id = crypto.randomUUID();
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO entities (id, created_at, updated_at, workspace_id, name, is_active)
+     VALUES ($1::uuid, now(), now(), $2::uuid, $3, true)`,
+    id,
+    workspaceId,
+    nome
+  );
+  return id;
+}
+
+export async function criarResponsavel(
+  workspaceId: string,
+  dados: { nome: string; telefone?: string; email?: string; entityId?: string; ativo?: boolean }
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const digitos = (dados.telefone ?? "").replace(/\D/g, "");
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO entity_contacts
+       (id, created_at, updated_at, workspace_id, entity_id, name, email, phone, phone_digits, is_active)
+     VALUES ($1::uuid, now(), now(), $2::uuid, $3::uuid, $4, $5, $6, $7, $8)`,
+    id,
+    workspaceId,
+    dados.entityId ?? null,
+    dados.nome,
+    dados.email ?? null,
+    dados.telefone ?? null,
+    digitos || null,
+    dados.ativo ?? true
+  );
+  return id;
+}
+
+export async function buscarResponsavel(id: string) {
+  const linhas = (await prisma.$queryRaw`
+    SELECT id::text AS id, name, email, phone, phone_digits AS "phoneDigits",
+           entity_id::text AS "entityId", external_source AS "externalSource"
+      FROM entity_contacts WHERE id = ${id}::uuid`) as Array<Record<string, any>>;
+  return linhas[0] ?? null;
+}
+
+/** Remove o workspace do Plane criado para o teste (cascata leva o resto). */
+export async function limparWorkspacePlane(slug: string) {
+  await prisma.$executeRawUnsafe(`DELETE FROM workspaces WHERE slug = $1`, slug);
+}
+
 export async function cleanWorkspace(workspace: string) {
   const sessions = await prisma.chatSession.findMany({ where: { workspaceId: workspace }, select: { id: true } });
   const ids = sessions.map((s) => s.id);

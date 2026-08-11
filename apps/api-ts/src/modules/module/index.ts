@@ -4,6 +4,7 @@ import prisma from "@db";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { serializeModule, serializeIssue, ISSUE_INCLUDE, isoDate } from "@utils/serialize";
+import { pontosDoValor } from "@utils/estimate";
 
 const MODULE_INCLUDE = {
   members: { where: { deletedAt: null }, select: { memberId: true } },
@@ -11,27 +12,54 @@ const MODULE_INCLUDE = {
   _count:  { select: { moduleIssues: { where: { deletedAt: null } } } },
 } as const;
 
+/** Grupos de etapa que o módulo distribui, na ordem em que a tela os mostra. */
+const GRUPOS = ["backlog", "unstarted", "started", "completed", "cancelled"] as const;
+type Grupo = (typeof GRUPOS)[number];
+
+const zerado = () => Object.fromEntries(GRUPOS.map((g) => [g, 0])) as Record<Grupo, number>;
+
+/**
+ * Contagem de chamados e soma dos pontos de estimativa, por grupo de etapa.
+ *
+ * A soma de pontos ignora o que não for numérico: uma estimativa por categoria
+ * ("P"/"M"/"G") não vira ponto (ver @utils/estimate).
+ */
 async function withIssueCounts(mod: any): Promise<any> {
-  const issueStateGroups = await prisma.moduleIssue.findMany({
+  const vinculos = await prisma.moduleIssue.findMany({
     where: { moduleId: mod.id, deletedAt: null },
-    include: { issue: { include: { state: { select: { group: true } } } } },
+    include: {
+      issue: {
+        select: {
+          state: { select: { group: true } },
+          estimatePoint: { select: { value: true } },
+        },
+      },
+    },
   });
-  const counts = { completed: 0, backlog: 0, started: 0, unstarted: 0, cancelled: 0 };
-  for (const mi of issueStateGroups) {
-    const g = (mi.issue as any)?.state?.group ?? "backlog";
-    if (g === "completed") counts.completed++;
-    else if (g === "backlog") counts.backlog++;
-    else if (g === "started") counts.started++;
-    else if (g === "unstarted") counts.unstarted++;
-    else if (g === "cancelled") counts.cancelled++;
+
+  const chamados = zerado();
+  const pontos = zerado();
+  for (const vinculo of vinculos) {
+    const grupo = ((vinculo.issue as any)?.state?.group ?? "backlog") as Grupo;
+    if (!GRUPOS.includes(grupo)) continue;
+    chamados[grupo] += 1;
+    pontos[grupo] += pontosDoValor((vinculo.issue as any)?.estimatePoint?.value);
   }
+
   return {
     ...mod,
-    completedIssues: counts.completed,
-    backlogIssues:   counts.backlog,
-    startedIssues:   counts.started,
-    unstartedIssues: counts.unstarted,
-    cancelledIssues: counts.cancelled,
+    completedIssues: chamados.completed,
+    backlogIssues:   chamados.backlog,
+    startedIssues:   chamados.started,
+    unstartedIssues: chamados.unstarted,
+    cancelledIssues: chamados.cancelled,
+
+    completedEstimatePoints: pontos.completed,
+    backlogEstimatePoints:   pontos.backlog,
+    startedEstimatePoints:   pontos.started,
+    unstartedEstimatePoints: pontos.unstarted,
+    cancelledEstimatePoints: pontos.cancelled,
+    totalEstimatePoints:     GRUPOS.reduce((soma, g) => soma + pontos[g], 0),
   };
 }
 
@@ -137,14 +165,14 @@ export const moduleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pr
     const { member } = await getProjectOrFail(ws.id, project_id, user.id);
     await requireProjectAction(ws.id, project_id, user.id, EProjectAction.MODULE_MANAGE);
     const mod = await prisma.module.update({ where: { id: module_id }, data: { archivedAt: new Date() }, include: MODULE_INCLUDE });
-    return serializeModule(mod);
+    return serializeModule(await withIssueCounts(mod));
   })
 
   .delete("/modules/:module_id/archive/", async ({ params: { slug, project_id, module_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const mod = await prisma.module.update({ where: { id: module_id }, data: { archivedAt: null }, include: MODULE_INCLUDE });
-    return serializeModule(mod);
+    return serializeModule(await withIssueCounts(mod));
   })
 
   // ── Module Issues ─────────────────────────────────────────────────────────────

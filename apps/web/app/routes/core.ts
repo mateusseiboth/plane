@@ -135,6 +135,9 @@ export const coreRoutes: RouteConfigEntry[] = [
         route(":workspaceSlug/visits", "./(all)/[workspaceSlug]/(projects)/visits/page.tsx"),
         route(":workspaceSlug/visits/:visitId", "./(all)/[workspaceSlug]/(projects)/visits/[visitId]/page.tsx"),
 
+        // Contatos (responsáveis das entidades)
+        route(":workspaceSlug/contatos", "./(all)/[workspaceSlug]/(projects)/contatos/page.tsx"),
+
         // Chat / Atendimento (plugin)
         route(":workspaceSlug/chat", "./(all)/[workspaceSlug]/(projects)/chat/page.tsx"),
         route(":workspaceSlug/chat-view/:protocol", "./(all)/[workspaceSlug]/(projects)/chat-view/[protocol]/page.tsx"),

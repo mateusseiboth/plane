@@ -15,6 +15,7 @@ import {cn} from "@plane/utils";
 import {Building2, Calendar, Check, ChevronLeft, Layers, Save} from "lucide-react";
 import {observer} from "mobx-react";
 import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
+import {SeletorDeContatos} from "@/components/entity-contacts";
 import {useParams, useRouter} from "next/navigation";
 import {useEffect, useRef, useState} from "react";
 
@@ -101,10 +102,12 @@ function TechnicalVisitDetailPage() {
   const [saving, setSaving] = useState(false);
   const [visit, setVisit] = useState<any | null>(null);
   const [workspaceDetails, setWorkspaceDetails] = useState<any | null>(null);
+  const [contactIds, setContactIds] = useState<string[]>([]);
   const [form, setForm] = useState({
     entity_id: null as string | null,
     city: "",
     scheduled_date: "",
+    /** Texto que veio do SAC. Só é exibido; nunca é reescrito pela tela. */
     contacts: "",
     status: 0,
     started_at: "",
@@ -137,6 +140,9 @@ function TechnicalVisitDetailPage() {
       }
       setVisit(data);
       setProjectIds(Array.isArray(data.project_ids) ? data.project_ids : []);
+      setContactIds(
+        Array.isArray(data.contact_records) ? data.contact_records.map((contact: {id: string}) => contact.id) : [],
+      );
       setForm({
         entity_id: data.entity_id ?? data.entity?.id ?? null,
         city: data.city ?? "",
@@ -191,8 +197,12 @@ function TechnicalVisitDetailPage() {
         mot_other: form.mot_other,
         mot_other_description: form.mot_other_description || null,
         project_ids: projectIds,
+        contact_ids: contactIds,
       });
       setVisit(updated);
+      if (Array.isArray(updated?.contact_records)) {
+        setContactIds(updated.contact_records.map((contact: {id: string}) => contact.id));
+      }
     } finally {
       setSaving(false);
     }
@@ -322,12 +332,15 @@ function TechnicalVisitDetailPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-12 text-secondary">Contatos</label>
-              <input
-                value={form.contacts}
-                onChange={(e) => updateField("contacts", e.target.value)}
+              <label className="mb-1 block text-12 text-secondary">Responsáveis</label>
+              <SeletorDeContatos
+                workspaceSlug={workspaceSlug.toString()}
+                entityId={form.entity_id}
+                value={contactIds}
+                onChange={setContactIds}
+                contatosConhecidos={visit.contact_records ?? []}
+                textoLegado={form.contacts}
                 disabled={!canEdit}
-                className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary disabled:opacity-60"
               />
             </div>
             <div>

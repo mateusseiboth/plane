@@ -17,6 +17,12 @@ export type ChatSession = {
   channel: string;
   client_name: string | null;
   client_phone: string | null;
+  /** Histórico do chat (chat_contacts) — não é o cadastro do cliente. */
+  contact_id?: string | null;
+  contact_email?: string | null;
+  contact_entity_id?: string | null;
+  /** Contato (entity_contacts) identificado pelo telefone ou vinculado ao fechar. */
+  entity_contact_id?: string | null;
   status: string;
   assigned_attendant_id: string | null;
   requested_attendant_id?: string | null;

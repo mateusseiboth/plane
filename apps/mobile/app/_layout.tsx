@@ -51,6 +51,7 @@ function AuthGate() {
       <Stack.Screen name="intake/new" options={{ title: "Nova solicitação", presentation: "modal" }} />
       <Stack.Screen name="visit/[id]" options={{ title: "Visita Técnica" }} />
       <Stack.Screen name="visit/new" options={{ title: "Nova Visita", presentation: "modal" }} />
+      <Stack.Screen name="visit/contact" options={{ title: "Contato", presentation: "modal" }} />
       <Stack.Screen name="wiki/index" options={{ title: "Wiki" }} />
       <Stack.Screen name="wiki/[id]" options={{ title: "Página" }} />
       <Stack.Screen name="entities/index" options={{ title: "Entidades" }} />

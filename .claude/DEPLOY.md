@@ -61,11 +61,16 @@ rodando o código antigo.
 
 ```bash
 docker compose -f docker-compose-local.yml run --rm sac-migrator
+docker compose -f docker-compose-local.yml run --rm sac-migrator bun run scripts/migrate-sac-responsaveis.ts
 docker compose -f docker-compose-local.yml run --rm sac-migrator bun run scripts/migrate-sac-files.ts
 docker compose -f docker-compose-local.yml run --rm chat-backend bun run scripts/migrate-sac-chat.ts
 ```
 
 Todos são idempotentes. O MySQL legado (10.1.2.32) é alcançável a partir do servidor.
+
+O serviço `sac-migrator` é o mesmo para os três importadores do api-ts — só o
+`command` muda. **Ordem importa**: `migrate-sac.ts` primeiro (cria entidades e
+usuários), senão os responsáveis entram sem órgão e sem vínculo com usuário.
 
 ## Reset da base (só ambientes de teste)
 

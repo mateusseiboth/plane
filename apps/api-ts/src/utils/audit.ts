@@ -50,6 +50,9 @@ export const AUDIT_ENTITIES = {
   MEMBER: "member",
   USER: "user",
   ENTITY: "entity",
+  // Responsáveis: dado pessoal de terceiro (nome, e-mail, telefone, nascimento).
+  ENTITY_CONTACT: "entity_contact",
+  ENTITY_CONTACT_TYPE: "entity_contact_type",
   TECHNICAL_VISIT: "technical_visit",
   PAGE: "page",
   CYCLE: "cycle",

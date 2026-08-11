@@ -1,6 +1,7 @@
 import prisma from "@db";
 import {Prisma} from "@prisma/client/extension";
 import {authPlugin} from "@middleware/auth";
+import {entityContactDto} from "@modules/entity-contact";
 import {paginate} from "@utils/pagination";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import Elysia from "elysia";
@@ -9,10 +10,44 @@ function isoDate(d: any) {
   return d ? (d instanceof Date ? d.toISOString() : String(d)) : null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function normalizeUuid(value: unknown) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Substitui os responsáveis vinculados à visita pela lista recebida. O texto
+ * livre `contacts` não é tocado: os dois convivem.
+ */
+async function sincronizarResponsaveis(
+  tx: Prisma.TransactionClient,
+  visitId: string,
+  workspaceId: string,
+  contactIds: unknown,
+) {
+  const ids = Array.isArray(contactIds)
+    ? [...new Set(contactIds.map(normalizeUuid).filter((id): id is string => !!id))]
+    : [];
+  // Sem esta conferência, um id malformado vira erro de sintaxe de uuid no
+  // Postgres — 500 no lugar de "pedido inválido".
+  if (ids.some((id) => !UUID_RE.test(id))) throw {status: 400, message: "Responsável inválido."};
+
+  if (!ids.length) {
+    await tx.technicalVisitContact.deleteMany({where: {visitId}});
+    return;
+  }
+
+  const validos = await tx.entityContact.count({where: {id: {in: ids}, workspaceId, deletedAt: null}});
+  if (validos !== ids.length) throw {status: 400, message: "Responsável inválido."};
+
+  await tx.technicalVisitContact.deleteMany({where: {visitId, contactId: {notIn: ids}}});
+  await tx.technicalVisitContact.createMany({
+    data: ids.map((contactId) => ({visitId, contactId, workspaceId})),
+    skipDuplicates: true,
+  });
 }
 
 const VISIT_STATUS = {AGENDADA: 0, EM_ANDAMENTO: 1, RELATORIO: 2, AGUARDANDO_ASSINATURA: 3, CONCLUIDA: 4, CANCELADA: 5};
@@ -25,6 +60,22 @@ const STATUS_LABELS: Record<number, string> = {
   5: "Cancelada",
 };
 
+// Include usado em toda leitura de visita: `contact_records` faz parte do
+// contrato e some da resposta se a consulta não trouxer o vínculo.
+const INCLUDE_VISITA = {
+  entity: {select: {id: true, name: true}},
+  contactRecords: {
+    include: {
+      contact: {
+        include: {
+          entity: {select: {id: true, name: true}},
+          type: {select: {id: true, name: true, isSystemUser: true}},
+        },
+      },
+    },
+  },
+} as const;
+
 function serializeVisit(v: any) {
   return {
     id: v.id,
@@ -33,7 +84,12 @@ function serializeVisit(v: any) {
     technician2_id: v.technician2Id ?? null,
     entity_id: v.entityId ?? null,
     entity: v.entity ? {id: v.entity.id, name: v.entity.name} : null,
+    // Texto livre herdado do SAC: continua valendo ao lado dos responsáveis
+    // cadastrados, porque não dá para reconstituí-lo em pessoas.
     contacts: v.contacts ?? null,
+    contact_records: (v.contactRecords ?? [])
+      .filter((r: any) => r.contact && !r.contact.deletedAt)
+      .map((r: any) => entityContactDto(r.contact)),
     city: v.city ?? null,
     scheduled_date: isoDate(v.scheduledDate),
     started_at: isoDate(v.startedAt),
@@ -76,7 +132,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
       query: (skip, take) =>
         prisma.technicalVisit.findMany({
           where, skip, take,
-          include: {entity: {select: {id: true, name: true}}},
+          include: INCLUDE_VISITA,
           orderBy: [{scheduledDate: "desc"}, {createdAt: "desc"}],
         }),
       count: () => prisma.technicalVisit.count({where}),
@@ -90,7 +146,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
     await requireWorkspaceMember(ws.id, user.id);
     // Accept both the current snake_case names and the Django-legacy aliases
     // (`technician`, `technician_2`, `entity`) still sent by older clients.
-    const {issue_ids = [], ...b} = body as any;
+    const {issue_ids = [], contact_ids, ...b} = body as any;
     const visit = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const v = await tx.technicalVisit.create({
         data: {
@@ -118,14 +174,16 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
           visitNumber: b.visit_number ?? null,
           legacyId: b.legacy_id ?? null,
         },
-        include: {entity: {select: {id: true, name: true}}},
+        include: INCLUDE_VISITA,
       });
       if (issue_ids.length) {
         await tx.technicalVisitIssue.createMany({
           data: issue_ids.map((id: string) => ({visitId: v.id, issueId: id})),
         });
       }
-      return v;
+      if (contact_ids === undefined) return v;
+      await sincronizarResponsaveis(tx, v.id, ws.id, contact_ids);
+      return tx.technicalVisit.findUniqueOrThrow({where: {id: v.id}, include: INCLUDE_VISITA});
     });
     set.status = 201;
     return serializeVisit(visit);
@@ -201,7 +259,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
     await requireWorkspaceMember(ws.id, user.id);
     const visit = await prisma.technicalVisit.findFirst({
       where: {id: visit_id, workspaceId: ws.id, deletedAt: null},
-      include: {entity: {select: {id: true, name: true}}},
+      include: INCLUDE_VISITA,
     });
     if (!visit) {
       set.status = 404;
@@ -240,10 +298,10 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
     if (b.mot_other_description !== undefined) data.motOtherDescription = b.mot_other_description;
     if (b.project_ids !== undefined) data.projectIds = b.project_ids;
 
-    const updated = await prisma.technicalVisit.update({
-      where: {id: visit_id},
-      data,
-      include: {entity: {select: {id: true, name: true}}},
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.technicalVisit.update({where: {id: visit_id}, data});
+      if (b.contact_ids !== undefined) await sincronizarResponsaveis(tx, visit_id, ws.id, b.contact_ids);
+      return tx.technicalVisit.findUniqueOrThrow({where: {id: visit_id}, include: INCLUDE_VISITA});
     });
     return serializeVisit(updated);
   })

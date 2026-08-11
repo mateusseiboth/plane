@@ -19,8 +19,32 @@ name **Avião** ("airplane" in Portuguese) is a nod to *Plane*; this app uses
   compatible with the API.
 - **Features** — Home, Work Items (status / priority / entity / assignee changes),
   Intake (triage → promote), Wiki (view/edit), Technical Visits (**list & calendar**
-  views + report editor), global full-text search, file & image upload, and local
-  notifications for **urgent** tickets.
+  views + report editor + **contatos/responsáveis**), global full-text search,
+  file & image upload, and local notifications for **urgent** tickets.
+
+### Contatos (responsáveis da visita técnica)
+
+Who received the team on site comes from the shared **Contatos** directory
+(`entity-contacts/`), not from free text — same records the web and the chat use
+(contract: `.claude/CONTRATO_RESPONSAVEIS.md`).
+
+**Wording**: the directory itself is **"Contatos"** everywhere (sheet title,
+"Cadastrar novo contato", "Editar contato", modal header). Inside a visit the
+section keeps the name **"Responsáveis"** — there it is the role the contact
+plays, the person who received the technician.
+
+- The visit sends `contact_ids: string[]` on POST/PATCH and reads back
+  `contact_records` (name, type, phone, e-mail).
+- Adding someone = pick an existing contact of the entity (searchable by name,
+  phone or e-mail) **or register a new one right there** — the técnico arrives at
+  the prefeitura and whoever receives him is not in the system yet. The new
+  contact is saved to the entity's directory (default type: the *usuário do
+  sistema* one; any type can be picked) and linked to the visit in one go.
+- Removing only unlinks: the contact stays in the directory for the next visit.
+- The legacy `contacts` text (imported from the SAC, impossible to split back
+  into people) is still shown, read-only, under "Anotado no SAC".
+- Picking/creating/editing contacts **requires connection** — see the offline
+  note below.
 
 ## Architecture
 
@@ -31,7 +55,7 @@ app/                      expo-router routes
   (tabs)/                 Home, Work Items, Intake, Visitas, Mais
   work-item/[id], /new
   intake/[id]
-  visit/[id], /new
+  visit/[id], /new, /contact   (contact = editar o contato que recebeu a equipe)
   wiki/index, /[id]
   search.tsx
 src/
@@ -40,8 +64,9 @@ src/
   permissions/            role model + usePermissions
   offline/                cache + outbox + SyncProvider
   theme/                  colors, ThemeProvider
-  components/             reusable UI + RichTextEditor + calendar
-  hooks/                  useAsync, useCurrentProject, usePushNotifications
+  components/             reusable UI + RichTextEditor + calendar + ContactSheet/Form
+  hooks/                  useAsync, useCurrentProject, useEntityContacts,
+                          usePushNotifications
 ```
 
 ## Running
@@ -73,3 +98,9 @@ to AsyncStorage after a successful sign-in and takes precedence over
   urgent items while foregrounded.
 - App icon / splash use Expo defaults; swap in real artwork under `assets/` and
   reference them from `app.json` when branding is ready.
+- **Contatos need connection.** The outbox queues *creations only* (product
+  rule in `src/offline/storage.ts`), and linking a contact needs the id the
+  server mints — an offline "create person + link them" pair would need id
+  remapping between two queued items, which the outbox has no way to express. So
+  the picker is disabled while offline and the screens say so; a new visit can
+  still be saved offline and get its contatos once it syncs.

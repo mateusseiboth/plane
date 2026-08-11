@@ -5,7 +5,7 @@
  */
 import { Check } from "lucide-react-native";
 import React from "react";
-import { FlatList, Modal, Pressable, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, View } from "react-native";
 
 import { useTheme } from "@/theme";
 import { MonthCalendar } from "./MonthCalendar";
@@ -18,30 +18,36 @@ export type SheetOption<T> = {
   accessory?: React.ReactNode;
 };
 
-function SheetContainer({ visible, title, onClose, children }: { visible: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
+/**
+ * Moldura das folhas. Sobe com o teclado (as folhas com formulário, como a de
+ * responsáveis, ficariam escondidas atrás dele).
+ */
+export function SheetContainer({ visible, title, onClose, children }: { visible: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
   const { colors, radius, spacing } = useTheme();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: colors.overlay }} onPress={onClose} />
-      <View
-        style={{
-          backgroundColor: colors.surface,
-          borderTopLeftRadius: radius.xl,
-          borderTopRightRadius: radius.xl,
-          paddingTop: spacing.md,
-          paddingBottom: spacing.xxl,
-          maxHeight: "70%",
-        }}
-      >
-        <View style={{ alignItems: "center", paddingBottom: spacing.sm }}>
-          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong }} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <Pressable style={{ flex: 1, backgroundColor: colors.overlay }} onPress={onClose} />
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            paddingTop: spacing.md,
+            paddingBottom: spacing.xxl,
+            maxHeight: "70%",
+          }}
+        >
+          <View style={{ alignItems: "center", paddingBottom: spacing.sm }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong }} />
+          </View>
+          <Text variant="heading" style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
+            {title}
+          </Text>
+          <Divider />
+          {children}
         </View>
-        <Text variant="heading" style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
-          {title}
-        </Text>
-        <Divider />
-        {children}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

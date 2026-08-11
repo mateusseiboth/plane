@@ -2,6 +2,7 @@
 
 import {PageHead} from "@/components/core/page-title";
 import {EntityDropdown} from "@/components/dropdowns/entity";
+import {SeletorDeContatos} from "@/components/entity-contacts";
 import {PrintButton, TechnicalVisitsPrintDocument} from "@/components/print";
 import {useWorkspace} from "@/hooks/store/use-workspace";
 import {APIService} from "@/services/api.service";
@@ -77,11 +78,16 @@ function StatusBadge({status, label}: {status: number; label: string}) {
 
 function CreateVisitModal({onClose, onCreate}: {onClose: () => void; onCreate: (v: any) => void}) {
   const {workspaceSlug} = useParams();
-  const [form, setForm] = useState<{entity_id: string | null; city: string; scheduled_date: string; contacts: string}>({
+  const [form, setForm] = useState<{
+    entity_id: string | null;
+    city: string;
+    scheduled_date: string;
+    contact_ids: string[];
+  }>({
     entity_id: null,
     city: "",
     scheduled_date: "",
-    contacts: "",
+    contact_ids: [],
   });
   const [saving, setSaving] = useState(false);
 
@@ -112,7 +118,7 @@ function CreateVisitModal({onClose, onCreate}: {onClose: () => void; onCreate: (
             <EntityDropdown
               workspaceSlug={workspaceSlug.toString()}
               value={form.entity_id}
-              onChange={(entityId) => setForm((f) => ({...f, entity_id: entityId}))}
+              onChange={(entityId) => setForm((f) => ({...f, entity_id: entityId, contact_ids: []}))}
               placeholder="Selecionar entidade"
               className="w-full"
             />
@@ -136,12 +142,12 @@ function CreateVisitModal({onClose, onCreate}: {onClose: () => void; onCreate: (
             />
           </div>
           <div>
-            <label className="mb-1 block text-12 text-secondary">Contatos</label>
-            <input
-              className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-13 outline-none focus:border-accent-primary"
-              value={form.contacts}
-              onChange={(e) => setForm((f) => ({...f, contacts: e.target.value}))}
-              placeholder="Nome e telefone do contato"
+            <label className="mb-1 block text-12 text-secondary">Responsáveis</label>
+            <SeletorDeContatos
+              workspaceSlug={workspaceSlug.toString()}
+              entityId={form.entity_id}
+              value={form.contact_ids}
+              onChange={(contactIds) => setForm((f) => ({...f, contact_ids: contactIds}))}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -291,6 +297,12 @@ function TechnicalVisitsPage() {
                       </span>
                     )}
                   </div>
+                  {/* Os dois convivem: as pessoas cadastradas e o texto solto que veio do SAC. */}
+                  {visit.contact_records?.length > 0 && (
+                    <p className="mt-0.5 text-12 text-tertiary">
+                      {visit.contact_records.map((c: {name: string}) => c.name).join(", ")}
+                    </p>
+                  )}
                   {visit.contacts && <p className="mt-0.5 text-12 text-tertiary">{visit.contacts}</p>}
                 </div>
               </div>

@@ -11,10 +11,14 @@
  *  - `advance-analytics?tab=work-items`  → contadores por grupo de etapa
  *  - `advance-analytics-charts?type=...` → `TChartData[]` ou `{schema, data}`
  *  - `advance-analytics-stats?type=...`  → uma linha por projeto/responsável
+ *
+ * `?type=points` troca a métrica: em vez de CONTAR chamados, SOMA os pontos de
+ * estimativa (é o `y_axis=estimate` do Django legado, em `utils/analytics_plot.py`).
  */
 import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
+import { pontosDoValor, somarPontosDosChamados } from "@utils/estimate";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 
 type Consulta = Record<string, unknown>;
@@ -73,20 +77,34 @@ function contadores(valores: Record<string, number>) {
   return Object.fromEntries(Object.entries(valores).map(([k, v]) => [k, { count: v, filter_count: v }]));
 }
 
+/**
+ * Métrica do eixo Y: quantos chamados ou quantos pontos de estimativa.
+ *
+ * O front pede a soma por `?type=points`; `y_axis=ESTIMATE_POINT_COUNT` é o
+ * mesmo pedido escrito no vocabulário de `ChartYAxisMetric` (@plane/types).
+ */
+type Metrica = "chamados" | "pontos";
+
+const metricaDe = (query: Consulta): Metrica =>
+  query.type === "points" || query.y_axis === "ESTIMATE_POINT_COUNT" ? "pontos" : "chamados";
+
+/** Como um recorte vira número. */
+const medidorDe = (metrica: Metrica): ((where: any) => Promise<number>) =>
+  metrica === "pontos" ? somarPontosDosChamados : (where: any) => prisma.issue.count({ where });
+
 /** Contadores da aba "Chamados", por grupo de etapa. */
-async function porGrupoDeEtapa(where: any) {
-  const contar = (group?: string | string[]) =>
-    prisma.issue.count({
-      where: group ? { ...where, state: { group: Array.isArray(group) ? { in: group } : group } } : where,
-    });
+async function porGrupoDeEtapa(where: any, metrica: Metrica) {
+  const medir = medidorDe(metrica);
+  const porGrupo = (group?: string | string[]) =>
+    medir(group ? { ...where, state: { group: Array.isArray(group) ? { in: group } : group } } : where);
 
   const [total_work_items, started_work_items, backlog_work_items, un_started_work_items, completed_work_items] =
     await Promise.all([
-      contar(),
-      contar("started"),
-      contar(["backlog", "triage"]),
-      contar("unstarted"),
-      contar("completed"),
+      porGrupo(),
+      porGrupo("started"),
+      porGrupo(["backlog", "triage"]),
+      porGrupo("unstarted"),
+      porGrupo("completed"),
     ]);
 
   return contadores({ total_work_items, started_work_items, backlog_work_items, un_started_work_items, completed_work_items });
@@ -103,6 +121,12 @@ type Agrupador = (where: any) => Promise<Array<{ key: string; name: string; coun
 
 const semRotulo = (valor: string | null) => valor ?? "none";
 
+/**
+ * "none" é ausência de valor, não um id: mandá-lo para a busca de rótulos faz o
+ * Postgres recusar a consulta inteira ("invalid input syntax for type uuid").
+ */
+const idsDe = (chaves: string[]) => chaves.filter((chave) => chave && chave !== "none");
+
 /** A prioridade é guardada em inglês no banco; os gráficos mostram em português. */
 const PRIORIDADES = new Map([
   ["urgent", "Urgente"],
@@ -112,31 +136,55 @@ const PRIORIDADES = new Map([
   ["none", "Sem prioridade"],
 ]);
 
+type ColunaDeChamado = "stateId" | "priority" | "projectId" | "createdById" | "estimatePointId";
+
 async function agruparPorColuna(
   where: any,
-  coluna: "stateId" | "priority" | "projectId" | "createdById",
+  coluna: ColunaDeChamado,
   nomear: (ids: string[]) => Promise<Map<string, string>>,
 ) {
   const linhas = await prisma.issue.groupBy({ by: [coluna], where, _count: { id: true } });
-  const nomes = await nomear(linhas.map((l) => String((l as any)[coluna])).filter(Boolean));
+  const nomes = await nomear(idsDe(linhas.map((l) => semRotulo((l as any)[coluna]))));
   return linhas.map((l) => {
     const chave = semRotulo((l as any)[coluna]);
     return { key: chave, name: nomes.get(chave) ?? chave, count: l._count.id };
   });
 }
 
-const nomesDe = async (
-  modelo: "state" | "project" | "user",
-  ids: string[],
-): Promise<Map<string, string>> => {
+/** Cada dimensão sabe buscar o rótulo dos seus ids. */
+const ROTULOS: Record<string, (ids: string[]) => Promise<Array<{ id: string; rotulo: string | null }>>> = {
+  state: async (ids) =>
+    (await prisma.state.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })).map((r) => ({
+      id: r.id,
+      rotulo: r.name,
+    })),
+  project: async (ids) =>
+    (await prisma.project.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })).map((r) => ({
+      id: r.id,
+      rotulo: r.name,
+    })),
+  user: async (ids) =>
+    (await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, displayName: true } })).map((r) => ({
+      id: r.id,
+      rotulo: r.displayName,
+    })),
+  label: async (ids) =>
+    (await prisma.label.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })).map((r) => ({
+      id: r.id,
+      rotulo: r.name,
+    })),
+  // O rótulo de um ponto de estimativa é o valor dele ("3", "M", …).
+  estimatePoint: async (ids) =>
+    (await prisma.estimatePoint.findMany({ where: { id: { in: ids } }, select: { id: true, value: true } })).map((r) => ({
+      id: r.id,
+      rotulo: r.value,
+    })),
+};
+
+const nomesDe = async (modelo: keyof typeof ROTULOS, ids: string[]): Promise<Map<string, string>> => {
   if (!ids.length) return new Map();
-  const registros =
-    modelo === "state"
-      ? await prisma.state.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
-      : modelo === "project"
-        ? await prisma.project.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
-        : await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, displayName: true } });
-  return new Map(registros.map((r: any) => [r.id, r.name ?? r.displayName ?? r.id]));
+  const registros = await ROTULOS[modelo](ids);
+  return new Map(registros.map((r) => [r.id, r.rotulo ?? r.id]));
 };
 
 const AGRUPADORES: Record<string, Agrupador> = {
@@ -144,6 +192,7 @@ const AGRUPADORES: Record<string, Agrupador> = {
   PROJECTS: (where) => agruparPorColuna(where, "projectId", (ids) => nomesDe("project", ids)),
   CREATED_BY: (where) => agruparPorColuna(where, "createdById", (ids) => nomesDe("user", ids)),
   PRIORITY: (where) => agruparPorColuna(where, "priority", async () => PRIORIDADES),
+  ESTIMATE_POINTS: (where) => agruparPorColuna(where, "estimatePointId", (ids) => nomesDe("estimatePoint", ids)),
   STATE_GROUPS: async (where) => {
     const linhas = await prisma.issue.groupBy({ by: ["stateId"], where, _count: { id: true } });
     const estados = await prisma.state.findMany({
@@ -173,14 +222,81 @@ const AGRUPADORES: Record<string, Agrupador> = {
       where: { deletedAt: null, issue: where },
       _count: { id: true },
     });
-    const etiquetas = await prisma.label.findMany({
-      where: { id: { in: linhas.map((l) => l.labelId) } },
-      select: { id: true, name: true },
-    });
-    const nomes = new Map(etiquetas.map((e) => [e.id, e.name]));
+    const nomes = await nomesDe("label", linhas.map((l) => l.labelId));
     return linhas.map((l) => ({ key: l.labelId, name: nomes.get(l.labelId) ?? l.labelId, count: l._count.id }));
   },
 };
+
+// ── Os mesmos agrupamentos, somando pontos de estimativa ────────────────────
+//
+// A contagem é agregada pelo banco (`groupBy`), mas a soma precisa do VALOR do
+// ponto — que é texto, porque uma escala pode ser categórica. Então o total é
+// somado aqui, já descartando o que não é número (ver @utils/estimate).
+
+/** Só chamado estimado entra na soma; o resto não tem ponto para somar. */
+const comEstimativa = (where: any) => ({ ...where, estimatePointId: { not: null } });
+
+const acumular = (pares: Array<[string, number]>) => {
+  const total = new Map<string, number>();
+  for (const [chave, valor] of pares) total.set(chave, (total.get(chave) ?? 0) + valor);
+  return total;
+};
+
+const linhasComNome = (total: Map<string, number>, nomes: Map<string, string>) =>
+  [...total].map(([key, count]) => ({ key, name: nomes.get(key) ?? key, count }));
+
+async function somarPorColuna(
+  where: any,
+  coluna: ColunaDeChamado,
+  nomear: (ids: string[]) => Promise<Map<string, string>>,
+) {
+  const chamados = await prisma.issue.findMany({
+    where: comEstimativa(where),
+    select: { [coluna]: true, estimatePoint: { select: { value: true } } } as any,
+  });
+  const total = acumular(
+    (chamados as any[]).map((c) => [semRotulo(c[coluna]), pontosDoValor(c.estimatePoint?.value)] as [string, number]),
+  );
+  return linhasComNome(total, await nomear(idsDe([...total.keys()])));
+}
+
+async function somarPorVinculo(
+  where: any,
+  vinculo: "issueAssignee" | "issueLabel",
+  coluna: "assigneeId" | "labelId",
+  modelo: keyof typeof ROTULOS,
+) {
+  const registros = await (prisma as any)[vinculo].findMany({
+    where: { deletedAt: null, issue: comEstimativa(where) },
+    select: { [coluna]: true, issue: { select: { estimatePoint: { select: { value: true } } } } },
+  });
+  const total = acumular(
+    (registros as any[]).map((r) => [r[coluna], pontosDoValor(r.issue?.estimatePoint?.value)] as [string, number]),
+  );
+  return linhasComNome(total, await nomesDe(modelo, idsDe([...total.keys()])));
+}
+
+const SOMADORES: Record<string, Agrupador> = {
+  STATES: (where) => somarPorColuna(where, "stateId", (ids) => nomesDe("state", ids)),
+  PROJECTS: (where) => somarPorColuna(where, "projectId", (ids) => nomesDe("project", ids)),
+  CREATED_BY: (where) => somarPorColuna(where, "createdById", (ids) => nomesDe("user", ids)),
+  PRIORITY: (where) => somarPorColuna(where, "priority", async () => PRIORIDADES),
+  ESTIMATE_POINTS: (where) => somarPorColuna(where, "estimatePointId", (ids) => nomesDe("estimatePoint", ids)),
+  STATE_GROUPS: async (where) => {
+    const chamados = await prisma.issue.findMany({
+      where: comEstimativa(where),
+      select: { state: { select: { group: true } }, estimatePoint: { select: { value: true } } },
+    });
+    const total = acumular(
+      chamados.map((c) => [c.state?.group ?? "none", pontosDoValor(c.estimatePoint?.value)] as [string, number]),
+    );
+    return [...total].map(([key, count]) => ({ key, name: key, count }));
+  },
+  ASSIGNEES: (where) => somarPorVinculo(where, "issueAssignee", "assigneeId", "user"),
+  LABELS: (where) => somarPorVinculo(where, "issueLabel", "labelId", "label"),
+};
+
+const agrupadoresDe = (metrica: Metrica) => (metrica === "pontos" ? SOMADORES : AGRUPADORES);
 
 /** Métricas do eixo Y que apenas restringem o conjunto contado. */
 const RECORTE_METRICA: Record<string, (where: any) => any> = {
@@ -218,25 +334,29 @@ async function criadosVersusResolvidos(where: any) {
   return { schema: { created_issues: "Criados", completed_issues: "Resolvidos" }, data };
 }
 
-/** Uma linha por projeto (ou por responsável, na visão de um projeto só). */
-async function tabelaDeChamados(where: any, porResponsavel: boolean) {
+/**
+ * Uma linha por projeto (ou por responsável, na visão de um projeto só).
+ *
+ * As linhas saem sempre da contagem, para que um projeto sem nenhuma estimativa
+ * continue aparecendo na tabela — zerado, e não sumido.
+ */
+async function tabelaDeChamados(where: any, porResponsavel: boolean, metrica: Metrica) {
   const grupos = porResponsavel ? await AGRUPADORES.ASSIGNEES(where) : await AGRUPADORES.PROJECTS(where);
+  const medir = medidorDe(metrica);
 
   return Promise.all(
     grupos.map(async (grupo) => {
       const recorte = porResponsavel
         ? { ...where, assignees: { some: { assigneeId: grupo.key, deletedAt: null } } }
         : { ...where, projectId: grupo.key };
-      const contar = (group: string | string[]) =>
-        prisma.issue.count({
-          where: { ...recorte, state: { group: Array.isArray(group) ? { in: group } : group } },
-        });
+      const porGrupo = (group: string | string[]) =>
+        medir({ ...recorte, state: { group: Array.isArray(group) ? { in: group } : group } });
       const [cancelled, completed, backlog, unstarted, started] = await Promise.all([
-        contar("cancelled"),
-        contar("completed"),
-        contar(["backlog", "triage"]),
-        contar("unstarted"),
-        contar("started"),
+        porGrupo("cancelled"),
+        porGrupo("completed"),
+        porGrupo(["backlog", "triage"]),
+        porGrupo("unstarted"),
+        porGrupo("started"),
       ]);
       return {
         ...(porResponsavel
@@ -263,7 +383,11 @@ function rotas(prefix: string, comProjeto: boolean) {
       const ws = await getWorkspaceOrFail((params as any).slug);
       await requireWorkspaceMember(ws.id, user.id);
       const where = filtroChamados(ws.id, query as Consulta, comProjeto ? (params as any).project_id : undefined);
-      return query.tab === "work-items" ? porGrupoDeEtapa(where) : visaoGeral(ws.id, where);
+      // A visão geral também conta pessoas, projetos e ciclos: somar pontos ali
+      // não significaria nada, então a métrica só vale na aba de chamados.
+      return query.tab === "work-items"
+        ? porGrupoDeEtapa(where, metricaDe(query as Consulta))
+        : visaoGeral(ws.id, where);
     })
 
     .get("/advance-analytics-charts", async ({ params, user, query }) => {
@@ -279,18 +403,21 @@ function rotas(prefix: string, comProjeto: boolean) {
       }
       if (query.type === "work-items") return criadosVersusResolvidos(where);
 
-      // custom-work-items: eixos escolhidos pelo usuário.
-      const agrupador = AGRUPADORES[String(query.x_axis ?? "PRIORITY")] ?? AGRUPADORES.PRIORITY;
+      // custom-work-items (e `type=points`): eixos escolhidos pelo usuário.
+      const metrica = metricaDe(query as Consulta);
+      const agrupadores = agrupadoresDe(metrica);
+      const agrupador = agrupadores[String(query.x_axis ?? "PRIORITY")] ?? agrupadores.PRIORITY;
       const recorte = RECORTE_METRICA[String(query.y_axis ?? "WORK_ITEM_COUNT")] ?? RECORTE_METRICA.WORK_ITEM_COUNT;
       const grupos = await agrupador(recorte(where));
-      return { schema: { count: "Quantidade" }, data: grupos.sort((a, b) => b.count - a.count) };
+      const schema = { count: metrica === "pontos" ? "Pontos" : "Quantidade" };
+      return { schema, data: grupos.sort((a, b) => b.count - a.count) };
     })
 
     .get("/advance-analytics-stats", async ({ params, user, query }) => {
       const ws = await getWorkspaceOrFail((params as any).slug);
       await requireWorkspaceMember(ws.id, user.id);
       const where = filtroChamados(ws.id, query as Consulta, comProjeto ? (params as any).project_id : undefined);
-      return tabelaDeChamados(where, comProjeto);
+      return tabelaDeChamados(where, comProjeto, metricaDe(query as Consulta));
     });
 }
 

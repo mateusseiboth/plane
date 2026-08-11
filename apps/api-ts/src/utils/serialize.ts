@@ -28,7 +28,9 @@ export function serializeIssue(issue: any): Record<string, unknown> {
     priority:         issue.priority ?? "none",
     label_ids:        issue.labels?.map((l: any) => l.labelId) ?? [],
     assignee_ids:     issue.assignees?.map((a: any) => a.assigneeId) ?? [],
-    estimate_point:   null,
+    // `estimate_point` é o ID do EstimatePoint (IIssue em @plane/types), não o
+    // número solto de `Issue.point`, que veio do SAC e é outra coisa.
+    estimate_point:   issue.estimatePointId ?? null,
 
     sub_issues_count: 0,
     attachment_count: 0,
@@ -187,11 +189,14 @@ export function serializeModule(mod: any): Record<string, unknown> {
     unstarted_issues: mod.unstartedIssues ?? 0,
     cancelled_issues: mod.cancelledIssues ?? 0,
 
-    backlog_estimate_points:   0,
-    started_estimate_points:   0,
-    unstarted_estimate_points: 0,
-    cancelled_estimate_points: 0,
-    total_estimate_points:     0,
-    completed_estimate_points: 0,
+    // Somas dos pontos de estimativa dos chamados do módulo (ver
+    // modules/module/index.ts). Antes eram zeros fixos, e a barra de progresso
+    // por pontos nascia vazia mesmo com o módulo todo estimado.
+    backlog_estimate_points:   mod.backlogEstimatePoints ?? 0,
+    started_estimate_points:   mod.startedEstimatePoints ?? 0,
+    unstarted_estimate_points: mod.unstartedEstimatePoints ?? 0,
+    cancelled_estimate_points: mod.cancelledEstimatePoints ?? 0,
+    total_estimate_points:     mod.totalEstimatePoints ?? 0,
+    completed_estimate_points: mod.completedEstimatePoints ?? 0,
   };
 }

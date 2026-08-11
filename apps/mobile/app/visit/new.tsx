@@ -5,10 +5,12 @@ import { Alert, Pressable, View } from "react-native";
 
 import { Entity, endpoints, TechnicalVisit } from "@/api";
 import { useAuth } from "@/auth/AuthContext";
-import { Button, Card, Input, RichTextEditor, Row, Screen, Text } from "@/components";
+import { Button, Card, ContactSheet, Input, RichTextEditor, Row, Screen, Text } from "@/components";
 import { OptionSheet } from "@/components/Sheet";
 import { useAsync } from "@/hooks/useAsync";
+import { useEntityContacts } from "@/hooks/useEntityContacts";
 import { useSync } from "@/offline/SyncProvider";
+import { usePermissions } from "@/permissions/usePermissions";
 import { useTheme } from "@/theme";
 
 const MOTIVATIONS: { key: string; label: string }[] = [
@@ -25,11 +27,13 @@ export default function NewVisitScreen() {
   const slug = activeWorkspace?.slug;
   const router = useRouter();
   const { online, enqueue } = useSync();
-  const { colors, spacing } = useTheme();
+  const { can } = usePermissions();
+  const { colors, radius, spacing } = useTheme();
 
   const entities = useAsync<Entity[]>(() => (slug ? endpoints.entities.list(slug) : Promise.resolve([])), [slug]);
 
   const [entityId, setEntityId] = useState<string | undefined>();
+  const [contactIds, setContactIds] = useState<string[]>([]);
   const [city, setCity] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [period, setPeriod] = useState("");
@@ -38,15 +42,44 @@ export default function NewVisitScreen() {
   const [mot, setMot] = useState<Record<string, boolean>>({});
   const [motOther, setMotOther] = useState("");
   const [entitySheet, setEntitySheet] = useState(false);
+  const [contactSheet, setContactSheet] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // A lista é a da entidade escolhida; sem entidade não há o que carregar.
+  const directory = useEntityContacts(entityId ? slug : undefined, entityId);
+
   const toggle = (k: string) => setMot((m) => ({ ...m, [k]: !m[k] }));
+
+  const toggleContact = (contactId: string) =>
+    setContactIds((ids) => (ids.includes(contactId) ? ids.filter((c) => c !== contactId) : [...ids, contactId]));
+
+  // Trocar de entidade invalida a escolha: os contatos são de outro órgão.
+  const selectEntity = (value: string) => {
+    setEntityId(value);
+    setContactIds([]);
+  };
+
+  const openContacts = () => {
+    if (!entityId) {
+      Alert.alert("Entidade obrigatória", "Escolha a entidade antes de informar os contatos.");
+      return;
+    }
+    if (!online) {
+      Alert.alert(
+        "Sem conexão",
+        "Os contatos vêm do cadastro da entidade. Salve a visita agora e vincule-os quando a conexão voltar.",
+      );
+      return;
+    }
+    setContactSheet(true);
+  };
 
   const submit = async () => {
     if (!slug) return;
     const body: Partial<TechnicalVisit> = {
       entity_id: entityId,
       technician_id: me?.id,
+      contact_ids: contactIds,
       city: city.trim() || null,
       scheduled_date: scheduledDate.trim() || null,
       period: period.trim() || null,
@@ -75,6 +108,7 @@ export default function NewVisitScreen() {
   };
 
   const selectedEntity = entities.data?.find((e) => e.id === entityId);
+  const selectedContacts = directory.contacts.filter((c) => contactIds.includes(c.id));
 
   return (
     <Screen scroll>
@@ -82,6 +116,15 @@ export default function NewVisitScreen() {
         <Text variant="caption">Entidade</Text>
         <Text weight="medium">{selectedEntity?.name ?? "Selecionar"}</Text>
       </Pressable>
+
+      <View style={{ gap: spacing.xs }}>
+        <Text variant="caption">Responsáveis (quem recebeu)</Text>
+        <Pressable onPress={openContacts} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md }}>
+          <Text weight="medium">{selectedContacts.length ? selectedContacts.map((c) => c.name).join(", ") : "Selecionar contatos"}</Text>
+        </Pressable>
+        {!entityId ? <Text variant="tertiary">Escolha a entidade para listar seus contatos.</Text> : null}
+        {!online ? <Text variant="tertiary" color={colors.pending}>Offline — os contatos exigem conexão; a visita pode ser salva mesmo assim.</Text> : null}
+      </View>
 
       <Row gap={spacing.md}>
         <View style={{ flex: 1, gap: spacing.xs }}>
@@ -142,9 +185,26 @@ export default function NewVisitScreen() {
         visible={entitySheet}
         title="Entidade"
         selected={entityId}
-        onSelect={(v) => setEntityId(String(v))}
+        onSelect={(v) => selectEntity(String(v))}
         onClose={() => setEntitySheet(false)}
         options={(entities.data ?? []).map((e) => ({ value: e.id, label: e.name, description: [e.city, e.state].filter(Boolean).join(" / ") }))}
+      />
+
+      <ContactSheet
+        visible={contactSheet}
+        contacts={directory.contacts}
+        types={directory.types}
+        defaultTypeId={directory.defaultTypeId}
+        selectedIds={contactIds}
+        loading={directory.loading}
+        canCreate={online && can("createIntake")}
+        emptyHint="Nenhum contato cadastrado nesta entidade — cadastre quem recebeu a equipe."
+        onToggle={(contact) => toggleContact(contact.id)}
+        onCreate={async (draft) => {
+          const created = await directory.create(draft);
+          toggleContact(created.id);
+        }}
+        onClose={() => setContactSheet(false)}
       />
     </Screen>
   );

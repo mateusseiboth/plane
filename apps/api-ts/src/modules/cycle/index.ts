@@ -4,7 +4,9 @@ import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
-import { dateOnly, isoDate } from "@utils/serialize";
+import { applyIssueFilters, normalizeFilters, restringirAoGrupo } from "@utils/filters";
+import { resolverOrdenacao } from "@utils/issue-order";
+import { dateOnly, isoDate, ISSUE_INCLUDE, serializeIssue } from "@utils/serialize";
 
 // ── Helpers de contagem / distribuição ────────────────────────────────────────
 
@@ -39,44 +41,127 @@ const contadoresZerados = (): TContagemPorEtapa => ({
 });
 
 /**
- * Conta os chamados de vários ciclos de uma vez. Recebe uma lista para que a
- * listagem de arquivados não caia em N+1 (uma consulta por ciclo).
+ * `EstimatePoint.value` é texto livre: uma escala numérica guarda "2", mas uma
+ * escala de categorias guarda "Alto". Só o que converte para número entra na
+ * soma — o resto vale zero, como no legado.
  */
-async function contarPorEtapa(cycleIds: string[]): Promise<Map<string, TContagemPorEtapa>> {
-  const mapa = new Map<string, TContagemPorEtapa>(cycleIds.map((id) => [id, contadoresZerados()]));
+export function valorDoPonto(valor?: string | null): number {
+  const texto = (valor ?? "").trim();
+  if (!texto) return 0;
+  const numero = Number(texto);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+/**
+ * Tudo que a listagem de ciclos precisa saber sobre os chamados vinculados:
+ * quantos há por etapa, quantos pontos de estimativa somam por etapa e quem são
+ * os responsáveis (para os avatares do card).
+ */
+type TResumoCiclo = {
+  chamados: TContagemPorEtapa;
+  pontos: TContagemPorEtapa;
+  responsaveis: string[];
+};
+
+const resumoZerado = (): TResumoCiclo => ({
+  chamados: contadoresZerados(),
+  pontos: contadoresZerados(),
+  responsaveis: [],
+});
+
+/**
+ * Resume os chamados de vários ciclos de uma vez. Recebe uma lista para que a
+ * listagem não caia em N+1 (uma consulta por ciclo).
+ */
+async function resumirCiclos(cycleIds: string[]): Promise<Map<string, TResumoCiclo>> {
+  const mapa = new Map<string, TResumoCiclo>(cycleIds.map((id) => [id, resumoZerado()]));
   if (!cycleIds.length) return mapa;
 
   const vinculos = await prisma.cycleIssue.findMany({
     where: vinculosVivosWhere(cycleIds),
-    select: { cycleId: true, issue: { select: { state: { select: { group: true } } } } },
+    select: {
+      cycleId: true,
+      issue: {
+        select: {
+          state: { select: { group: true } },
+          estimatePoint: { select: { value: true } },
+          assignees: { where: { deletedAt: null }, select: { assigneeId: true } },
+        },
+      },
+    },
   });
 
+  const responsaveisPorCiclo = new Map<string, Set<string>>(cycleIds.map((id) => [id, new Set<string>()]));
+
   for (const vinculo of vinculos) {
-    const contagem = mapa.get(vinculo.cycleId);
-    if (!contagem) continue;
-    contagem.total++;
-    contagem[normalizarGrupo(vinculo.issue.state?.group)]++;
+    const resumo = mapa.get(vinculo.cycleId);
+    if (!resumo) continue;
+
+    const grupo = normalizarGrupo(vinculo.issue.state?.group);
+    const pontos = valorDoPonto(vinculo.issue.estimatePoint?.value);
+
+    resumo.chamados.total++;
+    resumo.chamados[grupo]++;
+    resumo.pontos.total += pontos;
+    resumo.pontos[grupo] += pontos;
+
+    const responsaveis = responsaveisPorCiclo.get(vinculo.cycleId);
+    for (const vinculoResponsavel of vinculo.issue.assignees) responsaveis?.add(vinculoResponsavel.assigneeId);
+  }
+
+  for (const [cycleId, responsaveis] of responsaveisPorCiclo) {
+    const resumo = mapa.get(cycleId);
+    if (resumo) resumo.responsaveis = [...responsaveis];
   }
   return mapa;
 }
 
-type TBaldeDistribuicao = { total_issues: number; pending_issues: number; completed_issues: number };
+/** Ids dos ciclos que este usuário marcou como favoritos. */
+async function favoritosDoUsuario(workspaceId: string, userId: string, cycleIds: string[]): Promise<Set<string>> {
+  if (!cycleIds.length) return new Set();
+  const favoritos = await prisma.userFavorite.findMany({
+    where: { workspaceId, userId, entityType: "cycle", entityId: { in: cycleIds }, deletedAt: null },
+    select: { entityId: true },
+  });
+  return new Set(favoritos.map((f) => f.entityId));
+}
+
+type TTipoAnalise = "issues" | "points";
 
 /**
- * Acumulador de distribuição. Responsável, etiqueta e etapa contam exatamente a
- * mesma coisa mudando só a chave e os metadados — a fábrica evita três laços
- * praticamente idênticos.
+ * Cada tipo de análise nomeia os mesmos três números de um jeito: contagem de
+ * chamados fala em `*_issues`, pontos de estimativa em `*_estimates`. O mapa
+ * evita duplicar o acumulador só para trocar as chaves.
  */
-function criarDistribuicao<TMeta extends object>() {
-  const baldes = new Map<string, TMeta & TBaldeDistribuicao>();
+const CHAVES_DISTRIBUICAO: Record<TTipoAnalise, { total: string; pendente: string; concluido: string }> = {
+  issues: { total: "total_issues", pendente: "pending_issues", concluido: "completed_issues" },
+  points: { total: "total_estimates", pendente: "pending_estimates", concluido: "completed_estimates" },
+};
+
+/**
+ * Acumulador de distribuição. Responsável, etiqueta e etapa somam exatamente a
+ * mesma coisa mudando só a chave e os metadados — a fábrica evita três laços
+ * praticamente idênticos. `peso` é 1 na análise por chamado e o valor do ponto
+ * de estimativa na análise por pontos.
+ */
+function criarDistribuicao<TMeta extends object>(tipo: TTipoAnalise) {
+  const chaves = CHAVES_DISTRIBUICAO[tipo];
+  const baldes = new Map<string, { meta: TMeta; total: number; pendente: number; concluido: number }>();
   return {
-    adicionar(chave: string, meta: TMeta, concluido: boolean) {
-      const balde = baldes.get(chave) ?? { ...meta, total_issues: 0, pending_issues: 0, completed_issues: 0 };
-      balde.total_issues++;
-      balde[concluido ? "completed_issues" : "pending_issues"]++;
+    adicionar(chave: string, meta: TMeta, concluido: boolean, peso: number) {
+      const balde = baldes.get(chave) ?? { meta, total: 0, pendente: 0, concluido: 0 };
+      balde.total += peso;
+      if (concluido) balde.concluido += peso;
+      else balde.pendente += peso;
       baldes.set(chave, balde);
     },
-    valores: () => [...baldes.values()],
+    valores: () =>
+      [...baldes.values()].map((balde) => ({
+        ...balde.meta,
+        [chaves.total]: balde.total,
+        [chaves.pendente]: balde.pendente,
+        [chaves.concluido]: balde.concluido,
+      })),
   };
 }
 
@@ -88,8 +173,10 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 /** Chave diária do gráfico ("2026-08-10"), sempre em UTC. */
 const diaChave = (data: Date): string => data.toISOString().split("T")[0]!;
 
+type TConclusao = { data: Date; peso: number };
+
 /**
- * Burndown: para cada dia do ciclo, quantos chamados ainda estavam pendentes.
+ * Burndown: para cada dia do ciclo, quanto ainda restava (chamados ou pontos).
  * Dias futuros ficam `null` para o gráfico parar a linha em hoje.
  *
  * Ciclo sem datas devolve gráfico vazio em vez de erro (o legado respondia 400):
@@ -98,14 +185,16 @@ const diaChave = (data: Date): string => data.toISOString().split("T")[0]!;
 function montarGraficoConclusao(
   inicio: Date | null,
   fim: Date | null,
-  conclusoes: Date[],
+  conclusoes: TConclusao[],
   total: number,
 ): Record<string, number | null> {
   if (!inicio || !fim) return {};
 
   // Ordenado para varrer com um ponteiro só; inclui conclusões anteriores ao
   // início do ciclo, que já entram descontadas no primeiro dia.
-  const diasConcluidos = conclusoes.map(diaChave).sort();
+  const concluidos = conclusoes
+    .map((c) => ({ dia: diaChave(c.data), peso: c.peso }))
+    .sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0));
   const hoje = diaChave(new Date());
   const grafico: Record<string, number | null> = {};
 
@@ -113,8 +202,8 @@ function montarGraficoConclusao(
   let acumulado = 0;
   for (let instante = inicio.getTime(); instante <= fim.getTime(); instante += DIA_MS) {
     const chave = diaChave(new Date(instante));
-    while (ponteiro < diasConcluidos.length && diasConcluidos[ponteiro]! <= chave) {
-      acumulado++;
+    while (ponteiro < concluidos.length && concluidos[ponteiro]!.dia <= chave) {
+      acumulado += concluidos[ponteiro]!.peso;
       ponteiro++;
     }
     grafico[chave] = chave > hoje ? null : total - acumulado;
@@ -122,13 +211,51 @@ function montarGraficoConclusao(
   return grafico;
 }
 
+// ── Serialização (contrato `ICycle` do frontend) ──────────────────────────────
+
+type TStatusCiclo = "draft" | "upcoming" | "current" | "completed";
+
+/**
+ * O quadro de ciclos separa atual/próximo/encerrado pelo `status`, mas a coluna
+ * do banco só guarda "draft" — quem manda são as datas. Sem derivar aqui, nenhum
+ * ciclo aparece como "current" e a aba do ciclo ativo fica sempre vazia. A
+ * ordem dos testes reproduz a tabela do legado, inclusive os casos com só uma
+ * das datas preenchidas (que continuam sendo rascunho).
+ */
+function derivarStatus(inicio: Date | null, fim: Date | null): TStatusCiclo {
+  const agora = Date.now();
+  if (inicio && fim && inicio.getTime() <= agora && fim.getTime() >= agora) return "current";
+  if (inicio && inicio.getTime() > agora) return "upcoming";
+  if (fim && fim.getTime() < agora) return "completed";
+  return "draft";
+}
+
+/** Números de progresso — o `TProgressSnapshot` do frontend. */
+function instantaneoDeProgresso(resumo: TResumoCiclo): Record<string, number> {
+  return {
+    total_issues: resumo.chamados.total,
+    backlog_issues: resumo.chamados.backlog,
+    unstarted_issues: resumo.chamados.unstarted,
+    started_issues: resumo.chamados.started,
+    completed_issues: resumo.chamados.completed,
+    cancelled_issues: resumo.chamados.cancelled,
+
+    total_estimate_points: resumo.pontos.total,
+    backlog_estimate_points: resumo.pontos.backlog,
+    unstarted_estimate_points: resumo.pontos.unstarted,
+    started_estimate_points: resumo.pontos.started,
+    completed_estimate_points: resumo.pontos.completed,
+    cancelled_estimate_points: resumo.pontos.cancelled,
+  };
+}
+
 /**
  * Converte o ciclo do Prisma (camelCase) para o contrato `ICycle` do frontend
- * (snake_case). As rotas antigas deste arquivo ainda devolvem o objeto cru;
- * as rotas novas passam por aqui.
+ * (snake_case). TODA rota de ciclo passa por aqui — o frontend tipa a resposta
+ * como `ICycle` e quebra com o objeto cru do Prisma.
  */
-function serializeCycle(cycle: any, contagem?: TContagemPorEtapa): Record<string, unknown> {
-  const c = contagem ?? contadoresZerados();
+function serializeCycle(cycle: any, resumo?: TResumoCiclo, favorito = false): Record<string, unknown> {
+  const r = resumo ?? resumoZerado();
   return {
     id: cycle.id,
     name: cycle.name,
@@ -136,41 +263,47 @@ function serializeCycle(cycle: any, contagem?: TContagemPorEtapa): Record<string
 
     start_date: dateOnly(cycle.startDate),
     end_date: dateOnly(cycle.endDate),
-    status: cycle.status ?? "draft",
+    status: derivarStatus(cycle.startDate ?? null, cycle.endDate ?? null),
     archived_at: isoDate(cycle.archivedAt),
 
     owned_by_id: cycle.ownedById,
     project_id: cycle.projectId,
     workspace_id: cycle.workspaceId,
-    project_detail: { id: cycle.projectId },
+    // A listagem do workspace já traz o projeto junto; a do projeto não precisa.
+    project_detail: cycle.project
+      ? { id: cycle.project.id, name: cycle.project.name, identifier: cycle.project.identifier }
+      : { id: cycle.projectId },
 
     created_at: isoDate(cycle.createdAt),
     updated_at: isoDate(cycle.updatedAt),
     created_by: cycle.createdById ?? null,
 
-    is_favorite: false,
+    is_favorite: favorito,
     sort_order: 65535,
     view_props: { filters: {} },
     progress: [],
+    progress_snapshot: null,
     version: 1,
 
-    total_issues: c.total,
-    backlog_issues: c.backlog,
-    unstarted_issues: c.unstarted,
-    started_issues: c.started,
-    completed_issues: c.completed,
-    cancelled_issues: c.cancelled,
+    assignee_ids: r.responsaveis,
 
-    // Pontos de estimativa não existem no schema Typescript (Issue não tem
-    // estimate_point); zerados para não quebrar o tipo TProgressSnapshot.
-    total_estimate_points: 0,
-    backlog_estimate_points: 0,
-    unstarted_estimate_points: 0,
-    started_estimate_points: 0,
-    completed_estimate_points: 0,
-    cancelled_estimate_points: 0,
+    ...instantaneoDeProgresso(r),
   };
 }
+
+/**
+ * Serializa uma leva de ciclos resolvendo resumo e favoritos em bloco.
+ * Exportada porque a listagem de ciclos do workspace (módulo de workspace)
+ * responde o mesmo `ICycle[]` e não pode divergir deste contrato.
+ */
+export async function serializarCiclos(cycles: any[], workspaceId: string, userId: string) {
+  const ids = cycles.map((c) => c.id);
+  const [resumos, favoritos] = await Promise.all([resumirCiclos(ids), favoritosDoUsuario(workspaceId, userId, ids)]);
+  return cycles.map((c) => serializeCycle(c, resumos.get(c.id), favoritos.has(c.id)));
+}
+
+const serializarCiclo = async (cycle: any, workspaceId: string, userId: string) =>
+  (await serializarCiclos([cycle], workspaceId, userId))[0];
 
 const serializeUserProperties = (props: any, cycleId: string, userId: string) => ({
   id: props?.id ?? null,
@@ -179,7 +312,195 @@ const serializeUserProperties = (props: any, cycleId: string, userId: string) =>
   filters: props?.filters ?? {},
   display_filters: props?.displayFilters ?? {},
   display_properties: props?.displayProperties ?? {},
+  rich_filters: props?.richFilters ?? {},
 });
+
+// ── Chamados do ciclo (handlers compartilhados) ───────────────────────────────
+//
+// O frontend chama `cycle-issues/` (nome do legado) e a API já expunha
+// `issues/`. Os dois caminhos apontam para estes handlers — nada é duplicado.
+
+/**
+ * Agrupamentos aceitos pelo quadro do ciclo. Cada estratégia sabe listar os
+ * valores possíveis e recortar o `where` para um deles. Agrupamento que não
+ * estiver aqui cai na resposta plana — melhor que devolver grupos inventados.
+ */
+type TAgrupamento = {
+  valores: (projectId: string) => Promise<(string | null)[]>;
+  recorte: (where: any, valor: string | null, projectId: string) => Promise<any>;
+};
+
+const idsDosEstados = async (projectId: string, grupo?: string) =>
+  (
+    await prisma.state.findMany({
+      where: { projectId, deletedAt: null, ...(grupo ? { group: grupo } : {}) },
+      select: { id: true },
+      orderBy: { sequence: "asc" },
+    })
+  ).map((s) => s.id);
+
+const AGRUPAMENTOS: Record<string, TAgrupamento> = {
+  state_id: {
+    valores: (projectId) => idsDosEstados(projectId),
+    recorte: async (where, valor) => ({ ...where, stateId: restringirAoGrupo(where.stateId, valor) }),
+  },
+  priority: {
+    valores: async () => ["urgent", "high", "medium", "low", "none"],
+    recorte: async (where, valor) => ({ ...where, priority: restringirAoGrupo(where.priority, valor) }),
+  },
+  state__group: {
+    valores: async () => [...STATE_GROUPS, "triage"],
+    recorte: async (where, valor, projectId) => ({
+      ...where,
+      stateId: restringirAoGrupo(where.stateId, await idsDosEstados(projectId, valor as string)),
+    }),
+  },
+  created_by: {
+    valores: async (projectId) =>
+      (
+        await prisma.issue.findMany({
+          where: { projectId, deletedAt: null },
+          select: { createdById: true },
+          distinct: ["createdById"],
+        })
+      ).map((i) => i.createdById),
+    recorte: async (where, valor) => ({ ...where, createdById: restringirAoGrupo(where.createdById, valor) }),
+  },
+};
+
+async function listarChamadosDoCiclo({ params, user, query }: any) {
+  const { slug, project_id, cycle_id } = params;
+  const ws = await getWorkspaceOrFail(slug);
+  await getProjectOrFail(ws.id, project_id, user.id);
+
+  // Mesmo recorte da listagem de chamados do projeto: arquivado e rascunho têm
+  // telas próprias e não entram no quadro do ciclo.
+  const where: any = {
+    projectId: project_id,
+    deletedAt: null,
+    isDraft: false,
+    archivedAt: null,
+    cycleIssues: { some: { cycleId: cycle_id, deletedAt: null } },
+  };
+  await applyIssueFilters(where, normalizeFilters(query as Record<string, unknown>), { projectId: project_id });
+
+  const orderBy = resolverOrdenacao(query.order_by, { createdAt: "desc" });
+  const perPage = Number(query.per_page ?? 30);
+  const agrupamento = AGRUPAMENTOS[query.group_by as string];
+
+  if (!agrupamento) {
+    return paginate({
+      query: (skip, take) => prisma.issue.findMany({ where, skip, take, include: ISSUE_INCLUDE, orderBy }),
+      count: () => prisma.issue.count({ where }),
+      cursor: query.cursor as string | undefined,
+      perPage,
+      transform: (itens) => itens.map((i) => ({ ...serializeIssue(i), cycle_id })),
+    });
+  }
+
+  const total_count = await prisma.issue.count({ where });
+  const results: Record<string, unknown> = {};
+
+  for (const valor of await agrupamento.valores(project_id)) {
+    const recorte = await agrupamento.recorte(where, valor, project_id);
+    const [chamados, quantidade] = await Promise.all([
+      prisma.issue.findMany({ where: recorte, include: ISSUE_INCLUDE, orderBy, take: perPage }),
+      prisma.issue.count({ where: recorte }),
+    ]);
+    results[valor ?? "none"] = {
+      results: chamados.map((i) => ({ ...serializeIssue(i), cycle_id })),
+      total_results: quantidade,
+      next_cursor: `${perPage}:1:0`,
+      prev_cursor: `${perPage}:0:1`,
+      next_page_results: quantidade > perPage,
+      prev_page_results: false,
+    };
+  }
+
+  return {
+    total_count,
+    results,
+    next_cursor: null,
+    prev_cursor: null,
+    next_page_results: false,
+    prev_page_results: false,
+  };
+}
+
+async function adicionarChamadosAoCiclo({ params, body, user, set }: any) {
+  const { slug, project_id, cycle_id } = params;
+  const ws = await getWorkspaceOrFail(slug);
+  await getProjectOrFail(ws.id, project_id, user.id);
+  await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
+
+  const issueIds: string[] = (body as any)?.issues ?? [];
+  if (!issueIds.length) {
+    set.status = 400;
+    return { detail: "Informe ao menos um chamado." };
+  }
+
+  const vinculos = await prisma.cycleIssue.findMany({
+    where: { issueId: { in: issueIds }, projectId: project_id, deletedAt: null },
+    select: { id: true, issueId: true, cycleId: true },
+  });
+
+  // Um chamado pertence a um ciclo só — o frontend guarda `cycle_id` singular.
+  // Vínculos com outros ciclos saem quando o chamado é movido para este.
+  const deOutrosCiclos = vinculos.filter((v) => v.cycleId !== cycle_id);
+  const jaNoCiclo = new Set(vinculos.filter((v) => v.cycleId === cycle_id).map((v) => v.issueId));
+  const aCriar = issueIds.filter((id) => !jaNoCiclo.has(id));
+
+  await prisma.$transaction(async (tx) => {
+    if (deOutrosCiclos.length) {
+      await tx.cycleIssue.updateMany({
+        where: { id: { in: deOutrosCiclos.map((v) => v.id) } },
+        data: { deletedAt: new Date() },
+      });
+    }
+    await tx.cycleIssue.createMany({
+      data: aCriar.map((issueId) => ({ cycleId: cycle_id, issueId, workspaceId: ws.id, projectId: project_id })),
+    });
+  });
+
+  set.status = 201;
+  return { message: `${aCriar.length} chamados adicionados.` };
+}
+
+async function removerChamadoDoCiclo({ params, user, set }: any) {
+  const { slug, project_id, cycle_id, issue_id } = params;
+  const ws = await getWorkspaceOrFail(slug);
+  await getProjectOrFail(ws.id, project_id, user.id);
+  await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
+  await prisma.cycleIssue.updateMany({
+    where: { cycleId: cycle_id, issueId: issue_id, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  set.status = 204;
+  return null;
+}
+
+// ── Progresso (handler compartilhado) ─────────────────────────────────────────
+//
+// `progress/` e `cycle-progress/` devolvem o mesmo `TProgressSnapshot`: o
+// frontend tipa as duas chamadas igual (workspaceActiveCyclesProgress e
+// ...ProgressPro), só muda o caminho que a versão do produto escolhe.
+
+async function progressoDoCiclo({ params, user, set }: any) {
+  const { slug, project_id, cycle_id } = params;
+  const ws = await getWorkspaceOrFail(slug);
+  await getProjectOrFail(ws.id, project_id, user.id);
+
+  const cycle = await prisma.cycle.findFirst({
+    where: { id: cycle_id, projectId: project_id, deletedAt: null },
+    select: { id: true },
+  });
+  if (!cycle) {
+    set.status = 404;
+    return { detail: "Ciclo não encontrado." };
+  }
+
+  return instantaneoDeProgresso((await resumirCiclos([cycle_id])).get(cycle_id) ?? resumoZerado());
+}
 
 export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:project_id" })
   .use(authPlugin)
@@ -217,6 +538,86 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     return { status: false, error: `Já existe um ciclo ("${sobreposto.name}") neste intervalo de datas.` };
   })
 
+  // ── Favoritos de ciclo ──────────────────────────────────────────────────────
+  //
+  // O frontend chama `user-favorite-cycles/` (CycleService.addCycleToFavorites /
+  // removeCycleFromFavorites). É a mesma tabela do `/favorites/` do workspace,
+  // com o tipo fixo em "cycle".
+
+  .get("/user-favorite-cycles/", async ({ params: { slug, project_id }, user }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+
+    const cycles = await prisma.cycle.findMany({ where: { projectId: project_id, deletedAt: null } });
+    const porId = new Map(cycles.map((c) => [c.id, c]));
+
+    const favoritos = await prisma.userFavorite.findMany({
+      where: {
+        workspaceId: ws.id,
+        userId: user.id,
+        entityType: "cycle",
+        entityId: { in: [...porId.keys()] },
+        deletedAt: null,
+      },
+      orderBy: { sequence: "asc" },
+    });
+
+    const resumos = await resumirCiclos(favoritos.map((f) => f.entityId));
+    return favoritos.map((favorito) => ({
+      id: favorito.id,
+      user: user.id,
+      cycle: favorito.entityId,
+      cycle_detail: serializeCycle(porId.get(favorito.entityId), resumos.get(favorito.entityId), true),
+      created_at: isoDate(favorito.createdAt),
+      updated_at: isoDate(favorito.updatedAt),
+    }));
+  })
+
+  .post("/user-favorite-cycles/", async ({ params: { slug, project_id }, body, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+
+    const cycleId = (body as any)?.cycle;
+    const cycle = cycleId
+      ? await prisma.cycle.findFirst({ where: { id: cycleId, projectId: project_id, deletedAt: null } })
+      : null;
+    if (!cycle) {
+      set.status = 400;
+      return { detail: "Ciclo não encontrado." };
+    }
+
+    // Favoritar duas vezes não pode criar duas linhas: a estrela é um booleano.
+    const existente = await prisma.userFavorite.findFirst({
+      where: { workspaceId: ws.id, userId: user.id, entityType: "cycle", entityId: cycle.id, deletedAt: null },
+    });
+    const favorito =
+      existente ??
+      (await prisma.userFavorite.create({
+        data: {
+          workspaceId: ws.id,
+          userId: user.id,
+          entityType: "cycle",
+          entityId: cycle.id,
+          name: cycle.name,
+        },
+      }));
+
+    set.status = 201;
+    return { id: favorito.id, user: user.id, cycle: cycle.id, entity_type: "cycle", entity_identifier: cycle.id };
+  })
+
+  .delete("/user-favorite-cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    // Idempotente: desfavoritar o que já não é favorito não é erro para a tela.
+    await prisma.userFavorite.updateMany({
+      where: { workspaceId: ws.id, userId: user.id, entityType: "cycle", entityId: cycle_id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    set.status = 204;
+    return null;
+  })
+
   // ── Ciclos arquivados ───────────────────────────────────────────────────────
 
   .get("/archived-cycles/", async ({ params: { slug, project_id }, user }) => {
@@ -227,9 +628,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
       where: { projectId: project_id, deletedAt: null, archivedAt: { not: null } },
       orderBy: { archivedAt: "desc" },
     });
-
-    const contagens = await contarPorEtapa(cycles.map((c) => c.id));
-    return cycles.map((c) => serializeCycle(c, contagens.get(c.id)));
+    return serializarCiclos(cycles, ws.id, user.id);
   })
 
   .get("/archived-cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
@@ -243,7 +642,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
       set.status = 404;
       return { detail: "Ciclo arquivado não encontrado." };
     }
-    return serializeCycle(cycle, (await contarPorEtapa([cycle_id])).get(cycle_id));
+    return serializarCiclo(cycle, ws.id, user.id);
   })
 
   // ── CRUD ────────────────────────────────────────────────────────────────────
@@ -252,21 +651,32 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     // Arquivados saem da listagem principal e só aparecem em /archived-cycles/.
-    const where = { projectId: project_id, deletedAt: null, archivedAt: null };
-    return paginate({
-      query: (skip, take) => prisma.cycle.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
-      count: () => prisma.cycle.count({ where }),
-      cursor: query.cursor as string | undefined,
-    });
+    const where: any = { projectId: project_id, deletedAt: null, archivedAt: null };
+
+    // `cycle_view=current` é o que a aba do ciclo ativo pede (getCyclesWithParams
+    // com "current"): devolve só o ciclo em andamento.
+    if (query.cycle_view === "current") {
+      const agora = new Date();
+      where.startDate = { lte: agora };
+      where.endDate = { gte: agora };
+    }
+
+    const cycles = await prisma.cycle.findMany({ where, orderBy: { createdAt: "desc" } });
+    // Array puro, sem envelope: o store do frontend faz `response.forEach(...)`
+    // direto em cima do corpo (cycle.store.ts, fetchAllCycles/fetchActiveCycle).
+    return serializarCiclos(cycles, ws.id, user.id);
   })
 
   .post("/cycles/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
+    await getProjectOrFail(ws.id, project_id, user.id);
     await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
 
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
+    if (!b.name) {
+      set.status = 400;
+      return { detail: "O nome é obrigatório." };
+    }
 
     const cycle = await prisma.cycle.create({
       data: {
@@ -284,19 +694,35 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     });
 
     set.status = 201;
-    return cycle;
+    return serializarCiclo(cycle, ws.id, user.id);
   })
 
-  .get("/cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, user }) => {
+  .get("/cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    return prisma.cycle.findFirstOrThrow({ where: { id: cycle_id, projectId: project_id, deletedAt: null } });
+    const cycle = await prisma.cycle.findFirst({
+      where: { id: cycle_id, projectId: project_id, deletedAt: null },
+    });
+    if (!cycle) {
+      set.status = 404;
+      return { detail: "Ciclo não encontrado." };
+    }
+    return serializarCiclo(cycle, ws.id, user.id);
   })
 
   .patch("/cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
+    await getProjectOrFail(ws.id, project_id, user.id);
     await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
+
+    const cycle = await prisma.cycle.findFirst({
+      where: { id: cycle_id, projectId: project_id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!cycle) {
+      set.status = 404;
+      return { detail: "Ciclo não encontrado." };
+    }
 
     const b = body as any;
     const data: any = {};
@@ -306,12 +732,13 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     if (b.end_date !== undefined) data.endDate = b.end_date ? new Date(b.end_date) : null;
     if (b.status !== undefined) data.status = b.status;
 
-    return prisma.cycle.update({ where: { id: cycle_id }, data });
+    const atualizado = await prisma.cycle.update({ where: { id: cycle_id }, data });
+    return serializarCiclo(atualizado, ws.id, user.id);
   })
 
   .delete("/cycles/:cycle_id/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
+    await getProjectOrFail(ws.id, project_id, user.id);
     await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
     await prisma.cycle.update({ where: { id: cycle_id }, data: { deletedAt: new Date() } });
     set.status = 204;
@@ -327,10 +754,13 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     const cycle = await prisma.cycle.findFirst({
       where: { id: cycle_id, projectId: project_id, deletedAt: null },
     });
-    if (!cycle) { set.status = 404; return { detail: "Ciclo não encontrado." }; }
+    if (!cycle) {
+      set.status = 404;
+      return { detail: "Ciclo não encontrado." };
+    }
 
     const arquivado = await prisma.cycle.update({ where: { id: cycle_id }, data: { archivedAt: new Date() } });
-    return serializeCycle(arquivado, (await contarPorEtapa([cycle_id])).get(cycle_id));
+    return serializarCiclo(arquivado, ws.id, user.id);
   })
 
   .delete("/cycles/:cycle_id/archive/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
@@ -340,46 +770,23 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
     const cycle = await prisma.cycle.findFirst({
       where: { id: cycle_id, projectId: project_id, deletedAt: null },
     });
-    if (!cycle) { set.status = 404; return { detail: "Ciclo não encontrado." }; }
+    if (!cycle) {
+      set.status = 404;
+      return { detail: "Ciclo não encontrado." };
+    }
 
     const restaurado = await prisma.cycle.update({ where: { id: cycle_id }, data: { archivedAt: null } });
-    return serializeCycle(restaurado, (await contarPorEtapa([cycle_id])).get(cycle_id));
+    return serializarCiclo(restaurado, ws.id, user.id);
   })
 
   // ── Progresso ───────────────────────────────────────────────────────────────
 
-  .get("/cycles/:cycle_id/progress/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
-
-    const cycle = await prisma.cycle.findFirst({
-      where: { id: cycle_id, projectId: project_id, deletedAt: null },
-      select: { id: true },
-    });
-    if (!cycle) { set.status = 404; return { detail: "Ciclo não encontrado." }; }
-
-    const c = (await contarPorEtapa([cycle_id])).get(cycle_id) ?? contadoresZerados();
-    return {
-      total_issues: c.total,
-      backlog_issues: c.backlog,
-      unstarted_issues: c.unstarted,
-      started_issues: c.started,
-      completed_issues: c.completed,
-      cancelled_issues: c.cancelled,
-
-      // Sem pontos de estimativa no schema Typescript — ver serializeCycle.
-      total_estimate_points: 0,
-      backlog_estimate_points: 0,
-      unstarted_estimate_points: 0,
-      started_estimate_points: 0,
-      completed_estimate_points: 0,
-      cancelled_estimate_points: 0,
-    };
-  })
+  .get("/cycles/:cycle_id/progress/", (ctx) => progressoDoCiclo(ctx))
+  .get("/cycles/:cycle_id/cycle-progress/", (ctx) => progressoDoCiclo(ctx))
 
   // ── Analytics (distribuição por responsável, etiqueta e etapa) ──────────────
 
-  .get("/cycles/:cycle_id/analytics/", async ({ params: { slug, project_id, cycle_id }, user, set }) => {
+  .get("/cycles/:cycle_id/analytics/", async ({ params: { slug, project_id, cycle_id }, user, query, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
 
@@ -387,7 +794,15 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
       where: { id: cycle_id, projectId: project_id, deletedAt: null },
       select: { id: true, startDate: true, endDate: true },
     });
-    if (!cycle) { set.status = 404; return { detail: "Ciclo não encontrado." }; }
+    if (!cycle) {
+      set.status = 404;
+      return { detail: "Ciclo não encontrado." };
+    }
+
+    // `type=points` pesa cada chamado pelo ponto de estimativa; qualquer outro
+    // valor conta um por chamado. O frontend guarda a resposta em
+    // `estimate_distribution` ou `distribution` conforme o parâmetro.
+    const tipo: TTipoAnalise = query.type === "points" ? "points" : "issues";
 
     const vinculos = await prisma.cycleIssue.findMany({
       where: vinculosVivosWhere([cycle_id]),
@@ -395,6 +810,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
         issue: {
           select: {
             completedAt: true,
+            estimatePoint: { select: { value: true } },
             state: { select: { id: true, name: true, color: true, group: true } },
             assignees: {
               where: { deletedAt: null },
@@ -421,25 +837,28 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
       first_name: string | null;
       last_name: string | null;
       display_name: string | null;
-    }>();
+    }>(tipo);
     const etiquetas = criarDistribuicao<{
       label_id: string | null;
       label_name: string | null;
       color: string | null;
-    }>();
+    }>(tipo);
     const etapas = criarDistribuicao<{
       state_id: string | null;
       state_name: string | null;
       color: string | null;
       group: TStateGroup;
-    }>();
+    }>(tipo);
 
-    const conclusoes: Date[] = [];
+    const conclusoes: TConclusao[] = [];
+    let totalGeral = 0;
 
     for (const { issue } of vinculos) {
       const grupo = normalizarGrupo(issue.state?.group);
       const concluido = grupo === "completed";
-      if (concluido && issue.completedAt) conclusoes.push(issue.completedAt);
+      const peso = tipo === "points" ? valorDoPonto(issue.estimatePoint?.value) : 1;
+      totalGeral += peso;
+      if (concluido && issue.completedAt) conclusoes.push({ data: issue.completedAt, peso });
 
       etapas.adicionar(
         issue.state?.id ?? "sem-etapa",
@@ -450,6 +869,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
           group: grupo,
         },
         concluido,
+        peso,
       );
 
       // Um chamado com dois responsáveis conta em ambos: a distribuição é por
@@ -465,6 +885,7 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
             display_name: pessoa?.displayName ?? null,
           },
           concluido,
+          peso,
         );
       }
 
@@ -477,18 +898,16 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
             color: etiqueta?.color ?? null,
           },
           concluido,
+          peso,
         );
       }
     }
 
-    // O parâmetro `type=points` do legado não muda nada aqui: o schema
-    // Typescript não guarda pontos de estimativa, então só há contagem por
-    // chamado.
     return {
       assignees: responsaveis.valores(),
       labels: etiquetas.valores(),
       states: etapas.valores(),
-      completion_chart: montarGraficoConclusao(cycle.startDate, cycle.endDate, conclusoes, vinculos.length),
+      completion_chart: montarGraficoConclusao(cycle.startDate, cycle.endDate, conclusoes, totalGeral),
     };
   })
 
@@ -517,11 +936,13 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
         filters: b.filters ?? {},
         displayFilters: b.display_filters ?? {},
         displayProperties: b.display_properties ?? {},
+        richFilters: b.rich_filters ?? {},
       },
       update: {
         ...(b.filters !== undefined && { filters: b.filters }),
         ...(b.display_filters !== undefined && { displayFilters: b.display_filters }),
         ...(b.display_properties !== undefined && { displayProperties: b.display_properties }),
+        ...(b.rich_filters !== undefined && { richFilters: b.rich_filters }),
       },
     });
     return serializeUserProperties(props, cycle_id, user.id);
@@ -588,45 +1009,16 @@ export const cycleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
   })
 
   // ── Chamados do ciclo ───────────────────────────────────────────────────────
+  //
+  // `issues/` é o caminho histórico da API TS; `cycle-issues/` é o que o
+  // frontend chama (CycleService.getCycleIssues, IssueService.addIssueToCycle,
+  // removeIssueFromCycle). Mesmos handlers nos dois.
 
-  .get("/cycles/:cycle_id/issues/", async ({ params: { slug, project_id, cycle_id }, user, query }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
-    const where = { cycleId: cycle_id, deletedAt: null };
-    return paginate({
-      query: (skip, take) =>
-        prisma.cycleIssue.findMany({ where, skip, take, include: { issue: true }, orderBy: { createdAt: "asc" } }),
-      count: () => prisma.cycleIssue.count({ where }),
-      cursor: query.cursor as string | undefined,
-    });
-  })
+  .get("/cycles/:cycle_id/issues/", (ctx) => listarChamadosDoCiclo(ctx))
+  .get("/cycles/:cycle_id/cycle-issues/", (ctx) => listarChamadosDoCiclo(ctx))
 
-  .post("/cycles/:cycle_id/issues/", async ({ params: { slug, project_id, cycle_id }, body, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
+  .post("/cycles/:cycle_id/issues/", (ctx) => adicionarChamadosAoCiclo(ctx))
+  .post("/cycles/:cycle_id/cycle-issues/", (ctx) => adicionarChamadosAoCiclo(ctx))
 
-    const issueIds: string[] = (body as any).issues ?? [];
-    const existing = await prisma.cycleIssue.findMany({
-      where: { cycleId: cycle_id, issueId: { in: issueIds }, deletedAt: null },
-      select: { issueId: true },
-    });
-    const existingSet = new Set(existing.map((e) => e.issueId));
-    const toCreate = issueIds.filter((id) => !existingSet.has(id));
-
-    await prisma.cycleIssue.createMany({
-      data: toCreate.map((issueId) => ({ cycleId: cycle_id, issueId, workspaceId: ws.id, projectId: project_id })),
-    });
-
-    set.status = 201;
-    return { message: `${toCreate.length} chamados adicionados.` };
-  })
-
-  .delete("/cycles/:cycle_id/issues/:issue_id/", async ({ params: { slug, project_id, cycle_id, issue_id }, user, set }) => {
-    const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.CYCLE_MANAGE);
-    await prisma.cycleIssue.updateMany({ where: { cycleId: cycle_id, issueId: issue_id }, data: { deletedAt: new Date() } });
-    set.status = 204;
-    return null;
-  });
+  .delete("/cycles/:cycle_id/issues/:issue_id/", (ctx) => removerChamadoDoCiclo(ctx))
+  .delete("/cycles/:cycle_id/cycle-issues/:issue_id/", (ctx) => removerChamadoDoCiclo(ctx));

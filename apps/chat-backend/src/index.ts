@@ -5,6 +5,7 @@ import prisma from "@db";
 import { resolveAttendant, signClientToken, verifyClientToken, signWsTicket, verifyWsTicket } from "@/auth";
 import { nextProtocol } from "@/protocol";
 import { handleInboundClient, startBot, startNativeSession } from "@/bot/engine";
+import { registrarEncerramento } from "@/encerramento";
 import { availableAttendants, inicioDoDiaNoFuso } from "@/presence";
 import { deliverOutbound } from "@/outbound";
 import { persistAndBroadcast, serializeMessage } from "@/messages";
@@ -42,6 +43,8 @@ function serializeSession(s: any) {
     channel: s.channel,
     workspace_id: s.workspaceId,
     contact_id: s.contactId ?? null,
+    // Responsável (cadastro do cliente) já vinculado a este atendimento.
+    entity_contact_id: s.entityContactId ?? null,
     client_name: s.clientName ?? s.contact?.name ?? null,
     contact_email: s.contact?.email ?? null,
     contact_entity_id: s.contact?.entityId ?? null,
@@ -245,30 +248,13 @@ async function onWsMessage(
   }
   if (type === "agent.close" && sessionId) {
     // O encerramento pode trazer a classificação e o cadastro feitos na hora:
-    // para qual sistema era o suporte e os dados do contato. Grava antes de
-    // fechar, senão a mensagem de encerramento sai antes de o dado existir.
+    // para qual sistema era o suporte e quem é o Responsável do cliente.
     return void (async () => {
-      try {
-        if (msg.project_id) {
-          await prisma.chatSession.updateMany({ where: { id: sessionId }, data: { projectId: msg.project_id } });
-        }
-        const contato = msg.contact as {name?: string; email?: string; entity_id?: string} | undefined;
-        if (contato) {
-          const sessao = await prisma.chatSession.findUnique({ where: { id: sessionId }, select: { contactId: true } });
-          if (sessao?.contactId) {
-            await prisma.contact.update({
-              where: { id: sessao.contactId },
-              data: {
-                ...(contato.name ? { name: contato.name } : {}),
-                ...(contato.email ? { email: contato.email } : {}),
-                ...(contato.entity_id ? { entityId: contato.entity_id } : {}),
-              },
-            });
-          }
-        }
-      } catch (e) {
-        console.error("[agent.close] falha ao gravar classificação/cadastro", e);
-      }
+      await registrarEncerramento(
+        sessionId,
+        { project_id: msg.project_id ?? null, contact: msg.contact ?? null },
+        ctx.userId
+      ).catch((e) => console.error("[agent.close] falha ao gravar classificação/cadastro", e));
       await closeSession(sessionId, ctx.userId);
     })();
   }

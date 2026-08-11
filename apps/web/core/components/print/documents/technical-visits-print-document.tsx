@@ -15,7 +15,9 @@ export type TTechnicalVisitRecord = {
   status?: number;
   status_label?: string | null;
   city?: string | null;
+  /** Texto solto herdado do SAC — convive com `contact_records`. */
   contacts?: string | null;
+  contact_records?: { id: string; name: string }[] | null;
   period?: string | null;
   scheduled_date?: string | null;
   started_at?: string | null;
@@ -44,6 +46,10 @@ const MOTIVATION_LABELS: { key: keyof TTechnicalVisitRecord; label: string }[] =
 const CELL = "border border-neutral-300 px-2 py-1 align-top";
 
 const formatDateTime = (value?: string | null) => (value ? new Date(value).toLocaleString("pt-BR") : "—");
+
+/** Nomes dos responsáveis cadastrados. O texto do SAC é impresso à parte. */
+const contactNames = (visit: TTechnicalVisitRecord) =>
+  (visit.contact_records ?? []).map((contact) => contact.name).join(", ");
 
 type ListProps = {
   visits: TTechnicalVisitRecord[];
@@ -75,7 +81,7 @@ export const TechnicalVisitsPrintDocument = function TechnicalVisitsPrintDocumen
               <th className={CELL}>Cidade</th>
               <th className={CELL}>Agendada para</th>
               <th className={CELL}>Situação</th>
-              <th className={CELL}>Contatos</th>
+              <th className={CELL}>Responsáveis</th>
             </tr>
           </thead>
           <tbody>
@@ -86,7 +92,7 @@ export const TechnicalVisitsPrintDocument = function TechnicalVisitsPrintDocumen
                 <td className={CELL}>{visit.city ?? "—"}</td>
                 <td className={CELL}>{formatDateTime(visit.scheduled_date)}</td>
                 <td className={CELL}>{visit.status_label ?? "—"}</td>
-                <td className={CELL}>{visit.contacts ?? "—"}</td>
+                <td className={CELL}>{[contactNames(visit), visit.contacts].filter(Boolean).join(" · ") || "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -125,7 +131,8 @@ export const TechnicalVisitPrintDocument = function TechnicalVisitPrintDocument(
             { label: "Início", value: formatDateTime(visit.started_at) },
             { label: "Término", value: formatDateTime(visit.finished_at) },
             { label: "Período", value: visit.period ?? "—" },
-            { label: "Contatos", value: visit.contacts ?? "—" },
+            { label: "Responsáveis", value: contactNames(visit) || "—" },
+            ...(visit.contacts ? [{ label: "Contatos (sistema antigo)", value: visit.contacts }] : []),
             { label: "Motivos", value: motivations || "—" },
           ]}
         />

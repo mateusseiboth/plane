@@ -98,6 +98,51 @@ export type Entity = {
   is_active?: boolean;
 };
 
+/**
+ * Contato de uma entidade — cadastro reutilizável, compartilhado com a web e
+ * com o chat. Numa visita técnica é ele quem figura como responsável, a pessoa
+ * que recebeu a equipe.
+ */
+export type EntityContact = {
+  id: string;
+  entity_id?: string | null;
+  entity_name?: string | null;
+  type_id?: string | null;
+  type_name?: string | null;
+  is_system_user?: boolean;
+  user_id?: string | null;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  /** Só dígitos, com DDI — derivado no servidor; o cliente nunca envia. */
+  phone_digits?: string | null;
+  photo?: string | null;
+  birth_date?: string | null;
+  is_active?: boolean;
+  receive_messages?: boolean;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type EntityContactType = {
+  id: string;
+  name: string;
+  is_active?: boolean;
+  /** Quem opera o sistema (Usuário do Sistema, Técnico T.I.) e não só o órgão. */
+  is_system_user?: boolean;
+  sequence?: number;
+};
+
+/** Corpo aceito ao cadastrar/editar um contato. */
+export type EntityContactDraft = {
+  name: string;
+  entity_id?: string | null;
+  type_id?: string | null;
+  phone?: string | null;
+  email?: string | null;
+};
+
 export type WorkItem = {
   id: string;
   name: string;
@@ -133,6 +178,16 @@ export type TechnicalVisit = {
   summary?: string | null;
   conclusion?: string | null;
   entity_id?: string | null;
+  /**
+   * Texto livre herdado do SAC com quem recebeu a equipe. Continua sendo
+   * devolvido pela API e é somente leitura: não dá para reconstituir esses
+   * nomes em pessoas do cadastro. Os responsáveis atuais são `contact_records`.
+   */
+  contacts?: string | null;
+  /** Responsáveis vinculados à visita (resposta da API). */
+  contact_records?: EntityContact[];
+  /** Vínculo enviado no POST/PATCH da visita. */
+  contact_ids?: string[];
   mot_update?: boolean;
   mot_bug_fix?: boolean;
   mot_training?: boolean;

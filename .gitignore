@@ -102,6 +102,7 @@ storybook-static
 # Company-specific data-migration scripts — not for version control.
 # Each deployment must provide its own migration script.
 apps/api-ts/scripts/migrate-sac.ts
+apps/api-ts/scripts/migrate-sac-responsaveis.ts
 
 # Per-app npmrc may carry private registry tokens — never commit it.
 apps/web/.npmrc

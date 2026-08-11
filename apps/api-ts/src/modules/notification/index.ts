@@ -66,6 +66,10 @@ function serializeNotification(n: any, chamado?: any) {
           is_bot: false,
         }
       : undefined,
+    // `is_read`/`is_archived` seguem no contrato: além do teste, há consumidores
+    // que decidem por eles em vez de olhar as datas.
+    is_read: n.isRead,
+    is_archived: n.isArchived,
     read_at: n.readAt ?? undefined,
     archived_at: n.archivedAt ?? undefined,
     snoozed_till: n.snoozedTill ?? undefined,

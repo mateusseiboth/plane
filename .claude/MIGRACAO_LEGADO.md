@@ -15,6 +15,7 @@ utf8mb4 — **não** force charset binário nem reinterprete bytes. As tabelas d
 |---|---|
 | `apps/api-ts/scripts/migrate-sac.ts` | entidades, usuários, sistemas→projetos, chamados→itens de trabalho, vínculos, mensagens→comentários, pós-atendimento→comentários, visitas técnicas |
 | `apps/api-ts/scripts/migrate-sac-files.ts` | anexos de mensagens, arquivo da visita, disco virtual |
+| `apps/api-ts/scripts/migrate-sac-responsaveis.ts` | tipos de responsável e responsáveis (contatos das entidades) |
 | `apps/chat-backend/scripts/migrate-sac-chat.ts` | conversas e mensagens do chat antigo (incl. anexos base64 do WhatsApp) |
 
 Mapeamentos puros ficam separados em `apps/chat-backend/scripts/sac-chat-mapping.ts`
@@ -91,6 +92,53 @@ where i.deleted_at is null group by s.name order by count(*) desc;
   responsável listado em `visita_contato_id` (tabela `responsaveis`).
   `visita_sistemas_id` (CSV) vira `projectIds`.
 
+## Responsáveis (contatos das entidades)
+
+`migrate-sac-responsaveis.ts` traz as pessoas de contato de cada órgão — quem a
+Quality liga, manda WhatsApp e recebe na visita. Elas **não têm login**:
+
+| Legado | Destino |
+|---|---|
+| `tiposresponsavel` (9) | `entity_contact_types` (`usuario_sistema` → `is_system_user`) |
+| `responsaveis` (2.433, 1.874 ativos) | `entity_contacts` |
+
+Rode **depois** de `migrate-sac.ts`: as entidades e os usuários já precisam
+existir. Idempotência por `legacy_id` (único por workspace); o segundo passe
+compara campo a campo e só reescreve o que mudou no legado — uma rodada limpa
+imprime `0 criados, 0 atualizados, 2433 inalterados`.
+
+Os tipos são deduplicados **pelo nome**, não pelo `legacy_id`: o `seed.ts` já
+cria os mesmos nove (com `legacy_id`), e casar por id criaria um segundo
+"Secretário (a)". O título do tipo 3 vem com espaço à direita no legado —
+`limpar()` faz o `trim` e é o que faz os dois lados baterem.
+
+Números da rodada completa e o que o legado perde:
+
+- **6 sem entidade** (`entity_id` nulo): 5 com `responsaveis_entidades_id` nulo
+  e 1 apontando para órgão com `entidades_status <> 1`, que `migrate-sac.ts` não
+  migra. Entram assim mesmo — o contato existe, só não tem órgão.
+- **222 aniversários de 893 preenchidos.** `responsaveis_nascimento` é
+  `varchar(10)` digitado à mão: 337 são o literal `dd/mm/aaaa`, 221 são
+  `00/00/0000`, e ainda há `0000000000`, `re/tf/gree`, `30//05/76`, `.` e ano de
+  2 dígitos (`27/02/65` — ambíguo, descartado de propósito). Só `dd/mm/aaaa` e
+  `aaaa-mm-dd` com data real e ano ≥ 1900 viram `birth_date`; o resto é null e
+  aparece como "Nascimento inválido" no resumo.
+- **83 vinculados a um `User`** por e-mail (case-insensitive). O importador
+  **não cria usuário**. Repare que 142 responsáveis compartilham
+  `teste@teste.com.br` e 180 e-mails se repetem — o legado nunca teve unicidade
+  aqui, então o mesmo `user_id` pode aparecer em mais de um contato.
+- **Telefone: 100% aproveitado.** Todos os 2.433 têm 10 ou 11 dígitos, e
+  `phone_digits` sai com o DDI (`55` + número): 819 com 12 dígitos, 1.614 com 13.
+  É a chave que o chat usa para casar o WhatsApp.
+- **427 fotos ficam só como caminho** (`2025/11/foto_10.jpg`). O binário está no
+  filesystem da intranet antiga e nenhum PHP deste repositório escreve essa
+  coluna — o campo `photo` guarda o caminho relativo para um download futuro,
+  no mesmo espírito do `legacy_path` de `migrate-sac-files.ts`.
+- E-mails malformados (22: `zaira_gomes@brturbo.com,br`,
+  `felipe@usuario@gmail.com`, `(67) 99187-5013@uc.com`…) são **preservados como
+  estão**. Não casam com nenhum usuário e não há por que apagar o que o operador
+  cadastrou.
+
 ## Arquivos (anexos)
 
 `migrate-sac-files.ts` separa **catálogo** de **binário**:
@@ -130,6 +178,8 @@ precisa ser informado por quem conhece a infraestrutura (share SMB `//10.1.2.32/
 | `entidades` | 278 | `entities` |
 | `usuarios` | 940 | `users` |
 | `sistemas` | 112 | `projects` |
+| `responsaveis` | 2.433 | `entity_contacts` |
+| `tiposresponsavel` | 9 | `entity_contact_types` |
 
 ## Resultado da migração do chat (rodada completa, ~21 min)
 

@@ -44,122 +44,7 @@ import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
 import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
-import entityService, {entityTypeLabel} from "@/services/entity.service";
-
-
-type DadosDoEncerramento = {project_id?: string; contact?: Record<string, string>};
-
-/**
- * Encerramento do atendimento: classifica e, se preciso, cadastra o contato.
- *
- * Reproduz o que o SAC antigo fazia — escolher o sistema do suporte e cadastrar
- * quem ligou, na hora, sem sair da tela. Sem isso o atendimento fecha sem dizer
- * sobre o que era e o contato fica anônimo para sempre, porque depois ninguém
- * volta para completar.
- *
- * O sistema só é pedido quando a conversa ainda não virou solicitação: nesse
- * caso ela já carrega o projeto e perguntar de novo seria retrabalho.
- */
-function ModalDeEncerramento({
-  sessao,
-  projetos,
-  entidades,
-  onConfirmar,
-  onCancelar,
-}: {
-  sessao: any;
-  projetos: {value: string; label: string}[];
-  entidades: {value: string; label: string; descricao?: string}[];
-  onConfirmar: (dados: DadosDoEncerramento) => void;
-  onCancelar: () => void;
-}) {
-  const precisaDeProjeto = !sessao.project_id;
-  const [projeto, setProjeto] = useState("");
-  const [nome, setNome] = useState(sessao.client_name ?? "");
-  const [email, setEmail] = useState(sessao.contact_email ?? "");
-  const [entidade, setEntidade] = useState(sessao.contact_entity_id ?? "");
-
-  const confirmar = () => {
-    const contact: Record<string, string> = {};
-    if (nome.trim() && nome.trim() !== (sessao.client_name ?? "")) contact.name = nome.trim();
-    if (email.trim() && email.trim() !== (sessao.contact_email ?? "")) contact.email = email.trim();
-    if (entidade && entidade !== (sessao.contact_entity_id ?? "")) contact.entity_id = entidade;
-    onConfirmar({
-      ...(precisaDeProjeto && projeto ? {project_id: projeto} : {}),
-      ...(Object.keys(contact).length ? {contact} : {}),
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancelar}>
-      <div
-        className="w-full max-w-md rounded-xl border border-subtle bg-surface-1 p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-15 font-semibold text-primary">Encerrar atendimento</h2>
-        <p className="mt-1 text-12 text-secondary">
-          Protocolo {sessao.protocol}. O cliente recebe a mensagem de encerramento e a pesquisa de satisfação.
-        </p>
-
-        <div className="mt-4 space-y-4">
-          {precisaDeProjeto ? (
-            <div>
-              <label className="mb-1 block text-12 font-medium text-secondary">Sistema atendido</label>
-              <SelectPesquisavel
-                value={projeto}
-                onChange={setProjeto}
-                opcoes={projetos}
-                placeholder="Selecione o sistema"
-                searchPlaceholder="Buscar sistema"
-              />
-            </div>
-          ) : (
-            <p className="rounded-md border border-subtle bg-layer-1 px-3 py-2 text-12 text-secondary">
-              Já classificado como <strong className="text-primary">{sessao.project_name ?? sessao.project_identifier}</strong>.
-            </p>
-          )}
-
-          <div className="space-y-3 rounded-md border border-subtle p-3">
-            <p className="text-12 font-medium text-secondary">Cadastro do contato</p>
-            <input
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Nome de quem falou"
-              className="w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-primary"
-            />
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="E-mail (opcional)"
-              className="w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-primary"
-            />
-            <SelectPesquisavel
-              value={entidade}
-              onChange={setEntidade}
-              opcoes={entidades}
-              placeholder="Entidade (cliente)"
-              searchPlaceholder="Buscar entidade"
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onCancelar} className="rounded-md border border-subtle px-3 py-1.5 text-13 text-secondary hover:bg-layer-1">
-            Cancelar
-          </button>
-          <button
-            onClick={confirmar}
-            disabled={precisaDeProjeto && !projeto}
-            className="rounded-md bg-danger-primary px-3 py-1.5 text-13 text-on-color disabled:cursor-not-allowed disabled:opacity-50"
-            title={precisaDeProjeto && !projeto ? "Escolha o sistema atendido" : "Encerrar"}
-          >
-            Encerrar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import {ModalDeEncerramento, type DadosDoEncerramento} from "@/components/chat/modal-de-encerramento";
 
 const chatService = new ChatService();
 
@@ -564,7 +449,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [intakeProjectId, setIntakeProjectId] = useState("");
   // Encerramento: classificar o atendimento e, se faltar, cadastrar o contato.
   const [encerrando, setEncerrando] = useState(false);
-  const [entidades, setEntidades] = useState<{value: string; label: string; descricao?: string}[]>([]);
   const [search, setSearch] = useState("");
   // Which status tab is selected (always one — clear visual indication of where you are).
   const [listFilter, setListFilter] = useState<string>("active");
@@ -975,10 +859,10 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
    * Encerra de fato, com o que o atendente informou no modal.
    *
    * O sistema (projeto) diz sobre o que era o atendimento — sem ele o relatório
-   * por sistema fica cego — e o cadastro do contato aproveita o único momento em
-   * que o atendente tem a informação fresca na cabeça.
+   * por sistema fica cego — e o contato aproveita o único momento em que o
+   * atendente tem a informação fresca na cabeça.
    */
-  const encerrarAtendimento = (dados: {project_id?: string; contact?: Record<string, string>}) => {
+  const encerrarAtendimento = (dados: DadosDoEncerramento) => {
     if (!activeId) return;
     send({ type: "agent.close", session_id: activeId, ...dados });
     setSessions((prev) => prev.map((s) => (s.id === activeId ? { ...s, status: "closed" } : s)));
@@ -989,20 +873,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     if (!activeId) return;
     setEncerrando(true);
   };
-
-  // Carregadas uma vez: a lista de entidades é grande e só muda no cadastro.
-  useEffect(() => {
-    if (!encerrando || entidades.length) return;
-    void entityService.list(slug).then((lista) =>
-      setEntidades(
-        lista.map((e) => ({
-          value: e.id,
-          label: e.name,
-          descricao: [entityTypeLabel(e.entity_type), e.city].filter(Boolean).join(" · "),
-        }))
-      )
-    );
-  }, [encerrando, entidades.length, slug]);
 
   const chatUrl = activeSession
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${slug}/chat-view/${activeSession.protocol}`
@@ -1313,8 +1183,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
       {encerrando && activeSession && (
         <ModalDeEncerramento
           sessao={activeSession}
+          workspaceSlug={slug}
           projetos={(joinedProjectIds ?? []).map((pid) => ({value: pid, label: getProjectById(pid)?.name ?? pid}))}
-          entidades={entidades}
           onConfirmar={encerrarAtendimento}
           onCancelar={() => setEncerrando(false)}
         />

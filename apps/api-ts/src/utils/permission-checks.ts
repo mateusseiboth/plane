@@ -11,7 +11,7 @@ import {
   type EffectiveRole,
   type TransitionRule,
 } from "@utils/permissions";
-import {getProjectOrFail} from "@utils/workspace";
+import {getProjectOrFail, requireWorkspaceMember} from "@utils/workspace";
 
 export {roleCan, EProjectAction};
 export type {EffectiveRole};
@@ -102,4 +102,24 @@ export async function canTransition(
       r.toGroup === to.group &&
       (!r.toStateName || r.toStateName === to.name),
   );
+}
+
+/**
+ * Guarda de ação para rotas do ESPAÇO DE TRABALHO, sem projeto no caminho.
+ *
+ * `requireProjectAction` não serve para elas, e cair no nível (>= 15) seria pior
+ * ainda: neste fork Atendimento é 6, Qualidade 8 e TI 12 — o corte por nível
+ * barraria justamente quem opera. O que separa é a permissão.
+ */
+export async function requireWorkspaceAction(
+  workspaceId: string,
+  userId: string,
+  action: EProjectAction,
+): Promise<EffectiveRole> {
+  const member = await requireWorkspaceMember(workspaceId, userId);
+  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
+  if (!roleCan(role, action)) {
+    throw {status: 403, message: "Sua função não permite esta ação."};
+  }
+  return role;
 }
