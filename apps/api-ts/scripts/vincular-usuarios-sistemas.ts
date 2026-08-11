@@ -31,12 +31,26 @@ import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@prisma/client";
 import {Pool as PgPool} from "pg";
 
+/**
+ * Credencial vem só do ambiente — o docker-compose já injeta `MYSQL_*` em
+ * `sac-migrator`. Repetir a senha aqui seria mais uma cópia dela no repositório
+ * sem nenhum ganho.
+ */
+const exigir = (nome: string): string => {
+  const valor = process.env[nome];
+  if (!valor) {
+    console.error(`[vinculos] ❌  Falta a variável ${nome}. Rode pelo serviço sac-migrator ou informe MYSQL_HOST/USER/PASS/DB.`);
+    process.exit(1);
+  }
+  return valor;
+};
+
 const MYSQL_CONFIG = {
-  host: process.env.MYSQL_HOST ?? "10.1.2.32",
+  host: exigir("MYSQL_HOST"),
   port: Number(process.env.MYSQL_PORT ?? 3306),
-  user: process.env.MYSQL_USER ?? "developer",
-  password: process.env.MYSQL_PASS ?? "qualitydev",
-  database: process.env.MYSQL_DB ?? "quality_site_dev",
+  user: exigir("MYSQL_USER"),
+  password: exigir("MYSQL_PASS"),
+  database: exigir("MYSQL_DB"),
   ssl: false as const,
 };
 
