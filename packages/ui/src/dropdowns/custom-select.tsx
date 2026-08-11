@@ -173,10 +173,12 @@ function CustomSelect(props: ICustomSelectProps) {
           createPortal(
             <Combobox.Options data-prevent-outside-click>
               <div
-                // Portal no body: precisa passar por cima de modal (z-50),
-                // senão o select abre atrás da janela que o contém.
+                // Portal no body: precisa passar por cima do modal, que é
+                // `fixed isolate z-100` (packages/propel/src/dialog/root.tsx).
+                // Com z menor o dropdown abre, fica no DOM e visível — mas
+                // pintado ATRÁS da janela, e o clique parece não fazer nada.
                 className={cn(
-                  "z-[60] my-1 min-w-48 overflow-y-scroll rounded-md border-[0.5px] border-subtle-1 bg-surface-1 px-2 py-2.5 text-11 whitespace-nowrap focus:outline-none",
+                  "z-110 my-1 min-w-48 overflow-y-scroll rounded-md border-[0.5px] border-subtle-1 bg-surface-1 px-2 py-2.5 text-11 whitespace-nowrap focus:outline-none",
                   optionsClassName
                 )}
                 ref={setPopperElement}

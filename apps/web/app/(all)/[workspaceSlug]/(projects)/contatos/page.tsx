@@ -5,7 +5,9 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Contact, Pencil, Plus, Search, ToggleLeft, ToggleRight } from "lucide-react";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
+import { Tooltip } from "@plane/propel/tooltip";
 import type { TEntityContact } from "@plane/types";
+import { cn } from "@plane/utils";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { PageHead } from "@/components/core/page-title";
@@ -50,6 +52,23 @@ function SituacaoBadge({ ativo }: { ativo: boolean }) {
 const POR_PAGINA = 50;
 
 /**
+ * Célula de uma linha só. Nome de contato e razão social de órgão são longos
+ * ("SERVICO AUTONOMO DE AGUA E ESGOTO DE BANDEIRANTES") — deixá-los quebrar
+ * fazia a linha crescer e empurrava Situação e Ações para fora da tela. Corta
+ * com reticências e mostra o texto inteiro ao passar o mouse.
+ */
+function CelulaTruncada({ texto, className }: { texto?: string | null; className?: string }) {
+  if (!texto) return <td className={cn("px-4 py-2.5 text-secondary-text", className)}>—</td>;
+  return (
+    <td className={cn("px-4 py-2.5 text-secondary-text", className)}>
+      <Tooltip tooltipContent={texto} position="top">
+        <span className="block truncate">{texto}</span>
+      </Tooltip>
+    </td>
+  );
+}
+
+/**
  * Memoizada de propósito: sem isso, abrir um dropdown do filtro re-renderiza
  * todas as linhas da página — foi o que travava a tela com a lista inteira.
  */
@@ -65,11 +84,11 @@ const LinhaDeContato = memo(function LinhaDeContato({
   const ativo = contact.is_active !== false;
   return (
     <tr className="transition-colors hover:bg-surface-2">
-      <td className="px-4 py-2.5 font-medium text-primary">{contact.name}</td>
-      <td className="px-4 py-2.5 text-secondary-text">{contact.type_name || "—"}</td>
-      <td className="px-4 py-2.5 text-secondary-text">{contact.entity_name || "—"}</td>
-      <td className="px-4 py-2.5 text-secondary-text">{contact.phone || "—"}</td>
-      <td className="px-4 py-2.5 text-secondary-text">{contact.email || "—"}</td>
+      <CelulaTruncada texto={contact.name} className="font-medium text-primary" />
+      <CelulaTruncada texto={contact.type_name} />
+      <CelulaTruncada texto={contact.entity_name} />
+      <CelulaTruncada texto={contact.phone} />
+      <CelulaTruncada texto={contact.email} />
       <td className="px-4 py-2.5">
         <SituacaoBadge ativo={ativo} />
       </td>
@@ -182,7 +201,7 @@ function ContatosPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-b border-subtle px-6 py-3">
-        <div className="flex min-w-[220px] flex-1 items-center gap-1.5 rounded-md border border-subtle bg-surface-2 px-2.5 py-1.5">
+        <div className="flex min-w-55 flex-1 items-center gap-1.5 rounded-md border border-subtle bg-surface-2 px-2.5 py-1.5">
           <Search className="h-3.5 w-3.5 text-secondary-text" />
           <input
             className="w-full border-none bg-transparent text-xs text-primary outline-none placeholder:text-secondary-text"
@@ -243,17 +262,19 @@ function ContatosPage() {
         )}
 
         {!error && contacts.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-subtle">
-            <table className="w-full text-xs">
+          {/* `table-fixed` é o que segura as larguras: sem ele o navegador dá à
+              coluna Nome o espaço do maior texto e o resto sai da tela. */}
+          <div className="overflow-x-auto rounded-lg border border-subtle">
+            <table className="w-full min-w-225 table-fixed text-xs">
               <thead className="bg-surface-2 text-secondary-text">
                 <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">Nome</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Tipo</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Entidade</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Telefone</th>
-                  <th className="px-4 py-2.5 text-left font-medium">E-mail</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Situação</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Ações</th>
+                  <th className="w-[22%] px-4 py-2.5 text-left font-medium">Nome</th>
+                  <th className="w-[14%] px-4 py-2.5 text-left font-medium">Tipo</th>
+                  <th className="w-[24%] px-4 py-2.5 text-left font-medium">Entidade</th>
+                  <th className="w-[12%] px-4 py-2.5 text-left font-medium">Telefone</th>
+                  <th className="w-[18%] px-4 py-2.5 text-left font-medium">E-mail</th>
+                  <th className="w-[6%] px-4 py-2.5 text-left font-medium">Situação</th>
+                  <th className="w-[4%] px-4 py-2.5 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle">
