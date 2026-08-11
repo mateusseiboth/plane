@@ -262,9 +262,9 @@ function ContatosPage() {
         )}
 
         {!error && contacts.length > 0 && (
-          {/* `table-fixed` é o que segura as larguras: sem ele o navegador dá à
-              coluna Nome o espaço do maior texto e o resto sai da tela. */}
           <div className="overflow-x-auto rounded-lg border border-subtle">
+            {/* `table-fixed` é o que segura as larguras: sem ele o navegador dá
+                à coluna Nome o espaço do maior texto e o resto sai da tela. */}
             <table className="w-full min-w-225 table-fixed text-xs">
               <thead className="bg-surface-2 text-secondary-text">
                 <tr>
