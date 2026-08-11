@@ -91,17 +91,17 @@ export const STATE_DISTRIBUTION = {
 export const PROGRESS_STATE_GROUPS_DETAILS = [
   {
     key: "completed_issues",
-    title: "Completed",
+    title: "Concluídos",
     color: "#16A34A",
   },
   {
     key: "started_issues",
-    title: "Started",
+    title: "Em andamento",
     color: "#F59E0B",
   },
   {
     key: "unstarted_issues",
-    title: "Unstarted",
+    title: "Não iniciados",
     color: "#3A3A3A",
   },
   {

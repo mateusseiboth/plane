@@ -1284,6 +1284,136 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── User issue properties (filters) ─────────────────────────────────────────
 
+  /**
+   * Busca das menções e dos seletores do editor (`@` e `#`).
+   *
+   * Ficou de fora da migração para TypeScript: o frontend chamava
+   * `/entity-search/` e levava 404, então digitar "@carlos" só dizia "No
+   * results". Uma consulta por tipo pedido, cada uma limitada por `count`.
+   *
+   * As pessoas vêm dos membros do PROJETO quando `project_id` é informado —
+   * mencionar quem não participa do sistema só geraria notificação inútil.
+   */
+  .get("/:slug/entity-search/", async ({params: {slug}, query, user}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+
+    const q = String((query as any).query ?? "").trim();
+    const limite = Math.min(Number((query as any).count ?? 5) || 5, 25);
+    const projectId = ((query as any).project_id as string | undefined) || undefined;
+    const tipos = String((query as any).query_type ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const contem = q ? {contains: q, mode: "insensitive" as const} : undefined;
+
+    const projetosVisiveis = async (): Promise<string[]> =>
+      (
+        await prisma.projectMember.findMany({
+          where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
+          select: {projectId: true},
+        })
+      ).map((m) => m.projectId);
+
+    const BUSCA: Record<string, () => Promise<unknown[]>> = {
+      user_mention: async () => {
+        const membros = await prisma.projectMember.findMany({
+          where: {
+            workspaceId: ws.id,
+            isActive: true,
+            deletedAt: null,
+            ...(projectId ? {projectId} : {}),
+            member: {isActive: true, ...(contem ? {OR: [{displayName: contem}, {email: contem}]} : {})},
+          },
+          include: {member: {select: {id: true, displayName: true, avatarUrl: true}}},
+          take: limite,
+          distinct: ["memberId"],
+        });
+        return membros.map((m) => ({
+          member__id: m.member.id,
+          member__display_name: m.member.displayName,
+          member__avatar_url: m.member.avatarUrl ?? "",
+        }));
+      },
+
+      project: async () => {
+        const projetos = await prisma.project.findMany({
+          where: {workspaceId: ws.id, deletedAt: null, id: {in: await projetosVisiveis()}, ...(contem ? {name: contem} : {})},
+          select: {id: true, name: true, identifier: true, emoji: true},
+          take: limite,
+        });
+        return projetos.map((p) => ({
+          id: p.id, name: p.name, identifier: p.identifier,
+          logo_props: p.emoji ? {in_use: "emoji", emoji: {value: p.emoji}} : null,
+          workspace__slug: slug,
+        }));
+      },
+
+      issue: async () => {
+        const chamados = await prisma.issue.findMany({
+          where: {
+            workspaceId: ws.id,
+            deletedAt: null,
+            isDraft: false,
+            projectId: projectId ?? {in: await projetosVisiveis()},
+            ...(contem ? {name: contem} : {}),
+          },
+          select: {
+            id: true, name: true, sequenceId: true, projectId: true, priority: true, stateId: true,
+            project: {select: {identifier: true}},
+          },
+          orderBy: {updatedAt: "desc"},
+          take: limite,
+        });
+        return chamados.map((i) => ({
+          id: i.id, name: i.name, sequence_id: i.sequenceId, project_id: i.projectId,
+          project__identifier: i.project?.identifier ?? "", priority: i.priority, state_id: i.stateId, type_id: null,
+        }));
+      },
+
+      cycle: async () => {
+        const ciclos = await prisma.cycle.findMany({
+          where: {workspaceId: ws.id, deletedAt: null, projectId: projectId ?? {in: await projetosVisiveis()}, ...(contem ? {name: contem} : {})},
+          select: {id: true, name: true, projectId: true, project: {select: {identifier: true}}},
+          take: limite,
+        });
+        return ciclos.map((c) => ({
+          id: c.id, name: c.name, project_id: c.projectId, project__identifier: c.project?.identifier ?? "",
+          status: null, workspace__slug: slug,
+        }));
+      },
+
+      module: async () => {
+        const modulos = await prisma.module.findMany({
+          where: {workspaceId: ws.id, deletedAt: null, projectId: projectId ?? {in: await projetosVisiveis()}, ...(contem ? {name: contem} : {})},
+          select: {id: true, name: true, projectId: true, status: true, project: {select: {identifier: true}}},
+          take: limite,
+        });
+        return modulos.map((m) => ({
+          id: m.id, name: m.name, project_id: m.projectId, project__identifier: m.project?.identifier ?? "",
+          status: m.status, workspace__slug: slug,
+        }));
+      },
+
+      page: async () => {
+        const paginas = await prisma.page.findMany({
+          where: {workspaceId: ws.id, deletedAt: null, ...(contem ? {name: contem} : {})},
+          select: {id: true, name: true},
+          take: limite,
+        });
+        return paginas.map((p) => ({id: p.id, name: p.name, logo_props: null, projects__id: [], workspace__slug: slug}));
+      },
+    };
+
+    const resposta: Record<string, unknown[]> = {};
+    for (const tipo of tipos) {
+      const busca = BUSCA[tipo];
+      if (!busca) continue;
+      resposta[tipo] = await busca().catch((e) => {
+        console.error(`[entity-search] falhou para "${tipo}"`, e);
+        return [];
+      });
+    }
+    return resposta;
+  })
+
   .get("/:slug/user-properties/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
