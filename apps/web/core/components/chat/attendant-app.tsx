@@ -678,20 +678,10 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const avisoDoSistemaIndisponivel =
     typeof window !== "undefined" && typeof Notification !== "undefined" && !window.isSecureContext;
 
-  /**
-   * Enquanto isso, o contador vai para o TÍTULO da aba.
-   *
-   * É o único canal que sobra quando a notificação do sistema está bloqueada:
-   * aparece na aba e na barra de tarefas mesmo com a janela atrás de outra.
-   */
-  const naoLidas = sessions.reduce((total, s) => total + (s.unread ?? 0), 0);
-  useEffect(() => {
-    const original = document.title.replace(/^\(\d+\)\s*/, "");
-    document.title = naoLidas > 0 ? `(${naoLidas}) ${original}` : original;
-    return () => {
-      document.title = original;
-    };
-  }, [naoLidas]);
+  // Sem contador no título: a soma pegava as não-lidas de TODAS as conversas
+  // devolvidas — inclusive as ~200 encerradas, que nunca tiveram marca de
+  // leitura — e mostrava coisas como "(2261) Atendimento". Com HTTPS a
+  // notificação do navegador funciona, que era o motivo de existir o contador.
 
   // Load config + connect the single attendant WebSocket.
   useEffect(() => {
