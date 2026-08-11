@@ -3,6 +3,7 @@
  * ver .claude/CONTRATO_RESPONSAVEIS.md.
  */
 import {describe, it, expect, beforeAll, afterAll} from "bun:test";
+import prisma from "@db";
 import {cleanDb} from "@tests/helpers/setup";
 import {
   createApiToken,
@@ -542,5 +543,90 @@ describe("TestTechnicalVisitContacts", () => {
 
     const detalhe = (await (await client.get(`${visitas()}${criada.id}/`)).json()) as any;
     expect(detalhe.contact_records.map((c: any) => c.id)).toEqual([contatoA]);
+  });
+});
+
+describe("TestEntityContactTelefone", () => {
+  let client: ReturnType<typeof apiClient>;
+  let wsSlug: string;
+  let wsId: string;
+
+  const criar = (phone: string) =>
+    client.post(`/workspaces/${wsSlug}/entity-contacts/`, {name: "Fulano", phone});
+
+  beforeAll(async () => {
+    await cleanDb();
+    const dono = await createUser();
+    const ws = await createWorkspace(dono.id);
+    wsSlug = ws.slug;
+    wsId = ws.id;
+    client = apiClient((await createApiToken(dono.id)).token);
+  });
+
+  afterAll(() => cleanDb());
+
+  it("aceita celular com máscara e deriva o DDI", async () => {
+    const res = await criar("(67) 99999-0000");
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as any).phone_digits).toBe("5567999990000");
+  });
+
+  it("aceita fixo de 10 dígitos", async () => {
+    expect((await criar("6733210000")).status).toBe(201);
+  });
+
+  it("aceita número que já vem com DDI (é assim que o chat cadastra)", async () => {
+    const res = await criar("5567999991111");
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as any).phone_digits).toBe("5567999991111");
+  });
+
+  it("recusa dígitos infinitos", async () => {
+    // O SAC guardava texto livre; era possível digitar sem fim.
+    expect((await criar("6799999000012345678")).status).toBe(400);
+  });
+
+  it("recusa número curto demais", async () => {
+    expect((await criar("99999")).status).toBe(400);
+  });
+
+  it("recusa celular de 11 dígitos que não começa com 9", async () => {
+    expect((await criar("67199990000")).status).toBe(400);
+  });
+
+  it("recusa DDD começando com zero", async () => {
+    expect((await criar("0733210000")).status).toBe(400);
+  });
+
+  it("telefone vazio continua válido: o campo é opcional", async () => {
+    expect((await client.post(`/workspaces/${wsSlug}/entity-contacts/`, {name: "Sem Telefone"})).status).toBe(201);
+    const res = await criar("");
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as any).phone_digits).toBeNull();
+  });
+
+  it("contato legado com número irregular continua editável", async () => {
+    // A base do SAC tem 77 celulares de 11 dígitos sem o 9 e 76 com DDD zerado.
+    // Abrir um desses só para corrigir o nome não pode falhar por causa do
+    // telefone que ninguém tocou.
+    const legado = await prisma.entityContact.create({
+      data: {workspaceId: wsId, name: "Legado", phone: "67188887777", phoneDigits: "5567188887777"},
+    });
+    const res = await client.patch(`/workspaces/${wsSlug}/entity-contacts/${legado.id}/`, {
+      name: "Legado Renomeado",
+      phone: "67188887777",
+    });
+    expect(res.status).toBe(200);
+
+    // Mas trocar o número exige a regra atual.
+    expect(
+      (await client.patch(`/workspaces/${wsSlug}/entity-contacts/${legado.id}/`, {phone: "67188886666"})).status
+    ).toBe(400);
+  });
+
+  it("a validação também vale para a edição", async () => {
+    const criado = (await criar("(67) 99999-2222")).json() as any;
+    const {id} = await criado;
+    expect((await client.patch(`/workspaces/${wsSlug}/entity-contacts/${id}/`, {phone: "123"})).status).toBe(400);
   });
 });

@@ -49,6 +49,43 @@ export function derivarPhoneDigits(phone: unknown): string | null {
   return digitos;
 }
 
+/** Parte nacional do número: sem o 55, quando o que sobra ainda faz sentido. */
+function semDdi(digitos: string) {
+  const cortado = digitos.startsWith("55") ? digitos.slice(2) : digitos;
+  return cortado.length === 10 || cortado.length === 11 ? cortado : digitos;
+}
+
+/**
+ * O telefone é a chave que o chat usa para reconhecer quem chegou pelo
+ * WhatsApp: guardar lixo aqui faz o cliente virar um desconhecido a cada
+ * conversa. O SAC aceitava texto livre e recebeu de tudo — a partir daqui,
+ * não. Vale para todo mundo que escreve (tela, chat, mobile, script), não só
+ * para o formulário. Vazio continua válido: o campo é opcional.
+ *
+ * As duas regras finas (nono dígito, DDD sem zero) só valem para número NOVO.
+ * A base importada tem 77 celulares sem o 9 e 76 com DDD zerado; aplicá-las ao
+ * que já está gravado impediria de abrir um contato antigo só para corrigir o
+ * nome. Número que não mudou passa; número que mudou entra na regra atual.
+ */
+function exigirTelefoneValido(phone: unknown, anterior?: string | null) {
+  if (phone === null || phone === undefined || phone === "") return;
+  const bruto = somenteDigitos(typeof phone === "string" ? phone : "");
+  if (!bruto) return;
+  const nacional = semDdi(bruto);
+  const erro = (message: string) => {
+    throw {status: 400, message};
+  };
+  // Tamanho vale sempre: é o que impede a digitação sem fim.
+  if (nacional.length !== 10 && nacional.length !== 11)
+    erro("Telefone deve ter 10 ou 11 dígitos, com DDD.");
+
+  const inalterado = anterior !== undefined && semDdi(somenteDigitos(anterior ?? "")) === nacional;
+  if (inalterado) return;
+  if (nacional.length === 11 && nacional[2] !== "9")
+    erro("Celular com 11 dígitos precisa começar com 9 depois do DDD.");
+  if (nacional[0] === "0") erro("DDD inválido.");
+}
+
 function normalizarUuid(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   const limpo = valor.trim();
@@ -142,7 +179,7 @@ const CAMPOS_UUID: Record<string, string> = {
 };
 
 /** Só transporta o que o corpo trouxe: no PATCH, campo ausente é campo intocado. */
-function dadosDoCorpo(b: any) {
+function dadosDoCorpo(b: any, telefoneAnterior?: string | null) {
   const data: any = {};
   for (const [entrada, coluna] of Object.entries(CAMPOS_SIMPLES)) {
     if (b[entrada] !== undefined) data[coluna] = b[entrada];
@@ -151,6 +188,7 @@ function dadosDoCorpo(b: any) {
     if (b[entrada] !== undefined) data[coluna] = normalizarUuid(b[entrada]);
   }
   if (b.phone !== undefined) {
+    exigirTelefoneValido(b.phone, telefoneAnterior);
     data.phone = b.phone || null;
     data.phoneDigits = derivarPhoneDigits(b.phone);
   }
@@ -320,7 +358,7 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       set.status = 404;
       return {detail: "Não encontrado."};
     }
-    const data = dadosDoCorpo(b);
+    const data = dadosDoCorpo(b, antes.phone);
     if (data.name !== undefined) data.name = String(data.name).trim();
     await validarReferencias(ws.id, data);
     const contato = await prisma.entityContact.update({

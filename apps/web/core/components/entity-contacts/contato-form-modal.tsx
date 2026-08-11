@@ -19,7 +19,7 @@ import { useEntityContactTypes } from "@/hooks/use-entity-contacts";
 // services
 import entityContactService, { type TEntityContactPayload } from "@/services/entity-contact.service";
 // local imports
-import { mensagemDeErro, paraCampoDeData } from "./helpers";
+import { mascararTelefone, mensagemDeErro, paraCampoDeData, telefoneInvalido } from "./helpers";
 
 type TFormulario = {
   name: string;
@@ -127,7 +127,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
     setForm({
       ...inicial,
       name: nomeInicial || inicial.name,
-      phone: telefoneInicial || inicial.phone,
+      phone: mascararTelefone(telefoneInicial || inicial.phone),
     });
   }, [open, contact, entityId, nomeInicial, telefoneInicial]);
 
@@ -137,6 +137,11 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
   const salvar = async () => {
     if (!form.name.trim()) {
       setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "O nome é obrigatório." });
+      return;
+    }
+    const erroDeTelefone = telefoneInvalido(form.phone);
+    if (erroDeTelefone) {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Telefone inválido", message: erroDeTelefone });
       return;
     }
     setSalvando(true);
@@ -236,10 +241,17 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                 <label className={rotulo}>Telefone</label>
                 <input
                   value={form.phone}
-                  onChange={(e) => alterar("phone", e.target.value)}
+                  onChange={(e) => alterar("phone", mascararTelefone(e.target.value))}
                   className={campoTexto}
                   placeholder="(67) 99999-0000"
+                  inputMode="tel"
+                  // 15 = "(67) 99999-0000". A máscara já corta em 11 dígitos;
+                  // isto só impede a colagem de um texto enorme.
+                  maxLength={15}
                 />
+                {telefoneInvalido(form.phone) && (
+                  <p className="mt-1 text-11 text-danger-text">{telefoneInvalido(form.phone)}</p>
+                )}
               </div>
             </div>
 
