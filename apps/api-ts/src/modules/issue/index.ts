@@ -14,6 +14,7 @@ import {
   roleCan,
 } from "@utils/permission-checks";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
+import {notifyStateChange} from "@utils/notifications";
 import {publishRealtime} from "@utils/realtime";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, clientIp, recordAudit} from "@utils/audit";
 import {nextSequenceId} from "@utils/sequence";
@@ -459,6 +460,20 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       // H4: when completed/cancelled, replicate comments+activities to linked intakes
       if (targetState && (targetState.group === "completed" || targetState.group === "cancelled")) {
         await replicateToLinkedIntakes(issue_id, targetState.group as "completed" | "cancelled");
+      }
+
+      // Andou de etapa: avisa quem tem de agir agora. Falhar aqui não pode
+      // desfazer a movimentação — o chamado já mudou de lugar.
+      if (targetState && before.state?.name && before.state.name !== targetState.name) {
+        await notifyStateChange({
+          workspaceId: ws.id,
+          projectId: project_id,
+          issueId: issue_id,
+          actorId: user.id,
+          issueName: before.name,
+          fromState: before.state.name,
+          toState: targetState.name,
+        }).catch((e) => console.error("[notifyStateChange]", e));
       }
     }
 
