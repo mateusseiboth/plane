@@ -22,6 +22,15 @@ const DEFAULT_USER_PASSWORD = process.env.DEFAULT_PASSWORD ?? "teste";
 const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "quality";
 const WORKSPACE_NAME = process.env.WORKSPACE_NAME ?? "Quality Workspace";
 /**
+ * Fuso do espaço de trabalho.
+ *
+ * Vale para o horário de atendimento e para as datas na tela. Estava cravado
+ * como "America/Sao_Paulo", uma hora à frente de Mato Grosso do Sul: quando o
+ * banco foi recriado, o valor que o administrador tinha escolhido se perdeu e
+ * voltou errado, sem aviso.
+ */
+const WORKSPACE_TIMEZONE = process.env.WORKSPACE_TIMEZONE ?? "America/Campo_Grande";
+/**
  * Administradores da instância além do `ADMIN_EMAIL`. Entram como admin do
  * espaço de trabalho e mantêm a senha que já tiverem — o seeder roda a cada
  * `docker compose up` e não pode reverter a senha de ninguém.
@@ -151,7 +160,7 @@ async function main() {
       data: {
         name: WORKSPACE_NAME,
         slug: WORKSPACE_SLUG,
-        timezone: "America/Sao_Paulo",
+        timezone: WORKSPACE_TIMEZONE,
       },
     });
     log(`✅  Workspace created: ${WORKSPACE_NAME} (${WORKSPACE_SLUG})`);
