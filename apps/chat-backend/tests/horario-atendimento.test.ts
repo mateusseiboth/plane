@@ -17,7 +17,8 @@ async function comRelogio(instanteISO: string, fuso: string, config: Record<stri
   // @ts-expect-error — substituição controlada do relógio, desfeita no afterEach
   globalThis.Date = class extends Original {
     constructor(...args: any[]) {
-      super(...(args.length ? (args as []) : [instanteISO]));
+      // @ts-expect-error — repasse dinâmico para o Date original
+      super(...(args.length ? args : [instanteISO]));
     }
     static now() {
       return new Original(instanteISO).getTime();

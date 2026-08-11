@@ -25,6 +25,7 @@ model Contact {
   name        String?
   phone       String? // E.164 for WhatsApp contacts
   email       String?
+  entityId  String?  @map("entity_id") @db.Uuid
   extra       Json          @default("{}")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
@@ -196,6 +197,7 @@ model BotConfig {
   idlePromptMessage    String   @default("Você ainda precisa de ajuda?") @map("idle_prompt_message")
   idleCloseMessage     String   @default("Atendimento encerrado por inatividade. Protocolo: {protocol}") @map("idle_close_message")
   closedMessage        String   @default("Atendimento encerrado. Protocolo: {protocol}") @map("closed_message")
+  assumedMessage       String   @default("{attendant} entrou no atendimento e vai te ajudar a partir de agora.") @map("assumed_message")
   outsideHoursMessage  String   @default("Estamos fora do horário de atendimento no momento. Retornaremos assim que possível.") @map("outside_hours_message")
   // Company-wide business hours / breaks (not per-attendant):
   //   businessHours: [{ weekday: 0-6, start: "HH:MM", end: "HH:MM" }]

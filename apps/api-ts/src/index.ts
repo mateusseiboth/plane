@@ -211,6 +211,17 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
 // socket — assim os testes podem importar `app` e chamar `app.handle(request)`
 // no MESMO processo, o que faz `src/modules/*` entrar na medição de cobertura
 // (via HTTP contra outro processo, os handlers rodam mas não são medidos).
+/**
+ * Mesma blindagem do chat: uma rejeição não capturada encerra o processo no Bun
+ * e leva a API inteira junto. Registra com contexto e segue no ar — a causa se
+ * corrige onde ela está, não derrubando todo mundo.
+ */
+for (const evento of ["unhandledRejection", "uncaughtException"] as const) {
+  process.on(evento, (erro: unknown) => {
+    console.error(`[${evento}] a API seguiu no ar apesar de:`, erro);
+  });
+}
+
 export const app = new Elysia().use(authApp).use(apiApp);
 
 if (import.meta.main) {

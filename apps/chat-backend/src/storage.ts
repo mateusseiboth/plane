@@ -3,7 +3,7 @@
 // Plane api-ts utils/storage.ts but configured via env (this service is infra).
 
 import { existsSync, mkdirSync } from "fs";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 
 const MEDIA_ROOT = process.env.CHAT_MEDIA_ROOT || path.join(process.cwd(), "media");
@@ -75,8 +75,10 @@ export async function serveMedia(key: string, mime?: string | null): Promise<Res
   }
   const fp = path.join(MEDIA_ROOT, key);
   if (!existsSync(fp)) return null;
-  const buf = await readFile(fp);
-  return new Response(buf, {
+  // `Bun.file` transmite direto do disco. Ler com `readFile` carregava o anexo
+  // inteiro na memória antes de responder — e o `Buffer` resultante nem é aceito
+  // como corpo de Response na tipagem atual.
+  return new Response(Bun.file(fp), {
     headers: { "Content-Type": mime ?? "application/octet-stream", "Cache-Control": "public, max-age=31536000" },
   });
 }

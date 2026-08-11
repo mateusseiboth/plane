@@ -43,6 +43,8 @@ function serializeSession(s: any) {
     workspace_id: s.workspaceId,
     contact_id: s.contactId ?? null,
     client_name: s.clientName ?? s.contact?.name ?? null,
+    contact_email: s.contact?.email ?? null,
+    contact_entity_id: s.contact?.entityId ?? null,
     client_phone: s.clientPhone ?? null,
     status: s.status,
     queue_id: s.queueId ?? null,
@@ -86,10 +88,18 @@ async function resolveProject(
 }
 
 async function closeSession(sessionId: string, closedById?: string | null) {
-  const s = await prisma.chatSession.update({
+  // A sessão pode ter sumido entre o agendamento do fechamento e a execução —
+  // timer de inatividade que dispara depois de o registro ser removido, por
+  // exemplo. `update` lança P2025 nesse caso e, sem tratamento, a rejeição não
+  // capturada derruba o processo: uma conversa faltando tirava o chat do ar
+  // para todo mundo. `updateMany` não lança; zero linhas é só um encerramento
+  // que não tem mais o que encerrar.
+  const alteradas = await prisma.chatSession.updateMany({
     where: { id: sessionId },
     data: { status: "closed", closedAt: new Date(), closedById: closedById ?? null },
   });
+  if (alteradas.count === 0) return null;
+  const s = await prisma.chatSession.findUniqueOrThrow({ where: { id: sessionId } });
   sendToSession(sessionId, { type: "session.closed", session_id: sessionId, protocol: s.protocol });
   sendToWorkspace(s.workspaceId, { type: "session.activity", session_id: sessionId });
   recordChatAudit({
@@ -234,11 +244,52 @@ async function onWsMessage(
     return;
   }
   if (type === "agent.close" && sessionId) {
-    return void closeSession(sessionId, ctx.userId);
+    // O encerramento pode trazer a classificação e o cadastro feitos na hora:
+    // para qual sistema era o suporte e os dados do contato. Grava antes de
+    // fechar, senão a mensagem de encerramento sai antes de o dado existir.
+    return void (async () => {
+      try {
+        if (msg.project_id) {
+          await prisma.chatSession.updateMany({ where: { id: sessionId }, data: { projectId: msg.project_id } });
+        }
+        const contato = msg.contact as {name?: string; email?: string; entity_id?: string} | undefined;
+        if (contato) {
+          const sessao = await prisma.chatSession.findUnique({ where: { id: sessionId }, select: { contactId: true } });
+          if (sessao?.contactId) {
+            await prisma.contact.update({
+              where: { id: sessao.contactId },
+              data: {
+                ...(contato.name ? { name: contato.name } : {}),
+                ...(contato.email ? { email: contato.email } : {}),
+                ...(contato.entity_id ? { entityId: contato.entity_id } : {}),
+              },
+            });
+          }
+        }
+      } catch (e) {
+        console.error("[agent.close] falha ao gravar classificação/cadastro", e);
+      }
+      await closeSession(sessionId, ctx.userId);
+    })();
   }
 }
 
 // ── App ─────────────────────────────────────────────────────────────────────────
+/**
+ * Uma falha solta não pode derrubar o atendimento inteiro.
+ *
+ * O Bun encerra o processo numa rejeição não capturada. Bastou um timer tentar
+ * encerrar uma sessão que já não existia para o chat sair do ar para todo mundo
+ * — 502 em cima de conversas em andamento. Aqui o erro é registrado com o
+ * contexto e o servidor continua de pé; a causa específica se corrige onde ela
+ * está, mas o processo não morre por causa dela.
+ */
+for (const evento of ["unhandledRejection", "uncaughtException"] as const) {
+  process.on(evento, (erro: unknown) => {
+    console.error(`[${evento}] o chat seguiu no ar apesar de:`, erro);
+  });
+}
+
 const app = new Elysia()
   .use(cors({ origin: true, credentials: true }))
   .onError(({ error, set }) => {

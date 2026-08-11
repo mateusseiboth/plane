@@ -7,6 +7,7 @@
 
 import prisma from "@db";
 import { availableAttendants, isWithinBusinessHours } from "@/presence";
+import { deliverOutbound } from "@/outbound";
 import { persistAndBroadcast, sendToSession, sendToUser, sendToWorkspace } from "@/messages";
 import { connectedUserIds } from "@/ws/hub";
 import { attendantName } from "@/users";
@@ -20,6 +21,12 @@ import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
  * routing, manual "Assumir", direct native route, transfer notwithstanding).
  */
 export async function assignSessionToAttendant(sessionId: string, userId: string) {
+  const anterior = await prisma.chatSession.findUnique({ where: { id: sessionId } });
+  if (!anterior) return null;
+  // Reassumir a mesma conversa não avisa o cliente de novo: um duplo clique no
+  // "Assumir" mandaria duas vezes a mesma frase para o WhatsApp dele.
+  const jaEraMinha = anterior.assignedAttendantId === userId && anterior.status === "active";
+
   const session = await prisma.chatSession.update({
     where: { id: sessionId },
     data: { assignedAttendantId: userId, status: "active" },
@@ -28,7 +35,20 @@ export async function assignSessionToAttendant(sessionId: string, userId: string
   sendToUser(userId, { type: "session.assigned", session_id: sessionId });
   sendToSession(sessionId, { type: "session.assigned", session_id: sessionId, attendant_id: userId });
   sendToWorkspace(session.workspaceId, { type: "session.activity", session_id: sessionId });
-  await persistAndBroadcast({ sessionId, sender: "system", type: "event", text: `${name} iniciou o atendimento.` });
+
+  if (!jaEraMinha) {
+    await persistAndBroadcast({ sessionId, sender: "system", type: "event", text: `${name} iniciou o atendimento.` });
+    // O evento acima é interno: quem está no WhatsApp não recebe nada e fica sem
+    // saber se tem alguém do outro lado. Esta é a mensagem que chega ao cliente.
+    const cfg = await prisma.botConfig.findUnique({ where: { workspaceId: session.workspaceId } });
+    const aviso = (cfg?.assumedMessage ?? "{attendant} entrou no atendimento e vai te ajudar a partir de agora.").replace(
+      "{attendant}",
+      name
+    );
+    await deliverOutbound(session as any, { sender: "system", type: "event", text: aviso }).catch((e) =>
+      console.error("[aviso de atendente assumido]", e)
+    );
+  }
   // LGPD: a partir daqui este atendente passa a ter acesso ao conteúdo da conversa.
   recordChatAudit({
     workspaceSlug: session.workspaceId,
