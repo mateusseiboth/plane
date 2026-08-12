@@ -55,6 +55,28 @@ export async function requireProjectAction(
 }
 
 /**
+ * Variante de `requireProjectAction` para quando mais de uma permissão serve.
+ *
+ * "Quem pode abrir chamado" não é uma permissão só neste fork: Atendimento abre
+ * pela triagem (`intake.create`) e os demais papéis abrem o item direto
+ * (`issue.create`). Exigir uma delas sozinha deixaria de fora justamente metade
+ * de quem escreve chamado.
+ */
+export async function requireProjectAnyAction(
+  workspaceId: string,
+  projectId: string,
+  userId: string,
+  actions: EProjectAction[],
+): Promise<{project: any; member: any; role: EffectiveRole}> {
+  const {project, member} = await getProjectOrFail(workspaceId, projectId, userId);
+  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
+  if (!actions.some((action) => roleCan(role, action))) {
+    throw {status: 403, message: "Sua função não permite esta ação."};
+  }
+  return {project, member, role};
+}
+
+/**
  * Guard for mutating a single record the caller may only own (comments,
  * attachments, work items). Passes when the role holds `allAction`, or holds
  * `ownAction` and is the record's author.

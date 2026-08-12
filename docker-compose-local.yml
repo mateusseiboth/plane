@@ -100,6 +100,17 @@ services:
       NODE_ENV: development
       CORS_ALLOWED_ORIGINS: http://localhost,http://localhost:80,http://localhost:3000
       JWT_SECRET: ${SECRET_KEY:-plane-jwt-secret}
+      # IA de levantamento de requisitos ("texto fantasma"). Sem URL o recurso
+      # fica desligado e escrever chamado segue igual. A credencial nunca vai
+      # para o navegador: fica só aqui. Detalhes em .claude/DEPLOY.md.
+      IA_REQUISITOS_URL: ${IA_REQUISITOS_URL:-}
+      IA_REQUISITOS_FORMATO: ${IA_REQUISITOS_FORMATO:-aviao}
+      IA_REQUISITOS_CHAVE: ${IA_REQUISITOS_CHAVE:-}
+      IA_REQUISITOS_MODELO: ${IA_REQUISITOS_MODELO:-}
+      IA_REQUISITOS_TIMEOUT_MS: ${IA_REQUISITOS_TIMEOUT_MS:-2000}
+      IA_REQUISITOS_ENABLED: ${IA_REQUISITOS_ENABLED:-true}
+      IA_REQUISITOS_OCR_URL: ${IA_REQUISITOS_OCR_URL:-}
+      IA_REQUISITOS_OCR_TIMEOUT_MS: ${IA_REQUISITOS_OCR_TIMEOUT_MS:-1500}
     depends_on:
       - plane-db
       - plane-redis

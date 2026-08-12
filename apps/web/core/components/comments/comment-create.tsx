@@ -11,12 +11,18 @@ import { useForm, Controller } from "react-hook-form";
 import { EIssueCommentAccessSpecifier } from "@plane/constants";
 import type { EditorRefApi } from "@plane/editor";
 import type { TIssueComment, TCommentsOperations } from "@plane/types";
-import { cn, isCommentEmpty } from "@plane/utils";
+import { cn, isCommentEmpty, sanitizeHTML } from "@plane/utils";
 // components
 import { LiteTextEditor } from "@/components/editor/lite-text";
 import { AiImproveButton } from "@/components/editor/ai-improve-button";
+import { ItensFaltantes } from "@/components/ia";
 // hooks
+import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useWorkspace } from "@/hooks/store/use-workspace";
+import { useContextoDeRequisito } from "@/hooks/use-contexto-de-requisito";
+import { useTextoFantasmaCampo } from "@/hooks/use-texto-fantasma-campo";
+import { useTextoFantasmaEditor } from "@/hooks/use-texto-fantasma-editor";
+import { useTipoDeRequisito } from "@/hooks/use-tipo-de-requisito";
 // services
 import { FileService } from "@/services/file.service";
 
@@ -46,6 +52,9 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
   // refs
   const editorRef = useRef<EditorRefApi>(null);
   // store hooks
+  const {
+    issue: { getIssueById },
+  } = useIssueDetail();
   const workspaceStore = useWorkspace();
   // derived values
   const workspaceId = workspaceStore.getWorkspaceBySlug(workspaceSlug)?.id as string;
@@ -90,10 +99,29 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
 
   const commentHTML = watch("comment_html");
   const isEmpty = isCommentEmpty(commentHTML ?? undefined);
+  // texto fantasma da IA de requisitos
+  const chamado = getIssueById(entityId);
+  const tipo = useTipoDeRequisito(chamado?.label_ids);
+  const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
+  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
+    workspaceSlug,
+    campo: "comentario",
+    texto: sanitizeHTML(commentHTML ?? ""),
+    projectId,
+    issueId: entityId,
+    tipo,
+    contexto: {
+      projeto,
+      titulo: chamado?.name,
+      descricao: sanitizeHTML(chamado?.description_html ?? ""),
+    },
+  });
+  const { extensoes } = useTextoFantasmaEditor(sugestao);
 
   return (
     <div
       className={cn("sticky bottom-0 z-[4] bg-surface-1 sm:static")}
+      {...propsDeFoco}
       onKeyDown={(e) => {
         if (
           e.key === "Enter" &&
@@ -128,6 +156,7 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
                   }
                 }}
                 ref={editorRef}
+                extensions={extensoes}
                 initialValue={value ?? "<p></p>"}
                 containerClassName="min-h-min"
                 onChange={(comment_json, comment_html) => onChange(comment_html)}
@@ -154,7 +183,8 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
           />
         )}
       />
-      <div className="flex justify-end px-2 pb-2">
+      <div className="flex items-center justify-end gap-2 px-2 pb-2">
+        <ItensFaltantes itens={faltando} className="mr-auto" />
         <AiImproveButton editorRef={editorRef as React.RefObject<any>} workspaceSlug={workspaceSlug} />
       </div>
     </div>

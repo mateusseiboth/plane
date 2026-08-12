@@ -163,6 +163,7 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
           disabled={!isEditable}
           value={issue.name}
           containerClassName="-ml-3"
+          labelIds={issue.label_ids}
         />
 
         {loader === "issue-loading" || issue.description_html === undefined ? (
@@ -187,6 +188,7 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
             projectId={issue.project_id}
             setIsSubmitting={(value) => setIsSubmitting(value)}
             workspaceSlug={workspaceSlug}
+            chamado={{ titulo: issue.name, labelIds: issue.label_ids }}
           />
         )}
 

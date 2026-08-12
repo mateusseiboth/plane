@@ -96,10 +96,14 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
 
   // Build AI context: title + project + up to 10 recent comment snippets
   const commentIds = getCommentsByIssueId(issueId) ?? [];
-  const recentComments = [...commentIds].reverse().slice(0, 10).map((id: string) => {
-    const c = getCommentById(id);
-    return c?.comment_stripped?.slice(0, 300) ?? "";
-  }).filter(Boolean);
+  const recentComments = [...commentIds]
+    .reverse()
+    .slice(0, 10)
+    .map((id: string) => {
+      const c = getCommentById(id);
+      return c?.comment_stripped?.slice(0, 300) ?? "";
+    })
+    .filter(Boolean);
   const aiContext = {
     issue_title: issue.name,
     project_name: projectDetails?.name,
@@ -151,6 +155,7 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
           disabled={isArchived || !isEditable}
           value={issue.name}
           containerClassName="-ml-3"
+          labelIds={issue.label_ids}
         />
 
         <DescriptionInput
@@ -173,6 +178,7 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
           setIsSubmitting={(value) => setIsSubmitting(value)}
           workspaceSlug={workspaceSlug}
           aiContext={aiContext}
+          chamado={{ titulo: issue.name, labelIds: issue.label_ids }}
         />
 
         <div className="flex items-center justify-between gap-2">
@@ -230,8 +236,8 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
 
       {/* Entity — shown above comments for context */}
       {(issue as any)?.entity_id && (
-        <div className="flex items-center gap-2 px-6 pb-2 border-b border-subtle">
-          <span className="text-xs font-medium text-secondary-text shrink-0">Entidade:</span>
+        <div className="flex items-center gap-2 border-b border-subtle px-6 pb-2">
+          <span className="text-xs text-secondary-text shrink-0 font-medium">Entidade:</span>
           <IssueEntitySelect
             workspaceSlug={workspaceSlug}
             projectId={projectId}

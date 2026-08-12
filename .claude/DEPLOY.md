@@ -111,6 +111,70 @@ PSQL="sshpass -p SENHA ssh -o StrictHostKeyChecking=no root@10.1.2.12 docker exe
 > falha calado e as três verificações da seção 4 acusam "erro" como se os dados
 > migrados tivessem sumido.
 
+## IA de levantamento de requisitos ("texto fantasma")
+
+Alimenta `POST /api/v1/workspaces/:slug/ia/sugestao-de-requisito/`. As variáveis
+vão no `.env` da raiz (o `docker-compose-local.yml` já as repassa ao `api-ts`).
+
+| variável | para que serve | padrão |
+|---|---|---|
+| `IA_REQUISITOS_URL` | endereço base do serviço (ex.: `http://10.1.2.189:8101`) | vazio → recurso **desligado** |
+| `IA_REQUISITOS_FORMATO` | `aviao`, `openai`, `llamacpp` ou `ollama` | `aviao` |
+| `IA_REQUISITOS_CHAVE` | credencial; **nunca** chega ao navegador | vazio |
+| `IA_REQUISITOS_MODELO` | nome do modelo, para os formatos que pedem | vazio |
+| `IA_REQUISITOS_TIMEOUT_MS` | teto de espera da sugestão | `5000` |
+| `IA_REQUISITOS_ENABLED` | interruptor extra, para desligar sem perder a configuração | `true` |
+| `IA_REQUISITOS_OCR_URL` | extração de texto dos prints | `${IA_REQUISITOS_URL}/ocr` |
+| `IA_REQUISITOS_OCR_TIMEOUT_MS` | teto de espera do OCR | `1500` |
+
+**Desligado é o padrão.** Sem `IA_REQUISITOS_URL` a rota responde `200` com
+`{"sugestao": "", "faltando": []}` e ninguém percebe diferença ao escrever
+chamado. O mesmo vale para serviço fora do ar, erro, tempo estourado e formato
+inexistente — **escrever chamado não depende da IA estar de pé**, então não há
+cenário em que a IA derrube o editor.
+
+### Trocar de provedor
+
+É mudar variável de ambiente e reiniciar o `api-ts` — não se mexe em código:
+
+```bash
+# modelo local (padrão)
+IA_REQUISITOS_URL=http://10.1.2.189:8101
+IA_REQUISITOS_FORMATO=aviao
+IA_REQUISITOS_CHAVE=<a chave do capi_api.py>
+
+# qualquer serviço que fale o protocolo da OpenAI (vLLM, LM Studio, OpenRouter…)
+IA_REQUISITOS_URL=https://api.openai.com
+IA_REQUISITOS_FORMATO=openai
+IA_REQUISITOS_CHAVE=sk-...
+IA_REQUISITOS_MODELO=gpt-4o-mini
+
+# llama.cpp servido direto
+IA_REQUISITOS_URL=http://10.1.2.189:8083
+IA_REQUISITOS_FORMATO=llamacpp
+
+# ollama
+IA_REQUISITOS_URL=http://10.1.2.189:11434
+IA_REQUISITOS_FORMATO=ollama
+IA_REQUISITOS_MODELO=qwen2.5:7b
+```
+
+```bash
+docker compose -f docker-compose-local.yml up -d --force-recreate api-ts
+docker compose -f docker-compose-local.yml logs api-ts | grep ia-requisitos
+```
+
+Errar o nome do formato **não derruba o servidor**: cai no comportamento de
+desligado e registra `[ia-requisitos] IA_REQUISITOS_FORMATO="…" não existe` no
+log — é a primeira coisa a conferir quando a sugestão "sumiu".
+
+Um provedor novo é **um arquivo em `apps/api-ts/src/modules/ia-requisitos/provedores/`
+e uma linha no mapa** de `provedores/index.ts`.
+
+> A credencial fica só no processo do servidor. Se ela aparecer em
+> `apps/web/.env` ou em qualquer bundle do frontend, está no lugar errado — o
+> navegador fala apenas com o Plane.
+
 ## Proxy HTTPS (10.1.2.8) — Nginx Proxy Manager
 
 `plane.qualitysistemas.inf.br` resolve para **10.1.2.8**, um Nginx Proxy Manager

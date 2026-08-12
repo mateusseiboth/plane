@@ -26,6 +26,7 @@ import { notificationModule } from "@modules/notification";
 import { gitIntegrationModule } from "@modules/integration/git";
 import { slackIntegrationModule } from "@modules/integration/slack";
 import { aiModule } from "@modules/ai";
+import { iaRequisitosModule } from "@modules/ia-requisitos";
 import { premiumModule } from "@modules/premium";
 import { instanceModule } from "@modules/instance";
 import { estimateModule } from "@modules/estimate";
@@ -181,6 +182,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(gitIntegrationModule)
   .use(slackIntegrationModule)
   .use(aiModule)
+  .use(iaRequisitosModule)
   .use(premiumModule)
   .use(estimateModule)
   .use(pluginModule)

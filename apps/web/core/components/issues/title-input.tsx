@@ -12,9 +12,14 @@ import type { TNameDescriptionLoader } from "@plane/types";
 import { TextArea } from "@plane/ui";
 // types
 import { cn } from "@plane/utils";
-import useDebounce from "@/hooks/use-debounce";
-import type { TIssueOperations } from "./issue-detail";
+// components
+import { TextoFantasmaInput } from "@/components/ia";
 // hooks
+import { useContextoDeRequisito } from "@/hooks/use-contexto-de-requisito";
+import useDebounce from "@/hooks/use-debounce";
+import { useTextoFantasmaCampo } from "@/hooks/use-texto-fantasma-campo";
+import { useTipoDeRequisito } from "@/hooks/use-tipo-de-requisito";
+import type { TIssueOperations } from "./issue-detail";
 
 export type IssueTitleInputProps = {
   disabled?: boolean;
@@ -27,6 +32,8 @@ export type IssueTitleInputProps = {
   issueId: string;
   className?: string;
   containerClassName?: string;
+  /** Etiquetas do chamado — é delas que sai o `tipo` para a IA de requisitos. */
+  labelIds?: string[];
 };
 
 export const IssueTitleInput = observer(function IssueTitleInput(props: IssueTitleInputProps) {
@@ -41,11 +48,29 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: IssueTit
     projectId,
     className,
     containerClassName,
+    labelIds,
   } = props;
   const { t } = useTranslation();
   // states
   const [title, setTitle] = useState(value || "");
   const [isLengthVisible, setIsLengthVisible] = useState(false);
+  // texto fantasma da IA de requisitos
+  const tipo = useTipoDeRequisito(labelIds);
+  const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
+  const {
+    sugestao,
+    descartar,
+    propsDeFoco: { onFocus: aoFocar, onBlur: aoDesfocar },
+  } = useTextoFantasmaCampo({
+    workspaceSlug,
+    campo: "titulo",
+    texto: title,
+    projectId,
+    issueId,
+    tipo,
+    ativo: !disabled,
+    contexto: { projeto },
+  });
   // ref to track if there are unsaved changes
   const hasUnsavedChanges = useRef(false);
   // ref to store current title value for cleanup function
@@ -131,15 +156,19 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: IssueTit
     []
   );
 
-  const handleTitleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const applyTitle = useCallback(
+    (novoTitulo: string) => {
       setIsSubmitting("submitting");
-      const titleFromEvent = e.target.value;
-      setTitle(titleFromEvent);
-      currentTitleRef.current = titleFromEvent;
+      setTitle(novoTitulo);
+      currentTitleRef.current = novoTitulo;
       hasUnsavedChanges.current = true;
     },
     [setIsSubmitting]
+  );
+
+  const handleTitleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => applyTitle(e.target.value),
+    [applyTitle]
   );
 
   if (disabled) return <div className="text-20 font-medium whitespace-pre-line">{title}</div>;
@@ -147,23 +176,37 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: IssueTit
   return (
     <div className="flex flex-col gap-1.5">
       <div className={cn("relative", containerClassName)}>
-        <TextArea
-          id="title-input"
-          className={cn(
-            "block w-full resize-none overflow-hidden rounded-sm border-none bg-transparent px-3 py-0 text-20 font-medium ring-0 outline-none",
-            {
-              "mx-2.5 ring-1 ring-danger-strong": title?.length === 0,
-            },
-            className
-          )}
-          disabled={disabled}
-          value={title}
-          onChange={handleTitleChange}
-          maxLength={255}
-          placeholder={t("issue.title.label")}
-          onFocus={() => setIsLengthVisible(true)}
-          onBlur={() => setIsLengthVisible(false)}
-        />
+        <TextoFantasmaInput
+          valor={title}
+          sugestao={sugestao}
+          classNameCampo="px-3 py-0 text-20 font-medium"
+          onAceitar={(texto) => applyTitle(texto.slice(0, 255))}
+          onDescartar={descartar}
+        >
+          <TextArea
+            id="title-input"
+            className={cn(
+              "block w-full resize-none overflow-hidden rounded-sm border-none bg-transparent px-3 py-0 text-20 font-medium ring-0 outline-none",
+              {
+                "mx-2.5 ring-1 ring-danger-strong": title?.length === 0,
+              },
+              className
+            )}
+            disabled={disabled}
+            value={title}
+            onChange={handleTitleChange}
+            maxLength={255}
+            placeholder={t("issue.title.label")}
+            onFocus={() => {
+              setIsLengthVisible(true);
+              aoFocar();
+            }}
+            onBlur={() => {
+              setIsLengthVisible(false);
+              aoDesfocar();
+            }}
+          />
+        </TextoFantasmaInput>
         <div
           className={cn(
             "pointer-events-none absolute right-1 bottom-1 z-[2] rounded-sm bg-surface-1 p-0.5 text-11 text-secondary opacity-0 transition-opacity",

@@ -7,18 +7,23 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { debounce } from "lodash-es";
 import { observer } from "mobx-react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 // plane imports
 import type { EditorRefApi, TExtensions } from "@plane/editor";
 import { useTranslation } from "@plane/i18n";
 import type { EFileAssetType, TNameDescriptionLoader } from "@plane/types";
-import { getDescriptionPlaceholderI18n } from "@plane/utils";
+import { getDescriptionPlaceholderI18n, sanitizeHTML } from "@plane/utils";
 // components
 import { RichTextEditor } from "@/components/editor/rich-text";
 import { AiImproveButton, type AiContext } from "@/components/editor/ai-improve-button";
+import { ItensFaltantes } from "@/components/ia";
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
 import { useWorkspace } from "@/hooks/store/use-workspace";
+import { useContextoDeRequisito } from "@/hooks/use-contexto-de-requisito";
+import { useTextoFantasmaCampo } from "@/hooks/use-texto-fantasma-campo";
+import { useTextoFantasmaEditor } from "@/hooks/use-texto-fantasma-editor";
+import { useTipoDeRequisito } from "@/hooks/use-tipo-de-requisito";
 // plane web services
 import { WorkspaceService } from "@/services/workspace.service";
 // local imports
@@ -105,6 +110,14 @@ type Props = {
    * Pass issue title, project name and recent comments for better results.
    */
   aiContext?: AiContext;
+  /**
+   * @description Chamado a que esta descrição pertence. É o que liga o texto
+   * fantasma da IA de requisitos; sem ele o editor se comporta como antes.
+   */
+  chamado?: {
+    titulo?: string;
+    labelIds?: string[];
+  };
 };
 
 /**
@@ -128,6 +141,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
     swrDescription,
     workspaceSlug,
     aiContext,
+    chamado,
   } = props;
   // states
   const [localDescription, setLocalDescription] = useState<TFormData>({
@@ -154,6 +168,21 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
       isMigrationUpdate: false,
     },
   });
+  // texto fantasma da IA de requisitos
+  const descriptionHtml = useWatch({ control, name: "description_html" }) ?? "";
+  const tipo = useTipoDeRequisito(chamado?.labelIds);
+  const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
+  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
+    workspaceSlug,
+    campo: "descricao",
+    texto: sanitizeHTML(descriptionHtml),
+    projectId,
+    issueId: entityId,
+    tipo,
+    ativo: !disabled && Boolean(chamado),
+    contexto: { projeto, titulo: chamado?.titulo },
+  });
+  const { extensoes } = useTextoFantasmaEditor(sugestao);
 
   // submit handler
   const handleDescriptionFormSubmit = useCallback(
@@ -232,9 +261,9 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
   if (!localDescription.description_html) return <DescriptionInputLoader />;
 
   return (
-    <div className="relative">
+    <div className="relative" {...propsDeFoco}>
       {!disabled && editorRef && (
-        <div className="absolute right-0 -top-7 z-10">
+        <div className="absolute -top-7 right-0 z-10">
           <AiImproveButton
             editorRef={editorRef as React.RefObject<any>}
             workspaceSlug={workspaceSlug}
@@ -243,74 +272,76 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
           />
         </div>
       )}
-    <Controller
-      name="description_html"
-      control={control}
-      render={({ field: { onChange } }) => (
-        <RichTextEditor
-          key={entityId}
-          editable={!disabled}
-          ref={editorRef}
-          id={entityId}
-          issueSequenceId={issueSequenceId}
-          disabledExtensions={disabledExtensions}
-          initialValue={localDescription.description_html ?? "<p></p>"}
-          value={swrDescription ?? null}
-          workspaceSlug={workspaceSlug}
-          workspaceId={workspaceDetails.id}
-          projectId={projectId}
-          dragDropEnabled
-          onChange={(description_json, description_html, options) => {
-            if (description_html === lastSavedContent.current) return;
-            setIsSubmitting("submitting");
-            onChange(description_html);
-            setValue("isMigrationUpdate", !!options?.isMigrationUpdate);
-            setValue("description_json", description_json);
-            hasUnsavedChanges.current = true;
-            debouncedFormSave();
-          }}
-          placeholder={placeholder ?? ((isFocused, value) => t(getDescriptionPlaceholderI18n(isFocused, value)))}
-          searchMentionCallback={async (payload) =>
-            await workspaceService.searchEntity(workspaceSlug?.toString() ?? "", {
-              ...payload,
-              project_id: projectId,
-            })
-          }
-          containerClassName={containerClassName}
-          uploadFile={async (blockId, file) => {
-            try {
-              const { asset_id } = await uploadEditorAsset({
-                blockId,
-                data: {
-                  entity_identifier: entityId,
-                  entity_type: fileAssetType,
-                },
-                file,
-                projectId,
-                workspaceSlug,
-              });
-              return asset_id;
-            } catch (error) {
-              console.log("Error in uploading asset:", error);
-              throw new Error("Falha ao enviar o arquivo. Tente novamente mais tarde.");
+      <Controller
+        name="description_html"
+        control={control}
+        render={({ field: { onChange } }) => (
+          <RichTextEditor
+            key={entityId}
+            editable={!disabled}
+            ref={editorRef}
+            extensions={extensoes}
+            id={entityId}
+            issueSequenceId={issueSequenceId}
+            disabledExtensions={disabledExtensions}
+            initialValue={localDescription.description_html ?? "<p></p>"}
+            value={swrDescription ?? null}
+            workspaceSlug={workspaceSlug}
+            workspaceId={workspaceDetails.id}
+            projectId={projectId}
+            dragDropEnabled
+            onChange={(description_json, description_html, options) => {
+              if (description_html === lastSavedContent.current) return;
+              setIsSubmitting("submitting");
+              onChange(description_html);
+              setValue("isMigrationUpdate", !!options?.isMigrationUpdate);
+              setValue("description_json", description_json);
+              hasUnsavedChanges.current = true;
+              debouncedFormSave();
+            }}
+            placeholder={placeholder ?? ((isFocused, value) => t(getDescriptionPlaceholderI18n(isFocused, value)))}
+            searchMentionCallback={async (payload) =>
+              await workspaceService.searchEntity(workspaceSlug?.toString() ?? "", {
+                ...payload,
+                project_id: projectId,
+              })
             }
-          }}
-          duplicateFile={async (assetId: string) => {
-            try {
-              const { asset_id } = await duplicateEditorAsset({
-                assetId,
-                entityType: fileAssetType,
-                projectId,
-                workspaceSlug,
-              });
-              return asset_id;
-            } catch {
-              throw new Error("Falha ao duplicar o arquivo. Tente novamente mais tarde.");
-            }
-          }}
-        />
-      )}
-    />
+            containerClassName={containerClassName}
+            uploadFile={async (blockId, file) => {
+              try {
+                const { asset_id } = await uploadEditorAsset({
+                  blockId,
+                  data: {
+                    entity_identifier: entityId,
+                    entity_type: fileAssetType,
+                  },
+                  file,
+                  projectId,
+                  workspaceSlug,
+                });
+                return asset_id;
+              } catch (error) {
+                console.log("Error in uploading asset:", error);
+                throw new Error("Falha ao enviar o arquivo. Tente novamente mais tarde.");
+              }
+            }}
+            duplicateFile={async (assetId: string) => {
+              try {
+                const { asset_id } = await duplicateEditorAsset({
+                  assetId,
+                  entityType: fileAssetType,
+                  projectId,
+                  workspaceSlug,
+                });
+                return asset_id;
+              } catch {
+                throw new Error("Falha ao duplicar o arquivo. Tente novamente mais tarde.");
+              }
+            }}
+          />
+        )}
+      />
+      <ItensFaltantes itens={faltando} className="mt-1.5" />
     </div>
   );
 });

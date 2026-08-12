@@ -451,6 +451,9 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
                   issueTitleRef={issueTitleRef}
                   formState={formState}
                   handleFormChange={handleFormChange}
+                  workspaceSlug={workspaceSlug?.toString()}
+                  projectId={projectId}
+                  entityId={selectedEntityId}
                 />
               </div>
             </div>
@@ -481,6 +484,7 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
                   handleGptAssistantClose={() => reset(getValues())}
                   onAssetUpload={onAssetUpload}
                   onClose={onClose}
+                  entityId={selectedEntityId}
                 />
               </div>
               <WorkItemModalAdditionalProperties

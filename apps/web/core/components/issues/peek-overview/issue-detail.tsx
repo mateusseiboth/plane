@@ -129,6 +129,7 @@ export const PeekOverviewIssueDetails = observer(function PeekOverviewIssueDetai
         disabled={disabled || isArchived}
         value={issue.name}
         containerClassName="-ml-3"
+        labelIds={issue.label_ids}
       />
 
       <DescriptionInput
@@ -150,6 +151,7 @@ export const PeekOverviewIssueDetails = observer(function PeekOverviewIssueDetai
         setIsSubmitting={(value) => setIsSubmitting(value)}
         projectId={issue.project_id}
         workspaceSlug={workspaceSlug}
+        chamado={{ titulo: issue.name, labelIds: issue.label_ids }}
       />
 
       <div className="flex items-center justify-between gap-2">

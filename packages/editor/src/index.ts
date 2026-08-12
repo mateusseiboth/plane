@@ -27,3 +27,5 @@ export * from "@/types";
 
 // additional exports
 export { TrailingNode } from "./core/extensions/trailing-node";
+export { createGhostTextExtension, GhostTextExtension, GHOST_TEXT_EXTENSION_NAME } from "./core/extensions/ghost-text";
+export type { TGhostTextSource } from "./core/extensions/ghost-text";
