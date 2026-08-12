@@ -304,6 +304,10 @@ describe("Melhorar com IA", () => {
         IA_REQUISITOS_URL: ia.base,
         IA_REQUISITOS_FORMATO: "aviao",
         IA_REQUISITOS_TIMEOUT_MS: "800",
+        // A melhoria tem teto PRÓPRIO e bem maior: quem clicou está esperando,
+        // e o modelo escreve o template inteiro. Sem fixá-lo aqui o cenário
+        // "lento" não estoura tempo nenhum e o teste passa a provar nada.
+        IA_REQUISITOS_MELHORIA_TIMEOUT_MS: "800",
       }),
       subirApi("openai", {...comum, IA_REQUISITOS_URL: ia.base, IA_REQUISITOS_FORMATO: "openai"}),
       subirApi("llamacpp", {...comum, IA_REQUISITOS_URL: ia.base, IA_REQUISITOS_FORMATO: "llamacpp"}),

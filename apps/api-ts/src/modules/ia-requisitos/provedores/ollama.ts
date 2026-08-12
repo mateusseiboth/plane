@@ -64,7 +64,11 @@ export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
       );
     },
     async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
-      const texto = await conversar(instrucaoDeMelhoriaSistema(), instrucaoDeMelhoriaUsuario(pedido));
+      const texto = await conversar(
+        instrucaoDeMelhoriaSistema(),
+        instrucaoDeMelhoriaUsuario(pedido),
+        cfg.tempoLimiteMelhoriaMs
+      );
       return interpretarMelhoriaDoModelo(texto, pedido.texto);
     },
   };

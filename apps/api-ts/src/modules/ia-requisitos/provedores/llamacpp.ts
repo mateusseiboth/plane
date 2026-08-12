@@ -76,6 +76,7 @@ export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
         instrucaoDeMelhoriaSistema(),
         instrucaoDeMelhoriaUsuario(pedido),
         MAX_TOKENS_MELHORIA,
+        cfg.tempoLimiteMelhoriaMs,
       );
       return interpretarMelhoriaDoModelo(texto, pedido.texto);
     },
