@@ -31,7 +31,7 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = 
         const widget = await widgetRegistry.fetchWidget(widgetId);
 
         if (widget.status !== "ACTIVE") {
-          throw new Error(`Widget "${widget.name}" is not active (status: ${widget.status}).`);
+          throw new Error(`O widget "${widget.name}" não está ativo (status: ${widget.status}).`);
         }
 
         // O SDK é parte do projeto web — inicializa com o widgetId antes de executar o bundle
@@ -45,12 +45,12 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = 
 
         if (cancelled) return;
         if (!mod?.default || typeof mod.default !== "function") {
-          throw new Error("Widget bundle must export a default React component.");
+          throw new Error("O pacote do widget precisa exportar um componente React como default.");
         }
 
         setState({ phase: "ready", Component: mod.default });
       } catch (e: any) {
-        if (!cancelled) setState({ phase: "error", message: e?.message ?? "Failed to load widget." });
+        if (!cancelled) setState({ phase: "error", message: e?.message ?? "Falha ao carregar o widget." });
       }
     })();
 

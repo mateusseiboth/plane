@@ -56,7 +56,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
         const plugin: IPlugin = await pluginRegistry.fetchPlugin(pluginId);
 
         if (plugin.status !== "ACTIVE") {
-          throw new Error(`Plugin "${plugin.name}" is not active (status: ${plugin.status}).`);
+          throw new Error(`O plugin "${plugin.name}" não está ativo (status: ${plugin.status}).`);
         }
 
         // Resolve the requested page (or the first declared page).
@@ -76,12 +76,12 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
 
         const candidate = (mod[exportName] ?? mod.default) as unknown;
         if (typeof candidate !== "function") {
-          throw new Error(`Plugin bundle must export "${exportName}" as a React component.`);
+          throw new Error(`O pacote do plugin precisa exportar "${exportName}" como um componente React.`);
         }
 
         setState({ phase: "ready", Component: candidate as ComponentType<Record<string, unknown>>, title, slug: plugin.slug });
       } catch (e: any) {
-        if (!cancelled) setState({ phase: "error", message: e?.message ?? "Failed to load plugin." });
+        if (!cancelled) setState({ phase: "error", message: e?.message ?? "Falha ao carregar o plugin." });
       }
     })();
 

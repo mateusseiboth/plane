@@ -17,6 +17,7 @@ import { nextSequenceId } from "@utils/sequence";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, getProjectOrFail } from "@utils/workspace";
 import { serializeIssue } from "@utils/serialize";
+import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 
 
 /**
@@ -585,24 +586,12 @@ export const premiumModule = new Elysia()
       data,
     });
 
-    if (b.assignees !== undefined) {
-      await prisma.issueAssignee.updateMany({ where: { issueId: { in: issueIds } }, data: { deletedAt: new Date() } });
-      if (b.assignees.length) {
-        await prisma.issueAssignee.createMany({
-          data: issueIds.flatMap(id => b.assignees.map((uid: string) => ({ issueId: id, assigneeId: uid, workspaceId: ws.id, projectId: project_id }))),
-          skipDuplicates: true,
-        });
-      }
-    }
-
-    if (b.labels !== undefined) {
-      await prisma.issueLabel.updateMany({ where: { issueId: { in: issueIds } }, data: { deletedAt: new Date() } });
-      if (b.labels.length) {
-        await prisma.issueLabel.createMany({
-          data: issueIds.flatMap(id => b.labels.map((lid: string) => ({ issueId: id, labelId: lid, workspaceId: ws.id, projectId: project_id }))),
-          skipDuplicates: true,
-        });
-      }
+    // Um chamado por vez, pela sincronização idempotente (@utils/vinculos-do-chamado):
+    // carimbar em lote com o mesmo deleted_at colidia com a chave única.
+    for (const issueId of issueIds) {
+      const escopo = { issueId, workspaceId: ws.id, projectId: project_id };
+      if (b.assignees !== undefined) await sincronizarResponsaveis(escopo, b.assignees);
+      if (b.labels !== undefined) await sincronizarEtiquetas(escopo, b.labels);
     }
 
     return { updated: result.count };

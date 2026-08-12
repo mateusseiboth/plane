@@ -8,7 +8,14 @@ import {paginate} from "@utils/pagination";
 import {sincronizarFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
-import {COMMENT_FTS_DOC_C, ensureSearchIndexes, ISSUE_FTS_DOC_I, PT_FTS_CONFIG} from "@utils/search";
+import {
+  COMMENT_FTS_DOC_C,
+  ensureSearchIndexes,
+  grafiaCanonicaDoNumeroLegado,
+  ISSUE_FTS_DOC_I,
+  ISSUE_TITLE_DOC_I,
+  PT_FTS_CONFIG,
+} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel} from "@utils/serialize";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
 import {randomBytes, randomUUID} from "crypto";
@@ -655,11 +662,23 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/search/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const q = ((query as any).search ?? (query as any).query ?? "") as string;
-    if (!q.trim()) return {results: {issue: [], project: [], page: [], cycle: [], module: [], workspace: [], issue_view: []}};
+    // A interface mostra o número legado com "#" na frente ("#500-2026"), e é
+    // assim que a pessoa copia e cola. A coluna guarda o valor puro.
+    const q = (((query as any).search ?? (query as any).query ?? "") as string).trim().replace(/^#/, "");
+    if (!q) return {results: {issue: [], project: [], page: [], cycle: [], module: [], workspace: [], issue_view: []}};
+    // "500/2026" e "5002026" procuram o mesmo chamado que "500-2026".
+    const grafiaCanonica = grafiaCanonicaDoNumeroLegado(q);
+    const numerosLegados = grafiaCanonica ? [q, grafiaCanonica] : [q];
     const [issues, projects] = await Promise.all([
       prisma.issue.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, OR: [{name: {contains: q, mode: "insensitive"}}, {legacyTicketNumber: {contains: q}}]},
+        where: {
+          workspaceId: ws.id,
+          deletedAt: null,
+          OR: [
+            {name: {contains: q, mode: "insensitive"}},
+            ...numerosLegados.map((n) => ({legacyTicketNumber: {contains: n}})),
+          ],
+        },
         select: {
           id: true,
           name: true,
@@ -717,20 +736,54 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
     // "SIARTW-32" / "siartw 32" → project identifier + sequence number.
     const identifierMatch = q.match(/^([A-Za-z][A-Za-z0-9]*)[-\s](\d{1,10})$/);
-    const identifierClause = identifierMatch
-      ? Prisma.sql`OR (upper(p.identifier) = upper(${identifierMatch[1]}) AND i.sequence_id = ${Number(identifierMatch[2])})`
+    const identifierBranch = identifierMatch
+      ? Prisma.sql`
+        UNION
+        SELECT i.id FROM issues i
+          JOIN projects p ON p.id = i.project_id
+         WHERE i.deleted_at IS NULL AND i.is_draft = false
+           AND upper(p.identifier) = upper(${identifierMatch[1]})
+           AND i.sequence_id = ${Number(identifierMatch[2])}`
       : Prisma.empty;
     const identifierBoost = identifierMatch
-      ? Prisma.sql`+ (CASE WHEN upper(p.identifier) = upper(${identifierMatch[1]}) AND i.sequence_id = ${Number(identifierMatch[2])} THEN 10 ELSE 0 END)`
+      ? Prisma.sql`+ (CASE WHEN upper(p.identifier) = upper(${identifierMatch[1]}) AND i.sequence_id = ${Number(identifierMatch[2])} THEN 100 ELSE 0 END)`
       : Prisma.empty;
 
-    // ── Issues + intakes: native Postgres full-text + trigram search ──────────
-    // - websearch_to_tsquery over a stemmed, accent-folded document (title +
-    //   description + legacy number) handles natural-language queries.
-    // - pg_trgm `%` / similarity() add typo & transposition tolerance.
-    // - comment bodies are matched through an EXISTS sub-query.
-    // Ranking blends ts_rank with trigram similarity; the planner uses the GIN
-    // indexes created by ensureSearchIndexes().
+    // "500/2026", "500 2026" e "5002026" procuram o "500-2026" que está gravado.
+    const grafiaCanonica = grafiaCanonicaDoNumeroLegado(q);
+    const varianteLegadaBranch = grafiaCanonica
+      ? Prisma.sql`
+        UNION
+        SELECT i.id FROM issues i
+         WHERE i.deleted_at IS NULL AND i.is_draft = false
+           AND i.legacy_ticket_number ILIKE '%' || ${grafiaCanonica} || '%'`
+      : Prisma.empty;
+    const varianteLegadaBoost = grafiaCanonica
+      ? Prisma.sql`+ (CASE WHEN i.legacy_ticket_number = ${grafiaCanonica} THEN 100 ELSE 0 END)`
+      : Prisma.empty;
+
+    // ── Chamados + solicitações: full-text e trigrama nativos do Postgres ─────
+    //
+    // A busca é escrita como UNIÃO de buscas independentes, uma por índice, e
+    // NÃO como um `OR` gigante. O motivo é o plano de execução: um `OR` que
+    // mistura colunas diferentes e um `EXISTS` em comentários não é conversível
+    // em varredura por índice, então o Postgres varria as 51 mil linhas de
+    // `issues` calculando `to_tsvector` em cada uma — 13 s a 23 s por busca. Com
+    // a união, cada braço entra pelo seu GIN (idx_issues_fts,
+    // idx_issues_name_trgm, idx_issues_legacy_trgm, idx_comments_fts) e o mesmo
+    // resultado sai em dezenas de milissegundos.
+    //
+    // Braços:
+    //  - título + descrição + número legado, com radical e sem acento (FTS)
+    //  - título com tolerância a erro de digitação (trigrama)
+    //  - número do chamado legado, como a pessoa digita ("500-2026")
+    //  - corpo dos comentários (FTS)
+    //  - identificador "SIARTW-32", quando o termo tem essa cara
+    //
+    // O trigrama de comentário (`comment_stripped % q`) foi retirado de
+    // propósito: medido em produção, custava de 3 s a 8 s e não trazia
+    // praticamente nada — similaridade de um termo curto contra um comentário
+    // longo quase nunca passa do limiar.
     type IssueRow = {
       id: string;
       name: string;
@@ -745,35 +798,47 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
 
     const ftsDoc = Prisma.raw(ISSUE_FTS_DOC_I);
+    const titleDoc = Prisma.raw(ISSUE_TITLE_DOC_I);
     const commentDoc = Prisma.raw(COMMENT_FTS_DOC_C);
     const cfg = Prisma.raw(`'${PT_FTS_CONFIG}'`);
 
     const issueRowsP = prisma.$queryRaw<IssueRow[]>(Prisma.sql`
+      WITH achados AS (
+        SELECT i.id FROM issues i
+         WHERE i.deleted_at IS NULL AND i.is_draft = false
+           AND ${ftsDoc} @@ websearch_to_tsquery(${cfg}, ${q})
+        UNION
+        SELECT i.id FROM issues i
+         WHERE i.deleted_at IS NULL AND i.is_draft = false
+           AND (i.name % ${q} OR i.name ILIKE '%' || ${q} || '%')
+        UNION
+        SELECT i.id FROM issues i
+         WHERE i.deleted_at IS NULL AND i.is_draft = false
+           AND i.legacy_ticket_number ILIKE '%' || ${q} || '%'
+        UNION
+        SELECT c.issue_id FROM issue_comments c
+         WHERE c.deleted_at IS NULL
+           AND ${commentDoc} @@ websearch_to_tsquery(${cfg}, ${q})
+        ${varianteLegadaBranch}
+        ${identifierBranch}
+      )
       SELECT i.id, i.name, i.sequence_id, i.priority, i.legacy_ticket_number,
              s."group" AS state_group, s.name AS state_name,
              p.id AS project_id, p.identifier AS project_identifier, p.name AS project_name
       FROM issues i
+      JOIN achados a ON a.id = i.id
       LEFT JOIN states s ON s.id = i.state_id
       LEFT JOIN projects p ON p.id = i.project_id
       WHERE i.workspace_id = ${ws.id}::uuid
         AND i.deleted_at IS NULL
         AND i.is_draft = false
-        AND (
-          ${ftsDoc} @@ websearch_to_tsquery(${cfg}, ${q})
-          OR i.name % ${q}
-          OR i.name ILIKE '%' || ${q} || '%'
-          OR i.legacy_ticket_number ILIKE '%' || ${q} || '%'
-          ${identifierClause}
-          OR EXISTS (
-            SELECT 1 FROM issue_comments c
-            WHERE c.issue_id = i.id AND c.deleted_at IS NULL
-              AND (${commentDoc} @@ websearch_to_tsquery(${cfg}, ${q}) OR c.comment_stripped % ${q})
-          )
-        )
       ORDER BY (
-        ts_rank(${ftsDoc}, websearch_to_tsquery(${cfg}, ${q})) * 2
-        + GREATEST(similarity(i.name, ${q}), similarity(coalesce(i.legacy_ticket_number,''), ${q}))
-        + (CASE WHEN i.legacy_ticket_number = ${q} THEN 10 ELSE 0 END)
+        (CASE WHEN i.legacy_ticket_number = ${q} THEN 100 ELSE 0 END)
+        + ts_rank(${titleDoc}, websearch_to_tsquery(${cfg}, ${q})) * 4
+        + similarity(i.name, ${q}) * 2
+        + (CASE WHEN i.name ILIKE '%' || ${q} || '%' THEN 1 ELSE 0 END)
+        + similarity(coalesce(i.legacy_ticket_number,''), ${q})
+        ${varianteLegadaBoost}
         ${identifierBoost}
       ) DESC, i.updated_at DESC
       LIMIT ${limit}

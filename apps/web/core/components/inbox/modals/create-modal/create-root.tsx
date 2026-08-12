@@ -241,7 +241,11 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
                 <DeDupeButtonRoot
                   workspaceSlug={workspaceSlug}
                   isDuplicateModalOpen={isDuplicateModalOpen}
-                  label={`${duplicateIssues.length} duplicate issue${duplicateIssues.length > 1 ? "s" : ""} found!`}
+                  label={
+                    duplicateIssues.length === 1
+                      ? `${duplicateIssues.length} ${t("duplicate_issue_found")}`
+                      : `${duplicateIssues.length} ${t("duplicate_issues_found")}`
+                  }
                   handleOnClick={() => handleDuplicateIssueModal(!isDuplicateModalOpen)}
                 />
               )}

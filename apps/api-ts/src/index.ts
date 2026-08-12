@@ -31,7 +31,7 @@ import { premiumModule } from "@modules/premium";
 import { instanceModule } from "@modules/instance";
 import { estimateModule } from "@modules/estimate";
 import { pluginModule } from "@modules/plugin";
-import { workItemModule } from "@modules/work-item";
+import { workItemModule, workItemPorIdentificadorModule } from "@modules/work-item";
 import { assetModule, assetV2Module, userAssetV2Module } from "@modules/asset";
 import { intakeWorkItemModule } from "@modules/intake-work-item";
 import { technicalVisitModule } from "@modules/technical-visit";
@@ -187,6 +187,9 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(estimateModule)
   .use(pluginModule)
   .use(workItemModule)
+  // Resolve "ESIC-150" → chamado. É o endpoint da rota /browse/ do frontend,
+  // usada por todo link de notificação.
+  .use(workItemPorIdentificadorModule)
   .use(assetV2Module)
   .use(userAssetV2Module)
   .use(intakeWorkItemModule)

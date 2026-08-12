@@ -29,7 +29,7 @@ const WorkspacePluginPage = observer(function WorkspacePluginPage() {
       <>
         <PageHead title="Plugin" />
         <div className="flex h-full w-full items-center justify-center text-sm text-custom-text-300">
-          Loading plugin…
+          Carregando plugin…
         </div>
       </>
     );

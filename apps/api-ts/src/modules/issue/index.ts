@@ -21,6 +21,7 @@ import {publishRealtime} from "@utils/realtime";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, clientIp, recordAudit} from "@utils/audit";
 import {nextSequenceId} from "@utils/sequence";
 import {computeTargetDate} from "@utils/sla";
+import {sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-chamado";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 
@@ -227,29 +228,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       const assigneeIds: string[] = b.assignee_ids ?? b.assignees ?? [];
       const labelIds: string[] = b.label_ids ?? b.labels ?? [];
 
+      const escopo = {issueId: created.id, workspaceId: ws.id, projectId: project_id};
       // Auto-assign creator (premium feature recreation)
       // Merge creator into assignees list automatically
-      const assigneeSet = new Set<string>([user.id, ...assigneeIds]);
-      await tx.issueAssignee.createMany({
-        data: Array.from(assigneeSet).map((uid: string) => ({
-          issueId: created.id,
-          assigneeId: uid,
-          workspaceId: ws.id,
-          projectId: project_id,
-        })),
-        skipDuplicates: true,
-      });
-      if (labelIds.length) {
-        await tx.issueLabel.createMany({
-          data: labelIds.map((lid: string) => ({
-            issueId: created.id,
-            labelId: lid,
-            workspaceId: ws.id,
-            projectId: project_id,
-          })),
-          skipDuplicates: true,
-        });
-      }
+      await sincronizarResponsaveis(escopo, [user.id, ...assigneeIds], tx);
+      if (labelIds.length) await sincronizarEtiquetas(escopo, labelIds, tx);
       return created;
     });
 
@@ -394,24 +377,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const newAssignees: string[] | undefined = b.assignee_ids ?? b.assignees;
     const newLabels: string[] | undefined = b.label_ids ?? b.labels;
 
-    if (newAssignees !== undefined) {
-      await prisma.issueAssignee.updateMany({where: {issueId: issue_id}, data: {deletedAt: new Date()}});
-      if (newAssignees.length) {
-        await prisma.issueAssignee.createMany({
-          data: newAssignees.map((uid: string) => ({issueId: issue_id, assigneeId: uid, workspaceId: ws.id, projectId: project_id})),
-          skipDuplicates: true,
-        });
-      }
-    }
-    if (newLabels !== undefined) {
-      await prisma.issueLabel.updateMany({where: {issueId: issue_id}, data: {deletedAt: new Date()}});
-      if (newLabels.length) {
-        await prisma.issueLabel.createMany({
-          data: newLabels.map((lid: string) => ({issueId: issue_id, labelId: lid, workspaceId: ws.id, projectId: project_id})),
-          skipDuplicates: true,
-        });
-      }
-    }
+    // Sincronização idempotente: reaproveita a linha existente em vez de
+    // apagar tudo e recriar — ver @utils/vinculos-do-chamado.
+    const escopoDoVinculo = {issueId: issue_id, workspaceId: ws.id, projectId: project_id};
+    if (newAssignees !== undefined) await sincronizarResponsaveis(escopoDoVinculo, newAssignees);
+    if (newLabels !== undefined) await sincronizarEtiquetas(escopoDoVinculo, newLabels);
 
     // Whoever moves the card (changes its state) is auto-added as an assignee, so
     // the person who advanced the work item is recorded as responsible for it.

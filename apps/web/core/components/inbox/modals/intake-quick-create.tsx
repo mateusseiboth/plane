@@ -46,8 +46,8 @@ export const IntakeQuickCreate = observer(function IntakeQuickCreate(props: Prop
   return (
     <ModalCore isOpen={isOpen} position={EModalPosition.CENTER} width={EModalWidth.LG}>
       <div className="p-5">
-        <h3 className="mb-1 text-lg font-medium text-primary">Novo intake</h3>
-        <p className="mb-4 text-xs text-secondary-text">Selecione o projeto para abrir um novo intake.</p>
+        <h3 className="mb-1 text-lg font-medium text-primary">Nova solicitação</h3>
+        <p className="mb-4 text-xs text-secondary-text">Selecione o projeto para abrir uma nova solicitação.</p>
         <div className="max-h-[320px] space-y-1 overflow-y-auto">
           {projectIds.length === 0 && (
             <p className="py-6 text-center text-sm text-secondary-text">Você não pertence a nenhum projeto de atendimento.</p>

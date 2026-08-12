@@ -886,7 +886,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
   const createIntake = async () => {
     if (!activeSession || !intakeProjectId) {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Selecione um projeto", message: "Escolha o projeto para o intake." });
+      setToast({ type: TOAST_TYPE.ERROR, title: "Selecione um projeto", message: "Escolha o projeto para a solicitação." });
       return;
     }
     const who = activeSession.client_name || activeSession.client_phone || "Visitante";
@@ -903,12 +903,12 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
       if (!res.ok) throw await res.json().catch(() => ({}));
       const data = await res.json().catch(() => ({}));
       const inboxIssueId = data?.id ?? data?.issue?.id;
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Intake criado", message: "Abrindo o chamado para você complementar…" });
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Solicitação criada", message: "Abrindo o chamado para você complementar…" });
       // Redirect to the created intake so the attendant can complete + dispatch it.
       if (inboxIssueId)
         router.push(`/${slug}/projects/${intakeProjectId}/intake?currentTab=open&inboxIssueId=${inboxIssueId}`);
     } catch (e: any) {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Não foi possível criar o intake." });
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Não foi possível criar a solicitação." });
     }
   };
 
@@ -1258,7 +1258,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   value={intakeProjectId}
                   onChange={setIntakeProjectId}
                   opcoes={(joinedProjectIds ?? []).map((pid) => ({value: pid, label: getProjectById(pid)?.name ?? pid}))}
-                  opcaoVazia={{value: "", label: "Intake…"}}
+                  opcaoVazia={{value: "", label: "Solicitação…"}}
                   searchPlaceholder="Buscar sistema"
                   className="w-44"
                   buttonClassName="h-8 border-subtle bg-transparent text-12 hover:bg-layer-1"

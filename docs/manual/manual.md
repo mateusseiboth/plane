@@ -1014,7 +1014,9 @@ A caixa **Buscar comandos…** no topo (ou `Ctrl/⌘ + K`) procura em tudo:
 
 - parte do **título** de um chamado;
 - o **código do Avião** (`CONTAB-102`);
-- o **número do SAC antigo** no formato `#1234-2026`;
+- o **número do SAC antigo**, do jeito que você lembrar: `1234-2026`, `#1234-2026`,
+  `1234/2026`, `1234 2026` ou `12342026`;
+- palavras que apareçam na **descrição** ou nos **comentários**;
 - solicitações, e também navega direto para telas.
 
 ## Teclado

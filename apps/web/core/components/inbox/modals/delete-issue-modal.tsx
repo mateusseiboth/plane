@@ -74,14 +74,13 @@ export const DeleteInboxIssueModal = observer(function DeleteInboxIssueModal({
       isSubmitting={isDeleting}
       isOpen={isOpen}
       title={t("inbox_issue.modals.delete.title")}
-      // TODO: Need to translate the confirmation message
       content={
         <>
           Tem certeza de que deseja excluir a solicitação{" "}
           <span className="font-medium break-words text-primary">
             {projectDetails?.identifier}-{data?.sequence_id}
           </span>
-          {""}? The work item will only be deleted from the intake and this action cannot be undone.
+          {""}? A solicitação será excluída apenas da lista de solicitações e esta ação não pode ser desfeita.
         </>
       }
     />

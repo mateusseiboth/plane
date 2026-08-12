@@ -10,8 +10,22 @@ import prisma from "@db";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
 import { serializeIssue, ISSUE_INCLUDE } from "@utils/serialize";
 import { paginate } from "@utils/pagination";
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 
 function isoDate(d: any) { if (!d) return null; return d instanceof Date ? d.toISOString() : String(d); }
+
+/**
+ * Quebra "ESIC-150" em {identificadorDoProjeto: "ESIC", sequencia: 150}.
+ *
+ * A divisão é feita no ÚLTIMO hífen porque o identificador do projeto pode
+ * conter hífen ("SIART-WEB-150"); só o sufixo numérico é a sequência.
+ * Devolve null quando não há sufixo numérico — aí o pedido é inválido, não 404.
+ */
+function separarIdentificador(bruto: string): { identificadorDoProjeto: string; sequencia: number } | null {
+  const partes = /^(.+)-(\d{1,10})$/.exec(decodeURIComponent(bruto).trim());
+  if (!partes) return null;
+  return { identificadorDoProjeto: partes[1], sequencia: Number(partes[2]) };
+}
 
 export const workItemModule = new Elysia({ prefix: "/workspaces/:slug/projects/:project_id/work-items" })
   .use(authPlugin)
@@ -64,4 +78,71 @@ export const workItemModule = new Elysia({ prefix: "/workspaces/:slug/projects/:
       created_at: isoDate(v.createdAt),
       owned_by: (v as any).ownedById ?? null,
     };
+  });
+
+/**
+ * Resolve o identificador legível ("ESIC-150") para o chamado.
+ *
+ * É o endpoint por trás da rota /:espaco/browse/:identificador/ do frontend, que
+ * é o link que vai nas notificações e nos e-mails. Sem ele, todo link de
+ * notificação cai na tela de "chamado não existe".
+ *
+ * Equivalente ao IssueDetailIdentifierEndpoint do Django legado:
+ * workspaces/<slug>/work-items/<project_identifier>-<issue_identifier>/
+ */
+export const workItemPorIdentificadorModule = new Elysia({ prefix: "/workspaces/:slug/work-items" })
+  .use(authPlugin)
+
+  .get("/:identificador/", async ({ params: { slug, identificador }, user, set, headers }) => {
+    const ws = await getWorkspaceOrFail(slug);
+
+    const partes = separarIdentificador(identificador);
+    if (!partes) {
+      set.status = 400;
+      return { detail: "Identificador de chamado inválido." };
+    }
+
+    // O identificador do projeto é digitado/colado em qualquer caixa ("esic-150"),
+    // então a comparação ignora maiúsculas — como no Django (identifier__iexact).
+    const projeto = await prisma.project.findFirst({
+      where: {
+        workspaceId: ws.id,
+        deletedAt: null,
+        identifier: { equals: partes.identificadorDoProjeto, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (!projeto) {
+      set.status = 404;
+      return { detail: "Chamado não encontrado." };
+    }
+
+    // Confere a permissão só depois de saber que o projeto existe: quem não é
+    // membro recebe 403 (getProjectOrFail), e não um 404 que esconde o motivo.
+    await getProjectOrFail(ws.id, projeto.id, user.id);
+
+    const chamado = await prisma.issue.findFirst({
+      where: { projectId: projeto.id, sequenceId: partes.sequencia, deletedAt: null },
+      include: ISSUE_INCLUDE,
+    });
+    if (!chamado) {
+      set.status = 404;
+      return { detail: "Chamado não encontrado." };
+    }
+
+    // LGPD: abrir um chamado é tratamento de dado — registra quem viu e de onde,
+    // igual ao GET por id em modules/issue.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ISSUE,
+      entityId: chamado.id,
+      action: AUDIT_ACTIONS.VIEW,
+      actor: user,
+      headers,
+      metadata: { project_id: projeto.id, sequence_id: chamado.sequenceId },
+    });
+
+    // Solicitações em triagem são redirecionadas pelo frontend para a tela de
+    // entrada, então a flag precisa vir preenchida (o serializer padrão fixa false).
+    return { ...serializeIssue(chamado), is_intake: (chamado as any).state?.group === "triage" };
   });

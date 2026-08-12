@@ -41,14 +41,20 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
   },
   issue: {
     itemName: (workItem: IWorkspaceIssueSearchResult) => (
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <IssueIdentifier
           projectId={workItem.project_id}
           issueTypeId={workItem.type_id}
           projectIdentifier={workItem.project__identifier}
           issueSequenceId={workItem.sequence_id}
           size="xs"
-        />{" "}
+        />
+        {/* Número do chamado no sistema antigo: é por ele que muita gente procura. */}
+        {workItem.legacy_ticket_number && (
+          <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-10 font-semibold text-secondary">
+            #{workItem.legacy_ticket_number}
+          </span>
+        )}
         {workItem.name}
       </div>
     ),

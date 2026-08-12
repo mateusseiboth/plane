@@ -28,8 +28,49 @@ export const ISSUE_FTS_DOC = `to_tsvector('${PT_FTS_CONFIG}', coalesce(name,'') 
 /** Same as {@link ISSUE_FTS_DOC} but for a query aliased as `i`. */
 export const ISSUE_FTS_DOC_I = `to_tsvector('${PT_FTS_CONFIG}', coalesce(i.name,'') || ' ' || coalesce(i.description_stripped,'') || ' ' || coalesce(i.legacy_ticket_number,''))`;
 
+/**
+ * Documento só do título (alias `i`), usado no RANQUEAMENTO — nunca no filtro.
+ *
+ * Ranquear pelo documento completo obriga o Postgres a montar o `tsvector` de
+ * título + descrição de cada linha encontrada: numa busca ampla ("erro", 20 mil
+ * chamados) isso sozinho custava ~3 s. O título é curto, cabe no orçamento e é o
+ * sinal que o usuário realmente espera ver no topo.
+ */
+export const ISSUE_TITLE_DOC_I = `to_tsvector('${PT_FTS_CONFIG}', coalesce(i.name,''))`;
+
 /** Searchable document for an issue comment (alias `c`). */
 export const COMMENT_FTS_DOC_C = `to_tsvector('${PT_FTS_CONFIG}', coalesce(c.comment_stripped,''))`;
+
+/**
+ * Grafia canônica de um número de chamado legado, ou null quando o termo não
+ * tem cara de número legado.
+ *
+ * O SAC gravava "500-2026", mas quem procura digita do jeito que lembra:
+ * "500/2026", "500 2026", "500.2026" ou "5002026". Traduzir para a grafia
+ * gravada deixa a busca casar pelo índice de trigrama, sem varrer a tabela.
+ *
+ * Devolve null quando a grafia digitada já é a canônica — aí não há busca extra
+ * a fazer.
+ */
+export function grafiaCanonicaDoNumeroLegado(termo: string): string | null {
+  const limpo = termo.trim();
+
+  const comSeparador = /^(\d{1,6})\s*[-/._\s]\s*(\d{2,4})$/.exec(limpo);
+  if (comSeparador) {
+    const canonica = `${comSeparador[1]}-${comSeparador[2]}`;
+    return canonica === limpo ? null : canonica;
+  }
+
+  // "5002026" → "500-2026". Só quando os quatro últimos dígitos são um ano
+  // plausível; caso contrário é um número solto e não se deve inventar hífen.
+  const coladas = /^(\d{1,6})(\d{4})$/.exec(limpo);
+  if (coladas) {
+    const ano = Number(coladas[2]);
+    if (ano >= 1990 && ano <= 2099) return `${coladas[1]}-${coladas[2]}`;
+  }
+
+  return null;
+}
 
 // DDL statements, executed one at a time (CREATE INDEX cannot run inside a tx
 // block alongside other statements, so we keep them separate and idempotent).
@@ -55,6 +96,9 @@ const STATEMENTS: string[] = [
   // Comment full-text + trigram so matches inside conversations surface too.
   `CREATE INDEX IF NOT EXISTS idx_comments_fts ON issue_comments USING gin (to_tsvector('${PT_FTS_CONFIG}', coalesce(comment_stripped,''))) WHERE deleted_at IS NULL`,
   `CREATE INDEX IF NOT EXISTS idx_comments_trgm ON issue_comments USING gin (comment_stripped gin_trgm_ops)`,
+  // Resolução de "ESIC-150" → chamado (rota /browse/ e busca por identificador).
+  // Sem ele, cada link de notificação aberto varre a tabela inteira de chamados.
+  `CREATE INDEX IF NOT EXISTS idx_issues_project_sequence ON issues (project_id, sequence_id)`,
 ];
 
 const ANALYZE_STATEMENTS = [`ANALYZE issues`, `ANALYZE issue_comments`];

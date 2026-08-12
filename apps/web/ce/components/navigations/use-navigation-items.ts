@@ -118,7 +118,7 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
       {
         i18n_key: "sidebar.intake",
         key: "intake",
-        name: "Intake",
+        name: "Solicitações",
         href: `/${workspaceSlug}/projects/${projectId}/intake`,
         icon: IntakeIcon,
         access: [

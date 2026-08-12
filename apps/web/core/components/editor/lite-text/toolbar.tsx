@@ -39,7 +39,10 @@ type Props = {
 type TCommentAccessType = {
   icon: LucideIcon | React.FC<ISvgIcons>;
   key: EIssueCommentAccessSpecifier;
-  label: "Privado" | "Public";
+  // A tradução mudou o valor e esqueceu o tipo: ficou "Público" contra um tipo
+  // que só admitia "Public", então o TypeScript acusava e a comparação jamais
+  // casaria. Os dois rótulos em português, como o resto da interface.
+  label: "Privado" | "Público";
 };
 
 const COMMENT_ACCESS_SPECIFIERS: TCommentAccessType[] = [

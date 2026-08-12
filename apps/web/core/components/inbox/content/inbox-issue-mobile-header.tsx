@@ -167,7 +167,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
               >
                 <div className="flex items-center gap-2">
                   <Clock size={14} strokeWidth={2} />
-                  {inboxIssue?.snoozed_till && numberOfDaysLeft && numberOfDaysLeft > 0 ? "Un-snooze" : "Snooze"}
+                  {inboxIssue?.snoozed_till && numberOfDaysLeft && numberOfDaysLeft > 0 ? "Reativar" : "Adiar"}
                 </div>
               </CustomMenu.MenuItem>
             )}
@@ -183,7 +183,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
               >
                 <div className="flex items-center gap-2">
                   <FileStack size={14} strokeWidth={2} />
-                  Mark as duplicate
+                  Marcar como duplicado
                 </div>
               </CustomMenu.MenuItem>
             )}
@@ -199,7 +199,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
               >
                 <div className="flex items-center gap-2 text-success-secondary">
                   <CheckCircleFilledIcon width={14} height={14} />
-                  Accept
+                  Aceitar
                 </div>
               </CustomMenu.MenuItem>
             )}
@@ -215,7 +215,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
               >
                 <div className="flex items-center gap-2 text-danger-secondary">
                   <CloseCircleFilledIcon width={14} height={14} />
-                  Decline
+                  Recusar
                 </div>
               </CustomMenu.MenuItem>
             )}

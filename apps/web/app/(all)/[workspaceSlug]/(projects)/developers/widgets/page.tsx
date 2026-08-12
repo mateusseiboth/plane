@@ -105,10 +105,10 @@ export default function WidgetDocsPage() {
             <p>Hooks disponíveis (todos respeitam as permissões do manifest):</p>
             <ul className="ml-5 list-disc">
               <li>
-                <Pill>useWorkerItems(filters)</Pill> — work items / chamados
+                <Pill>useWorkerItems(filters)</Pill> — chamados
               </li>
               <li>
-                <Pill>useIntakes(filters)</Pill> — itens de intake
+                <Pill>useIntakes(filters)</Pill> — solicitações
               </li>
               <li>
                 <Pill>useStats(params)</Pill> — estatísticas e relatórios
@@ -210,7 +210,7 @@ zip widget.zip manifest.json -j dist/widget.js`}</Code>
           <Section id="integrations" title="Integrações customizadas">
             <p>
               Além dos widgets, a plataforma expõe um módulo de <strong>webhooks/integrações customizadas</strong> para
-              reagir a eventos (criação/atualização de chamados, visitas, intakes) e integrar sistemas externos.
+              reagir a eventos (criação/atualização de chamados, visitas, solicitações) e integrar sistemas externos.
               Configure-os em{" "}
               <a href={`/${slug}/settings/webhooks/`} className="text-custom-primary-100 hover:underline">
                 Configurações → Webhooks

@@ -85,10 +85,10 @@ export const PluginList: React.FC<PluginListProps> = ({
                 <td className="py-3 pr-4">
                   <div className="flex flex-wrap gap-1">
                     <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                      {pages} page{pages === 1 ? "" : "s"}
+                      {pages} {pages === 1 ? "página" : "páginas"}
                     </span>
                     <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                      {sidebar} sidebar
+                      {sidebar} na barra lateral
                     </span>
                   </div>
                 </td>
@@ -104,7 +104,7 @@ export const PluginList: React.FC<PluginListProps> = ({
                         onClick={() => onActivate(p.id)}
                         className="text-xs text-green-600 hover:underline dark:text-green-400"
                       >
-                        Activate
+                        Ativar
                       </button>
                     )}
                     {p.status === "ACTIVE" && (
@@ -112,13 +112,13 @@ export const PluginList: React.FC<PluginListProps> = ({
                         onClick={() => onDeactivate(p.id)}
                         className="text-xs text-yellow-600 hover:underline dark:text-yellow-400"
                       >
-                        Deactivate
+                        Desativar
                       </button>
                     )}
                     {p.status !== "ARCHIVED" && (
                       <button
                         onClick={() => {
-                          if (window.confirm(`Remove plugin "${p.name}"?`)) onRemove(p.id);
+                          if (window.confirm(`Remover o plugin "${p.name}"?`)) onRemove(p.id);
                         }}
                         className="text-xs text-red-600 hover:underline dark:text-red-400"
                       >

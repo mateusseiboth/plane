@@ -47,7 +47,7 @@ export const WidgetAdminPage: React.FC = observer(() => {
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Widget Marketplace</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Loja de widgets</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Gerencie widgets carregados dinamicamente para esta instância da plataforma.
           </p>
@@ -56,7 +56,7 @@ export const WidgetAdminPage: React.FC = observer(() => {
           onClick={() => setUploadOpen(true)}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          + Upload Widget
+          + Enviar widget
         </button>
       </div>
 

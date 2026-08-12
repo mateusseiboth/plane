@@ -104,7 +104,7 @@ export const WidgetList: React.FC<WidgetListProps> = ({
                         onClick={() => onActivate(w.id)}
                         className="text-xs text-green-600 hover:underline dark:text-green-400"
                       >
-                        Activate
+                        Ativar
                       </button>
                     )}
                     {w.status === "ACTIVE" && (
@@ -112,13 +112,13 @@ export const WidgetList: React.FC<WidgetListProps> = ({
                         onClick={() => onDeactivate(w.id)}
                         className="text-xs text-yellow-600 hover:underline dark:text-yellow-400"
                       >
-                        Deactivate
+                        Desativar
                       </button>
                     )}
                     {w.status !== "ARCHIVED" && (
                       <button
                         onClick={() => {
-                          if (window.confirm(`Remove widget "${w.name}"?`)) onRemove(w.id);
+                          if (window.confirm(`Remover o widget "${w.name}"?`)) onRemove(w.id);
                         }}
                         className="text-xs text-red-600 hover:underline dark:text-red-400"
                       >

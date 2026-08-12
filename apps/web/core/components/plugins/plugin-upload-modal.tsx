@@ -45,7 +45,7 @@ export const PluginUploadModal: React.FC<PluginUploadModalProps> = ({
       setSelectedFile(null);
       onClose();
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? "Upload failed.");
+      setError(e?.response?.data?.detail ?? "Falha ao enviar o arquivo.");
     }
   };
 
@@ -53,10 +53,10 @@ export const PluginUploadModal: React.FC<PluginUploadModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-neutral-900">
         <h2 className="mb-1 text-lg font-semibold text-neutral-900 dark:text-white">
-          Upload Plugin
+          Enviar plugin
         </h2>
         <p className="mb-4 text-xs text-neutral-500 dark:text-neutral-400">
-          A plugin .zip must contain a <code>manifest.json</code> and the entry bundle.
+          O .zip do plugin precisa conter um <code>manifest.json</code> e o pacote de entrada.
         </p>
 
         <div
@@ -100,7 +100,7 @@ export const PluginUploadModal: React.FC<PluginUploadModalProps> = ({
             disabled={!selectedFile || isUploading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {isUploading ? "Uploading…" : "Upload"}
+            {isUploading ? "Enviando…" : "Enviar"}
           </button>
         </div>
       </div>

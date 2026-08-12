@@ -14,6 +14,12 @@ import { cn } from "@plane/utils";
 import { KeySequenceBadge, ShortcutBadge } from "./command-item-shortcut-badge";
 
 type Props = {
+  /**
+   * Mantém o item visível mesmo com o filtro do cmdk ligado. Usado por resultados
+   * que já vieram filtrados do servidor — filtrar de novo no navegador esconderia
+   * o que o servidor achou.
+   */
+  forceMount?: boolean;
   icon?: React.ComponentType<{ className?: string }>;
   iconNode?: React.ReactNode;
   isDisabled?: boolean;
@@ -26,10 +32,27 @@ type Props = {
 };
 
 export function PowerKModalCommandItem(props: Props) {
-  const { icon: Icon, iconNode, isDisabled, isSelected, keySequence, label, onSelect, shortcut, value } = props;
+  const {
+    forceMount,
+    icon: Icon,
+    iconNode,
+    isDisabled,
+    isSelected,
+    keySequence,
+    label,
+    onSelect,
+    shortcut,
+    value,
+  } = props;
 
   return (
-    <Command.Item value={value} onSelect={onSelect} className="focus:outline-none" disabled={isDisabled}>
+    <Command.Item
+      value={value}
+      onSelect={onSelect}
+      className="focus:outline-none"
+      disabled={isDisabled}
+      forceMount={forceMount}
+    >
       <div
         className={cn("flex items-center gap-2 text-secondary", {
           "opacity-70": isDisabled,

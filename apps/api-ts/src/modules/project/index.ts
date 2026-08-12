@@ -8,6 +8,7 @@ import { nextSequenceId } from "@utils/sequence";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { notifyQualityOfIntake } from "@utils/notifications";
+import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -745,14 +746,9 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       ? await prisma.issue.update({where: {id: inbox_id}, data: issueData})
       : await prisma.issue.findFirst({where: {id: inbox_id}});
 
-    if (labelIds !== undefined) {
-      await prisma.issueLabel.updateMany({where: {issueId: inbox_id, deletedAt: null}, data: {deletedAt: new Date()}});
-      if (labelIds.length) await prisma.issueLabel.createMany({data: labelIds.map((lid) => ({issueId: inbox_id, labelId: lid, workspaceId: ws.id, projectId: project_id})), skipDuplicates: true});
-    }
-    if (assigneeIds !== undefined) {
-      await prisma.issueAssignee.updateMany({where: {issueId: inbox_id, deletedAt: null}, data: {deletedAt: new Date()}});
-      if (assigneeIds.length) await prisma.issueAssignee.createMany({data: assigneeIds.map((uid) => ({issueId: inbox_id, assigneeId: uid, workspaceId: ws.id, projectId: project_id})), skipDuplicates: true});
-    }
+    const escopoDoVinculo = {issueId: inbox_id, workspaceId: ws.id, projectId: project_id};
+    if (labelIds !== undefined) await sincronizarEtiquetas(escopoDoVinculo, labelIds);
+    if (assigneeIds !== undefined) await sincronizarResponsaveis(escopoDoVinculo, assigneeIds);
 
     // Update or create IntakeIssue to persist status, snoozeTill, duplicateOf
     const iiData: any = {};

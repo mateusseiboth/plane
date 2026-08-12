@@ -38,7 +38,12 @@ export const PowerKModalSearchResults = observer(function PowerKModalSearchResul
         if (section.length <= 0) return null;
 
         return (
-          <Command.Group key={key} heading={currentSection.title}>
+          // forceMount: estes resultados já vieram filtrados pelo servidor. O
+          // filtro do cmdk é um "contém" cru sobre `value`, então ele descartava
+          // tudo que casou por um campo que não está no texto do item — era o que
+          // sumia com a busca por número legado ("500-2026"): o servidor achava o
+          // chamado e o navegador o escondia.
+          <Command.Group key={key} heading={currentSection.title} forceMount>
             {section.map((item) => {
               let value = `${key}-${item?.id}-${item.name}`;
 
@@ -50,9 +55,14 @@ export const PowerKModalSearchResults = observer(function PowerKModalSearchResul
                 value = `${value}-${item.sequence_id}`;
               }
 
+              if ("legacy_ticket_number" in item && item.legacy_ticket_number) {
+                value = `${value}-${item.legacy_ticket_number}`;
+              }
+
               return (
                 <PowerKModalCommandItem
                   key={item.id}
+                  forceMount
                   label={currentSection.itemName(item)}
                   icon={currentSection.icon}
                   onSelect={() => {
