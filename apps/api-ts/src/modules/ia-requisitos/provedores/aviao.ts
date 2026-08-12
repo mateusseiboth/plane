@@ -29,12 +29,12 @@ import {
 
 export function criarProvedorAviao(cfg: ConfigIaRequisitos): ProvedorDeIa {
   /** O formato nativo manda o pedido como está: os dois lados falam o contrato. */
-  const chamar = (caminho: string, corpo: unknown) =>
+  const chamar = (caminho: string, corpo: unknown, tempoLimiteMs = cfg.tempoLimiteMs) =>
     postarJson({
       url: `${cfg.urlBase}${caminho}`,
       cabecalhos: {"X-API-Key": cfg.chave},
       corpo,
-      tempoLimiteMs: cfg.tempoLimiteMs,
+      tempoLimiteMs,
       destino: cfg.destino,
     });
 
@@ -49,7 +49,7 @@ export function criarProvedorAviao(cfg: ConfigIaRequisitos): ProvedorDeIa {
       return corpo === null ? ANALISE_VAZIA : sanitizarAnaliseNativa(corpo);
     },
     async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
-      const corpo = await chamar("/melhorar", pedido);
+      const corpo = await chamar("/melhorar", pedido, cfg.tempoLimiteMelhoriaMs);
       return corpo === null ? MELHORIA_VAZIA : sanitizarMelhoriaNativa(corpo, pedido.texto);
     },
   };

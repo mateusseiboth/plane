@@ -29,7 +29,11 @@ import type {
 } from "@modules/ia-requisitos/tipos";
 
 export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
-  async function conversar(sistema: string, usuario: string): Promise<unknown> {
+  async function conversar(
+    sistema: string,
+    usuario: string,
+    tempoLimiteMs = cfg.tempoLimiteMs
+  ): Promise<unknown> {
     const corpo = await postarJson({
       url: `${cfg.urlBase}/api/chat`,
       cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
@@ -43,7 +47,7 @@ export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
         stream: false,
         options: {temperature: 0.2},
       },
-      tempoLimiteMs: cfg.tempoLimiteMs,
+      tempoLimiteMs,
       destino: cfg.destino,
     });
     return corpo === null ? null : corpo?.message?.content;

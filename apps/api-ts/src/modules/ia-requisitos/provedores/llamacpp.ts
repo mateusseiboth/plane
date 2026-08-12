@@ -36,7 +36,12 @@ const MAX_TOKENS_ANALISE = 900;
 const MAX_TOKENS_MELHORIA = 2048;
 
 export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
-  async function completar(sistema: string, usuario: string, maxTokens: number): Promise<unknown> {
+  async function completar(
+    sistema: string,
+    usuario: string,
+    maxTokens: number,
+    tempoLimiteMs = cfg.tempoLimiteMs
+  ): Promise<unknown> {
     const corpo = await postarJson({
       url: `${cfg.urlBase}/completion`,
       cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
@@ -46,7 +51,7 @@ export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
         temperature: 0.2,
         stream: false,
       },
-      tempoLimiteMs: cfg.tempoLimiteMs,
+      tempoLimiteMs,
       destino: cfg.destino,
     });
     return corpo === null ? null : corpo?.content;

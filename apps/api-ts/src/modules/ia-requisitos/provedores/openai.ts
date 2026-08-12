@@ -31,7 +31,11 @@ import type {
 
 export function criarProvedorOpenai(cfg: ConfigIaRequisitos): ProvedorDeIa {
   /** Devolve o texto gerado, ou `null` quando não houve resposta aproveitável. */
-  async function conversar(sistema: string, usuario: string): Promise<unknown> {
+  async function conversar(
+    sistema: string,
+    usuario: string,
+    tempoLimiteMs = cfg.tempoLimiteMs
+  ): Promise<unknown> {
     const corpo = await postarJson({
       url: `${cfg.urlBase}/v1/chat/completions`,
       cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
@@ -47,7 +51,7 @@ export function criarProvedorOpenai(cfg: ConfigIaRequisitos): ProvedorDeIa {
         response_format: {type: "json_object"},
         stream: false,
       },
-      tempoLimiteMs: cfg.tempoLimiteMs,
+      tempoLimiteMs,
       destino: cfg.destino,
     });
     return corpo === null ? null : corpo?.choices?.[0]?.message?.content;

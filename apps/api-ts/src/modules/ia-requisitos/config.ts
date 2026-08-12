@@ -30,6 +30,7 @@ export type ConfigIaRequisitos = {
   tempoLimiteMs: number;
   /** Endpoint de extração de texto de imagem (`POST …/ocr`). */
   urlOcr: string;
+  tempoLimiteMelhoriaMs: number;
   tempoLimiteOcrMs: number;
   /** Host do serviço, para a trilha de auditoria (sem credencial, sem caminho). */
   destino: string;
@@ -41,6 +42,14 @@ export type ConfigIaRequisitos = {
 const TEMPO_LIMITE_PADRAO_MS = 5000;
 /** O OCR divide o mesmo orçamento, então tem um teto menor que o da sugestão. */
 const TEMPO_LIMITE_OCR_PADRAO_MS = 1500;
+/**
+ * Melhorar é outra natureza de espera. A sugestão aparece sozinha e some sem
+ * ninguém pedir — 5 s ali já é demais. Aqui a pessoa CLICOU e está olhando o
+ * girador, e o modelo escreve o template inteiro: medido em ~3,7 s, passando
+ * de 5 s em texto grande. Com o teto da sugestão o botão dava 502 justamente
+ * nos textos que mais precisavam de ajuda.
+ */
+const TEMPO_LIMITE_MELHORIA_PADRAO_MS = 30000;
 /** O modelo local é o provedor padrão — não o único. */
 const FORMATO_PADRAO = "aviao";
 
@@ -84,6 +93,10 @@ export function configIaRequisitos(): ConfigIaRequisitos {
     chave: texto(process.env.IA_REQUISITOS_CHAVE),
     modelo: texto(process.env.IA_REQUISITOS_MODELO),
     tempoLimiteMs: inteiroPositivo(process.env.IA_REQUISITOS_TIMEOUT_MS, TEMPO_LIMITE_PADRAO_MS),
+    tempoLimiteMelhoriaMs: inteiroPositivo(
+      process.env.IA_REQUISITOS_MELHORIA_TIMEOUT_MS,
+      TEMPO_LIMITE_MELHORIA_PADRAO_MS
+    ),
     urlOcr: semBarraFinal(texto(process.env.IA_REQUISITOS_OCR_URL)) || (urlBase ? `${urlBase}/ocr` : ""),
     tempoLimiteOcrMs: inteiroPositivo(process.env.IA_REQUISITOS_OCR_TIMEOUT_MS, TEMPO_LIMITE_OCR_PADRAO_MS),
     destino: hostDe(urlBase),
