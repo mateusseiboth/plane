@@ -533,6 +533,10 @@
         "title": "Widgets",
         "heading": "Widgets"
       },
+      "ia_requisitos": {
+        "title": "IA de requisitos",
+        "heading": "IA de requisitos"
+      },
       "auditoria": {
         "title": "Auditoria (LGPD)"
       }

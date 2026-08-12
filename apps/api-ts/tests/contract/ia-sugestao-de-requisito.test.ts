@@ -530,12 +530,18 @@ describe("IA de sugestão de requisito", () => {
     ia.limpar();
     await prisma.auditLog.deleteMany({where: {entityId: chamadoId}});
 
+    const marco = new Date();
     const res = await cliente("aviao").post(caminho(), pedido());
     expect(res.status).toBe(200);
 
     // recordAudit é assíncrono de propósito: a gravação não segura a resposta.
     const registro = await esperarAte(() =>
-      prisma.auditLog.findFirst({where: {entityId: chamadoId, action: "export"}}),
+      prisma.auditLog.findFirst({
+        // Ancorado no ator e no instante: o recordAudit é disparado sem espera,
+        // então a gravação do teste anterior pode chegar depois do deleteMany.
+        where: {entityId: chamadoId, action: "export", actorId: usuarioId, createdAt: {gte: marco}},
+        orderBy: {createdAt: "desc"},
+      }),
     );
     expect(registro).not.toBeNull();
     expect(registro!.entity).toBe("issue");
@@ -564,10 +570,13 @@ describe("IA de sugestão de requisito", () => {
 
   it("com a IA desligada não há o que registrar: nada saiu da aplicação", async () => {
     await prisma.auditLog.deleteMany({where: {entityId: chamadoId}});
+    const marco = new Date();
     const res = await cliente("desligada").post(caminho(), pedido());
     expect(res.status).toBe(200);
 
     await Bun.sleep(300);
-    expect(await prisma.auditLog.count({where: {entityId: chamadoId, action: "export"}})).toBe(0);
+    expect(
+      await prisma.auditLog.count({where: {entityId: chamadoId, action: "export", createdAt: {gte: marco}}}),
+    ).toBe(0);
   });
 });

@@ -118,6 +118,13 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/print/`,
   },
+  "ia-requisitos": {
+    key: "ia-requisitos",
+    i18n_label: "workspace_settings.settings.ia_requisitos.title",
+    href: `/settings/ia-requisitos`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/ia-requisitos/`,
+  },
   auditoria: {
     key: "auditoria",
     i18n_label: "workspace_settings.settings.auditoria.title",
@@ -142,6 +149,7 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     WORKSPACE_SETTINGS["export"],
     WORKSPACE_SETTINGS["storage"],
     WORKSPACE_SETTINGS["chat"],
+    WORKSPACE_SETTINGS["ia-requisitos"],
     WORKSPACE_SETTINGS["print"],
     WORKSPACE_SETTINGS["auditoria"],
   ].filter(Boolean) as TWorkspaceSettingsItem[],

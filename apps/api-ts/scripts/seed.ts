@@ -9,6 +9,7 @@
 import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@prisma/client";
 import {Pool} from "pg";
+import {CHAVE_CONFIG_IA, CONFIG_IA_PADRAO} from "../src/modules/ia-requisitos/configuracao";
 import {seedWorkflowRoles, sincronizarFuncaoNosProjetos} from "../src/utils/permissions";
 import {ensureProjectDefaults} from "../src/utils/project-defaults";
 
@@ -282,6 +283,19 @@ async function main() {
   // 3b. Seed configurable roles (system roles + default visibility/transitions)
   const roleIds = await seedWorkflowRoles(prisma, workspace.id);
   log(`✅  Workflow roles seeded (${Object.keys(roleIds).length} roles)`);
+
+  // 3b-0. IA de levantamento de requisitos, ligada no nosso espaço, modo `avisar`
+  // (contrato, Parte 2). Os padrões vêm do próprio módulo, para não haver duas
+  // versões do mesmo padrão.
+  //
+  // `update: {}` de propósito: o seeder roda a cada `docker compose up` e não
+  // pode desfazer o que um administrador ajustou na tela. Só cria o que falta.
+  await prisma.workspaceSetting.upsert({
+    where: {workspaceId_key: {workspaceId: workspace.id, key: CHAVE_CONFIG_IA}},
+    create: {workspaceId: workspace.id, key: CHAVE_CONFIG_IA, value: CONFIG_IA_PADRAO},
+    update: {},
+  });
+  log(`✅  Configuração da IA de requisitos garantida (ativa, modo ${CONFIG_IA_PADRAO.modo})`);
 
   // 3b-bis. Tipos de responsável, com os mesmos ids do SAC (`legacy_id`) para
   // que a importação dos responsáveis consiga reencontrá-los.

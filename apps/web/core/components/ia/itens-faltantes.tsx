@@ -1,10 +1,16 @@
 /**
  * O que ainda falta no chamado segundo o checklist de aceitação da Aula 18-3.
  *
- * Uma linha discreta logo abaixo do editor, recolhida por padrão: é onde os
- * olhos de quem escreve já estão, e não rouba espaço da caixa de texto. Com a
- * lista vazia — inclusive quando a IA está desligada — não sobra borda nem
- * espaço reservado: o componente simplesmente não existe.
+ * Serve aos dois momentos da IA de requisitos:
+ *
+ * - **enquanto se escreve** (texto fantasma): uma linha discreta abaixo do
+ *   editor, recolhida por padrão, onde os olhos de quem escreve já estão e sem
+ *   roubar espaço da caixa de texto;
+ * - **ao salvar** (análise): já aberta, porque a essa altura saber *o que*
+ *   falta é o motivo de a tela ter parado.
+ *
+ * Com a lista vazia — inclusive quando a IA está desligada — não sobra borda
+ * nem espaço reservado: o componente simplesmente não existe.
  */
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -15,6 +21,10 @@ import type { TItemFaltante } from "@/services/sugestao-de-requisito.service";
 
 type TItensFaltantesProps = {
   itens: TItemFaltante[];
+  /** A análise ao salvar já nasce aberta; o fantasma, recolhido. */
+  inicialmenteAberto?: boolean;
+  /** Sobrescreve a contagem padrão quando o contexto pede outro nome. */
+  rotulo?: string;
   className?: string;
 };
 
@@ -22,8 +32,8 @@ const rotuloDe = (total: number) =>
   total === 1 ? "Falta 1 item do levantamento" : `Faltam ${total} itens do levantamento`;
 
 export const ItensFaltantes = (props: TItensFaltantesProps) => {
-  const { itens, className } = props;
-  const [aberto, setAberto] = useState(false);
+  const { itens, inicialmenteAberto = false, rotulo, className } = props;
+  const [aberto, setAberto] = useState(inicialmenteAberto);
 
   if (itens.length === 0) return null;
 
@@ -36,7 +46,7 @@ export const ItensFaltantes = (props: TItensFaltantesProps) => {
         className="flex items-center gap-1 transition-colors hover:text-secondary"
       >
         {aberto ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-        <span>{rotuloDe(itens.length)}</span>
+        <span>{rotulo ?? rotuloDe(itens.length)}</span>
       </button>
       {aberto && (
         <ul className="mt-1 space-y-0.5 pl-4">

@@ -15,10 +15,13 @@ import { cn, isCommentEmpty, sanitizeHTML } from "@plane/utils";
 // components
 import { LiteTextEditor } from "@/components/editor/lite-text";
 import { AiImproveButton } from "@/components/editor/ai-improve-button";
-import { ItensFaltantes } from "@/components/ia";
+import { ItensFaltantes, PainelDeAnalise } from "@/components/ia";
+// helpers
+import { colarTrechoNoEditor } from "@/helpers/colar-trecho.helper";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useWorkspace } from "@/hooks/store/use-workspace";
+import { useAnaliseDeChamado } from "@/hooks/use-analise-de-chamado";
 import { useContextoDeRequisito } from "@/hooks/use-contexto-de-requisito";
 import { useTextoFantasmaCampo } from "@/hooks/use-texto-fantasma-campo";
 import { useTextoFantasmaEditor } from "@/hooks/use-texto-fantasma-editor";
@@ -71,7 +74,43 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
     },
   });
 
+  const commentHTML = watch("comment_html");
+  const isEmpty = isCommentEmpty(commentHTML ?? undefined);
+  // texto fantasma da IA de requisitos
+  const chamado = getIssueById(entityId);
+  const tipo = useTipoDeRequisito(chamado?.label_ids);
+  const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
+  const comentarioEmTexto = sanitizeHTML(commentHTML ?? "");
+  const contextoDoChamado = {
+    projeto,
+    titulo: chamado?.name,
+    descricao: sanitizeHTML(chamado?.description_html ?? ""),
+  };
+  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
+    workspaceSlug,
+    campo: "comentario",
+    texto: comentarioEmTexto,
+    projectId,
+    issueId: entityId,
+    tipo,
+    contexto: contextoDoChamado,
+  });
+  const { extensoes } = useTextoFantasmaEditor(sugestao);
+  // análise ao enviar — só roda quando `analise_em_comentarios` estiver ligada
+  const analise = useAnaliseDeChamado({
+    workspaceSlug,
+    campo: "comentario",
+    projectId,
+    issueId: entityId,
+    tipo,
+    conteudo: { comentario: comentarioEmTexto },
+    contexto: contextoDoChamado,
+  });
+
   const onSubmit = async (formData: Partial<TIssueComment>) => {
+    // `false` = o painel apareceu; o próximo envio segue (ou, no modo `exigir`,
+    // reanalisa depois da correção). Falha ou resposta vazia nunca seguram.
+    if (!(await analise.liberarSalvamento())) return;
     try {
       const comment = await activityOperations.createComment(formData);
       if (comment?.id) onSubmitCallback?.(comment.id);
@@ -94,29 +133,9 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
         comment_html: "<p></p>",
       });
       editorRef.current?.clearEditor();
+      analise.descartar();
     }
   };
-
-  const commentHTML = watch("comment_html");
-  const isEmpty = isCommentEmpty(commentHTML ?? undefined);
-  // texto fantasma da IA de requisitos
-  const chamado = getIssueById(entityId);
-  const tipo = useTipoDeRequisito(chamado?.label_ids);
-  const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
-  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
-    workspaceSlug,
-    campo: "comentario",
-    texto: sanitizeHTML(commentHTML ?? ""),
-    projectId,
-    issueId: entityId,
-    tipo,
-    contexto: {
-      projeto,
-      titulo: chamado?.name,
-      descricao: sanitizeHTML(chamado?.description_html ?? ""),
-    },
-  });
-  const { extensoes } = useTextoFantasmaEditor(sugestao);
 
   return (
     <div
@@ -183,6 +202,19 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
           />
         )}
       />
+      {analise.mostrarPainel && (
+        <PainelDeAnalise
+          analise={analise.analise}
+          mostrarIndicador={analise.configuracao.mostrar_indicador}
+          bloqueado={analise.bloqueado}
+          minimoAceitacao={analise.configuracao.minimo_aceitacao}
+          analisando={analise.analisando}
+          aoReanalisar={analise.reanalisar}
+          aoColar={colarTrechoNoEditor(editorRef)}
+          rotuloColar="Colar no comentário"
+          className="mx-2 mt-2"
+        />
+      )}
       <div className="flex items-center justify-end gap-2 px-2 pb-2">
         <ItensFaltantes itens={faltando} className="mr-auto" />
         <AiImproveButton editorRef={editorRef as React.RefObject<any>} workspaceSlug={workspaceSlug} />

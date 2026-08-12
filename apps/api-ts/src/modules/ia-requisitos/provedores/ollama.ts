@@ -7,35 +7,52 @@
 
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {
+  instrucaoDeAnaliseSistema,
+  instrucaoDeAnaliseUsuario,
   instrucaoDoSistema,
   instrucaoDoUsuario,
+  interpretarAnaliseDoModelo,
   interpretarTextoDoModelo,
   postarJson,
 } from "@modules/ia-requisitos/provedores/comum";
-import {RESPOSTA_VAZIA, type PedidoIa, type ProvedorDeIa, type RespostaIa} from "@modules/ia-requisitos/tipos";
+import type {
+  PedidoAnalise,
+  PedidoIa,
+  ProvedorDeIa,
+  RespostaAnalise,
+  RespostaIa,
+} from "@modules/ia-requisitos/tipos";
 
 export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
+  async function conversar(sistema: string, usuario: string): Promise<unknown> {
+    const corpo = await postarJson({
+      url: `${cfg.urlBase}/api/chat`,
+      cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
+      corpo: {
+        model: cfg.modelo || undefined,
+        messages: [
+          {role: "system", content: sistema},
+          {role: "user", content: usuario},
+        ],
+        format: "json",
+        stream: false,
+        options: {temperature: 0.2},
+      },
+      tempoLimiteMs: cfg.tempoLimiteMs,
+      destino: cfg.destino,
+    });
+    return corpo === null ? null : corpo?.message?.content;
+  }
+
   return {
     formato: "ollama",
     async sugerir(pedido: PedidoIa): Promise<RespostaIa> {
-      const corpo = await postarJson({
-        url: `${cfg.urlBase}/api/chat`,
-        cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
-        corpo: {
-          model: cfg.modelo || undefined,
-          messages: [
-            {role: "system", content: instrucaoDoSistema()},
-            {role: "user", content: instrucaoDoUsuario(pedido)},
-          ],
-          format: "json",
-          stream: false,
-          options: {temperature: 0.2},
-        },
-        tempoLimiteMs: cfg.tempoLimiteMs,
-        destino: cfg.destino,
-      });
-      if (corpo === null) return RESPOSTA_VAZIA;
-      return interpretarTextoDoModelo(corpo?.message?.content);
+      return interpretarTextoDoModelo(await conversar(instrucaoDoSistema(), instrucaoDoUsuario(pedido)));
+    },
+    async analisar(pedido: PedidoAnalise): Promise<RespostaAnalise> {
+      return interpretarAnaliseDoModelo(
+        await conversar(instrucaoDeAnaliseSistema(), instrucaoDeAnaliseUsuario(pedido)),
+      );
     },
   };
 }

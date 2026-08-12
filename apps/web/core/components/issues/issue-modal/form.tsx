@@ -25,8 +25,10 @@ import {
   getTextContent,
   getChangedIssuefields,
   getTabIndex,
+  sanitizeHTML,
 } from "@plane/utils";
 // components
+import { PainelDeAnalise } from "@/components/ia";
 import {
   IssueDefaultProperties,
   IssueDescriptionEditor,
@@ -35,14 +37,18 @@ import {
   IssueTitleInput,
 } from "@/components/issues/issue-modal/components";
 // helpers
+import { colarTrechoNoEditor } from "@/helpers/colar-trecho.helper";
 // hooks
 import { useIssueModal } from "@/hooks/context/use-issue-modal";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
 import { useWorkspaceDraftIssues } from "@/hooks/store/workspace-draft";
+import { useAnaliseDeChamado } from "@/hooks/use-analise-de-chamado";
+import { useContextoDeRequisito } from "@/hooks/use-contexto-de-requisito";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 import { useProjectIssueProperties } from "@/hooks/use-project-issue-properties";
+import { useTipoDeRequisito } from "@/hooks/use-tipo-de-requisito";
 // plane web imports
 import { DeDupeButtonRoot } from "@/plane-web/components/de-dupe/de-dupe-button";
 import { DuplicateModalRoot } from "@/plane-web/components/de-dupe/duplicate-modal";
@@ -164,7 +170,28 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
 
   // derived values
   const projectDetails = projectId ? getProjectById(projectId) : undefined;
-  const isDisabled = isSubmitting || isApplyingTemplate;
+
+  // análise de levantamento de requisitos ao salvar
+  const tituloAtual = watch("name") ?? "";
+  const descricaoAtual = sanitizeHTML(watch("description_html") ?? "");
+  const tipoDeRequisito = useTipoDeRequisito(watch("label_ids"));
+  const { projeto, entidade } = useContextoDeRequisito({
+    workspaceSlug: workspaceSlug?.toString(),
+    projectId,
+    entityId: selectedEntityId,
+  });
+  const analise = useAnaliseDeChamado({
+    workspaceSlug: workspaceSlug?.toString(),
+    campo: "chamado",
+    projectId,
+    issueId: data?.id,
+    entityId: selectedEntityId,
+    tipo: tipoDeRequisito,
+    conteudo: { titulo: tituloAtual, descricao: descricaoAtual },
+    contexto: { projeto, entidade, titulo: tituloAtual, descricao: descricaoAtual },
+  });
+
+  const isDisabled = isSubmitting || isApplyingTemplate || analise.bloqueado;
 
   const { getIndex } = getTabIndex(ETabIndices.ISSUE_FORM, isMobile);
 
@@ -239,6 +266,12 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
     )
       return;
 
+    // A IA entra aqui: o botão já está em `isSubmitting`, então o carregando é
+    // o mesmo do salvar. `false` significa "o painel apareceu, leia" — quem
+    // quiser seguir clica de novo (no modo `exigir` o botão fica travado).
+    // Falha, demora ou resposta vazia devolvem `true` e o chamado salva.
+    if (!(await analise.liberarSalvamento())) return;
+
     const submitData: any = !data?.id
       ? formData
       : {
@@ -258,6 +291,8 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
     await onSubmit(submitData, is_draft_issue)
       .then(() => {
         setGptAssistantModal(false);
+        // o próximo chamado começa sem o veredito do anterior
+        analise.descartar();
         if (isCreateMoreToggleEnabled && workItemTemplateId) {
           handleTemplateChange({
             workspaceSlug: workspaceSlug?.toString(),
@@ -517,6 +552,19 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
                   onEntityChange={setSelectedEntityId}
                 />
               </div>
+              {analise.mostrarPainel && (
+                <PainelDeAnalise
+                  analise={analise.analise}
+                  mostrarIndicador={analise.configuracao.mostrar_indicador}
+                  bloqueado={analise.bloqueado}
+                  minimoAceitacao={analise.configuracao.minimo_aceitacao}
+                  analisando={analise.analisando}
+                  aoReanalisar={analise.reanalisar}
+                  aoColar={colarTrechoNoEditor(editorRef)}
+                  rotuloColar="Colar na descrição"
+                  className="mb-3"
+                />
+              )}
               {showActionButtons && (
                 <div
                   className="flex items-center justify-end gap-4 border-t-[0.5px] border-subtle pt-6 pb-3"

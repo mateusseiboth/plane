@@ -7,34 +7,57 @@
 
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {
+  instrucaoDeAnaliseSistema,
+  instrucaoDeAnaliseUsuario,
   instrucaoDoSistema,
   instrucaoDoUsuario,
+  interpretarAnaliseDoModelo,
   interpretarTextoDoModelo,
   postarJson,
 } from "@modules/ia-requisitos/provedores/comum";
-import {RESPOSTA_VAZIA, type PedidoIa, type ProvedorDeIa, type RespostaIa} from "@modules/ia-requisitos/tipos";
+import type {
+  PedidoAnalise,
+  PedidoIa,
+  ProvedorDeIa,
+  RespostaAnalise,
+  RespostaIa,
+} from "@modules/ia-requisitos/tipos";
 
-/** Teto de geração: a sugestão é uma continuação curta, não uma redação. */
-const MAX_TOKENS = 320;
+/** Teto de geração da sugestão: é uma continuação curta, não uma redação. */
+const MAX_TOKENS_SUGESTAO = 320;
+/** A análise devolve oito blocos, os porquês e os trechos prontos — cabe mais. */
+const MAX_TOKENS_ANALISE = 900;
 
 export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
+  async function completar(sistema: string, usuario: string, maxTokens: number): Promise<unknown> {
+    const corpo = await postarJson({
+      url: `${cfg.urlBase}/completion`,
+      cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
+      corpo: {
+        prompt: `${sistema}\n\n${usuario}\n\nJSON:`,
+        n_predict: maxTokens,
+        temperature: 0.2,
+        stream: false,
+      },
+      tempoLimiteMs: cfg.tempoLimiteMs,
+      destino: cfg.destino,
+    });
+    return corpo === null ? null : corpo?.content;
+  }
+
   return {
     formato: "llamacpp",
     async sugerir(pedido: PedidoIa): Promise<RespostaIa> {
-      const corpo = await postarJson({
-        url: `${cfg.urlBase}/completion`,
-        cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
-        corpo: {
-          prompt: `${instrucaoDoSistema()}\n\n${instrucaoDoUsuario(pedido)}\n\nJSON:`,
-          n_predict: MAX_TOKENS,
-          temperature: 0.2,
-          stream: false,
-        },
-        tempoLimiteMs: cfg.tempoLimiteMs,
-        destino: cfg.destino,
-      });
-      if (corpo === null) return RESPOSTA_VAZIA;
-      return interpretarTextoDoModelo(corpo?.content);
+      const texto = await completar(instrucaoDoSistema(), instrucaoDoUsuario(pedido), MAX_TOKENS_SUGESTAO);
+      return interpretarTextoDoModelo(texto);
+    },
+    async analisar(pedido: PedidoAnalise): Promise<RespostaAnalise> {
+      const texto = await completar(
+        instrucaoDeAnaliseSistema(),
+        instrucaoDeAnaliseUsuario(pedido),
+        MAX_TOKENS_ANALISE,
+      );
+      return interpretarAnaliseDoModelo(texto);
     },
   };
 }

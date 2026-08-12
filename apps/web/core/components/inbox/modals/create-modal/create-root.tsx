@@ -15,14 +15,21 @@ import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TIssue } from "@plane/types";
 import { ToggleSwitch } from "@plane/ui";
-import { renderFormattedPayloadDate, getTabIndex } from "@plane/utils";
+import { renderFormattedPayloadDate, getTabIndex, sanitizeHTML } from "@plane/utils";
+// components
+import { PainelDeAnalise } from "@/components/ia";
+// helpers
+import { colarTrechoNoEditor } from "@/helpers/colar-trecho.helper";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
 import { useWorkspace } from "@/hooks/store/use-workspace";
+import { useAnaliseDeChamado } from "@/hooks/use-analise-de-chamado";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useContextoDeRequisito } from "@/hooks/use-contexto-de-requisito";
 import useKeypress from "@/hooks/use-keypress";
 import { usePlatformOS } from "@/hooks/use-platform-os";
+import { useTipoDeRequisito } from "@/hooks/use-tipo-de-requisito";
 // plane web imports
 import { DeDupeButtonRoot } from "@/plane-web/components/de-dupe/de-dupe-button";
 import { DuplicateModalRoot } from "@/plane-web/components/de-dupe/duplicate-modal";
@@ -91,6 +98,21 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
   // derived values
   const projectDetails = projectId ? getProjectById(projectId) : undefined;
 
+  // análise de levantamento de requisitos ao salvar
+  const tituloAtual = formData?.name ?? "";
+  const descricaoAtual = sanitizeHTML(formData?.description_html ?? "");
+  const tipoDeRequisito = useTipoDeRequisito(formData?.label_ids);
+  const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
+  const analise = useAnaliseDeChamado({
+    workspaceSlug,
+    campo: "chamado",
+    projectId,
+    entityId: (formData as any)?.entity_id ?? null,
+    tipo: tipoDeRequisito,
+    conteudo: { titulo: tituloAtual, descricao: descricaoAtual },
+    contexto: { projeto, titulo: tituloAtual, descricao: descricaoAtual },
+  });
+
   const { getIndex } = getTabIndex(ETabIndices.INTAKE_ISSUE_FORM, isMobile);
 
   // debounced duplicate issues swr
@@ -148,6 +170,16 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
       return;
     }
 
+    setFormSubmitting(true);
+
+    // A IA entra antes do payload: o botão já está em carregando, e um `false`
+    // aqui significa "o painel apareceu, leia". Falha, demora ou resposta vazia
+    // devolvem `true` e a solicitação segue para o servidor.
+    if (!(await analise.liberarSalvamento())) {
+      setFormSubmitting(false);
+      return;
+    }
+
     const payload: Partial<TIssue> = {
       name: formData.name || "",
       description_html: formData.description_html || "<p></p>",
@@ -158,10 +190,11 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
       target_date: formData.target_date || null,
       ...((formData as any).entity_id ? { entity_id: (formData as any).entity_id } : {}),
     };
-    setFormSubmitting(true);
 
     await createInboxIssue(workspaceSlug, projectId, payload)
       .then(async (res) => {
+        // a próxima solicitação começa sem o veredito da anterior
+        analise.descartar();
         if (uploadedAssetIds.length > 0) {
           await fileService.updateBulkProjectAssetsUploadStatus(workspaceSlug, projectId, res?.issue.id ?? "", {
             asset_ids: uploadedAssetIds,
@@ -238,6 +271,18 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
                 data={formData}
                 handleData={handleFormData}
               />
+              {analise.mostrarPainel && (
+                <PainelDeAnalise
+                  analise={analise.analise}
+                  mostrarIndicador={analise.configuracao.mostrar_indicador}
+                  bloqueado={analise.bloqueado}
+                  minimoAceitacao={analise.configuracao.minimo_aceitacao}
+                  analisando={analise.analisando}
+                  aoReanalisar={analise.reanalisar}
+                  aoColar={colarTrechoNoEditor(descriptionEditorRef)}
+                  rotuloColar="Colar na descrição"
+                />
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between gap-2 rounded-b-lg border-t-[0.5px] border-subtle bg-surface-1 px-5 py-4">
@@ -275,7 +320,7 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
                 ref={submitBtnRef}
                 type="submit"
                 loading={formSubmitting}
-                disabled={isTitleLengthMoreThan255Character}
+                disabled={isTitleLengthMoreThan255Character || analise.bloqueado}
                 tabIndex={getIndex("submit_button")}
                 size="lg"
               >

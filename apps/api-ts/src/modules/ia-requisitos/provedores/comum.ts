@@ -7,7 +7,16 @@
  * prompt, e a resposta em JSON é extraída aqui.
  */
 
-import {RESPOSTA_VAZIA, type ItemFaltando, type PedidoIa, type RespostaIa} from "@modules/ia-requisitos/tipos";
+import {
+  ANALISE_VAZIA,
+  RESPOSTA_VAZIA,
+  type BlocoDaAnalise,
+  type ItemFaltando,
+  type PedidoAnalise,
+  type PedidoIa,
+  type RespostaAnalise,
+  type RespostaIa,
+} from "@modules/ia-requisitos/tipos";
 
 /**
  * `fetch` que devolve o JSON ou `null`. Nunca lança — inclui o estouro do tempo
@@ -65,11 +74,9 @@ export function instrucaoDoSistema(): string {
   return METODOLOGIA;
 }
 
-/** O chamado e o ponto em que a pessoa parou de digitar, em texto corrido. */
-export function instrucaoDoUsuario(pedido: PedidoIa): string {
-  const c = pedido.contexto;
+/** O chamado em texto corrido — a parte que os dois pedidos compartilham. */
+function linhasDoContexto(c: PedidoIa["contexto"]): string[] {
   const linhas = [
-    `Campo em edição: ${pedido.campo}`,
     `Tipo do chamado: ${c.tipo ?? "não classificado"}`,
     `Projeto: ${c.projeto ?? "não informado"}`,
     `Entidade: ${c.entidade ?? "não informada"}`,
@@ -81,6 +88,12 @@ export function instrucaoDoUsuario(pedido: PedidoIa): string {
     const anexos = c.anexos.map((a) => `${a.nome}${a.texto_extraido ? `: ${a.texto_extraido}` : ""}`);
     linhas.push(`Anexos (texto extraído):\n- ${anexos.join("\n- ")}`);
   }
+  return linhas;
+}
+
+/** O chamado e o ponto em que a pessoa parou de digitar, em texto corrido. */
+export function instrucaoDoUsuario(pedido: PedidoIa): string {
+  const linhas = [`Campo em edição: ${pedido.campo}`, ...linhasDoContexto(pedido.contexto)];
 
   const antes = pedido.texto_atual.slice(0, pedido.cursor);
   const depois = pedido.texto_atual.slice(pedido.cursor);
@@ -140,5 +153,172 @@ export function interpretarTextoDoModelo(texto: unknown): RespostaIa {
   } catch {
     console.warn("[ia-requisitos] o modelo não devolveu JSON válido; sugestão descartada.");
     return RESPOSTA_VAZIA;
+  }
+}
+
+// ── Análise no salvar ────────────────────────────────────────────────────────
+
+/** Os 8 blocos do checklist de aceitação, na ordem da Parte 9 da aula. */
+export const BLOCOS_DO_CHECKLIST = [
+  "Identificação",
+  "Contexto",
+  "Reprodução",
+  "Requisito",
+  "Números",
+  "Critérios de aceite",
+  "Escopo",
+  "Prioridade",
+] as const;
+
+/**
+ * A régua da análise. Mais longa que a da sugestão porque aqui não há teto de
+ * digitação a respeitar: a análise roda uma vez, ao salvar, e quem espera já
+ * está vendo o botão carregando.
+ */
+const METODOLOGIA_DE_ANALISE = [
+  "Você é especialista em levantamento de requisitos e revisa um chamado de suporte, em português do Brasil.",
+  "Aplique ESTA metodologia (Aula 18-3), sem inventar outra.",
+  "",
+  "Checklist de aceitação, na ordem — qualquer item não atendido é levantamento que falta:",
+  "1. Identificação: título com módulo, o que acontece e em que situação; classificado como correção ou melhoria; a classificação se sustenta; um problema só; não é duplicata.",
+  "2. Contexto: ambiente, entidade, versão, módulo e caminho da tela, perfil do usuário.",
+  "3. Reprodução (correções): problema reproduzido e não só relatado; passo a passo numerado, uma ação por linha, com os dados usados; se acontece sempre ou às vezes; desde quando; evidência (print, texto do erro, data e hora).",
+  '4. Requisito: descreve o comportamento esperado, na forma "o sistema deve …"; sugestão de solução separada e marcada, com o requisito de pé sem ela; três pessoas entenderiam a mesma coisa; nada que só foi dito em reunião; não contradiz outra regra; a fonte da regra está informada.',
+  "5. Números: pelo menos um exemplo numérico; o exemplo mostra a conta, não só o resultado; arredondamento definido quando há divisão; o que acontece com zero e com vazio.",
+  "6. Critérios de aceite: escritos em DADO / QUANDO / ENTÃO; o DADO tem os dados de entrada; o QUANDO tem uma ação só; o ENTÃO tem valor verificável; pelo menos um cenário de exceção; duas pessoas chegariam à mesma conclusão sobre passou ou não.",
+  "7. Escopo (melhorias): a dor escrita, não só o pedido; como a pessoa resolve isso hoje; o que entra e o que NÃO entra no escopo; impacto nos dados existentes; quem valida a entrega.",
+  "8. Prioridade: quantos clientes e usuários são afetados; se trava a operação; se existe contorno; se há prazo legal ou comercial.",
+  "",
+  "Cinco porquês: quando a causa raiz não estiver clara, encadeie até cinco perguntas partindo do sintoma relatado, cada uma questionando a resposta anterior, para chegar ao comportamento real. Quando a causa já estiver clara, devolva a lista vazia.",
+  "",
+  "Regras da resposta:",
+  "- Um item em `blocos` para CADA um dos 8 blocos, na ordem acima, sempre.",
+  "- `percentual` é quanto daquele bloco o chamado atende, de 0 a 100.",
+  "- `faltando` traz frases curtas dizendo o que falta naquele bloco; bloco atendido vem com lista vazia.",
+  "- `feedback` é curto e direto, dizendo o que melhorar; nada de elogio nem de rodeio.",
+  "- `sugestoes` são trechos prontos para colar no chamado, já escritos na forma da metodologia.",
+  "- NÃO invente fato que não está no chamado. Se falta informação, o lugar disso é `faltando`, não `sugestoes`.",
+  "",
+  "Responda SOMENTE com JSON, nesta forma:",
+  '{"blocos": [{"bloco": "Identificação", "percentual": 100, "faltando": []}, {"bloco": "Números", "percentual": 0, "faltando": ["Falta um exemplo numérico mostrando a conta."]}],',
+  ' "porques": ["Por que o total sai errado? …"], "feedback": "texto curto", "sugestoes": ["trecho pronto para colar"]}',
+].join("\n");
+
+export function instrucaoDeAnaliseSistema(): string {
+  return METODOLOGIA_DE_ANALISE;
+}
+
+/** O chamado inteiro, do jeito que ele será salvo. */
+export function instrucaoDeAnaliseUsuario(pedido: PedidoAnalise): string {
+  const linhas = [
+    pedido.campo === "chamado" ? "Analise o chamado abaixo." : "Analise o comentário abaixo, no contexto do chamado.",
+    ...linhasDoContexto(pedido.contexto),
+  ];
+  if (pedido.titulo) linhas.push("", `Título a salvar:\n${pedido.titulo}`);
+  if (pedido.descricao) linhas.push("", `Descrição a salvar:\n${pedido.descricao}`);
+  if (pedido.comentario) linhas.push("", `Comentário a salvar:\n${pedido.comentario}`);
+  return linhas.join("\n");
+}
+
+/**
+ * Nota de 0 a 100, ou `null` quando não há nota.
+ *
+ * O tipo é conferido antes da conversão de propósito: `Number(null)` e
+ * `Number("")` valem 0, e um serviço que diz "não tenho nota" com `null` viraria
+ * zero — que na tela, no modo `exigir`, é a diferença entre não bloquear e
+ * bloquear.
+ */
+function inteiroDeZeroACem(valor: unknown): number | null {
+  if (typeof valor !== "number" && typeof valor !== "string") return null;
+  if (valor === "") return null;
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(Math.max(Math.round(n), 0), 100);
+}
+
+function listaDeTexto(bruto: unknown, limite: number): string[] {
+  if (!Array.isArray(bruto)) return [];
+  return bruto
+    .filter((i) => typeof i === "string")
+    .map((i) => (i as string).trim())
+    .filter(Boolean)
+    .slice(0, limite);
+}
+
+/**
+ * Blocos do checklist. O modelo pode esquecer o `percentual`; nesse caso o bloco
+ * vale pelo que ele mesmo disse que falta — lista vazia é bloco atendido.
+ */
+function listaDeBlocos(bruto: unknown): BlocoDaAnalise[] {
+  if (!Array.isArray(bruto)) return [];
+  return bruto
+    .filter((b): b is Record<string, unknown> => Boolean(b) && typeof b === "object")
+    .map((b) => {
+      const faltando = listaDeTexto(b.faltando, 12);
+      return {
+        bloco: String(b.bloco ?? "").trim(),
+        percentual: inteiroDeZeroACem(b.percentual) ?? (faltando.length ? 0 : 100),
+        faltando,
+      };
+    })
+    .filter((b) => b.bloco)
+    .slice(0, BLOCOS_DO_CHECKLIST.length);
+}
+
+/** Média simples dos blocos — a nota não pode contradizer o que está na tela. */
+function aceitacaoDosBlocos(blocos: BlocoDaAnalise[]): number | null {
+  if (!blocos.length) return null;
+  return Math.round(blocos.reduce((soma, b) => soma + b.percentual, 0) / blocos.length);
+}
+
+/**
+ * Normaliza a análise NATIVA (formato `aviao`). A nota vem do checklist
+ * determinístico do serviço (`checklist.py`) — nota precisa ser reproduzível,
+ * então ela é respeitada como veio; só a forma é conferida aqui.
+ *
+ * Resposta sem nada aproveitável vira análise vazia: mostrar medidor zerado
+ * porque o modelo devolveu lixo é pior do que não mostrar medidor nenhum.
+ */
+export function sanitizarAnaliseNativa(bruto: unknown): RespostaAnalise {
+  if (!bruto || typeof bruto !== "object") return ANALISE_VAZIA;
+  const r = bruto as Record<string, unknown>;
+
+  const blocos = listaDeBlocos(r.blocos);
+  const aceitacao = inteiroDeZeroACem(r.aceitacao) ?? aceitacaoDosBlocos(blocos);
+  const analise: RespostaAnalise = {
+    aceitacao,
+    blocos,
+    porques: listaDeTexto(r.porques, 5),
+    feedback: typeof r.feedback === "string" ? r.feedback.trim() : "",
+    sugestoes: listaDeTexto(r.sugestoes, 5),
+  };
+
+  const nadaAproveitavel =
+    analise.aceitacao === null &&
+    !analise.blocos.length &&
+    !analise.porques.length &&
+    !analise.feedback &&
+    !analise.sugestoes.length;
+  return nadaAproveitavel ? ANALISE_VAZIA : analise;
+}
+
+/**
+ * Lê a análise de um provedor GENÉRICO, que devolve texto livre.
+ *
+ * Aqui a nota **não** é pedida ao modelo: ela sai da média dos blocos que ele
+ * mesmo devolveu, para o número bater com o que a tela lista. Se o modelo não
+ * colaborar com o JSON pedido, a análise sai vazia — análise vazia vale mais
+ * que análise inventada.
+ */
+export function interpretarAnaliseDoModelo(texto: unknown): RespostaAnalise {
+  if (typeof texto !== "string" || !texto.trim()) return ANALISE_VAZIA;
+  const json = recortarJson(texto);
+  if (!json) return ANALISE_VAZIA;
+  try {
+    const bruto = JSON.parse(json) as Record<string, unknown>;
+    return sanitizarAnaliseNativa({...bruto, aceitacao: undefined});
+  } catch {
+    console.warn("[ia-requisitos] o modelo não devolveu JSON válido; análise descartada.");
+    return ANALISE_VAZIA;
   }
 }

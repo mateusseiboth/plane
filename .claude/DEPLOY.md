@@ -111,10 +111,19 @@ PSQL="sshpass -p SENHA ssh -o StrictHostKeyChecking=no root@10.1.2.12 docker exe
 > falha calado e as três verificações da seção 4 acusam "erro" como se os dados
 > migrados tivessem sumido.
 
-## IA de levantamento de requisitos ("texto fantasma")
+## IA de levantamento de requisitos (texto fantasma + análise ao salvar)
 
-Alimenta `POST /api/v1/workspaces/:slug/ia/sugestao-de-requisito/`. As variáveis
-vão no `.env` da raiz (o `docker-compose-local.yml` já as repassa ao `api-ts`).
+Alimenta as rotas do módulo `apps/api-ts/src/modules/ia-requisitos/`:
+
+| rota | quando | serviço |
+|---|---|---|
+| `POST /api/v1/workspaces/:slug/ia/sugestao-de-requisito/` | enquanto se digita | `POST {base}/sugerir` |
+| `POST /api/v1/workspaces/:slug/ia/analise-de-chamado/` | ao clicar em salvar | `POST {base}/analisar` |
+| `GET\|PATCH /api/v1/workspaces/:slug/ia/configuracao/` | o que cada espaço decide | — (banco) |
+
+As variáveis abaixo valem para o SERVIDOR (endereço, formato, credencial) e vão
+no `.env` da raiz — o `docker-compose-local.yml` já as repassa ao `api-ts`. O que
+cada espaço de trabalho liga ou desliga fica no banco, na seção seguinte.
 
 | variável | para que serve | padrão |
 |---|---|---|
@@ -122,16 +131,17 @@ vão no `.env` da raiz (o `docker-compose-local.yml` já as repassa ao `api-ts`)
 | `IA_REQUISITOS_FORMATO` | `aviao`, `openai`, `llamacpp` ou `ollama` | `aviao` |
 | `IA_REQUISITOS_CHAVE` | credencial; **nunca** chega ao navegador | vazio |
 | `IA_REQUISITOS_MODELO` | nome do modelo, para os formatos que pedem | vazio |
-| `IA_REQUISITOS_TIMEOUT_MS` | teto de espera da sugestão | `5000` |
+| `IA_REQUISITOS_TIMEOUT_MS` | teto de espera da sugestão e da análise | `5000` |
 | `IA_REQUISITOS_ENABLED` | interruptor extra, para desligar sem perder a configuração | `true` |
 | `IA_REQUISITOS_OCR_URL` | extração de texto dos prints | `${IA_REQUISITOS_URL}/ocr` |
 | `IA_REQUISITOS_OCR_TIMEOUT_MS` | teto de espera do OCR | `1500` |
 
-**Desligado é o padrão.** Sem `IA_REQUISITOS_URL` a rota responde `200` com
-`{"sugestao": "", "faltando": []}` e ninguém percebe diferença ao escrever
-chamado. O mesmo vale para serviço fora do ar, erro, tempo estourado e formato
-inexistente — **escrever chamado não depende da IA estar de pé**, então não há
-cenário em que a IA derrube o editor.
+**Desligado é o padrão.** Sem `IA_REQUISITOS_URL` a sugestão responde `200` com
+`{"sugestao": "", "faltando": []}` e a análise com `{"aceitacao": null, …}`;
+ninguém percebe diferença ao escrever chamado. O mesmo vale para serviço fora do
+ar, erro, tempo estourado e formato inexistente — **trabalhar não depende da IA
+estar de pé**, então não há cenário em que a IA derrube o editor nem trave o
+salvamento.
 
 ### Trocar de provedor
 
@@ -169,11 +179,96 @@ desligado e registra `[ia-requisitos] IA_REQUISITOS_FORMATO="…" não existe` n
 log — é a primeira coisa a conferir quando a sugestão "sumiu".
 
 Um provedor novo é **um arquivo em `apps/api-ts/src/modules/ia-requisitos/provedores/`
-e uma linha no mapa** de `provedores/index.ts`.
+e uma linha no mapa** de `provedores/index.ts`. Cada provedor implementa os dois
+métodos da interface: `sugerir` (texto fantasma) e `analisar` (análise ao salvar).
 
 > A credencial fica só no processo do servidor. Se ela aparecer em
 > `apps/web/.env` ou em qualquer bundle do frontend, está no lugar errado — o
 > navegador fala apenas com o Plane.
+
+### Análise ao salvar
+
+`POST /api/v1/workspaces/:slug/ia/analise-de-chamado/` roda o checklist de
+aceitação inteiro, aplica as regras da Aula 18-3 e os cinco porquês, e devolve a
+nota. Mesma permissão da rota irmã (quem pode abrir chamado no projeto), mesma
+trilha LGPD — os eventos se distinguem por `metadata.operacao`
+(`sugestao` ou `analise`) na tela de Auditoria.
+
+```jsonc
+// pedido
+{
+  "campo": "chamado",          // "chamado" | "comentario"
+  "titulo": "…", "descricao": "…", "comentario": "…",
+  "project_id": "…",           // ou issue_id de um chamado existente
+  "issue_id": "…", "tipo": "correcao", "entity_id": "…",
+  "contexto": { }              // reserva para o que a tela sabe e o banco ainda não
+}
+```
+
+```jsonc
+// resposta — sempre 200
+{
+  "aceitacao": 62,             // 0–100, ou null quando NÃO houve nota
+  "analisado": true,           // o mesmo, dito por extenso
+  "blocos": [{"bloco": "Números", "percentual": 0, "faltando": ["Falta um exemplo numérico."]}],
+  "porques": ["Por que o total sai errado? …"],
+  "feedback": "texto curto dizendo o que melhorar",
+  "sugestoes": ["trecho pronto para colar"]
+}
+```
+
+**`aceitacao: null` é o caso que mais importa.** IA desligada, fora do ar, com
+erro, lenta demais ou resposta imprestável → `null` e `analisado: false`, com
+200. Quem bloqueia o salvamento é a TELA, e só com nota na mão: **nem no modo
+`exigir` a rota barra alguma coisa** — travar o chamado porque um serviço está
+indisponível seria pior que não ter o recurso.
+
+No provedor nativo (`aviao`) a nota vem do checklist determinístico do serviço.
+Nos demais formatos ela é **recalculada como a média dos blocos** que o próprio
+modelo devolveu, para o medidor da tela nunca contradizer a lista logo abaixo
+dele; modelo que não devolve o JSON pedido resulta em análise vazia.
+
+### Configuração por espaço de trabalho
+
+Vive em `WorkspaceSetting`, chave `ia_requisitos` — tabela chave/valor que já
+existe, **sem migração**. Lida a cada chamada: ligar e desligar vale na hora, sem
+reiniciar o `api-ts`.
+
+| chave | para que serve | padrão |
+|---|---|---|
+| `fantasma_ativo` | o texto fantasma enquanto digita | `true` |
+| `analise_ativa` | a análise ao salvar | `true` |
+| `analise_em_comentarios` | a análise também na caixa de comentário | `true` |
+| `modo` | `avisar` \| `exigir` \| `silencioso` | `avisar` |
+| `minimo_aceitacao` | nota mínima; só usada no modo `exigir` | `70` |
+| `mostrar_indicador` | o medidor de % na modal | `true` |
+
+- **avisar** — mostra a análise e deixa salvar assim mesmo. É o padrão.
+- **exigir** — abaixo de `minimo_aceitacao` a TELA bloqueia o salvar, com o que
+  falta à vista. Nunca deve ser o padrão de quem instala o Avião.
+- **silencioso** — analisa e guarda, sem interromper.
+
+```bash
+# leitura: qualquer membro do espaço (a tela precisa saber se mostra o indicador)
+curl -H "X-Api-Key: $TOKEN" http://localhost:8000/api/v1/workspaces/quality/ia/configuracao/
+
+# escrita: só quem administra o espaço (nível 20); parcial, manda só o que mudou
+curl -X PATCH -H "X-Api-Key: $TOKEN" -H "Content-Type: application/json" \
+  -d '{"modo": "exigir", "minimo_aceitacao": 85}' \
+  http://localhost:8000/api/v1/workspaces/quality/ia/configuracao/
+```
+
+A leitura acrescenta `ia_disponivel`, que diz **se** existe provedor configurado
+no servidor — nunca qual, onde, nem com que chave. Serve para a tela não
+prometer um recurso que jamais vai responder.
+
+Chave ausente cai no padrão da tabela acima; valor de tipo errado, modo
+inexistente ou porcentagem fora de 0–100 são corrigidos na leitura, e conteúdo
+ilegível no banco **não derruba a rota** — vira os padrões e registra o aviso.
+
+O seeder (`apps/api-ts/scripts/seed.ts`) garante a configuração no espaço
+`quality` **ativa, modo `avisar`**. Ele roda a cada `docker compose up` e só cria
+o que falta: ajuste feito por administrador na tela não é desfeito.
 
 ## Proxy HTTPS (10.1.2.8) — Nginx Proxy Manager
 

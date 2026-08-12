@@ -10,6 +10,7 @@
  */
 import { useState } from "react";
 // hooks
+import { useConfiguracaoDeIa } from "@/hooks/use-configuracao-de-ia";
 import { useSugestaoDeRequisito } from "@/hooks/use-sugestao-de-requisito";
 // services
 import type { TCampoDeRequisito, TContextoDeRequisito } from "@/services/sugestao-de-requisito.service";
@@ -32,10 +33,14 @@ export const useTextoFantasmaCampo = (params: TParametros) => {
   const { workspaceSlug, campo, texto, projectId, issueId, entityId, tipo, ativo = true, contexto } = params;
   const [emFoco, setEmFoco] = useState(false);
   const [recusada, setRecusada] = useState("");
+  // `fantasma_ativo` desligado no espaço de trabalho: nenhum pedido sai e, sem
+  // resposta, nem o fantasma nem o checklist têm o que desenhar. A trava mora
+  // aqui, e não em cada um dos seis campos que usam o hook.
+  const { configuracao } = useConfiguracaoDeIa(workspaceSlug);
 
   const { sugestao, faltando } = useSugestaoDeRequisito({
     workspaceSlug,
-    habilitado: ativo && emFoco,
+    habilitado: ativo && emFoco && configuracao.fantasma_ativo,
     pedido: {
       campo,
       project_id: projectId ?? undefined,

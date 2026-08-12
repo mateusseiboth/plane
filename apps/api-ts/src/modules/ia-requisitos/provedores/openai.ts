@@ -8,36 +8,55 @@
 
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {
+  instrucaoDeAnaliseSistema,
+  instrucaoDeAnaliseUsuario,
   instrucaoDoSistema,
   instrucaoDoUsuario,
+  interpretarAnaliseDoModelo,
   interpretarTextoDoModelo,
   postarJson,
 } from "@modules/ia-requisitos/provedores/comum";
-import {RESPOSTA_VAZIA, type PedidoIa, type ProvedorDeIa, type RespostaIa} from "@modules/ia-requisitos/tipos";
+import type {
+  PedidoAnalise,
+  PedidoIa,
+  ProvedorDeIa,
+  RespostaAnalise,
+  RespostaIa,
+} from "@modules/ia-requisitos/tipos";
 
 export function criarProvedorOpenai(cfg: ConfigIaRequisitos): ProvedorDeIa {
+  /** Devolve o texto gerado, ou `null` quando não houve resposta aproveitável. */
+  async function conversar(sistema: string, usuario: string): Promise<unknown> {
+    const corpo = await postarJson({
+      url: `${cfg.urlBase}/v1/chat/completions`,
+      cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
+      corpo: {
+        model: cfg.modelo || undefined,
+        messages: [
+          {role: "system", content: sistema},
+          {role: "user", content: usuario},
+        ],
+        // Sugestão e análise são trabalho de revisor, não de redator:
+        // temperatura baixa evita invenção.
+        temperature: 0.2,
+        response_format: {type: "json_object"},
+        stream: false,
+      },
+      tempoLimiteMs: cfg.tempoLimiteMs,
+      destino: cfg.destino,
+    });
+    return corpo === null ? null : corpo?.choices?.[0]?.message?.content;
+  }
+
   return {
     formato: "openai",
     async sugerir(pedido: PedidoIa): Promise<RespostaIa> {
-      const corpo = await postarJson({
-        url: `${cfg.urlBase}/v1/chat/completions`,
-        cabecalhos: cfg.chave ? {Authorization: `Bearer ${cfg.chave}`} : {},
-        corpo: {
-          model: cfg.modelo || undefined,
-          messages: [
-            {role: "system", content: instrucaoDoSistema()},
-            {role: "user", content: instrucaoDoUsuario(pedido)},
-          ],
-          // Sugestão de continuação é curta; temperatura baixa evita invenção.
-          temperature: 0.2,
-          response_format: {type: "json_object"},
-          stream: false,
-        },
-        tempoLimiteMs: cfg.tempoLimiteMs,
-        destino: cfg.destino,
-      });
-      if (corpo === null) return RESPOSTA_VAZIA;
-      return interpretarTextoDoModelo(corpo?.choices?.[0]?.message?.content);
+      return interpretarTextoDoModelo(await conversar(instrucaoDoSistema(), instrucaoDoUsuario(pedido)));
+    },
+    async analisar(pedido: PedidoAnalise): Promise<RespostaAnalise> {
+      return interpretarAnaliseDoModelo(
+        await conversar(instrucaoDeAnaliseSistema(), instrucaoDeAnaliseUsuario(pedido)),
+      );
     },
   };
 }

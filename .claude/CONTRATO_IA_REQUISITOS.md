@@ -154,3 +154,92 @@ desligado e registra o aviso no log.
   depender da IA estar de pé**.
 - Interface: texto fantasma no editor de descrição, no campo de título e na
   caixa de comentário. `Tab` aceita, `Esc` descarta, digitar substitui.
+
+---
+
+# Parte 2 — Análise no salvar (pedido do dono)
+
+> "ao clicar em salvar, coloque um loading e mande para a IA, feito isso ela
+> analisa com o checklist de aceitacao, as regras, 5 porqus e tudo mais e da um
+> feedback com sugestao e o que pode melhorar no chamado. isso sempre. pode
+> inclusive colocar na modal um indicador de aceitacao com porcentagem e o
+> indicador faltante. tudo configuravel (se obriga a passar na IA, e etc) nas
+> configs, deixe ativo no nosso. os comentarios de chamado pode colocar tamem."
+
+O texto fantasma ajuda **enquanto** se escreve. A análise fecha o ciclo **no
+momento de salvar**: roda o checklist de aceitação inteiro, aplica as regras da
+aula e os **cinco porquês** (Parte 2 da Aula 18-3, "A Técnica dos Cinco
+Porquês"), e devolve nota, o que falta e o que dá para melhorar.
+
+## API do modelo — `POST /analisar`
+
+```jsonc
+// requisição — mesmo contexto do /sugerir, com o texto completo
+{
+  "campo": "chamado | comentario",
+  "titulo": "…", "descricao": "…", "comentario": "…",
+  "contexto": { /* igual ao /sugerir: tipo, projeto, entidade, anexos… */ }
+}
+```
+
+```jsonc
+// resposta
+{
+  "aceitacao": 62,                    // 0–100: quanto do checklist está atendido
+  "blocos": [                          // um por bloco do checklist, na ordem da aula
+    {"bloco": "Identificação", "percentual": 100, "faltando": []},
+    {"bloco": "Números", "percentual": 0,
+     "faltando": ["Falta um exemplo numérico mostrando a conta."]}
+  ],
+  "porques": [                         // só quando a causa raiz não está clara
+    "Por que o total sai errado? …", "…"
+  ],
+  "feedback": "texto curto, direto, dizendo o que melhorar",
+  "sugestoes": ["trecho pronto para colar", "…"]
+}
+```
+
+`aceitacao` é **calculada pelo checklist determinístico** (`checklist.py`), não
+pedida ao modelo — nota precisa ser reproduzível. O modelo escreve `feedback`,
+`sugestoes` e `porques`.
+
+## Configuração — por espaço de trabalho
+
+Vai em `WorkspaceSetting` (tabela chave/valor que **já existe**), chave
+`ia_requisitos`. **Nada de migração.**
+
+```jsonc
+{
+  "fantasma_ativo": true,          // o texto fantasma enquanto digita
+  "analise_ativa": true,           // a análise ao salvar
+  "analise_em_comentarios": true,
+  "modo": "avisar",                // "avisar" | "exigir" | "silencioso"
+  "minimo_aceitacao": 70,          // só usado no modo "exigir"
+  "mostrar_indicador": true        // o medidor de % na modal
+}
+```
+
+- **avisar** — mostra a análise e deixa salvar assim mesmo. É o padrão.
+- **exigir** — abaixo de `minimo_aceitacao` o salvar fica bloqueado, com o que
+  falta na tela. Existe porque o dono pediu, mas **nunca** deve ser o padrão de
+  quem instala o Avião.
+- **silencioso** — analisa e guarda, sem interromper.
+
+No espaço `quality` (o nosso) sobe **ativo**, modo `avisar`.
+
+## Interface
+
+- Ao salvar: estado de carregando no botão, análise, e então o resultado.
+- Medidor de aceitação em porcentagem na modal, com os blocos faltantes
+  listados — quem lê tem de saber **o que** falta, não só que falta.
+- Mesmo tratamento na caixa de comentário.
+- **A IA nunca impede de trabalhar**: fora do ar, erro ou tempo estourado, o
+  chamado salva normalmente, inclusive no modo `exigir` (bloquear por causa de
+  um serviço indisponível seria pior que não ter o recurso).
+
+## Visão de verdade
+
+O Qwen3.5-4B já na máquina é nativamente multimodal e a torre de visão está em
+disco (0,67 GB, contra ~5 GB livres). Converter para `mmproj` e passar
+`--mmproj` ao servidor substitui o OCR por leitura real do print. O tesseract
+**continua como reserva** quando a conversão não estiver disponível.
