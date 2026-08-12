@@ -77,7 +77,11 @@ export const useSugestaoDeRequisito = (params: TParametros) => {
       revalidateOnReconnect: false,
       revalidateIfStale: false,
       shouldRetryOnError: false,
-      keepPreviousData: false,
+      // Mantém a sugestão anterior na tela enquanto a próxima está a caminho.
+      // Com `false` o dado virava indefinido a cada tecla e o fantasma piscava:
+      // aparecia, sumia, aparecia. Melhor uma sugestão de um instante atrás do
+      // que nenhuma — a nova entra por cima quando chega.
+      keepPreviousData: true,
     }
   );
 

@@ -12,7 +12,7 @@
  * passar da largura visível, o `overflow-hidden` engole a sugestão — some em
  * silêncio, que é o comportamento certo.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode, SyntheticEvent } from "react";
 // plane imports
 import { cn } from "@plane/utils";
@@ -50,7 +50,22 @@ export const TextoFantasmaInput = (props: TTextoFantasmaInputProps) => {
   const { valor, sugestao, classNameCampo, children, onAceitar, onDescartar } = props;
   const [cabe, setCabe] = useState(true);
 
-  const mostrar = sugestao.length > 0 && cabe;
+  // A sugestão fica na tela enquanto a próxima está a caminho — apagá-la a cada
+  // tecla fazia o fantasma piscar. Para continuar CERTA nesse intervalo, ela
+  // encolhe pelo que foi digitado: quem escreve a primeira letra do que estava
+  // sugerido vê a sugestão encurtar, não sumir.
+  const valorNaSugestao = useRef(valor);
+  const sugestaoAnterior = useRef(sugestao);
+  if (sugestaoAnterior.current !== sugestao) {
+    sugestaoAnterior.current = sugestao;
+    valorNaSugestao.current = valor;
+  }
+  const digitadoDepois = valor.startsWith(valorNaSugestao.current)
+    ? valor.slice(valorNaSugestao.current.length)
+    : "";
+  const visivel = sugestao.startsWith(digitadoDepois) ? sugestao.slice(digitadoDepois.length) : sugestao;
+
+  const mostrar = visivel.length > 0 && cabe;
 
   const conferirCampo = (evento: SyntheticEvent) => {
     if (!ehCampoDeTexto(evento.target)) return;
@@ -62,7 +77,7 @@ export const TextoFantasmaInput = (props: TTextoFantasmaInputProps) => {
     if (!mostrar) return;
     if (evento.key === "Tab") {
       evento.preventDefault();
-      onAceitar(valor + sugestao);
+      onAceitar(valor + visivel);
       return;
     }
     if (evento.key === "Escape") {
@@ -91,7 +106,7 @@ export const TextoFantasmaInput = (props: TTextoFantasmaInputProps) => {
           className={cn("pointer-events-none absolute inset-0 overflow-hidden whitespace-pre", classNameCampo)}
         >
           <span className="invisible">{valor}</span>
-          <span className="text-placeholder">{sugestao}</span>
+          <span className="text-placeholder">{visivel}</span>
         </div>
       )}
     </div>

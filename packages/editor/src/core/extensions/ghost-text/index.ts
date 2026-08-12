@@ -7,7 +7,7 @@
 import { Extension } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import type { EditorState } from "@tiptap/pm/state";
+import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 export const GHOST_TEXT_EXTENSION_NAME = "ghostText";
@@ -21,6 +21,7 @@ export const GHOST_TEXT_EXTENSION_NAME = "ghostText";
  * fonte externa e apenas desenha o que ela disser — assim nenhuma chamada de
  * rede entra no pacote do editor.
  */
+
 export type TGhostTextSource = {
   /** Sugestão atual. String vazia significa "não há nada a mostrar". */
   getSnapshot: () => string;
@@ -119,6 +120,33 @@ const ACTIONS: Record<string, (editor: Editor, source: TGhostTextSource | null, 
   },
 };
 
+/** O que esta transação inseriu de texto. Vazio quando não deu para saber. */
+function textoInserido(tr: Transaction): string {
+  let inserido = "";
+  for (const passo of tr.steps) {
+    const fatia = (passo as unknown as { slice?: { content: { size: number; textBetween: (de: number, ate: number, sep: string) => string } } }).slice;
+    if (!fatia) return "";
+    inserido += fatia.content.textBetween(0, fatia.content.size, "\n");
+  }
+  return inserido;
+}
+
+/**
+ * Encurta a sugestão pelo que a pessoa acabou de digitar.
+ *
+ * Quem digita a primeira letra do que estava sugerido vê a sugestão encolher em
+ * vez de sumir. Se o que foi digitado não casa com o começo dela, a sugestão
+ * fica como está: ela pode estar desatualizada por um instante, mas some
+ * piscando é pior — a resposta nova chega e substitui.
+ */
+function consumirDigitado(tr: Transaction, texto: string): string {
+  if (!texto) return "";
+  const digitado = textoInserido(tr);
+  // Apagou, ou passo que não é inserção de texto: mantém o que estava.
+  if (!digitado) return texto;
+  return texto.startsWith(digitado) ? texto.slice(digitado.length) : texto;
+}
+
 const createGhostTextPlugin = (editor: Editor, options: TGhostTextOptions) =>
   new Plugin<TGhostTextState>({
     key: ghostTextPluginKey,
@@ -127,8 +155,16 @@ const createGhostTextPlugin = (editor: Editor, options: TGhostTextOptions) =>
       apply: (tr, value) => {
         const meta = tr.getMeta(ghostTextPluginKey) as TGhostTextState | undefined;
         if (meta) return { text: meta.text };
-        // digitou ou moveu o cursor: a sugestão anterior não vale mais
-        if (tr.docChanged || tr.selectionSet) return EMPTY_STATE;
+        // A sugestão SOBREVIVE à digitação, de propósito. Apagá-la a cada tecla
+        // e esperar a próxima resposta fazia o texto piscar e sumir o tempo
+        // todo enquanto se escreve — o pedido é deixar a anterior no lugar e
+        // apenas substituí-la quando a nova chegar.
+        //
+        // O que a digitação faz é CONSUMIR o que já foi escrito: quem digita a
+        // primeira letra da sugestão vê a sugestão encurtar, não desaparecer.
+        if (tr.docChanged) return { text: consumirDigitado(tr, value.text) };
+        // Mover o cursor é outra história: a continuação era daquele ponto.
+        if (tr.selectionSet) return EMPTY_STATE;
         return value;
       },
     },
