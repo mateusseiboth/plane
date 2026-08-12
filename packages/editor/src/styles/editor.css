@@ -39,6 +39,20 @@
   height: 0;
 }
 
+/* Fantasma e placeholder disputam a MESMA linha.
+ *
+ * O placeholder é um `::before` com `float: left; height: 0` — ele não ocupa
+ * espaço, escreve por cima. Com a sugestão da IA desenhada no mesmo ponto, os
+ * dois textos viravam um borrão ilegível. Quem já recebeu sugestão não precisa
+ * da dica de comandos: ela volta assim que a sugestão sai.
+ *
+ * A especificidade tem de superar as duas regras acima (`.is-editor-empty` e
+ * `.is-empty`), por isso a classe entra no seletor em vez de só o `p`. */
+.ProseMirror p.is-editor-empty:first-child:has(> [data-ghost-text])::before,
+.ProseMirror p.is-empty:has(> [data-ghost-text])::before {
+  content: none;
+}
+
 .ProseMirror li blockquote {
   margin-top: 10px;
   padding-inline-start: 1em;
