@@ -28,7 +28,13 @@ import {configIaRequisitos} from "@modules/ia-requisitos/config";
 import {configDoEspaco} from "@modules/ia-requisitos/configuracao-do-espaco";
 import {montarContexto, type ContextoInformado} from "@modules/ia-requisitos/contexto";
 import {criarProvedor} from "@modules/ia-requisitos/provedores";
-import type {CampoMelhoria, ContextoIa} from "@modules/ia-requisitos/tipos";
+import {
+  semAvisos,
+  type AceitacaoDaMelhoria,
+  type AvisosDaMelhoria,
+  type CampoMelhoria,
+  type ContextoIa,
+} from "@modules/ia-requisitos/tipos";
 
 /** O que a tela manda em `context` — tudo opcional, nada garantido. */
 export type ContextoDaTela = {
@@ -52,17 +58,29 @@ export type PedidoDeMelhoria = {
 };
 
 /**
+ * A proposta da IA, pronta para a tela do diff.
+ *
+ * `html` é `""` quando o serviço não entregou nada de útil. Nada aqui julga a
+ * proposta: `mudou`, `avisos` e `aceitacao` são o que o serviço disse, e a
+ * decisão de aplicar ou não é de quem escreveu o texto.
+ */
+export type PropostaDeMelhoria = {
+  html: string;
+  mudou: boolean;
+  avisos: AvisosDaMelhoria;
+  aceitacao: AceitacaoDaMelhoria | null;
+};
+
+/**
  * Quem vai melhorar o texto, já escolhido.
  *
- * `melhorar()` devolve o HTML pronto para o editor, ou `""` quando o serviço não
- * entregou nada de útil. Exceção de rede continua subindo: quem clicou está
- * esperando e merece saber que a IA falhou, em vez de ver o texto intacto e um
- * aviso de sucesso.
+ * Exceção de rede continua subindo: quem clicou está esperando e merece saber
+ * que a IA falhou, em vez de ver o texto intacto e um aviso de sucesso.
  */
 export type Melhorador = {
   /** O que vai para a trilha LGPD: de onde saiu, para onde foi e quanto. */
   trilha: Record<string, unknown>;
-  melhorar: () => Promise<string>;
+  melhorar: () => Promise<PropostaDeMelhoria>;
 };
 
 type EstrategiaDeMelhoria = (pedido: PedidoDeMelhoria) => Promise<Melhorador | null>;
@@ -100,6 +118,15 @@ export function emHtml(texto: string): string {
       .filter((p) => p !== "<p></p>")
       .join("") || "<p></p>"
   );
+}
+
+/**
+ * Houve proposta? Só quem fala o contrato responde isso por conta própria; para
+ * os demais sobra a comparação com o que a pessoa escreveu — devolver o mesmo
+ * texto não é ter melhorado nada.
+ */
+function mudouDe(proposta: string, original: string): boolean {
+  return Boolean(proposta.trim()) && proposta.trim() !== original.trim();
 }
 
 // ── Caminho 1: o provedor cadastrado pelo espaço ─────────────────────────────
@@ -191,7 +218,14 @@ const comProvedorCadastrado: EstrategiaDeMelhoria = async (pedido) => {
     }),
     // Sem rede de proteção de propósito: é exatamente o que a rota fazia antes,
     // inclusive o "<p></p>" de um modelo que respondeu vazio.
-    melhorar: async () => emHtml(await chatComplete(provider, mensagens, {temperature: 0.7, maxTokens: 2048})),
+    //
+    // Avisos e nota de aceitação não existem por aqui: um provedor genérico não
+    // tem a guarda nem o checklist do serviço de requisitos. A tela mostra o
+    // diff sem eles — que é mais do que este caminho oferecia antes.
+    melhorar: async () => {
+      const html = emHtml(await chatComplete(provider, mensagens, {temperature: 0.7, maxTokens: 2048}));
+      return {html, mudou: mudouDe(html, pedido.html), avisos: semAvisos(), aceitacao: null};
+    },
   };
 };
 
@@ -244,7 +278,14 @@ const comIaDeRequisitos: EstrategiaDeMelhoria = async (pedido) => {
       // O provedor não lança: serviço fora do ar, tempo estourado ou resposta
       // imprestável viram texto vazio, e quem chamou decide o que dizer.
       const melhoria = await provedor.melhorar({texto: pedido.html, campo: pedido.campo, contexto});
-      return melhoria.texto ? emHtml(melhoria.texto) : "";
+      // Avisos e nota atravessam intactos: aqui não se filtra suspeita nem se
+      // compara nota com mínimo. Quem lê e decide é o autor do texto.
+      return {
+        html: melhoria.texto ? emHtml(melhoria.texto) : "",
+        mudou: melhoria.mudou,
+        avisos: melhoria.avisos,
+        aceitacao: melhoria.aceitacao,
+      };
     },
   };
 };

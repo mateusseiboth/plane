@@ -6,6 +6,12 @@
  * trabalho e, na falta dele, a IA de levantamento de requisitos. Só quando não
  * há nenhum dos dois ela volta a dizer que não existe provedor configurado.
  *
+ * Desde a Parte 3 do contrato a rota **não julga a proposta**: além de
+ * `response`/`original`, ela devolve os `avisos` da guarda e a nota `aceitacao`
+ * (antes → depois) para a tela mostrar o diff e o autor decidir. O que os testes
+ * abaixo cobram, então, é que nada seja vetado, nada seja inventado e que
+ * "não produzi proposta" não se pareça com sucesso.
+ *
  * Como nos testes irmãos de IA:
  *
  *  - **Nada aqui toca serviço de IA de verdade.** Dois servidores falsos locais
@@ -42,12 +48,28 @@ import path from "path";
 
 type ChamadaIa = {caminho: string; corpo: any; chave: string | null; autorizacao: string | null};
 
-/** `ok` responde o combinado; os outros são as formas conhecidas de dar errado. */
-type ModoIa = "ok" | "erro" | "lento" | "html-cru" | "vazio";
+/**
+ * `ok` responde o combinado; `erro`, `lento`, `html-cru` e `vazio` são as formas
+ * conhecidas de dar errado. Os três últimos são da Parte 3 do contrato: a
+ * proposta acompanhada dos avisos da guarda e da nota antes → depois, a nota que
+ * PIORA e o serviço que honestamente não produziu proposta.
+ */
+type ModoIa = "ok" | "erro" | "lento" | "html-cru" | "vazio" | "com-avisos" | "nota-pior" | "sem-proposta";
 
 const MELHORADO = "<p>O sistema deve somar no rodapé apenas as linhas visíveis do filtro.</p>";
+/** O texto do autor, o mesmo que o botão manda — o "antes" do diff. */
+const TEXTO = "<p>o total do rodape ta errado quando filtra por secretaria</p>";
+/** Suspeitas da guarda: informam quem vai decidir, não vetam a proposta. */
+const AVISOS = {perdidos: ["4.2.1", "R$ 340,00"], inventados: ["R$ 500,00"]};
+/** A nota do checklist antes e depois — referência ao lado do diff. */
+const ACEITACAO = {antes: 12, depois: 68};
 /** Quanto o modo "lento" demora — bem acima de qualquer tempo limite de teste. */
 const DEMORA_MS = 2500;
+
+/** O mesmo JSON de resposta, embrulhado como um provedor genérico o devolveria. */
+function comoModeloGenerico(carga: Record<string, unknown>) {
+  return Response.json({choices: [{message: {role: "assistant", content: JSON.stringify(carga)}}]});
+}
 
 function iniciarIaFalsa() {
   const chamadas: ChamadaIa[] = [];
@@ -80,6 +102,24 @@ function iniciarIaFalsa() {
     // Resposta na forma certa e sem nada dentro.
     vazio: (caminho) =>
       Response.json(caminho === "/melhorar" ? {texto: "", mudou: false} : {choices: [{message: {content: ""}}]}),
+    // A proposta com o que o serviço nativo sabe produzir junto dela. O mesmo
+    // JSON vai no texto do modelo genérico — que NÃO tem guarda nem checklist,
+    // e por isso não pode passar esses números adiante como se fossem conta.
+    "com-avisos": (caminho) =>
+      caminho === "/melhorar"
+        ? Response.json({texto: MELHORADO, mudou: true, avisos: AVISOS, aceitacao: ACEITACAO})
+        : comoModeloGenerico({texto: MELHORADO, avisos: AVISOS, aceitacao: ACEITACAO}),
+    // A proposta que baixa a nota. Continua sendo uma proposta: quem decide é
+    // quem escreveu, não o servidor.
+    "nota-pior": (caminho) =>
+      caminho === "/melhorar"
+        ? Response.json({texto: MELHORADO, mudou: true, aceitacao: {antes: 90, depois: 20}})
+        : comoModeloGenerico({texto: MELHORADO}),
+    // O serviço respondeu e foi honesto: não produziu proposta nenhuma.
+    "sem-proposta": (caminho) =>
+      caminho === "/melhorar"
+        ? Response.json({texto: TEXTO, mudou: false})
+        : comoModeloGenerico({texto: TEXTO}),
   };
 
   const servidor = Bun.serve({
@@ -140,6 +180,10 @@ function iniciarProvedorCadastrado() {
     chamadas,
     derrubar: () => {
       responder = () => new Response("provedor fora do ar", {status: 500});
+    },
+    /** Para o caso em que o modelo devolve exatamente o texto que recebeu. */
+    responderCom: (conteudo: string) => {
+      responder = () => Response.json({choices: [{message: {content: conteudo}}]});
     },
     limpar: () => {
       chamadas.length = 0;
@@ -213,7 +257,8 @@ describe("Melhorar com IA", () => {
 
   const caminho = () => `/workspaces/${slug}/ai-assistant/improve-text/`;
 
-  const TEXTO = "<p>o total do rodape ta errado quando filtra por secretaria</p>";
+  /** Nada de aviso e nenhuma nota — o que um serviço sem os dois produz. */
+  const SEM_AVISOS = {perdidos: [], inventados: []};
 
   /** O pedido do jeito que o botão manda hoje: só o texto e o que a tela sabe. */
   const pedido = (extra: Record<string, unknown> = {}) => ({
@@ -344,7 +389,15 @@ describe("Melhorar com IA", () => {
 
     const res = await cliente("aviao").post(caminho(), pedido());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({response: MELHORADO_PELO_CADASTRADO, original: TEXTO});
+    // `response` e `original` seguem onde sempre estiveram. Os campos novos
+    // acompanham vazios: este caminho não tem guarda nem checklist.
+    expect(await res.json()).toEqual({
+      response: MELHORADO_PELO_CADASTRADO,
+      original: TEXTO,
+      mudou: true,
+      avisos: SEM_AVISOS,
+      aceitacao: null,
+    });
 
     // O provedor do espaço vence mesmo com a IA de requisitos ligada e de pé.
     expect(ia.chamadas).toHaveLength(0);
@@ -395,7 +448,15 @@ describe("Melhorar com IA", () => {
   it("sem AiProvider, o botão passa a funcionar pela IA de requisitos", async () => {
     const res = await cliente("aviao").post(caminho(), pedido());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({response: MELHORADO, original: TEXTO});
+    // Serviço que não mandou avisos nem nota: listas vazias e `aceitacao` nula.
+    // Nada é inventado para preencher o espaço, e a tela trata a ausência.
+    expect(await res.json()).toEqual({
+      response: MELHORADO,
+      original: TEXTO,
+      mudou: true,
+      avisos: SEM_AVISOS,
+      aceitacao: null,
+    });
 
     const chamada = ia.chamadas.find((c) => c.caminho === "/melhorar")!;
     expect(chamada).toBeDefined();
@@ -488,6 +549,106 @@ describe("Melhorar com IA", () => {
     const res = await cliente("openai").post(caminho(), pedido());
     expect(res.status).toBe(200);
     expect((await res.json()).response).toBe(MELHORADO);
+  });
+
+  it("nos formatos não-nativos os campos novos vêm ausentes, e ausentes ficam", async () => {
+    for (const formato of ["openai", "llamacpp", "ollama"]) {
+      const res = await cliente(formato).post(caminho(), pedido());
+      expect(res.status).toBe(200);
+
+      const corpo = await res.json();
+      expect(corpo.response).toBe(MELHORADO);
+      expect(corpo.original).toBe(TEXTO);
+      expect(corpo.avisos).toEqual(SEM_AVISOS);
+      expect(corpo.aceitacao).toBeNull();
+    }
+  });
+
+  it("aviso e nota que um modelo genérico escreveu não viram conta do serviço", async () => {
+    ia.definirModo("com-avisos");
+    const corpo = await (await cliente("openai").post(caminho(), pedido())).json();
+
+    // A proposta é entregue — é o que o usuário pediu.
+    expect(corpo.response).toBe(MELHORADO);
+    // Mas guarda e checklist são contas do serviço nativo, não opinião de LLM:
+    // número inventado ao lado do texto engana mais do que a ausência dele.
+    expect(corpo.avisos).toEqual(SEM_AVISOS);
+    expect(corpo.aceitacao).toBeNull();
+  });
+
+  // ── O autor decide: a rota entrega, não julga ───────────────────────────────
+
+  it("os avisos da guarda e a nota antes → depois chegam junto da proposta", async () => {
+    ia.definirModo("com-avisos");
+    const res = await cliente("aviao").post(caminho(), pedido());
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      // O texto do autor e o da IA, os dois, para a tela mostrar lado a lado.
+      response: MELHORADO,
+      original: TEXTO,
+      mudou: true,
+      avisos: {perdidos: ["4.2.1", "R$ 340,00"], inventados: ["R$ 500,00"]},
+      aceitacao: {antes: 12, depois: 68},
+    });
+  });
+
+  it("suspeita de dado inventado NÃO veta a proposta: ela chega inteira", async () => {
+    ia.definirModo("com-avisos");
+    const corpo = await (await cliente("aviao").post(caminho(), pedido())).json();
+
+    // O defeito que a Parte 3 corrige era exatamente este: a guarda vetava, a
+    // rota devolvia o texto intacto e ainda dizia que havia melhorado.
+    expect(corpo.avisos.inventados).toEqual(["R$ 500,00"]);
+    expect(corpo.response).toBe(MELHORADO);
+    expect(corpo.response).not.toBe(TEXTO);
+    expect(corpo.mudou).toBe(true);
+  });
+
+  it("nota que PIORA também é entregue: a régua é informação, não veredito", async () => {
+    ia.definirModo("nota-pior");
+    const corpo = await (await cliente("aviao").post(caminho(), pedido())).json();
+
+    expect(corpo.aceitacao).toEqual({antes: 90, depois: 20});
+    expect(corpo.response).toBe(MELHORADO);
+    expect(corpo.mudou).toBe(true);
+    // Nem "já está bom" (antes alto) nem "ficou pior" (depois baixo) descartam
+    // a proposta: nenhum julgamento mora no servidor.
+    expect(corpo.detail).toBeUndefined();
+  });
+
+  it("serviço sem proposta responde 200 dizendo isso, sem fingir que melhorou", async () => {
+    ia.definirModo("sem-proposta");
+    const res = await cliente("aviao").post(caminho(), pedido());
+
+    expect(res.status).toBe(200);
+    const corpo = await res.json();
+    // Distinguível do sucesso sem precisar comparar textos: `mudou` é false e
+    // vem acompanhado do motivo, por extenso.
+    expect(corpo.mudou).toBe(false);
+    expect(corpo.detail).toBe("A IA não propôs alteração para este texto.");
+    expect(corpo.original).toBe(TEXTO);
+    expect(corpo.avisos).toEqual(SEM_AVISOS);
+    expect(corpo.aceitacao).toBeNull();
+  });
+
+  it("modelo genérico que devolve o mesmo texto também é 'não propôs alteração'", async () => {
+    ia.definirModo("sem-proposta");
+    const corpo = await (await cliente("openai").post(caminho(), pedido())).json();
+
+    expect(corpo.mudou).toBe(false);
+    expect(corpo.detail).toBe("A IA não propôs alteração para este texto.");
+  });
+
+  it("provedor cadastrado que devolve o mesmo texto não é anunciado como melhoria", async () => {
+    await cadastrarProvedor();
+    cadastrado.responderCom(TEXTO);
+
+    const corpo = await (await cliente("aviao").post(caminho(), pedido())).json();
+    expect(corpo.mudou).toBe(false);
+    expect(corpo.detail).toBe("A IA não propôs alteração para este texto.");
+    // O texto do autor continua na resposta: ninguém perde o que escreveu.
+    expect(corpo.original).toBe(TEXTO);
   });
 
   // ── Nenhum provedor, e a configuração do espaço ─────────────────────────────

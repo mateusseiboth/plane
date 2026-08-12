@@ -240,15 +240,42 @@ existia na descrição e na caixa de comentário. Ele escolhe quem melhora o tex
    *Configurações → Provedores de IA* continua com ele e com o mesmo prompt de
    antes. Nada muda para quem já usava.
 2. **IA de requisitos** — `POST {base}/melhorar`, com `{"texto", "campo",
-   "contexto"}` e resposta `{"texto", "mudou"}`. A metodologia da Aula 18-3 não
-   vai no prompt: quem sabe aplicá-la é o serviço. Nos formatos genéricos
-   (`openai`, `llamacpp`, `ollama`) ela viaja no prompt, como nas outras rotas.
+   "contexto"}` e resposta `{"texto", "mudou", "avisos", "aceitacao"}`. A
+   metodologia da Aula 18-3 não vai no prompt: quem sabe aplicá-la é o serviço.
+   Nos formatos genéricos (`openai`, `llamacpp`, `ollama`) ela viaja no prompt,
+   como nas outras rotas.
 3. Nenhum dos dois: `400` com "Nenhum provedor de IA configurado".
+
+**Quem decide é o autor, não o servidor** (Parte 3 do contrato). A rota entrega a
+proposta e os dados para a tela mostrar o texto do autor e o da IA lado a lado,
+com o diff; ela não veta por suspeita da guarda nem por nota do checklist.
+
+```jsonc
+// resposta — 200
+{
+  "response": "<p>a proposta da IA</p>",   // o "depois" do diff
+  "original": "<p>o que o autor escreveu</p>",
+  "mudou": true,
+  "avisos": {                               // suspeitas da guarda: informam, não vetam
+    "perdidos":   ["4.2.1"],                // pode ter sumido do original
+    "inventados": []                        // pode não vir do original
+  },
+  "aceitacao": {"antes": 12, "depois": 68}  // referência, ou null quando não houve nota
+}
+```
+
+`mudou: false` é o caso honesto de o serviço não ter produzido proposta: vem com
+`200` e um `detail` dizendo isso — nunca "conteúdo atualizado" sem ter
+atualizado. Só o formato nativo (`aviao`) produz `avisos` e `aceitacao`; nos
+genéricos eles chegam ausentes e assim ficam (listas vazias e `null`), porque
+guarda e checklist são contas do serviço, não opinião do modelo.
 
 Diferente da sugestão e da análise, aqui **falha vira erro na tela** (`502`):
 quem clicou está esperando o texto, e mostrar "melhorado" sem ter melhorado nada
-seria pior. Trilha LGPD nos dois caminhos, distinguidos por `metadata.servico`
-(`ai-provider` ou `ia-requisitos`) e com `metadata.operacao = "melhoria"`.
+seria pior. O teto de espera é o próprio (`IA_REQUISITOS_MELHORIA_TIMEOUT_MS`, 30
+s), não o da sugestão. Trilha LGPD nos dois caminhos, distinguidos por
+`metadata.servico` (`ai-provider` ou `ia-requisitos`) e com
+`metadata.operacao = "melhoria"`.
 
 O corpo aceita `project_id`/`issue_id` opcionais; informados, o contexto passa a
 sair do banco e a permissão do projeto passa a ser exigida, como nas rotas irmãs.

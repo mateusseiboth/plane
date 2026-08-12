@@ -5,6 +5,11 @@
  * autenticados por `X-API-Key`. É o único que já devolve tudo pronto: a
  * metodologia está no modelo e a nota de aceitação sai do checklist
  * determinístico do serviço, não do prompt.
+ *
+ * Vale também para o que acompanha a proposta de melhoria — os `avisos` da
+ * guarda e a nota `antes`/`depois` (Parte 3 do contrato): são contas do serviço,
+ * então só este formato os traz. Nos demais eles chegam ausentes, e ausentes
+ * ficam.
  */
 
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";

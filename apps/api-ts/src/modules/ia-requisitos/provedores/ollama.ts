@@ -63,6 +63,8 @@ export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
         await conversar(instrucaoDeAnaliseSistema(), instrucaoDeAnaliseUsuario(pedido)),
       );
     },
+    // Como nos demais formatos genéricos, a proposta vem sem `avisos` e sem nota
+    // de aceitação — quem os calcula é o serviço nativo.
     async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
       const texto = await conversar(
         instrucaoDeMelhoriaSistema(),

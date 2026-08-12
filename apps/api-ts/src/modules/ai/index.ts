@@ -1,7 +1,7 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {chatComplete} from "@modules/ai/cliente-de-chat";
-import {escolherMelhorador} from "@modules/ai/melhoria-de-texto";
+import {escolherMelhorador, type PropostaDeMelhoria} from "@modules/ai/melhoria-de-texto";
 import {projetoDoChamado} from "@modules/ia-requisitos/contexto";
 import {normalizarCampoDeMelhoria} from "@modules/ia-requisitos/tipos";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit} from "@utils/audit";
@@ -15,6 +15,38 @@ const PODE_ABRIR_CHAMADO = [EProjectAction.ISSUE_CREATE, EProjectAction.INTAKE_C
 
 function comoId(valor: unknown): string | null {
   return typeof valor === "string" && valor.trim() ? valor.trim() : null;
+}
+
+/** O que a rota diz quando o serviço respondeu, mas sem proposta nenhuma. */
+const SEM_PROPOSTA = "A IA não propôs alteração para este texto.";
+
+/**
+ * A resposta do "Melhorar com IA", na forma que a tela do diff consome.
+ *
+ * `response` e `original` continuam onde sempre estiveram — o texto da IA e o
+ * do autor, lado a lado. O que entra é o que permite ESCOLHER entre os dois:
+ *
+ *  - `mudou` — houve proposta. `false` é o caso honesto de o serviço não ter
+ *    produzido nada, e vem com `detail` dizendo isso por extenso, porque
+ *    devolver o texto intacto sob um aviso de sucesso é mentir para quem clicou.
+ *  - `avisos` — as suspeitas da guarda (`perdidos`, `inventados`). Informam a
+ *    decisão; **não** vetam a proposta, e por isso não mudam nada aqui.
+ *  - `aceitacao` — a nota antes → depois, ou `null` quando não houve nota. É
+ *    referência ao lado do diff, nunca veredito: a rota não compara a nota com
+ *    mínimo nenhum, não decide "já está bom" e não descarta proposta.
+ *
+ * Nenhum julgamento mora no servidor: ele entrega a proposta e os dados, e quem
+ * escreveu o texto decide.
+ */
+function corpoDaMelhoria(proposta: PropostaDeMelhoria, original: string) {
+  return {
+    response: proposta.html,
+    original,
+    mudou: proposta.mudou,
+    avisos: proposta.avisos,
+    aceitacao: proposta.aceitacao,
+    ...(proposta.mudou ? {} : {detail: SEM_PROPOSTA}),
+  };
 }
 
 /**
@@ -196,6 +228,10 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
   // ── Melhorar com IA ────────────────────────────────────────────────────────
   // A rota só orquestra: quem melhora o texto — o provedor cadastrado pelo
   // espaço ou a IA de requisitos — é escolhido em `melhoria-de-texto.ts`.
+  //
+  // Ela também não JULGA a proposta (Parte 3 do contrato): entrega o texto da
+  // IA, o do autor, os avisos da guarda e a nota antes → depois, e quem decide
+  // se aplica é quem escreveu.
 
   .post("/ai-assistant/improve-text/", async ({params: {slug}, body, user, headers, set}) => {
     const ws = await getWorkspaceOrFail(slug);
@@ -240,12 +276,14 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
     });
 
     try {
-      const improvedHtml = await melhorador.melhorar();
-      if (!improvedHtml) {
+      const proposta = await melhorador.melhorar();
+      // Nada chegou: o serviço falhou ou respondeu vazio. Quem clicou está
+      // esperando, então a falha aparece — não vira um "melhorei" silencioso.
+      if (!proposta.html) {
         set.status = 502;
         return {detail: "A IA não devolveu um texto melhorado. Tente novamente em instantes."};
       }
-      return {response: improvedHtml, original: inputHtml};
+      return corpoDaMelhoria(proposta, inputHtml);
     } catch (e: any) {
       set.status = 502;
       return {detail: `Erro no provedor de IA: ${e.message}`};

@@ -71,6 +71,8 @@ export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
       );
       return interpretarAnaliseDoModelo(texto);
     },
+    // Como nos demais formatos genéricos, a proposta vem sem `avisos` e sem nota
+    // de aceitação — quem os calcula é o serviço nativo.
     async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
       const texto = await completar(
         instrucaoDeMelhoriaSistema(),

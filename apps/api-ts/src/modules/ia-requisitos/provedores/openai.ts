@@ -67,6 +67,9 @@ export function criarProvedorOpenai(cfg: ConfigIaRequisitos): ProvedorDeIa {
         await conversar(instrucaoDeAnaliseSistema(), instrucaoDeAnaliseUsuario(pedido)),
       );
     },
+    // A proposta sai daqui sem `avisos` e sem nota de aceitação: um LLM genérico
+    // não tem a guarda nem o checklist do serviço nativo, e a tela trata a
+    // ausência mostrando só o diff.
     async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
       const texto = await conversar(
         instrucaoDeMelhoriaSistema(),

@@ -101,11 +101,54 @@ export type PedidoMelhoria = {
   contexto: ContextoIa;
 };
 
-/** `mudou` distingue "reescrevi" de "não havia o que mexer". */
-export type RespostaMelhoria = {texto: string; mudou: boolean};
+/**
+ * Suspeitas da guarda do serviço: trechos do original que podem ter sumido da
+ * proposta (`perdidos`) e trechos da proposta que podem não vir do original
+ * (`inventados`).
+ *
+ * Elas **informam, não vetam** (Parte 3 do contrato). Vetar era o defeito que
+ * se está corrigindo: a guarda lia os números `1.`, `2.`, `3.` das listas do
+ * próprio template como dado fabricado e devolvia o texto intacto com um aviso
+ * de sucesso. Quem decide o que fazer com a suspeita é quem escreveu o texto.
+ */
+export type AvisosDaMelhoria = {perdidos: string[]; inventados: string[]};
+
+/**
+ * A nota do checklist antes e depois da proposta — **referência, não veredito**.
+ * Nenhum dos dois números decide se a proposta vale: ela é sempre entregue.
+ *
+ * Cada lado é `null` quando o serviço não mandou aquele número, e o objeto
+ * inteiro é `null` quando não mandou nenhum. Ausência é ausência: a tela sabe
+ * não desenhar o medidor, e ninguém precisa distinguir isso de um zero.
+ */
+export type AceitacaoDaMelhoria = {antes: number | null; depois: number | null};
+
+/**
+ * A proposta da IA, como a tela do diff a consome.
+ *
+ * `mudou` distingue "aqui está a proposta" de "não produzi nada" — e é só isso
+ * que ele significa. Não é julgamento de qualidade nem permissão para aplicar:
+ * quem decide é o autor, vendo o texto dele e o da IA lado a lado.
+ */
+export type RespostaMelhoria = {
+  texto: string;
+  mudou: boolean;
+  avisos: AvisosDaMelhoria;
+  aceitacao: AceitacaoDaMelhoria | null;
+};
+
+/** Sem suspeita nenhuma — e sempre um objeto novo, para ninguém mutar o vizinho. */
+export function semAvisos(): AvisosDaMelhoria {
+  return {perdidos: [], inventados: []};
+}
 
 /** Melhoria que não aconteceu: quem chamou decide o que dizer a quem clicou. */
-export const MELHORIA_VAZIA: RespostaMelhoria = {texto: "", mudou: false};
+export const MELHORIA_VAZIA: RespostaMelhoria = {
+  texto: "",
+  mudou: false,
+  avisos: semAvisos(),
+  aceitacao: null,
+};
 
 /**
  * Um provedor de IA. Uma implementação por formato de protocolo; a fábrica em

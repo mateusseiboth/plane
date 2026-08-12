@@ -11,6 +11,9 @@ import {
   ANALISE_VAZIA,
   MELHORIA_VAZIA,
   RESPOSTA_VAZIA,
+  semAvisos,
+  type AceitacaoDaMelhoria,
+  type AvisosDaMelhoria,
   type BlocoDaAnalise,
   type ItemFaltando,
   type PedidoAnalise,
@@ -380,23 +383,59 @@ function semCercaDeCodigo(texto: string): string {
     .trim();
 }
 
+/** Trechos curtos que a guarda apontou; o resto da lista é descartado em silêncio. */
+const LIMITE_DE_AVISOS = 20;
+const LIMITE_DO_TRECHO = 200;
+
+/**
+ * As suspeitas da guarda, como vieram. Elas nunca mudam o que é entregue —
+ * viajam ao lado da proposta para quem decide decidir com informação.
+ */
+function avisosDe(bruto: unknown): AvisosDaMelhoria {
+  if (!bruto || typeof bruto !== "object") return semAvisos();
+  const r = bruto as Record<string, unknown>;
+  const trechos = (valor: unknown) => listaDeTexto(valor, LIMITE_DE_AVISOS).map((t) => t.slice(0, LIMITE_DO_TRECHO));
+  return {perdidos: trechos(r.perdidos), inventados: trechos(r.inventados)};
+}
+
+/**
+ * A nota antes → depois. Sem nenhum dos dois números não há medidor a desenhar,
+ * e `null` diz isso melhor do que um par de zeros — zero é nota, ausência não é.
+ */
+function aceitacaoDe(bruto: unknown): AceitacaoDaMelhoria | null {
+  if (!bruto || typeof bruto !== "object") return null;
+  const r = bruto as Record<string, unknown>;
+  const antes = inteiroDeZeroACem(r.antes);
+  const depois = inteiroDeZeroACem(r.depois);
+  return antes === null && depois === null ? null : {antes, depois};
+}
+
 /** Texto vazio é melhoria que não houve; o resto compara com o original. */
 function melhoriaDe(texto: string, original: string): RespostaMelhoria {
   const limpo = texto.trim();
   if (!limpo) return MELHORIA_VAZIA;
-  return {texto: limpo, mudou: limpo !== original.trim()};
+  return {texto: limpo, mudou: limpo !== original.trim(), avisos: semAvisos(), aceitacao: null};
 }
 
 /**
  * Normaliza a melhoria NATIVA (formato `aviao`). O serviço diz se mexeu no
  * texto; quando não diz, a comparação com o original responde por ele.
+ *
+ * Avisos e nota vêm junto porque só o serviço nativo sabe produzi-los: a guarda
+ * e o checklist determinístico moram nele. Vindo qualquer coisa fora da forma,
+ * o que se perde é o aviso — nunca a proposta.
  */
 export function sanitizarMelhoriaNativa(bruto: unknown, original: string): RespostaMelhoria {
   if (!bruto || typeof bruto !== "object") return MELHORIA_VAZIA;
   const r = bruto as Record<string, unknown>;
   const melhoria = melhoriaDe(typeof r.texto === "string" ? r.texto : "", original);
-  if (!melhoria.texto || typeof r.mudou !== "boolean") return melhoria;
-  return {...melhoria, mudou: r.mudou};
+  if (!melhoria.texto) return melhoria;
+  return {
+    ...melhoria,
+    mudou: typeof r.mudou === "boolean" ? r.mudou : melhoria.mudou,
+    avisos: avisosDe(r.avisos),
+    aceitacao: aceitacaoDe(r.aceitacao),
+  };
 }
 
 /**
@@ -406,6 +445,11 @@ export function sanitizarMelhoriaNativa(bruto: unknown, original: string): Respo
  * modelo que ignorou o JSON e mandou o HTML direto ainda entregou o que se
  * pediu, e descartar isso seria jogar fora a única coisa que o usuário queria.
  * Por isso o JSON é a primeira tentativa, não a única.
+ *
+ * Avisos e nota saem daqui sempre vazios, mesmo que o modelo os tenha escrito —
+ * pela mesma razão que a análise genérica descarta a nota do modelo: guarda e
+ * checklist são contas, não opinião, e número inventado ao lado do texto engana
+ * mais do que ajuda. Ausente, a tela mostra só o diff.
  */
 export function interpretarMelhoriaDoModelo(bruto: unknown, original: string): RespostaMelhoria {
   if (typeof bruto !== "string" || !bruto.trim()) return MELHORIA_VAZIA;
@@ -414,7 +458,9 @@ export function interpretarMelhoriaDoModelo(bruto: unknown, original: string): R
   if (json) {
     try {
       const lido = JSON.parse(json) as Record<string, unknown>;
-      if (typeof lido.texto === "string") return sanitizarMelhoriaNativa(lido, original);
+      if (typeof lido.texto === "string") {
+        return sanitizarMelhoriaNativa({texto: lido.texto, mudou: lido.mudou}, original);
+      }
     } catch {
       // Não era JSON: o texto cru ainda pode ser o HTML pedido.
     }

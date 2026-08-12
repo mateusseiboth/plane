@@ -243,3 +243,63 @@ O Qwen3.5-4B já na máquina é nativamente multimodal e a torre de visão está
 disco (0,67 GB, contra ~5 GB livres). Converter para `mmproj` e passar
 `--mmproj` ao servidor substitui o OCR por leitura real do print. O tesseract
 **continua como reserva** quando a conversão não estiver disponível.
+
+---
+
+# Parte 3 — Melhorar com IA: lado a lado, quem decide é o autor
+
+> "voce nao precisa bloquear, apenas mostre um diff do antes e depois e o
+> usuario escolhe se quer manter"
+>
+> "Dessa forma nao e algo automatizado dizendo se esta bom ou nao, o usuario
+> decide, ele ve a mensagem da IA e a dele lado a lado com o diff e decide se
+> mantem a da IA"
+
+## O que estava errado
+
+Duas decisões automáticas se metiam entre a IA e o autor, e as duas erravam:
+
+1. **A guarda de "dado inventado" vetava a proposta** e devolvia o texto
+   intacto. O falso positivo era banal: os números `1.`, `2.`, `3.` das listas
+   geradas pelo próprio template foram lidos como dados fabricados. Resultado
+   real em produção: o usuário clicou, esperou, e recebeu "Texto melhorado" com
+   **nada** mudado — pior que erro, porque mente.
+2. **O checklist decidia "já está bom" (≥ 80%)** e nem consultava o modelo.
+
+As duas viraram o mesmo defeito: a máquina julgando no lugar de quem escreveu.
+
+## Como passa a ser
+
+**A IA sempre propõe. O autor sempre decide.** Nada de veto, nada de "já está
+bom" automático.
+
+```jsonc
+// resposta do /melhorar
+{
+  "texto": "<p>a proposta</p>",
+  "mudou": true,                    // false só quando o modelo não produziu nada
+  "avisos": {                        // suspeitas da guarda — informam, não vetam
+    "perdidos":   ["4.2.1", "R$ 340,00"],
+    "inventados": ["R$ 500,00"]
+  },
+  "aceitacao": {"antes": 12, "depois": 68}   // referência, não veredito
+}
+```
+
+- A proposta **nunca** é descartada por suspeita da guarda.
+- O checklist **não decide mais** se vale melhorar; a nota vira informação
+  mostrada ao lado (antes → depois), para ajudar a escolher.
+- Número de enumeração de lista não conta como dado inventado.
+- `mudou: false` fica só para o caso honesto de o modelo não ter produzido nada.
+
+## Interface
+
+Ao clicar em "Melhorar com IA", **abre a comparação**:
+
+- **O texto do autor e o da IA lado a lado**, com as diferenças destacadas.
+- **Manter o meu** ou **Usar o da IA** — nada é substituído sem essa escolha.
+- Os `avisos` aparecem junto do botão de aplicar: "a IA pode ter perdido
+  `4.2.1`" é o que permite decidir com informação.
+- A nota antes → depois aparece como referência, sem impedir nada.
+- Se o modelo não produziu proposta, dizer isso — **nunca** "conteúdo
+  atualizado" sem ter atualizado, que é o que acontece hoje.
