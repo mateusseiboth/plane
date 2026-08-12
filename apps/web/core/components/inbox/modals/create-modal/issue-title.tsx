@@ -36,7 +36,7 @@ export const InboxIssueTitle = observer(function InboxIssueTitle(props: TInboxIs
   const nome = data?.name ?? "";
   const tipo = useTipoDeRequisito(data?.label_ids);
   const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
-  const { sugestao, descartar, propsDeFoco } = useTextoFantasmaCampo({
+  const { sugestao, descartar, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "titulo",
     texto: nome,
@@ -50,6 +50,8 @@ export const InboxIssueTitle = observer(function InboxIssueTitle(props: TInboxIs
   return (
     <div className="space-y-1">
       <TextoFantasmaInput
+        reservaDireita="pr-8"
+        consultando={consultando}
         valor={nome}
         sugestao={sugestao}
         classNameCampo="border-[0.5px] border-transparent px-3 py-2 text-14"

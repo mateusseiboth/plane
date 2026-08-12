@@ -38,7 +38,7 @@ export const useTextoFantasmaCampo = (params: TParametros) => {
   // aqui, e não em cada um dos seis campos que usam o hook.
   const { configuracao } = useConfiguracaoDeIa(workspaceSlug);
 
-  const { sugestao, faltando } = useSugestaoDeRequisito({
+  const { sugestao, faltando, isFetching } = useSugestaoDeRequisito({
     workspaceSlug,
     habilitado: ativo && emFoco && configuracao.fantasma_ativo,
     pedido: {
@@ -56,6 +56,12 @@ export const useTextoFantasmaCampo = (params: TParametros) => {
   return {
     sugestao: sugestao === recusada ? "" : sugestao,
     faltando,
+    /**
+     * Há consulta em andamento. Só vira indicador na tela quando a espera passa
+     * de um instante — piscar um carregando a cada tecla seria trocar um
+     * incômodo por outro.
+     */
+    consultando: isFetching,
     descartar: () => setRecusada(sugestao),
     /** Espalhe no campo (ou no contêiner do editor, que o foco borbulha). */
     propsDeFoco: {

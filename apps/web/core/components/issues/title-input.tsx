@@ -60,6 +60,7 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: IssueTit
   const {
     sugestao,
     descartar,
+    consultando,
     propsDeFoco: { onFocus: aoFocar, onBlur: aoDesfocar },
   } = useTextoFantasmaCampo({
     workspaceSlug,
@@ -180,6 +181,10 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: IssueTit
           valor={title}
           sugestao={sugestao}
           classNameCampo="px-3 py-0 text-20 font-medium"
+          // o contador "37/255" mora no canto: o fantasma para antes dele
+          reservaDireita="pr-16"
+          consultando={consultando}
+          classNameIndicador="right-14"
           onAceitar={(texto) => applyTitle(texto.slice(0, 255))}
           onDescartar={descartar}
         >

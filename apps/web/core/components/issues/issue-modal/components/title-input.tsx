@@ -52,7 +52,7 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: TIssueTi
   const nome = useWatch({ control, name: "name" }) ?? "";
   const tipo = useTipoDeRequisito(useWatch({ control, name: "label_ids" }));
   const { projeto, entidade } = useContextoDeRequisito({ workspaceSlug, projectId, entityId });
-  const { sugestao, descartar, propsDeFoco } = useTextoFantasmaCampo({
+  const { sugestao, descartar, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "titulo",
     texto: nome,
@@ -85,6 +85,8 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: TIssueTi
         }}
         render={({ field: { value, onChange, ref } }) => (
           <TextoFantasmaInput
+        reservaDireita="pr-8"
+        consultando={consultando}
             valor={value ?? ""}
             sugestao={sugestao}
             classNameCampo="border-[0.5px] border-transparent px-3 py-2 text-body-sm-regular"

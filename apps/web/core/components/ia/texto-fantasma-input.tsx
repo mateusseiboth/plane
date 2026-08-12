@@ -16,12 +16,25 @@ import { useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode, SyntheticEvent } from "react";
 // plane imports
 import { cn } from "@plane/utils";
+// local imports
+import { IndicadorDeConsulta } from "./indicador-de-consulta";
 
 type TCampoDeTexto = HTMLInputElement | HTMLTextAreaElement;
 
 type TTextoFantasmaInputProps = {
   valor: string;
   sugestao: string;
+  /**
+   * Classe de espaço à direita do fantasma. O campo pode ter enfeites em cima
+   * dele — o contador "37/255" do título, um botão — e o texto sugerido passava
+   * POR BAIXO deles, embolando tudo. Cada tela reserva o que os seus enfeites
+   * ocupam; sem reserva, o fantasma usa a largura inteira.
+   */
+  reservaDireita?: string;
+  /** Consulta em andamento: mostra um girador discreto no canto do campo. */
+  consultando?: boolean;
+  /** Onde o girador fica, quando o canto direito já está ocupado. */
+  classNameIndicador?: string;
   /** Espelhe as classes de espaçamento, borda e tipografia do campo embrulhado. */
   classNameCampo?: string;
   children: ReactNode;
@@ -47,7 +60,8 @@ const cabeEmUmaLinha = (campo: TCampoDeTexto) => {
 };
 
 export const TextoFantasmaInput = (props: TTextoFantasmaInputProps) => {
-  const { valor, sugestao, classNameCampo, children, onAceitar, onDescartar } = props;
+  const { valor, sugestao, classNameCampo, reservaDireita, consultando, classNameIndicador, children, onAceitar, onDescartar } =
+    props;
   const [cabe, setCabe] = useState(true);
 
   // A sugestão fica na tela enquanto a próxima está a caminho — apagá-la a cada
@@ -103,11 +117,22 @@ export const TextoFantasmaInput = (props: TTextoFantasmaInputProps) => {
       {mostrar && (
         <div
           aria-hidden
-          className={cn("pointer-events-none absolute inset-0 overflow-hidden whitespace-pre", classNameCampo)}
+          className={cn(
+            "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre",
+            classNameCampo,
+            reservaDireita
+          )}
         >
           <span className="invisible">{valor}</span>
           <span className="text-placeholder">{visivel}</span>
         </div>
+      )}
+      {consultando !== undefined && (
+        <IndicadorDeConsulta
+          consultando={consultando}
+          compacto
+          className={cn("pointer-events-none absolute top-1/2 right-2 z-[3] -translate-y-1/2", classNameIndicador)}
+        />
       )}
     </div>
   );

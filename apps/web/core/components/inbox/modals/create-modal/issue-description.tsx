@@ -16,7 +16,7 @@ import { Loader } from "@plane/ui";
 import { getDescriptionPlaceholderI18n, getTabIndex, sanitizeHTML } from "@plane/utils";
 // components
 import { RichTextEditor } from "@/components/editor/rich-text/editor";
-import { ItensFaltantes } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
@@ -64,7 +64,7 @@ export const InboxIssueDescription = observer(function InboxIssueDescription(pro
   // texto fantasma da IA de requisitos
   const tipo = useTipoDeRequisito(data?.label_ids);
   const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
-  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
+  const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "descricao",
     texto: sanitizeHTML(data?.description_html ?? ""),
@@ -141,6 +141,7 @@ export const InboxIssueDescription = observer(function InboxIssueDescription(pro
           }
         }}
       />
+      <IndicadorDeConsulta consultando={consultando} className="mt-1" />
       <ItensFaltantes itens={faltando} className="mt-1.5" />
     </div>
   );

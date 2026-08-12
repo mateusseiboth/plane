@@ -21,7 +21,7 @@ import { getDescriptionPlaceholderI18n, getTabIndex, sanitizeHTML } from "@plane
 // components
 import { GptAssistantPopover } from "@/components/core/modals/gpt-assistant-popover";
 import { RichTextEditor } from "@/components/editor/rich-text";
-import { ItensFaltantes } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
 // helpers
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
@@ -88,7 +88,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
   const descriptionHtml = useWatch({ control, name: "description_html" }) ?? "";
   const tipo = useTipoDeRequisito(useWatch({ control, name: "label_ids" }));
   const { projeto, entidade } = useContextoDeRequisito({ workspaceSlug, projectId, entityId });
-  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
+  const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "descricao",
     texto: sanitizeHTML(descriptionHtml),
@@ -319,6 +319,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
           </>
         )}
       </div>
+      <IndicadorDeConsulta consultando={consultando} className="mt-1" />
       <ItensFaltantes itens={faltando} className="mt-1.5" />
     </>
   );

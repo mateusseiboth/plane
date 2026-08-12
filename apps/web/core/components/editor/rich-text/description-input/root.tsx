@@ -16,7 +16,7 @@ import { getDescriptionPlaceholderI18n, sanitizeHTML } from "@plane/utils";
 // components
 import { RichTextEditor } from "@/components/editor/rich-text";
 import { AiImproveButton, type AiContext } from "@/components/editor/ai-improve-button";
-import { ItensFaltantes } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
 import { useWorkspace } from "@/hooks/store/use-workspace";
@@ -172,7 +172,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
   const descriptionHtml = useWatch({ control, name: "description_html" }) ?? "";
   const tipo = useTipoDeRequisito(chamado?.labelIds);
   const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
-  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
+  const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "descricao",
     texto: sanitizeHTML(descriptionHtml),
@@ -341,6 +341,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
           />
         )}
       />
+      <IndicadorDeConsulta consultando={consultando} className="mt-1" />
       <ItensFaltantes itens={faltando} className="mt-1.5" />
     </div>
   );

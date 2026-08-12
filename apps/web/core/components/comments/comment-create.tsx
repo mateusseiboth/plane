@@ -15,7 +15,7 @@ import { cn, isCommentEmpty, sanitizeHTML } from "@plane/utils";
 // components
 import { LiteTextEditor } from "@/components/editor/lite-text";
 import { AiImproveButton } from "@/components/editor/ai-improve-button";
-import { ItensFaltantes, PainelDeAnalise } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes, PainelDeAnalise } from "@/components/ia";
 // helpers
 import { colarTrechoNoEditor } from "@/helpers/colar-trecho.helper";
 // hooks
@@ -86,7 +86,7 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
     titulo: chamado?.name,
     descricao: sanitizeHTML(chamado?.description_html ?? ""),
   };
-  const { sugestao, faltando, propsDeFoco } = useTextoFantasmaCampo({
+  const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "comentario",
     texto: comentarioEmTexto,
@@ -216,6 +216,7 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
         />
       )}
       <div className="flex items-center justify-end gap-2 px-2 pb-2">
+        <IndicadorDeConsulta consultando={consultando} className="mt-1" />
         <ItensFaltantes itens={faltando} className="mr-auto" />
         <AiImproveButton editorRef={editorRef as React.RefObject<any>} workspaceSlug={workspaceSlug} />
       </div>
