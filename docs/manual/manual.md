@@ -889,7 +889,8 @@ criado, comentário, mudança de etapa).
 ![Provedores de IA](img/50b-config-ia.png)
 
 Credenciais do assistente que alimenta o botão *Melhorar com IA* na descrição e
-nos comentários.
+nos comentários. Sem nenhum provedor cadastrado aqui, o botão recorre à IA de
+levantamento de requisitos do próprio Avião, quando ela estiver configurada.
 
 ## Integrações customizadas
 

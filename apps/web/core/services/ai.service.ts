@@ -55,9 +55,16 @@ export class AIService extends APIService {
       issue_title?: string;
       project_name?: string;
       previous_comments?: string[];
-    }
+    },
+    // Com os ids o servidor monta o contexto do banco (inclusive anexos) e
+    // confere a permissão do projeto; sem eles, sobra só o que a tela sabe.
+    alvo?: { campo?: "descricao" | "comentario"; project_id?: string; issue_id?: string }
   ): Promise<{ response: string; original: string }> {
-    return this.post(`/api/workspaces/${workspaceSlug}/ai-assistant/improve-text/`, { content, context })
+    return this.post(`/api/workspaces/${workspaceSlug}/ai-assistant/improve-text/`, {
+      content,
+      context,
+      ...(alvo ?? {}),
+    })
       .then((res) => res?.data)
       .catch((error) => {
         throw error?.response?.data;

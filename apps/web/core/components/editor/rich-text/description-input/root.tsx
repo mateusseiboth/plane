@@ -269,6 +269,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
             workspaceSlug={workspaceSlug}
             disabled={disabled}
             context={aiContext}
+            alvo={{ campo: "descricao", issue_id: entityId, project_id: projectId }}
           />
         </div>
       )}

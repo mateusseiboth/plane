@@ -35,6 +35,14 @@ export type ConfigIaDoEspaco = {
   modo: ModoDeAnalise;
   minimo_aceitacao: number;
   mostrar_indicador: boolean;
+  /**
+   * O botão "Melhorar com IA" pode cair na IA de requisitos quando o espaço não
+   * tem provedor próprio configurado (`AiProvider`). Desligar aqui devolve o
+   * botão ao comportamento antigo: sem provedor próprio, ele avisa que não há
+   * provedor. A tela de configuração ainda não tem esse interruptor — ele existe
+   * para quem precisar desligar a saída de texto pela API.
+   */
+  melhoria_ativa: boolean;
 };
 
 /** Os padrões do contrato, valendo para todo espaço que nunca ajustou nada. */
@@ -45,6 +53,7 @@ export const CONFIG_IA_PADRAO: ConfigIaDoEspaco = {
   modo: "avisar",
   minimo_aceitacao: 70,
   mostrar_indicador: true,
+  melhoria_ativa: true,
 };
 
 const MODOS: ModoDeAnalise[] = ["avisar", "exigir", "silencioso"];
@@ -103,6 +112,7 @@ export function sanitizarConfigIa(valor: unknown): ConfigIaDoEspaco {
     modo: modo(g.modo, CONFIG_IA_PADRAO.modo),
     minimo_aceitacao: percentual(g.minimo_aceitacao, CONFIG_IA_PADRAO.minimo_aceitacao),
     mostrar_indicador: booleano(g.mostrar_indicador, CONFIG_IA_PADRAO.mostrar_indicador),
+    melhoria_ativa: booleano(g.melhoria_ativa, CONFIG_IA_PADRAO.melhoria_ativa),
   };
 }
 
@@ -120,5 +130,6 @@ export function mesclarConfigIa(gravado: unknown, corpo: unknown): ConfigIaDoEsp
     modo: modo(b.modo, atual.modo),
     minimo_aceitacao: percentual(b.minimo_aceitacao, atual.minimo_aceitacao),
     mostrar_indicador: booleano(b.mostrar_indicador, atual.mostrar_indicador),
+    melhoria_ativa: booleano(b.melhoria_ativa, atual.melhoria_ativa),
   };
 }

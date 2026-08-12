@@ -9,24 +9,31 @@ import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {
   instrucaoDeAnaliseSistema,
   instrucaoDeAnaliseUsuario,
+  instrucaoDeMelhoriaSistema,
+  instrucaoDeMelhoriaUsuario,
   instrucaoDoSistema,
   instrucaoDoUsuario,
   interpretarAnaliseDoModelo,
+  interpretarMelhoriaDoModelo,
   interpretarTextoDoModelo,
   postarJson,
 } from "@modules/ia-requisitos/provedores/comum";
 import type {
   PedidoAnalise,
   PedidoIa,
+  PedidoMelhoria,
   ProvedorDeIa,
   RespostaAnalise,
   RespostaIa,
+  RespostaMelhoria,
 } from "@modules/ia-requisitos/tipos";
 
 /** Teto de geração da sugestão: é uma continuação curta, não uma redação. */
 const MAX_TOKENS_SUGESTAO = 320;
 /** A análise devolve oito blocos, os porquês e os trechos prontos — cabe mais. */
 const MAX_TOKENS_ANALISE = 900;
+/** A melhoria devolve o texto inteiro reescrito: precisa caber o chamado todo. */
+const MAX_TOKENS_MELHORIA = 2048;
 
 export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
   async function completar(sistema: string, usuario: string, maxTokens: number): Promise<unknown> {
@@ -58,6 +65,14 @@ export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
         MAX_TOKENS_ANALISE,
       );
       return interpretarAnaliseDoModelo(texto);
+    },
+    async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
+      const texto = await completar(
+        instrucaoDeMelhoriaSistema(),
+        instrucaoDeMelhoriaUsuario(pedido),
+        MAX_TOKENS_MELHORIA,
+      );
+      return interpretarMelhoriaDoModelo(texto, pedido.texto);
     },
   };
 }

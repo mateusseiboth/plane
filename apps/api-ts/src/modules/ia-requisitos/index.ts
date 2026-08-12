@@ -31,12 +31,8 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {configIaRequisitos, type ConfigIaRequisitos} from "@modules/ia-requisitos/config";
-import {
-  CHAVE_CONFIG_IA,
-  mesclarConfigIa,
-  sanitizarConfigIa,
-  type ConfigIaDoEspaco,
-} from "@modules/ia-requisitos/configuracao";
+import {CHAVE_CONFIG_IA, mesclarConfigIa} from "@modules/ia-requisitos/configuracao";
+import {configDoEspaco} from "@modules/ia-requisitos/configuracao-do-espaco";
 import {montarContexto, projetoDoChamado, type ContextoInformado} from "@modules/ia-requisitos/contexto";
 import {criarProvedor} from "@modules/ia-requisitos/provedores";
 import {
@@ -115,12 +111,6 @@ function comoId(valor: unknown): string | null {
 
 function recortado(valor: unknown, limite: number): string {
   return comoTexto(valor).trim().slice(0, limite);
-}
-
-/** A configuração gravada para o espaço, já com os padrões do contrato aplicados. */
-async function configDoEspaco(workspaceId: string): Promise<ConfigIaDoEspaco> {
-  const gravado = await prisma.workspaceSetting.findFirst({where: {workspaceId, key: CHAVE_CONFIG_IA}});
-  return sanitizarConfigIa(gravado?.value);
 }
 
 /**

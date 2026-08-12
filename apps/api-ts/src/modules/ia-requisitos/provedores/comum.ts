@@ -9,13 +9,16 @@
 
 import {
   ANALISE_VAZIA,
+  MELHORIA_VAZIA,
   RESPOSTA_VAZIA,
   type BlocoDaAnalise,
   type ItemFaltando,
   type PedidoAnalise,
   type PedidoIa,
+  type PedidoMelhoria,
   type RespostaAnalise,
   type RespostaIa,
+  type RespostaMelhoria,
 } from "@modules/ia-requisitos/tipos";
 
 /**
@@ -321,4 +324,100 @@ export function interpretarAnaliseDoModelo(texto: unknown): RespostaAnalise {
     console.warn("[ia-requisitos] o modelo não devolveu JSON válido; análise descartada.");
     return ANALISE_VAZIA;
   }
+}
+
+// ── Melhorar o texto ─────────────────────────────────────────────────────────
+
+/**
+ * A régua da melhoria, para os formatos genéricos.
+ *
+ * Reescrever não é escrever no lugar de alguém: o texto sai mais claro e na
+ * forma da metodologia, mas nada que o chamado não diga entra nele. O que falta
+ * continua faltando — quem aponta a falta é a análise, não a melhoria.
+ */
+const METODOLOGIA_DE_MELHORIA = [
+  "Você reescreve o texto de um chamado de suporte, em português do Brasil, aplicando a metodologia de levantamento de requisitos da Aula 18-3 — sem inventar outra.",
+  "",
+  "O que fazer:",
+  "- Corrija ortografia, concordância, acentuação e pontuação.",
+  '- Organize o texto na forma da metodologia: o problema, o comportamento esperado ("o sistema deve …", voz ativa, um comportamento por frase), o exemplo numérico mostrando a conta e os critérios de aceite em DADO / QUANDO / ENTÃO.',
+  "- Mantenha TODAS as informações técnicas do original — telas, caminhos, versões, mensagens de erro, números, códigos e passos — exatamente como estão.",
+  "- Separe e marque a sugestão de solução, quando houver: o requisito continua de pé sem ela.",
+  "- Use listas quando o texto tiver passos ou itens.",
+  "",
+  "O que NÃO fazer:",
+  "- NÃO invente fato que não esteja no texto nem no contexto: nome de tela, número, causa, prazo, responsável. O que falta continua faltando.",
+  "- NÃO responda com prefácio, saudação, comentário nem explicação do que você fez.",
+  "- NÃO devolva Markdown.",
+  "",
+  'Responda SOMENTE com JSON, nesta forma: {"texto": "<p>o texto melhorado, em HTML</p>"}',
+  "O HTML aceita <p>, <strong>, <em>, <ul>/<ol>/<li> e <br>.",
+].join("\n");
+
+export function instrucaoDeMelhoriaSistema(): string {
+  return METODOLOGIA_DE_MELHORIA;
+}
+
+/** O texto a reescrever, com o chamado em volta dele. */
+export function instrucaoDeMelhoriaUsuario(pedido: PedidoMelhoria): string {
+  const linhas = [
+    pedido.campo === "descricao"
+      ? "Reescreva a descrição abaixo."
+      : "Reescreva o comentário abaixo, no contexto do chamado.",
+    ...linhasDoContexto(pedido.contexto),
+    "",
+    `Texto a melhorar:\n${pedido.texto}`,
+  ];
+  return linhas.join("\n");
+}
+
+/** Modelo que embrulha a resposta em cerca de código, mesmo mandado calar. */
+function semCercaDeCodigo(texto: string): string {
+  return texto
+    .trim()
+    .replace(/^```[a-z]*\n?/i, "")
+    .replace(/```$/, "")
+    .trim();
+}
+
+/** Texto vazio é melhoria que não houve; o resto compara com o original. */
+function melhoriaDe(texto: string, original: string): RespostaMelhoria {
+  const limpo = texto.trim();
+  if (!limpo) return MELHORIA_VAZIA;
+  return {texto: limpo, mudou: limpo !== original.trim()};
+}
+
+/**
+ * Normaliza a melhoria NATIVA (formato `aviao`). O serviço diz se mexeu no
+ * texto; quando não diz, a comparação com o original responde por ele.
+ */
+export function sanitizarMelhoriaNativa(bruto: unknown, original: string): RespostaMelhoria {
+  if (!bruto || typeof bruto !== "object") return MELHORIA_VAZIA;
+  const r = bruto as Record<string, unknown>;
+  const melhoria = melhoriaDe(typeof r.texto === "string" ? r.texto : "", original);
+  if (!melhoria.texto || typeof r.mudou !== "boolean") return melhoria;
+  return {...melhoria, mudou: r.mudou};
+}
+
+/**
+ * Lê a melhoria de um provedor GENÉRICO.
+ *
+ * Diferente da sugestão e da análise, aqui a resposta INTEIRA é o produto: um
+ * modelo que ignorou o JSON e mandou o HTML direto ainda entregou o que se
+ * pediu, e descartar isso seria jogar fora a única coisa que o usuário queria.
+ * Por isso o JSON é a primeira tentativa, não a única.
+ */
+export function interpretarMelhoriaDoModelo(bruto: unknown, original: string): RespostaMelhoria {
+  if (typeof bruto !== "string" || !bruto.trim()) return MELHORIA_VAZIA;
+
+  const json = recortarJson(bruto);
+  if (json) {
+    try {
+      const lido = JSON.parse(json) as Record<string, unknown>;
+      if (typeof lido.texto === "string") return sanitizarMelhoriaNativa(lido, original);
+    } catch {
+      // Não era JSON: o texto cru ainda pode ser o HTML pedido.
+    }
+  }
+  return melhoriaDe(semCercaDeCodigo(bruto), original);
 }

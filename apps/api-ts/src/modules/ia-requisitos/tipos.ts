@@ -85,11 +85,33 @@ export const ANALISE_VAZIA: RespostaAnalise = {
   sugestoes: [],
 };
 
+// ── Melhorar o texto (o botão "Melhorar com IA") ─────────────────────────────
+
+/** O que está sendo melhorado: a descrição do chamado ou um comentário. */
+export type CampoMelhoria = "descricao" | "comentario";
+
+/**
+ * O texto vai e volta em HTML porque é o que o editor produz e consome. Quem
+ * sabe melhorar como requisito é o serviço: daqui saem o texto e o contexto,
+ * nada de metodologia — no formato nativo ela mora no modelo.
+ */
+export type PedidoMelhoria = {
+  texto: string;
+  campo: CampoMelhoria;
+  contexto: ContextoIa;
+};
+
+/** `mudou` distingue "reescrevi" de "não havia o que mexer". */
+export type RespostaMelhoria = {texto: string; mudou: boolean};
+
+/** Melhoria que não aconteceu: quem chamou decide o que dizer a quem clicou. */
+export const MELHORIA_VAZIA: RespostaMelhoria = {texto: "", mudou: false};
+
 /**
  * Um provedor de IA. Uma implementação por formato de protocolo; a fábrica em
  * `provedores/index.ts` resolve qual usar pelo nome vindo da configuração.
  *
- * Nenhum dos dois métodos **lança**: serviço fora do ar, resposta estranha ou
+ * Nenhum dos três métodos **lança**: serviço fora do ar, resposta estranha ou
  * tempo estourado viram resposta vazia, porque escrever chamado não pode
  * depender da IA estar de pé.
  */
@@ -97,6 +119,7 @@ export interface ProvedorDeIa {
   readonly formato: string;
   sugerir(pedido: PedidoIa): Promise<RespostaIa>;
   analisar(pedido: PedidoAnalise): Promise<RespostaAnalise>;
+  melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria>;
 }
 
 const CAMPOS_VALIDOS: CampoIa[] = ["titulo", "descricao", "comentario"];
@@ -109,4 +132,15 @@ const CAMPOS_DE_ANALISE: CampoAnalise[] = ["chamado", "comentario"];
 
 export function normalizarCampoDeAnalise(valor: unknown): CampoAnalise | null {
   return CAMPOS_DE_ANALISE.find((c) => c === valor) ?? null;
+}
+
+const CAMPOS_DE_MELHORIA: CampoMelhoria[] = ["descricao", "comentario"];
+
+/**
+ * O botão "Melhorar com IA" existe nos dois lugares e a tela ainda não diz de
+ * qual deles veio o clique. Sem essa informação vale o caso mais comum e o mais
+ * seguro — a caixa de comentário —, que só acrescenta contexto ao pedido.
+ */
+export function normalizarCampoDeMelhoria(valor: unknown): CampoMelhoria {
+  return CAMPOS_DE_MELHORIA.find((c) => c === valor) ?? "comentario";
 }

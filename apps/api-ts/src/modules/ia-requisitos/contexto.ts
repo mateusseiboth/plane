@@ -75,7 +75,13 @@ export type ContextoInformado = {
 
 export type PedidoDeContexto = {
   workspaceId: string;
-  projectId: string;
+  /**
+   * O projeto do chamado. É `null` quando quem chama não sabe em que projeto
+   * está — o "Melhorar com IA" da caixa de comentário, por exemplo, manda só o
+   * texto. Sem projeto não há o que buscar no banco e o contexto sai inteiro do
+   * que a tela informou.
+   */
+  projectId: string | null;
   issueId?: string | null;
   /** Tipo informado pela tela quando o chamado ainda nem existe. */
   tipo?: string | null;
@@ -183,12 +189,14 @@ function tipoDoChamado(informado: string | null | undefined, rotulos: string[]):
 export async function montarContexto(pedido: PedidoDeContexto): Promise<ContextoIa> {
   const partes = PARTES_POR_CAMPO[pedido.campo];
 
-  const projeto = await prisma.project.findFirst({
-    where: {id: pedido.projectId, workspaceId: pedido.workspaceId, deletedAt: null},
-    select: {name: true},
-  });
+  const projeto = pedido.projectId
+    ? await prisma.project.findFirst({
+        where: {id: pedido.projectId, workspaceId: pedido.workspaceId, deletedAt: null},
+        select: {name: true},
+      })
+    : null;
 
-  const chamado = pedido.issueId
+  const chamado = pedido.issueId && pedido.projectId
     ? await prisma.issue.findFirst({
         where: {id: pedido.issueId, projectId: pedido.projectId, workspaceId: pedido.workspaceId, deletedAt: null},
         select: {

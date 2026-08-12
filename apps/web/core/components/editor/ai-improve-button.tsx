@@ -35,6 +35,8 @@ type Props = {
   className?: string;
   /** Optional context to send to the AI for better results */
   context?: AiContext;
+  /** Onde o botão está: dá ao servidor o contexto do banco e a permissão. */
+  alvo?: { campo?: "descricao" | "comentario"; project_id?: string; issue_id?: string };
 };
 
 /**
@@ -42,7 +44,7 @@ type Props = {
  * (issue title, project name, previous comments) to the AI provider.
  * The backend limits token usage to ~4 k.
  */
-export function AiImproveButton({ editorRef, workspaceSlug: propSlug, disabled, className, context }: Props) {
+export function AiImproveButton({ editorRef, workspaceSlug: propSlug, disabled, className, context, alvo }: Props) {
   const [loading, setLoading] = useState(false);
   const { workspaceSlug: paramSlug } = useParams();
   const slug = propSlug ?? paramSlug?.toString() ?? "";
@@ -56,7 +58,7 @@ export function AiImproveButton({ editorRef, workspaceSlug: propSlug, disabled, 
     }
     setLoading(true);
     try {
-      const { response } = await aiService.improveText(slug, html, context);
+      const { response } = await aiService.improveText(slug, html, context, alvo);
       editorRef.current.setEditorValue(response, true);
       setToast({ type: TOAST_TYPE.SUCCESS, title: "Texto melhorado", message: "O conteúdo foi atualizado pela IA." });
     } catch (err: any) {

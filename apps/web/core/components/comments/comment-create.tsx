@@ -218,7 +218,11 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
       <div className="flex items-center justify-end gap-2 px-2 pb-2">
         <IndicadorDeConsulta consultando={consultando} className="mt-1" />
         <ItensFaltantes itens={faltando} className="mr-auto" />
-        <AiImproveButton editorRef={editorRef as React.RefObject<any>} workspaceSlug={workspaceSlug} />
+        <AiImproveButton
+          editorRef={editorRef as React.RefObject<any>}
+          workspaceSlug={workspaceSlug}
+          alvo={{ campo: "comentario", issue_id: entityId, project_id: projectId }}
+        />
       </div>
     </div>
   );

@@ -1,21 +1,30 @@
 /**
  * Provedor `aviao` — o modelo local de requisitos, formato nativo do contrato.
  *
- * `POST {base}/sugerir` e `POST {base}/analisar`, autenticados por `X-API-Key`.
- * É o único que já devolve tudo pronto: a metodologia está no modelo e a nota de
- * aceitação sai do checklist determinístico do serviço, não do prompt.
+ * `POST {base}/sugerir`, `POST {base}/analisar` e `POST {base}/melhorar`,
+ * autenticados por `X-API-Key`. É o único que já devolve tudo pronto: a
+ * metodologia está no modelo e a nota de aceitação sai do checklist
+ * determinístico do serviço, não do prompt.
  */
 
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
-import {postarJson, sanitizarAnaliseNativa, sanitizarRespostaNativa} from "@modules/ia-requisitos/provedores/comum";
+import {
+  postarJson,
+  sanitizarAnaliseNativa,
+  sanitizarMelhoriaNativa,
+  sanitizarRespostaNativa,
+} from "@modules/ia-requisitos/provedores/comum";
 import {
   ANALISE_VAZIA,
+  MELHORIA_VAZIA,
   RESPOSTA_VAZIA,
   type PedidoAnalise,
   type PedidoIa,
+  type PedidoMelhoria,
   type ProvedorDeIa,
   type RespostaAnalise,
   type RespostaIa,
+  type RespostaMelhoria,
 } from "@modules/ia-requisitos/tipos";
 
 export function criarProvedorAviao(cfg: ConfigIaRequisitos): ProvedorDeIa {
@@ -38,6 +47,10 @@ export function criarProvedorAviao(cfg: ConfigIaRequisitos): ProvedorDeIa {
     async analisar(pedido: PedidoAnalise): Promise<RespostaAnalise> {
       const corpo = await chamar("/analisar", pedido);
       return corpo === null ? ANALISE_VAZIA : sanitizarAnaliseNativa(corpo);
+    },
+    async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
+      const corpo = await chamar("/melhorar", pedido);
+      return corpo === null ? MELHORIA_VAZIA : sanitizarMelhoriaNativa(corpo, pedido.texto);
     },
   };
 }

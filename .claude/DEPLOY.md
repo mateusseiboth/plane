@@ -119,6 +119,7 @@ Alimenta as rotas do módulo `apps/api-ts/src/modules/ia-requisitos/`:
 |---|---|---|
 | `POST /api/v1/workspaces/:slug/ia/sugestao-de-requisito/` | enquanto se digita | `POST {base}/sugerir` |
 | `POST /api/v1/workspaces/:slug/ia/analise-de-chamado/` | ao clicar em salvar | `POST {base}/analisar` |
+| `POST /api/v1/workspaces/:slug/ai-assistant/improve-text/` | no "Melhorar com IA" | `POST {base}/melhorar` |
 | `GET\|PATCH /api/v1/workspaces/:slug/ia/configuracao/` | o que cada espaço decide | — (banco) |
 
 As variáveis abaixo valem para o SERVIDOR (endereço, formato, credencial) e vão
@@ -179,8 +180,9 @@ desligado e registra `[ia-requisitos] IA_REQUISITOS_FORMATO="…" não existe` n
 log — é a primeira coisa a conferir quando a sugestão "sumiu".
 
 Um provedor novo é **um arquivo em `apps/api-ts/src/modules/ia-requisitos/provedores/`
-e uma linha no mapa** de `provedores/index.ts`. Cada provedor implementa os dois
-métodos da interface: `sugerir` (texto fantasma) e `analisar` (análise ao salvar).
+e uma linha no mapa** de `provedores/index.ts`. Cada provedor implementa os três
+métodos da interface: `sugerir` (texto fantasma), `analisar` (análise ao salvar)
+e `melhorar` (o botão "Melhorar com IA").
 
 > A credencial fica só no processo do servidor. Se ela aparecer em
 > `apps/web/.env` ou em qualquer bundle do frontend, está no lugar errado — o
@@ -228,6 +230,29 @@ Nos demais formatos ela é **recalculada como a média dos blocos** que o própr
 modelo devolveu, para o medidor da tela nunca contradizer a lista logo abaixo
 dele; modelo que não devolve o JSON pedido resulta em análise vazia.
 
+### Melhorar com IA
+
+`POST /api/v1/workspaces/:slug/ai-assistant/improve-text/` é o botão que já
+existia na descrição e na caixa de comentário. Ele escolhe quem melhora o texto
+**nesta ordem** (`apps/api-ts/src/modules/ai/melhoria-de-texto.ts`):
+
+1. **`AiProvider` padrão e ativo do espaço** — quem cadastrou um modelo grande em
+   *Configurações → Provedores de IA* continua com ele e com o mesmo prompt de
+   antes. Nada muda para quem já usava.
+2. **IA de requisitos** — `POST {base}/melhorar`, com `{"texto", "campo",
+   "contexto"}` e resposta `{"texto", "mudou"}`. A metodologia da Aula 18-3 não
+   vai no prompt: quem sabe aplicá-la é o serviço. Nos formatos genéricos
+   (`openai`, `llamacpp`, `ollama`) ela viaja no prompt, como nas outras rotas.
+3. Nenhum dos dois: `400` com "Nenhum provedor de IA configurado".
+
+Diferente da sugestão e da análise, aqui **falha vira erro na tela** (`502`):
+quem clicou está esperando o texto, e mostrar "melhorado" sem ter melhorado nada
+seria pior. Trilha LGPD nos dois caminhos, distinguidos por `metadata.servico`
+(`ai-provider` ou `ia-requisitos`) e com `metadata.operacao = "melhoria"`.
+
+O corpo aceita `project_id`/`issue_id` opcionais; informados, o contexto passa a
+sair do banco e a permissão do projeto passa a ser exigida, como nas rotas irmãs.
+
 ### Configuração por espaço de trabalho
 
 Vive em `WorkspaceSetting`, chave `ia_requisitos` — tabela chave/valor que já
@@ -242,11 +267,17 @@ reiniciar o `api-ts`.
 | `modo` | `avisar` \| `exigir` \| `silencioso` | `avisar` |
 | `minimo_aceitacao` | nota mínima; só usada no modo `exigir` | `70` |
 | `mostrar_indicador` | o medidor de % na modal | `true` |
+| `melhoria_ativa` | o "Melhorar com IA" pode cair na IA de requisitos | `true` |
 
 - **avisar** — mostra a análise e deixa salvar assim mesmo. É o padrão.
 - **exigir** — abaixo de `minimo_aceitacao` a TELA bloqueia o salvar, com o que
   falta à vista. Nunca deve ser o padrão de quem instala o Avião.
 - **silencioso** — analisa e guarda, sem interromper.
+
+`melhoria_ativa` em `false` devolve o botão ao comportamento antigo: sem
+`AiProvider` cadastrado ele volta a avisar que não há provedor. A tela de
+configuração ainda não tem esse interruptor — ele existe para quem precisar
+desligar a saída de texto pela API.
 
 ```bash
 # leitura: qualquer membro do espaço (a tela precisa saber se mostra o indicador)

@@ -9,18 +9,23 @@ import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {
   instrucaoDeAnaliseSistema,
   instrucaoDeAnaliseUsuario,
+  instrucaoDeMelhoriaSistema,
+  instrucaoDeMelhoriaUsuario,
   instrucaoDoSistema,
   instrucaoDoUsuario,
   interpretarAnaliseDoModelo,
+  interpretarMelhoriaDoModelo,
   interpretarTextoDoModelo,
   postarJson,
 } from "@modules/ia-requisitos/provedores/comum";
 import type {
   PedidoAnalise,
   PedidoIa,
+  PedidoMelhoria,
   ProvedorDeIa,
   RespostaAnalise,
   RespostaIa,
+  RespostaMelhoria,
 } from "@modules/ia-requisitos/tipos";
 
 export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
@@ -53,6 +58,10 @@ export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
       return interpretarAnaliseDoModelo(
         await conversar(instrucaoDeAnaliseSistema(), instrucaoDeAnaliseUsuario(pedido)),
       );
+    },
+    async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
+      const texto = await conversar(instrucaoDeMelhoriaSistema(), instrucaoDeMelhoriaUsuario(pedido));
+      return interpretarMelhoriaDoModelo(texto, pedido.texto);
     },
   };
 }
