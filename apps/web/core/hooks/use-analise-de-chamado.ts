@@ -23,7 +23,7 @@
  * 2. **Recurso desligado não custa nada.** Sem configuração ativa nenhuma
  *    requisição sai e nenhum pixel é reservado na tela.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import useSWRMutation from "swr/mutation";
 // hooks
 import { useConfiguracaoDeIa } from "@/hooks/use-configuracao-de-ia";
@@ -120,14 +120,28 @@ export const useAnaliseDeChamado = (params: TParametros) => {
     [campo, projectId, issueId, entityId, tipo, conteudo, contexto]
   );
 
+  /**
+   * O conteúdo exato que gerou a análise que está na tela.
+   *
+   * Sem isto, editar o texto depois de analisar e clicar em salvar guardava o
+   * chamado com o veredito do texto ANTERIOR — a análise valia para algo que
+   * não existe mais. É o caso mais comum de todos: a pessoa lê o que falta,
+   * corrige, e salva.
+   */
+  const conteudoAnalisado = useRef<string | null>(null);
+  const assinatura = JSON.stringify(conteudo);
+  const vereditoVencido = conteudoAnalisado.current !== null && conteudoAnalisado.current !== assinatura;
+
   /** Nunca rejeita: a resposta neutra é uma resposta válida. */
   const pedir = useCallback(async (): Promise<TAnaliseDeChamado> => {
     try {
-      return (await trigger(montarPedido())) ?? SEM_ANALISE;
+      const resposta = (await trigger(montarPedido())) ?? SEM_ANALISE;
+      conteudoAnalisado.current = JSON.stringify(conteudo);
+      return resposta;
     } catch {
       return SEM_ANALISE;
     }
-  }, [trigger, montarPedido]);
+  }, [trigger, montarPedido, conteudo]);
 
   const analise = data ?? null;
   const estrategia = ESTRATEGIA[configuracao.modo];
@@ -140,6 +154,9 @@ export const useAnaliseDeChamado = (params: TParametros) => {
   const bloqueado = Boolean(
     habilitada &&
       configuracao.modo === "exigir" &&
+      // Texto editado depois da análise destrava o botão: senão a pessoa
+      // corrige o que faltava e fica presa, sem como pedir a nova análise.
+      !vereditoVencido &&
       analise &&
       analise.aceitacao !== null &&
       analise.aceitacao < configuracao.minimo_aceitacao
@@ -152,11 +169,13 @@ export const useAnaliseDeChamado = (params: TParametros) => {
       void pedir();
       return true;
     }
-    if (mostrarPainel && estrategia.insiste) return true;
+    // Painel na tela já vale como "leu e decidiu" — mas só enquanto o texto
+    // for o mesmo que foi analisado. Mudou, analisa de novo.
+    if (mostrarPainel && estrategia.insiste && !vereditoVencido) return true;
     const resultado = await pedir();
     if (!temAlgoADizer(resultado)) return true;
     return estrategia.liberaApos(resultado, configuracao.minimo_aceitacao);
-  }, [habilitada, conteudo, estrategia, mostrarPainel, pedir, configuracao.minimo_aceitacao]);
+  }, [habilitada, conteudo, estrategia, mostrarPainel, vereditoVencido, pedir, configuracao.minimo_aceitacao]);
 
   return useMemo(
     () => ({
@@ -168,7 +187,10 @@ export const useAnaliseDeChamado = (params: TParametros) => {
       bloqueado,
       liberarSalvamento,
       reanalisar: pedir,
-      descartar,
+      descartar: () => {
+        conteudoAnalisado.current = null;
+        descartar();
+      },
       error,
     }),
     [analise, configuracao, isMutating, mostrarPainel, bloqueado, liberarSalvamento, pedir, descartar, error]
