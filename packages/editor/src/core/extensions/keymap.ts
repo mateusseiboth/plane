@@ -114,24 +114,16 @@ export const CustomKeymap = Extension.create({
   },
   addKeyboardShortcuts() {
     return {
+      // Ctrl+A seleciona o documento inteiro, de primeira.
+      //
+      // O comportamento original era de dois toques: o primeiro selecionava só
+      // o parágrafo e o segundo o texto todo. É engenhoso e ninguém espera —
+      // quem aperta Ctrl+A num editor quer tudo, como em qualquer outro lugar.
+      // A seleção por limites de nó continua disponível como comando
+      // (`selectTextWithinNodeBoundaries`) para quem precisar dela.
       "Mod-a": ({ editor }) => {
-        const { state } = editor;
-        const { tr } = state;
-        const startSelectionPos = tr.selection.from;
-        const endSelectionPos = tr.selection.to;
-        const startNodePos = tr.selection.$from.start();
-        const endNodePos = tr.selection.$to.end();
-        const isCurrentTextSelectionNotExtendedToNodeBoundaries =
-          startSelectionPos > startNodePos || endSelectionPos < endNodePos;
-
-        if (isCurrentTextSelectionNotExtendedToNodeBoundaries) {
-          // First press: select text within node boundaries
-          editor.chain().selectTextWithinNodeBoundaries().run();
-          return true;
-        } else {
-          editor.commands.selectAll();
-          return true;
-        }
+        editor.commands.selectAll();
+        return true;
       },
     };
   },

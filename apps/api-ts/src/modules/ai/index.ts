@@ -45,7 +45,10 @@ function corpoDaMelhoria(proposta: PropostaDeMelhoria, original: string) {
     mudou: proposta.mudou,
     avisos: proposta.avisos,
     aceitacao: proposta.aceitacao,
-    ...(proposta.mudou ? {} : {detail: SEM_PROPOSTA}),
+    // Quando o serviço explica por que não propôs — "o documento não cabe
+    // inteiro no modelo" —, a explicação dele vale mais que a frase de reserva:
+    // ela diz o que fazer, e a genérica só diz que não deu.
+    ...(proposta.mudou ? {} : {detail: proposta.detail || SEM_PROPOSTA}),
   };
 }
 
@@ -280,6 +283,10 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
       // Nada chegou: o serviço falhou ou respondeu vazio. Quem clicou está
       // esperando, então a falha aparece — não vira um "melhorei" silencioso.
       if (!proposta.html) {
+        // Recusa explicada não é falha: o serviço leu o texto e disse por que
+        // não propõe. Isso chega como recado ("Sem proposta"), não como erro —
+        // 502 mandaria a tela dizer "Erro na IA" para uma resposta correta.
+        if (proposta.detail) return corpoDaMelhoria(proposta, inputHtml);
         set.status = 502;
         return {detail: "A IA não devolveu um texto melhorado. Tente novamente em instantes."};
       }

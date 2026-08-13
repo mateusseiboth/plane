@@ -72,6 +72,8 @@ export type PropostaDeMelhoria = {
   mudou: boolean;
   avisos: AvisosDaMelhoria;
   aceitacao: AceitacaoDaMelhoria | null;
+  /** Por que não houve proposta, quando o serviço sabe dizer. Vazio quando houve. */
+  detail: string;
 };
 
 /**
@@ -227,7 +229,7 @@ const comProvedorCadastrado: EstrategiaDeMelhoria = async (pedido) => {
     // diff sem eles — que é mais do que este caminho oferecia antes.
     melhorar: async () => {
       const html = emHtml(await chatComplete(provider, mensagens, {temperature: 0.7, maxTokens: 2048}));
-      return {html, mudou: mudouDe(html, pedido.html), avisos: semAvisos(), aceitacao: null};
+      return {html, mudou: mudouDe(html, pedido.html), avisos: semAvisos(), aceitacao: null, detail: ""};
     },
   };
 };
@@ -294,6 +296,7 @@ const comIaDeRequisitos: EstrategiaDeMelhoria = async (pedido) => {
         mudou: melhoria.mudou,
         avisos: melhoria.avisos,
         aceitacao: melhoria.aceitacao,
+        detail: melhoria.detail,
       };
     },
   };

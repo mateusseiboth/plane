@@ -179,6 +179,11 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
     projectId,
     entityId: selectedEntityId,
   });
+  // Seletores da modal: sem eles a análise cobra no texto o que a pessoa já
+  // escolheu no campo ao lado — foi exatamente a queixa de prioridade marcada
+  // e cobrada mesmo assim.
+  const prioridadeAtual = watch("priority") ?? undefined;
+  const prazoAtual = watch("target_date") ?? undefined;
   const analise = useAnaliseDeChamado({
     workspaceSlug: workspaceSlug?.toString(),
     campo: "chamado",
@@ -187,7 +192,14 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
     entityId: selectedEntityId,
     tipo: tipoDeRequisito,
     conteudo: { titulo: tituloAtual, descricao: descricaoAtual },
-    contexto: { projeto, entidade, titulo: tituloAtual, descricao: descricaoAtual },
+    contexto: {
+      projeto,
+      entidade,
+      titulo: tituloAtual,
+      descricao: descricaoAtual,
+      prioridade: prioridadeAtual,
+      prazo: prazoAtual,
+    },
   });
 
   const isDisabled = isSubmitting || isApplyingTemplate || analise.bloqueado;

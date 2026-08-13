@@ -439,7 +439,13 @@ function aceitacaoDe(bruto: unknown): AceitacaoDaMelhoria | null {
 function melhoriaDe(texto: string, original: string): RespostaMelhoria {
   const limpo = texto.trim();
   if (!limpo) return MELHORIA_VAZIA;
-  return {texto: limpo, mudou: limpo !== original.trim(), avisos: semAvisos(), aceitacao: null};
+  return {
+    texto: limpo,
+    mudou: limpo !== original.trim(),
+    avisos: semAvisos(),
+    aceitacao: null,
+    detail: "",
+  };
 }
 
 /**
@@ -454,12 +460,16 @@ export function sanitizarMelhoriaNativa(bruto: unknown, original: string): Respo
   if (!bruto || typeof bruto !== "object") return MELHORIA_VAZIA;
   const r = bruto as Record<string, unknown>;
   const melhoria = melhoriaDe(typeof r.texto === "string" ? r.texto : "", original);
-  if (!melhoria.texto) return melhoria;
+  // A explicação do serviço vale mesmo sem texto: "não coube no contexto" é o
+  // que quem clicou precisa ler, e é o único que sabe dizer isso.
+  const detail = typeof r.detail === "string" ? r.detail.trim() : "";
+  if (!melhoria.texto) return {...melhoria, detail};
   return {
     ...melhoria,
     mudou: typeof r.mudou === "boolean" ? r.mudou : melhoria.mudou,
     avisos: avisosDe(r.avisos),
     aceitacao: aceitacaoDe(r.aceitacao),
+    detail,
   };
 }
 

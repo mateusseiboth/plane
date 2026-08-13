@@ -110,7 +110,15 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
     entityId: (formData as any)?.entity_id ?? null,
     tipo: tipoDeRequisito,
     conteudo: { titulo: tituloAtual, descricao: descricaoAtual },
-    contexto: { projeto, titulo: tituloAtual, descricao: descricaoAtual },
+    contexto: {
+      projeto,
+      titulo: tituloAtual,
+      descricao: descricaoAtual,
+      // Seletores da modal: sem eles a análise cobra no texto o que já foi
+      // escolhido no campo ao lado.
+      prioridade: (formData as any)?.priority ?? undefined,
+      prazo: (formData as any)?.target_date ?? undefined,
+    },
   });
 
   const { getIndex } = getTabIndex(ETabIndices.INTAKE_ISSUE_FORM, isMobile);

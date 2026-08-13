@@ -149,6 +149,14 @@ export type RespostaMelhoria = {
   mudou: boolean;
   avisos: AvisosDaMelhoria;
   aceitacao: AceitacaoDaMelhoria | null;
+  /**
+   * Por que não houve proposta, nas palavras do serviço. Vazio quando houve — e
+   * também quando o serviço não sabe explicar, e aí vale a frase de reserva da
+   * rota. O caso que trouxe este campo: documento grande demais para o contexto
+   * do modelo, que é recusado com o tamanho e o limite em vez de virar uma
+   * proposta escrita sobre metade do texto.
+   */
+  detail: string;
 };
 
 /** Sem suspeita nenhuma — e sempre um objeto novo, para ninguém mutar o vizinho. */
@@ -162,6 +170,7 @@ export const MELHORIA_VAZIA: RespostaMelhoria = {
   mudou: false,
   avisos: semAvisos(),
   aceitacao: null,
+  detail: "",
 };
 
 /**

@@ -48,8 +48,14 @@ const TEMPO_LIMITE_OCR_PADRAO_MS = 1500;
  * girador, e o modelo escreve o template inteiro: medido em ~3,7 s, passando
  * de 5 s em texto grande. Com o teto da sugestão o botão dava 502 justamente
  * nos textos que mais precisavam de ajuda.
+ *
+ * Foi de 30 s para 60 s quando o serviço passou a reescrever documento inteiro:
+ * um chamado de 3,9 mil caracteres sai em ~22 s medidos, e o serviço tem um
+ * orçamento próprio (`melhoria.tempo_total_s`) que fecha a rodada antes disto.
+ * Quem manda no tempo é ele, que sabe quantas tentativas já gastou; aqui é só
+ * a rede de segurança de quem espera do outro lado.
  */
-const TEMPO_LIMITE_MELHORIA_PADRAO_MS = 30000;
+const TEMPO_LIMITE_MELHORIA_PADRAO_MS = 60000;
 /** O modelo local é o provedor padrão — não o único. */
 const FORMATO_PADRAO = "aviao";
 

@@ -284,7 +284,8 @@ bom" automático.
 // resposta do /melhorar
 {
   "texto": "<p>a proposta</p>",
-  "mudou": true,                    // false só quando o modelo não produziu nada
+  "mudou": true,                    // false só quando não houve proposta
+  "detail": "…",                     // só com mudou:false, quando dá para explicar
   "avisos": {                        // suspeitas da guarda — informam, não vetam
     "perdidos":   ["4.2.1", "R$ 340,00"],
     "inventados": ["R$ 500,00"]
@@ -296,8 +297,17 @@ bom" automático.
 - A proposta **nunca** é descartada por suspeita da guarda.
 - O checklist **não decide mais** se vale melhorar; a nota vira informação
   mostrada ao lado (antes → depois), para ajudar a escolher.
-- Número de enumeração de lista não conta como dado inventado.
-- `mudou: false` fica só para o caso honesto de o modelo não ter produzido nada.
+- Número de enumeração de lista ou de seção ("4.2 Órgãos") não conta como dado
+  inventado, nem como dado perdido — nas duas pontas é numeração.
+- **O texto do autor é a matéria-prima.** Proposta que devolve o esqueleto do
+  template no lugar do que ele escreveu não é entregue: o serviço mede quanto do
+  assunto dele sobreviveu e tenta de novo. Ver "Ele SEMPRE devolve apenas a
+  merda do template", no README do serviço.
+- `mudou: false` fica para os casos honestos de não haver proposta: o modelo
+  falhou, estourou o tempo, devolveu vazio, ou o texto **não cabe inteiro** no
+  contexto do modelo. Neste último vem um `detail` dizendo o tamanho do texto e
+  o limite, e a tela mostra essa frase no lugar da genérica — nunca uma proposta
+  escrita sobre metade do documento.
 
 ## Interface
 
