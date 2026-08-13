@@ -12,10 +12,24 @@ export type CampoIa = "titulo" | "descricao" | "comentario";
 
 export type AnexoIa = {nome: string; texto_extraido: string};
 
+/**
+ * O chamado em volta do texto.
+ *
+ * `tipo`, `entidade`, `prioridade` e `prazo` são os **campos estruturados** da
+ * modal de abrir chamado: neste produto eles são seletores, não parágrafos. O
+ * checklist da Aula 18-3 é uma lista de papel e cobra os quatro do texto —
+ * cobrar do texto o que já está preenchido no campo ao lado é pedir para digitar
+ * duas vezes e derrubar a nota de um chamado correto. Eles viajam preenchidos
+ * para o serviço dar o item por atendido; `null` é ausência de verdade.
+ */
 export type ContextoIa = {
   tipo: string | null;
   projeto: string | null;
   entidade: string | null;
+  /** Rótulo em português (`Urgente`, `Alta`, `Média`, `Baixa`, `Nenhum`). */
+  prioridade: string | null;
+  /** A data de vencimento (`target_date`) do chamado, em ISO 8601. */
+  prazo: string | null;
   titulo?: string;
   descricao?: string;
   comentarios: string[];

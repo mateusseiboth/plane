@@ -50,6 +50,9 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: TIssueTi
   const { t } = useTranslation();
   // texto fantasma da IA de requisitos
   const nome = useWatch({ control, name: "name" }) ?? "";
+  // Seletores da modal: viajam no contexto para não serem cobrados no texto.
+  const prioridade = useWatch({ control, name: "priority" }) ?? undefined;
+  const prazo = useWatch({ control, name: "target_date" }) ?? undefined;
   const tipo = useTipoDeRequisito(useWatch({ control, name: "label_ids" }));
   const { projeto, entidade } = useContextoDeRequisito({ workspaceSlug, projectId, entityId });
   const { sugestao, descartar, consultando, propsDeFoco } = useTextoFantasmaCampo({
@@ -59,7 +62,7 @@ export const IssueTitleInput = observer(function IssueTitleInput(props: TIssueTi
     projectId,
     entityId,
     tipo,
-    contexto: { projeto, entidade },
+    contexto: { projeto, entidade, prioridade, prazo },
   });
 
   const { getIndex } = getTabIndex(ETabIndices.ISSUE_FORM, isMobile);

@@ -14,11 +14,24 @@ import { cn } from "@plane/utils";
 import { DescriptionVersionsDropdown } from "./dropdown";
 import { DescriptionVersionsModal } from "./modal";
 
+/** Uma edição registrada: quando e por quem. */
+export type TEdicaoDoChamado = {
+  at: Date;
+  byDisplayName: string | undefined;
+};
+
 export type TDescriptionVersionEntityInformation = {
   createdAt: Date;
   createdByDisplayName: string;
   id: string;
   isRestoreDisabled: boolean;
+  /**
+   * Última edição registrada na trilha de atividades (título ou descrição),
+   * quando houve. O histórico de versões só enxerga a descrição, e só a partir
+   * da primeira gravação; sem isto a linha "Última edição por…" ignoraria quem
+   * renomeou o chamado e anunciaria a criação como se fosse edição.
+   */
+  lastEdit?: TEdicaoDoChamado;
 };
 
 type Props = {

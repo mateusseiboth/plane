@@ -21,6 +21,7 @@ import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
 import { useUser } from "@/hooks/store/user";
 import useReloadConfirmations from "@/hooks/use-reload-confirmation";
+import { useUltimaEdicao } from "@/hooks/use-ultima-edicao";
 import useSize from "@/hooks/use-window-size";
 // plane web components
 import { DeDupeIssuePopoverRoot } from "@/plane-web/components/de-dupe/duplicate-popover";
@@ -82,6 +83,7 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
       issueId: issue?.id,
     }
   );
+  const ultimaEdicao = useUltimaEdicao(issueId);
 
   useEffect(() => {
     if (isSubmitting === "submitted") {
@@ -200,6 +202,7 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
                 createdByDisplayName: getUserDetails(issue.created_by ?? "")?.display_name ?? "",
                 id: issueId,
                 isRestoreDisabled: !isEditable || isArchived,
+                lastEdit: ultimaEdicao,
               }}
               fetchHandlers={{
                 listDescriptionVersions: (issueId) =>

@@ -46,6 +46,7 @@ describe("Rotas de listagem", () => {
   let projectId: string;
   let otherProjectId: string;
   let cycleId: string;
+  let issueComVersoes: string;
   let entityAtiva: string;
   let entityInativa: string;
   let technicianId: string;
@@ -73,7 +74,18 @@ describe("Rotas de listagem", () => {
     cycleId = (await createCycle(projectId, workspaceId, admin.id, {name: "Ciclo 1"})).id;
     await createModule(projectId, workspaceId, {name: "Módulo 1"});
     await createSticky(workspaceId, admin.id, {title: "Lembrete"});
-    await createIssue(projectId, workspaceId, {name: "Chamado listável", sequenceId: 1});
+    issueComVersoes = (await createIssue(projectId, workspaceId, {name: "Chamado listável", sequenceId: 1})).id;
+    await prisma.issueVersion.create({
+      data: {
+        issueId: issueComVersoes,
+        workspaceId,
+        projectId,
+        ownedById: adminId,
+        lastSavedAt: new Date(),
+        name: "Chamado listável",
+        descriptionHtml: "<p>Como o corpo era antes.</p>",
+      },
+    });
     await createIntakeIssue(projectId, workspaceId, {name: "Intake pendente", status: -2, createdById: admin.id});
     await createIntakeIssue(projectId, workspaceId, {name: "Intake aceito", status: 1, createdById: admin.id});
 
@@ -262,6 +274,12 @@ describe("Rotas de listagem", () => {
       ["views do projeto", () => proj("/views/")],
       ["inbox do projeto", () => proj("/inbox-issues/")],
       ["intake work items", () => proj("/intake-work-items/")],
+      // O seletor de versões da descrição lê `results`
+      // (TDescriptionVersionsListResponse); enquanto a rota devolvia array puro
+      // ele nunca enxergava versão nenhuma. As três rotas são a mesma leitura.
+      ["versões da descrição", () => proj(`/issues/${issueComVersoes}/description-versions/`)],
+      ["versões da descrição (work-items)", () => proj(`/work-items/${issueComVersoes}/description-versions/`)],
+      ["versões da descrição (intake)", () => proj(`/intake-work-items/${issueComVersoes}/description-versions/`)],
       ["widgets", () => "/widgets/"],
       ["plugins", () => "/plugins/"],
       ["tokens de API", () => "/users/api-tokens/"],
@@ -269,6 +287,13 @@ describe("Rotas de listagem", () => {
 
     it.each(envelopeRoutes)("%s devolve envelope", async (_label, url) => {
       expectEnvelope(await getJson(url()));
+    });
+
+    it("as versões da descrição vêm dentro de `results`, com autor e HTML anterior", async () => {
+      const page = expectEnvelope(await getJson(proj(`/issues/${issueComVersoes}/description-versions/`)));
+      expect(page.results).toHaveLength(1);
+      expect(page.results[0].description_html).toBe("<p>Como o corpo era antes.</p>");
+      expect(page.results[0].owned_by).toBe(adminId);
     });
 
     it("custom-webhooks devolve apenas `results`", async () => {

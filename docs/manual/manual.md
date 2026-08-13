@@ -364,6 +364,11 @@ A tela tem três áreas:
   mencionar alguém.
 - Comentários podem ser **editados e apagados**; quando editados, aparece
   *(editado)* com o histórico de versões.
+- A **descrição** pode ser corrigida por qualquer pessoa com permissão de
+  editar, inclusive em chamado aberto por outro. Toda alteração deixa rastro:
+  abaixo da descrição, *Última edição por…* abre o histórico de versões, onde dá
+  para ver como o texto estava antes e **restaurar** uma versão. A troca também
+  entra na linha do tempo de atividade do chamado.
 - Todo o histórico do SAC foi migrado. **O primeiro post do chamado antigo virou
   a descrição**, e os demais viraram comentários com a data original — por isso é
   comum ver "comentou há cerca de 18 anos".

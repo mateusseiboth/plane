@@ -31,6 +31,13 @@ export type TContextoDeRequisito = {
   titulo?: string;
   descricao?: string;
   comentarios?: string[];
+  /**
+   * Campos que na modal são SELETOR, não texto. Vão junto para o checklist não
+   * cobrar da descrição o que a pessoa já escolheu no campo ao lado. Na criação
+   * o chamado ainda não existe no banco, então é a tela quem os informa.
+   */
+  prioridade?: string;
+  prazo?: string;
 };
 
 export type TPedidoDeSugestao = {

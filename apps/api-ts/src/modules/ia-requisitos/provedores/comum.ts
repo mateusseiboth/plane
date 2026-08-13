@@ -54,6 +54,18 @@ export async function postarJson(opcoes: {
 }
 
 /**
+ * O checklist da aula é uma lista de papel; aqui parte dele virou campo.
+ *
+ * Entidade, prioridade, prazo e tipo são seletores da modal de abrir chamado.
+ * Cobrar do texto o que já está preenchido no campo ao lado é pedir para digitar
+ * duas vezes — e derruba a nota de um chamado que está correto.
+ */
+const CAMPOS_ESTRUTURADOS = [
+  "Tipo, entidade, prioridade e prazo são CAMPOS do chamado, preenchidos em seletores da modal, e chegam no contexto acima.",
+  "Quando vierem preenchidos, o item correspondente do checklist está atendido: não os cobre do texto nem os liste como falta.",
+].join("\n");
+
+/**
  * A régua é a Aula 18-3 do nivelamento: o modelo não inventa metodologia,
  * aplica aquela. Vai resumida porque o teto de latência é de 2 s e prompt
  * longo custa tempo de geração.
@@ -68,6 +80,8 @@ const METODOLOGIA = [
   "- Critérios de aceite em DADO / QUANDO / ENTÃO: o DADO tem entrada, o QUANDO tem uma ação só, o ENTÃO tem valor verificável, e há pelo menos um cenário de exceção.",
   "- Checklist de aceitação em 8 blocos: Identificação, Contexto, Reprodução, Requisito, Números, Critérios de aceite, Escopo, Prioridade.",
   "",
+  CAMPOS_ESTRUTURADOS,
+  "",
   "Regras da sugestão:",
   "- NUNCA reescreva o que já foi digitado: a sugestão CONTINUA o texto a partir do cursor.",
   "- Se não houver nada de útil a dizer, devolva sugestão vazia. Calar é melhor que atrapalhar quem digita.",
@@ -80,12 +94,20 @@ export function instrucaoDoSistema(): string {
   return METODOLOGIA;
 }
 
-/** O chamado em texto corrido — a parte que os dois pedidos compartilham. */
+/**
+ * O chamado em texto corrido — a parte que os dois pedidos compartilham.
+ *
+ * Tipo, entidade, prioridade e prazo são campos estruturados da modal. Eles vêm
+ * como linha própria justamente para o modelo NÃO os cobrar do texto: no
+ * formato nativo quem sabe disso é o serviço, aqui é o prompt que precisa dizer.
+ */
 function linhasDoContexto(c: PedidoIa["contexto"]): string[] {
   const linhas = [
     `Tipo do chamado: ${c.tipo ?? "não classificado"}`,
     `Projeto: ${c.projeto ?? "não informado"}`,
     `Entidade: ${c.entidade ?? "não informada"}`,
+    `Prioridade: ${c.prioridade ?? "não informada"}`,
+    `Prazo: ${c.prazo ?? "não informado"}`,
   ];
   if (c.titulo) linhas.push(`Título do chamado: ${c.titulo}`);
   if (c.descricao) linhas.push(`Descrição do chamado: ${c.descricao}`);
@@ -194,6 +216,9 @@ const METODOLOGIA_DE_ANALISE = [
   "6. Critérios de aceite: escritos em DADO / QUANDO / ENTÃO; o DADO tem os dados de entrada; o QUANDO tem uma ação só; o ENTÃO tem valor verificável; pelo menos um cenário de exceção; duas pessoas chegariam à mesma conclusão sobre passou ou não.",
   "7. Escopo (melhorias): a dor escrita, não só o pedido; como a pessoa resolve isso hoje; o que entra e o que NÃO entra no escopo; impacto nos dados existentes; quem valida a entrega.",
   "8. Prioridade: quantos clientes e usuários são afetados; se trava a operação; se existe contorno; se há prazo legal ou comercial.",
+  "",
+  CAMPOS_ESTRUTURADOS,
+  "Prioridade preenchida no campo atende o bloco 8; entidade preenchida atende a parte de entidade do bloco 2.",
   "",
   "Cinco porquês: quando a causa raiz não estiver clara, encadeie até cinco perguntas partindo do sintoma relatado, cada uma questionando a resposta anterior, para chegar ao comportamento real. Quando a causa já estiver clara, devolva a lista vazia.",
   "",

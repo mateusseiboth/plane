@@ -41,7 +41,10 @@ export type ContextoDaTela = {
   issue_title?: unknown;
   project_name?: unknown;
   status?: unknown;
+  /** Chave do banco (`urgent`) ou o rótulo já traduzido (`Urgente`). */
   priority?: unknown;
+  /** A data de vencimento do chamado, quando a tela a conhece. */
+  target_date?: unknown;
   assignees?: unknown;
   previous_comments?: unknown;
 };
@@ -237,11 +240,17 @@ const comProvedorCadastrado: EstrategiaDeMelhoria = async (pedido) => {
  * Os comentários chegam do mais recente para o mais antigo (é como a tela os
  * lista) e o contexto os quer em ordem cronológica — daí o `reverse`, sem o
  * qual o corte pelos "últimos" guardaria justamente os mais velhos.
+ *
+ * Prioridade e prazo são campos estruturados da modal, e as três rotas de IA
+ * avaliam o mesmo chamado: o que a tela sabe deles atravessa por aqui, e quando
+ * o chamado existe no banco é o registro salvo que vence.
  */
 function comoContextoInformado(daTela: ContextoDaTela): ContextoInformado {
   return {
     titulo: daTela.issue_title,
     projeto: daTela.project_name,
+    prioridade: daTela.priority,
+    prazo: daTela.target_date,
     comentarios: listaDeTexto(daTela.previous_comments).reverse(),
   };
 }

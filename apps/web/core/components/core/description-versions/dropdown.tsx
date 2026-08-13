@@ -15,7 +15,13 @@ import { calculateTimeAgo } from "@plane/utils";
 import { useMember } from "@/hooks/store/use-member";
 // local imports
 import { DescriptionVersionsDropdownItem } from "./dropdown-item";
-import type { TDescriptionVersionEntityInformation } from "./root";
+import type { TDescriptionVersionEntityInformation, TEdicaoDoChamado } from "./root";
+
+/** A mais recente entre duas edições, quando existem. */
+const maisRecente = (a: TEdicaoDoChamado | undefined, b: TEdicaoDoChamado | undefined) => {
+  if (!a || !b) return a ?? b;
+  return a.at > b.at ? a : b;
+};
 
 type Props = {
   disabled: boolean;
@@ -30,10 +36,19 @@ export const DescriptionVersionsDropdown = observer(function DescriptionVersions
   const { getUserDetails } = useMember();
   // derived values
   const latestVersion = versions?.[0];
-  const lastUpdatedAt = latestVersion?.created_at ?? entityInformation.createdAt;
-  const lastUpdatedByUserDisplayName = latestVersion?.owned_by
-    ? getUserDetails(latestVersion?.owned_by)?.display_name
-    : entityInformation.createdByDisplayName;
+  // Duas fontes para "quem mexeu por último": a versão mais recente da
+  // descrição e a trilha de atividades (que também vê a troca de título). Vale
+  // a mais recente das duas; a criação do chamado só entra quando não houve
+  // edição nenhuma — anunciá-la como "última edição" seria mentira.
+  const versionEdit = latestVersion
+    ? {
+        at: new Date(latestVersion.last_saved_at ?? latestVersion.created_at),
+        byDisplayName: latestVersion.owned_by ? getUserDetails(latestVersion.owned_by)?.display_name : undefined,
+      }
+    : undefined;
+  const lastEdit = maisRecente(versionEdit, entityInformation.lastEdit);
+  const lastUpdatedAt = lastEdit?.at ?? entityInformation.createdAt;
+  const lastUpdatedByUserDisplayName = lastEdit?.byDisplayName ?? entityInformation.createdByDisplayName;
   // translation
   const { t } = useTranslation();
 

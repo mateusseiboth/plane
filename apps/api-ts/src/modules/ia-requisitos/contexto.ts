@@ -4,7 +4,17 @@
  * O modelo é um especialista em levantamento de requisitos: sem saber de que
  * projeto, de que entidade e do que já foi dito no chamado, ele só consegue
  * repetir lugar-comum. Aqui juntamos título, descrição, comentários recentes,
- * tipo (correção/melhoria), projeto, entidade e o texto extraído dos anexos.
+ * tipo (correção/melhoria), projeto, entidade, prioridade, prazo e o texto
+ * extraído dos anexos.
+ *
+ * Tipo, entidade, prioridade e prazo são **seletores da modal**, não texto:
+ * mandá-los preenchidos é o que impede o checklist de cobrar da descrição uma
+ * informação que já está no campo ao lado.
+ *
+ * Duas origens, uma ordem: o **chamado salvo vence**; o que a tela informou
+ * entra como reserva, porque na criação o chamado ainda não existe no banco. A
+ * exceção é o `tipo`, que a tela deduz da etiqueta escolhida na hora e que por
+ * isso vence quando vem dito (ver `tipoDoChamado`).
  *
  * Nada aqui lança: contexto incompleto ainda rende sugestão, então cada parte
  * que falha é omitida em silêncio.
@@ -14,6 +24,7 @@ import prisma from "@db";
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {extrairTextoDeImagem} from "@modules/ia-requisitos/ocr";
 import type {AnexoIa, CampoIa, ContextoIa} from "@modules/ia-requisitos/tipos";
+import {rotuloDePrioridade} from "@utils/prioridade";
 import {serveAsset} from "@utils/storage";
 
 /** Últimos comentários enviados, em ordem cronológica. */
@@ -71,6 +82,10 @@ export type ContextoInformado = {
   descricao?: unknown;
   comentarios?: unknown;
   tipo?: unknown;
+  /** Chave do banco (`urgent`) ou o rótulo já traduzido (`Urgente`). */
+  prioridade?: unknown;
+  /** A data de vencimento escolhida na modal; qualquer forma que o `Date` leia. */
+  prazo?: unknown;
 };
 
 export type PedidoDeContexto = {
@@ -100,6 +115,20 @@ function textoInformado(valor: unknown, limite: number): string | null {
   if (typeof valor !== "string") return null;
   const limpo = valor.trim();
   return limpo ? limpo.slice(0, limite) : null;
+}
+
+/**
+ * Uma data em ISO 8601, ou `null` quando não dá para ler.
+ *
+ * A modal manda `"2026-09-30"`, o banco manda um `Date` — os dois viram o mesmo
+ * instante em UTC, e o que não for data nenhuma sai como ausente em vez de
+ * virar "Invalid Date" no meio do contexto.
+ */
+function dataInformada(valor: unknown): string | null {
+  if (valor instanceof Date) return Number.isNaN(valor.getTime()) ? null : valor.toISOString();
+  if (typeof valor !== "string" || !valor.trim()) return null;
+  const data = new Date(valor.trim());
+  return Number.isNaN(data.getTime()) ? null : data.toISOString();
 }
 
 function comentariosInformados(valor: unknown): string[] {
@@ -204,6 +233,10 @@ export async function montarContexto(pedido: PedidoDeContexto): Promise<Contexto
           name: true,
           descriptionStripped: true,
           descriptionHtml: true,
+          // Os campos estruturados da modal: são eles que dispensam o texto de
+          // repetir entidade, prioridade e prazo.
+          priority: true,
+          targetDate: true,
           entity: {select: {name: true}},
           labels: {select: {label: {select: {name: true}}}},
         },
@@ -239,6 +272,12 @@ export async function montarContexto(pedido: PedidoDeContexto): Promise<Contexto
     tipo: tipoDoChamado(pedido.tipo ?? textoInformado(daTela.tipo, LIMITE.nome), rotulos),
     projeto: projeto?.name ?? textoInformado(daTela.projeto, LIMITE.nome),
     entidade: chamado?.entity?.name ?? entidadeInformada?.name ?? textoInformado(daTela.entidade, LIMITE.nome),
+    // Campos estruturados: o valor gravado vence sempre que existir, e o que a
+    // tela informou entra como reserva — igual ao título e à descrição. Na
+    // prática a prioridade sai sempre do banco quando há chamado (a coluna tem
+    // `none` por padrão); o prazo só quando alguém já o escolheu.
+    prioridade: rotuloDePrioridade(chamado?.priority) ?? rotuloDePrioridade(daTela.prioridade),
+    prazo: dataInformada(chamado?.targetDate) ?? dataInformada(daTela.prazo),
     comentarios: comentarios.length ? comentarios : comentariosInformados(daTela.comentarios),
     anexos,
   };

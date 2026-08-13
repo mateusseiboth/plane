@@ -88,6 +88,9 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
   // texto fantasma da IA de requisitos
   const descriptionHtml = useWatch({ control, name: "description_html" }) ?? "";
   const tipo = useTipoDeRequisito(useWatch({ control, name: "label_ids" }));
+  // Seletores da modal: viajam no contexto para não serem cobrados no texto.
+  const prioridade = useWatch({ control, name: "priority" }) ?? undefined;
+  const prazo = useWatch({ control, name: "target_date" }) ?? undefined;
   const { projeto, entidade } = useContextoDeRequisito({ workspaceSlug, projectId, entityId });
   const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
@@ -97,7 +100,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
     issueId,
     entityId,
     tipo,
-    contexto: { projeto, entidade, titulo: issueName },
+    contexto: { projeto, entidade, titulo: issueName, prioridade, prazo },
   });
   const { extensoes } = useTextoFantasmaEditor(sugestao);
   // store hooks

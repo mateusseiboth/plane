@@ -10,6 +10,7 @@ import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
 import { serializeIssue, ISSUE_INCLUDE, COMMENT_INCLUDE, serializeComment } from "@utils/serialize";
 import { paginate } from "@utils/pagination";
 import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
+import { registrarVersaoDaDescricao, serializarVersao } from "@utils/versoes-da-descricao";
 
 function isoDate(d: any) { if (!d) return null; return d instanceof Date ? d.toISOString() : String(d); }
 
@@ -51,24 +52,18 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
   })
 
   // ── Description versions ──────────────────────────────────────────────────
-  .get("/:issue_id/description-versions/", async ({ params: { slug, project_id, issue_id }, user }) => {
+  // Envelope paginado, igual ao módulo de chamados: o seletor lê `results`.
+  .get("/:issue_id/description-versions/", async ({ params: { slug, project_id, issue_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const versions = await prisma.issueVersion.findMany({
-      where: { issueId: issue_id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+    const where = { issueId: issue_id };
+    return paginate({
+      query: (skip, take) => prisma.issueVersion.findMany({ where, orderBy: { lastSavedAt: "desc" }, skip, take }),
+      count: () => prisma.issueVersion.count({ where }),
+      cursor: (query as any).cursor as string | undefined,
+      transform: (versions) =>
+        versions.map((v: any) => serializarVersao(v, { issueId: issue_id, workspaceId: ws.id, projectId: project_id })),
     });
-    return versions.map((v: any) => ({
-      id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
-      description: v.descriptionJson ?? null,
-      description_html: v.descriptionHtml ?? "<p></p>",
-      description_stripped: "",
-      created_at: isoDate(v.createdAt),
-      updated_at: isoDate(v.createdAt),
-      owned_by: v.ownedById ?? null,
-      last_saved_at: v.lastSavedAt ? isoDate(v.lastSavedAt) : isoDate(v.createdAt),
-    }));
   })
 
   .get("/:issue_id/description-versions/:version_id/", async ({ params: { slug, project_id, issue_id, version_id }, user, set }) => {
@@ -76,13 +71,7 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
     await getProjectOrFail(ws.id, project_id, user.id);
     const v = await prisma.issueVersion.findFirst({ where: { id: version_id, issueId: issue_id } });
     if (!v) { set.status = 404; return { detail: "Não encontrado." }; }
-    return {
-      id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
-      description: (v as any).descriptionJson ?? null,
-      description_html: (v as any).descriptionHtml ?? "<p></p>",
-      created_at: isoDate(v.createdAt),
-      owned_by: (v as any).ownedById ?? null,
-    };
+    return serializarVersao(v, { issueId: issue_id, workspaceId: ws.id, projectId: project_id });
   })
 
   // ── History ──────────────────────────────────────────────────────────────────
@@ -126,6 +115,9 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
       include: { state: { select: { id: true, name: true } } },
     });
 
+    // Mesma regra do PATCH do chamado: todos reescrevem, o "antes" fica gravado.
+    const abriuVersao = await registrarVersaoDaDescricao({ antes: before, corpo: b, autorId: user.id });
+
     const data: any = { updatedById: user.id };
     const newStateId = b.state ?? b.state_id;
     if (newStateId !== undefined) data.stateId = newStateId;
@@ -135,6 +127,9 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
       data.descriptionHtml = b.description_html;
       data.descriptionStripped = b.description_html.replace(/<[^>]+>/g, "");
     }
+    // O JSON do editor acompanha o HTML; ver o PATCH do chamado.
+    const descricaoJson = b.description_json !== undefined ? b.description_json : b.description;
+    if (descricaoJson !== undefined) data.descriptionJson = descricaoJson;
     const updated = await prisma.issue.update({ where: { id: issue_id }, data, include: ISSUE_INCLUDE });
 
     if (before) {
@@ -147,6 +142,7 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
         const c = diffChange("priority", before.priority, b.priority, "updated the priority");
         if (c) changes.push(c);
       }
+      if (abriuVersao) changes.push({ field: "description", comment: "updated the description" });
       await recordActivities({ issueId: issue_id, workspaceId: ws.id, projectId: project_id, actorId: user.id }, changes);
     }
 

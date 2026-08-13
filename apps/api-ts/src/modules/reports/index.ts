@@ -3,6 +3,7 @@ import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 // Reports are restricted to [ADMIN, MEMBER] (workspace role >= 15) — mirrors the
 // `reports`/`analytics` sidebar gate in packages/constants/src/workspace.ts.
+import { PRIORIDADES, ROTULO_DE_PRIORIDADE } from "@utils/prioridade";
 import { getWorkspaceOrFail, requireWorkspaceWriter } from "@utils/workspace";
 import { Prisma } from "@prisma/client";
 
@@ -13,16 +14,13 @@ import { Prisma } from "@prisma/client";
 // Filtros comuns: project_ids (csv), entity_id, date_from, date_to.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PRIORITIES = ["urgent", "high", "medium", "low", "none"] as const;
+const PRIORITIES = PRIORIDADES;
 const STATE_GROUPS = ["backlog", "unstarted", "started", "completed", "cancelled"] as const;
 
-const PRIORITY_LABELS: Record<string, string> = {
-  urgent: "Urgente",
-  high: "Alta",
-  medium: "Média",
-  low: "Baixa",
-  none: "Sem prioridade",
-};
+// Os rótulos são os mesmos do resto do sistema (@utils/prioridade); só a
+// ausência muda de nome: numa legenda de relatório "Sem prioridade" diz mais
+// que o "Nenhum" do seletor.
+const PRIORITY_LABELS: Record<string, string> = { ...ROTULO_DE_PRIORIDADE, none: "Sem prioridade" };
 
 const GROUP_LABELS: Record<string, string> = {
   triage: "Triagem",

@@ -19,6 +19,7 @@ import {replicateToLinkedIntakes} from "@utils/intake-replication";
 import {notifyStateChange} from "@utils/notifications";
 import {publishRealtime} from "@utils/realtime";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, clientIp, recordAudit} from "@utils/audit";
+import {registrarVersaoDaDescricao, serializarVersao} from "@utils/versoes-da-descricao";
 import {nextSequenceId} from "@utils/sequence";
 import {computeTargetDate} from "@utils/sla";
 import {sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-chamado";
@@ -323,6 +324,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       data.descriptionHtml = b.description_html;
       data.descriptionStripped = b.description_html.replace(/<[^>]+>/g, "");
     }
+    // O JSON do editor acompanha o HTML. Sem gravá-lo, o "estado anterior" de
+    // toda versão guardaria para sempre o JSON da criação. `description` é o
+    // nome legado do campo, aceito na criação e aqui também.
+    const descricaoJson = b.description_json !== undefined ? b.description_json : b.description;
+    if (descricaoJson !== undefined) data.descriptionJson = descricaoJson;
     // Accept both `state` (Django legacy) and `state_id` (frontend ISSUE_FILTER_DEFAULT_DATA)
     const newStateId = b.state ?? b.state_id;
     let targetState: {id: string; name: string; group: string} | null = null;
@@ -370,6 +376,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     if (b.is_draft !== undefined) data.isDraft = b.is_draft;
     if (b.parent_id !== undefined) data.parentId = b.parent_id;
     if (b.completed_at !== undefined) data.completedAt = b.completed_at ? new Date(b.completed_at) : null;
+
+    // Todos podem reescrever o corpo do chamado; o que era antes fica gravado.
+    // Ver @utils/versoes-da-descricao.
+    const abriuVersao = await registrarVersaoDaDescricao({antes: before, corpo: b, autorId: user.id});
 
     await prisma.issue.update({where: {id: issue_id}, data});
 
@@ -423,6 +433,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         const c = diffChange("name", before.name, b.name, "updated the name");
         if (c) changes.push(c);
       }
+      // O corpo alterado entra na trilha uma vez por sessão de edição — mesmo
+      // agrupamento da versão, senão cada autosave viraria uma linha. O texto
+      // antigo e o novo ficam na versão, que é onde se lê o que mudou.
+      if (abriuVersao) changes.push({field: "description", comment: "updated the description"});
       if (b.priority !== undefined) {
         const c = diffChange("priority", before.priority, b.priority, "updated the priority");
         if (c) changes.push(c);
@@ -905,28 +919,20 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     return null;
   })
 
-  // ── Description versions (IssueVersion — history of description edits) ───────
-  .get("/:issue_id/description-versions/", async ({params: {slug, project_id, issue_id}, user}) => {
+  // ── Description versions (IssueVersion — histórico de edições da descrição) ──
+  // Envelope paginado: o seletor de versões lê `results` (TDescriptionVersionsListResponse).
+  .get("/:issue_id/description-versions/", async ({params: {slug, project_id, issue_id}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const versions = await prisma.issueVersion.findMany({
-      where: {issueId: issue_id},
-      orderBy: {createdAt: "desc"},
-      take: 50,
+    const where = {issueId: issue_id};
+    return paginate({
+      query: (skip, take) =>
+        prisma.issueVersion.findMany({where, orderBy: {lastSavedAt: "desc"}, skip, take}),
+      count: () => prisma.issueVersion.count({where}),
+      cursor: (query as any).cursor as string | undefined,
+      transform: (versions) =>
+        versions.map((v: any) => serializarVersao(v, {issueId: issue_id, workspaceId: ws.id, projectId: project_id})),
     });
-    return versions.map((v: any) => ({
-      id: v.id,
-      issue: issue_id,
-      workspace: ws.id,
-      project: project_id,
-      description: v.descriptionJson ?? null,
-      description_html: v.descriptionHtml ?? "<p></p>",
-      description_stripped: "",
-      created_at: v.createdAt?.toISOString(),
-      updated_at: v.createdAt?.toISOString(),
-      owned_by: v.ownedById ?? null,
-      last_saved_at: v.lastSavedAt?.toISOString() ?? v.createdAt?.toISOString(),
-    }));
   })
 
   .get("/:issue_id/description-versions/:version_id/", async ({params: {slug, project_id, issue_id, version_id}, user, set}) => {
@@ -937,18 +943,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       set.status = 404;
       return {detail: "Não encontrado."};
     }
-    return {
-      id: v.id,
-      issue: issue_id,
-      workspace: ws.id,
-      project: project_id,
-      description: (v as any).descriptionJson ?? null,
-      description_html: (v as any).descriptionHtml ?? "<p></p>",
-      description_stripped: "",
-      created_at: v.createdAt?.toISOString(),
-      owned_by: (v as any).ownedById ?? null,
-      last_saved_at: (v as any).lastSavedAt?.toISOString() ?? v.createdAt?.toISOString(),
-    };
+    return serializarVersao(v, {issueId: issue_id, workspaceId: ws.id, projectId: project_id});
   })
 
   // ── History / Activity ────────────────────────────────────────────────────────

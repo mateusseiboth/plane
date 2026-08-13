@@ -9,6 +9,8 @@ import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@u
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { notifyQualityOfIntake } from "@utils/notifications";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
+import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
+import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -684,29 +686,34 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const ws = await getWorkspaceOrFail(slug);
     const {member: callerMember} = await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
+    const issuePatch = b.issue ?? {};
+
+    const antes = await prisma.issue.findFirst({
+      where: {id: inbox_id, deletedAt: null},
+      include: {state: {select: {group: true}}},
+    });
+
+    // A triagem também reescreve o corpo — o Qualidade limpa o relato do
+    // cliente. O que era antes fica gravado. Ver @utils/versoes-da-descricao.
+    const abriuVersao = await registrarVersaoDaDescricao({antes, corpo: issuePatch, autorId: user.id});
 
     // FULFILLED (3) = "atendido": closes the intake. Only the chamado's creator or a
     // project admin/gestor (role ≥ 18) may set it, and only once the work item is
     // actually completed. Accepted (1) intakes stay in the OPEN tab until then.
     if (b.status === 3) {
-      const issueRow = await prisma.issue.findFirst({
-        where: {id: inbox_id, deletedAt: null},
-        include: {state: {select: {group: true}}},
-      });
-      const isCreator = issueRow?.createdById === user.id;
+      const isCreator = antes?.createdById === user.id;
       const isManager = (callerMember?.role ?? 0) >= 18;
       if (!isCreator && !isManager) {
         set.status = 403;
         return {detail: "Apenas o criador do chamado ou um gestor pode marcar como atendido."};
       }
-      if (issueRow?.state?.group !== "completed") {
+      if (antes?.state?.group !== "completed") {
         set.status = 400;
         return {detail: "O work item precisa estar Concluído antes de marcar o chamado como atendido."};
       }
     }
 
     const issueData: any = {};
-    const issuePatch = b.issue ?? {};
     if (issuePatch.name !== undefined) issueData.name = issuePatch.name;
     if (issuePatch.state_id !== undefined) issueData.stateId = issuePatch.state_id;
     if (issuePatch.priority !== undefined) issueData.priority = issuePatch.priority;
@@ -714,6 +721,9 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       issueData.descriptionHtml = issuePatch.description_html;
       issueData.descriptionStripped = (issuePatch.description_html ?? "").replace(/<[^>]+>/g, "");
     }
+    // O JSON do editor acompanha o HTML; ver o PATCH do chamado.
+    const descricaoJson = issuePatch.description_json !== undefined ? issuePatch.description_json : issuePatch.description;
+    if (descricaoJson !== undefined) issueData.descriptionJson = descricaoJson;
     if (issuePatch.label_ids !== undefined) issueData._labelIds = issuePatch.label_ids; // handled after update
     if (issuePatch.assignee_ids !== undefined) issueData._assigneeIds = issuePatch.assignee_ids; // handled after update
 
@@ -742,9 +752,30 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     delete issueData._labelIds;
     delete issueData._assigneeIds;
 
-    const issue = Object.keys(issueData).length
+    // Quem alterou o chamado fica gravado — o título pode ser mexido por
+    // terceiro, mas nunca de forma anônima.
+    const alterouOChamado = Object.keys(issueData).length > 0;
+    if (alterouOChamado) issueData.updatedById = user.id;
+
+    const issue = alterouOChamado
       ? await prisma.issue.update({where: {id: inbox_id}, data: issueData})
       : await prisma.issue.findFirst({where: {id: inbox_id}});
+
+    // Título e descrição editados entram no histórico do chamado, no mesmo
+    // padrão do PATCH principal (campos `name`/`description`, com autor).
+    if (antes) {
+      const mudancas: ActivityChange[] = [];
+      const mudancaDeTitulo =
+        issuePatch.name !== undefined ? diffChange("name", antes.name, issuePatch.name, "updated the name") : null;
+      if (mudancaDeTitulo) mudancas.push(mudancaDeTitulo);
+      if (abriuVersao) mudancas.push({field: "description", comment: "updated the description"});
+      if (mudancas.length) {
+        await recordActivities(
+          {issueId: inbox_id, workspaceId: ws.id, projectId: project_id, actorId: user.id},
+          mudancas,
+        );
+      }
+    }
 
     const escopoDoVinculo = {issueId: inbox_id, workspaceId: ws.id, projectId: project_id};
     if (labelIds !== undefined) await sincronizarEtiquetas(escopoDoVinculo, labelIds);

@@ -11,8 +11,7 @@ import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
 import { serializeIssue, ISSUE_INCLUDE } from "@utils/serialize";
 import { paginate } from "@utils/pagination";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
-
-function isoDate(d: any) { if (!d) return null; return d instanceof Date ? d.toISOString() : String(d); }
+import { serializarVersao } from "@utils/versoes-da-descricao";
 
 /**
  * Quebra "ESIC-150" em {identificadorDoProjeto: "ESIC", sequencia: 150}.
@@ -45,24 +44,18 @@ export const workItemModule = new Elysia({ prefix: "/workspaces/:slug/projects/:
   })
 
   // ── Description versions ──────────────────────────────────────────────────
-  .get("/:issue_id/description-versions/", async ({ params: { slug, project_id, issue_id }, user }) => {
+  // Envelope paginado, igual ao módulo de chamados: o seletor lê `results`.
+  .get("/:issue_id/description-versions/", async ({ params: { slug, project_id, issue_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const versions = await prisma.issueVersion.findMany({
-      where: { issueId: issue_id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+    const where = { issueId: issue_id };
+    return paginate({
+      query: (skip, take) => prisma.issueVersion.findMany({ where, orderBy: { lastSavedAt: "desc" }, skip, take }),
+      count: () => prisma.issueVersion.count({ where }),
+      cursor: (query as any).cursor as string | undefined,
+      transform: (versions) =>
+        versions.map((v: any) => serializarVersao(v, { issueId: issue_id, workspaceId: ws.id, projectId: project_id })),
     });
-    return versions.map((v: any) => ({
-      id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
-      description: v.descriptionJson ?? null,
-      description_html: v.descriptionHtml ?? "<p></p>",
-      description_stripped: v.descriptionStripped ?? "",
-      created_at: isoDate(v.createdAt),
-      updated_at: isoDate(v.updatedAt),
-      owned_by: v.ownedById ?? null,
-      last_saved_at: isoDate(v.createdAt),
-    }));
   })
 
   .get("/:issue_id/description-versions/:version_id/", async ({ params: { slug, project_id, issue_id, version_id }, user, set }) => {
@@ -70,14 +63,7 @@ export const workItemModule = new Elysia({ prefix: "/workspaces/:slug/projects/:
     await getProjectOrFail(ws.id, project_id, user.id);
     const v = await prisma.issueVersion.findFirst({ where: { id: version_id, issueId: issue_id } });
     if (!v) { set.status = 404; return { detail: "Não encontrado." }; }
-    return {
-      id: v.id, issue: issue_id, workspace: ws.id, project: project_id,
-      description: (v as any).descriptionJson ?? null,
-      description_html: (v as any).descriptionHtml ?? "<p></p>",
-      description_stripped: (v as any).descriptionStripped ?? "",
-      created_at: isoDate(v.createdAt),
-      owned_by: (v as any).ownedById ?? null,
-    };
+    return serializarVersao(v, { issueId: issue_id, workspaceId: ws.id, projectId: project_id });
   });
 
 /**

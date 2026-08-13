@@ -19,6 +19,7 @@ import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { pontosDoValor, somarPontosDosChamados } from "@utils/estimate";
+import { ROTULO_DE_PRIORIDADE } from "@utils/prioridade";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 
 type Consulta = Record<string, unknown>;
@@ -127,14 +128,12 @@ const semRotulo = (valor: string | null) => valor ?? "none";
  */
 const idsDe = (chaves: string[]) => chaves.filter((chave) => chave && chave !== "none");
 
-/** A prioridade é guardada em inglês no banco; os gráficos mostram em português. */
-const PRIORIDADES = new Map([
-  ["urgent", "Urgente"],
-  ["high", "Alta"],
-  ["medium", "Média"],
-  ["low", "Baixa"],
-  ["none", "Sem prioridade"],
-]);
+/**
+ * A prioridade é guardada em inglês no banco; os gráficos mostram em português.
+ * Os rótulos vêm de `@utils/prioridade`, com um nome próprio para a ausência:
+ * numa legenda "Sem prioridade" diz mais que o "Nenhum" do seletor.
+ */
+const PRIORIDADES = new Map(Object.entries({ ...ROTULO_DE_PRIORIDADE, none: "Sem prioridade" }));
 
 type ColunaDeChamado = "stateId" | "priority" | "projectId" | "createdById" | "estimatePointId";
 

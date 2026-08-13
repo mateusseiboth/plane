@@ -21,6 +21,7 @@ import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useUser } from "@/hooks/store/user";
 import useReloadConfirmations from "@/hooks/use-reload-confirmation";
+import { useUltimaEdicao } from "@/hooks/use-ultima-edicao";
 // plane web components
 import { DeDupeIssuePopoverRoot } from "@/plane-web/components/de-dupe/duplicate-popover";
 import { IssueTypeSwitcher } from "@/plane-web/components/issues/issue-details/issue-type-switcher";
@@ -86,6 +87,7 @@ export const PeekOverviewIssueDetails = observer(function PeekOverviewIssueDetai
       issueId: issue?.id,
     }
   );
+  const ultimaEdicao = useUltimaEdicao(issueId);
 
   if (!issue || !issue.project_id) return <></>;
 
@@ -172,6 +174,7 @@ export const PeekOverviewIssueDetails = observer(function PeekOverviewIssueDetai
               createdByDisplayName: getUserDetails(issue.created_by ?? "")?.display_name ?? "",
               id: issueId,
               isRestoreDisabled: disabled || isArchived,
+              lastEdit: ultimaEdicao,
             }}
             fetchHandlers={{
               listDescriptionVersions: (issueId) =>

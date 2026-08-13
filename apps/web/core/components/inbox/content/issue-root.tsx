@@ -29,6 +29,7 @@ import { useProject } from "@/hooks/store/use-project";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
 import { useUser } from "@/hooks/store/user";
 import useReloadConfirmations from "@/hooks/use-reload-confirmation";
+import { useUltimaEdicao } from "@/hooks/use-ultima-edicao";
 // store types
 import { DeDupeIssuePopoverRoot } from "@/plane-web/components/de-dupe/duplicate-popover";
 import { useDebouncedDuplicateIssues } from "@/plane-web/hooks/use-debounced-duplicate-issues";
@@ -136,6 +137,8 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
     [inboxIssue]
   );
 
+  const ultimaEdicao = useUltimaEdicao(issue?.id);
+
   if (!issue) return <></>;
 
   if (!issue?.project_id || !issue?.id) return <></>;
@@ -212,6 +215,7 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
                     : (getUserDetails(issue.created_by ?? "")?.display_name ?? ""),
                 id: issue.id,
                 isRestoreDisabled: !isEditable,
+                lastEdit: ultimaEdicao,
               }}
               fetchHandlers={{
                 listDescriptionVersions: (issueId) =>
