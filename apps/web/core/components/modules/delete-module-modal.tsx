@@ -79,9 +79,9 @@ export const DeleteModuleModal = observer(function DeleteModuleModal(props: Prop
       title="Excluir módulo"
       content={
         <>
-          Tem certeza de que deseja excluir o módulo-{" "}
-          <span className="font-medium break-all text-primary">{data?.name}</span>? All of the data related to the
-          module will be permanently removed. This action cannot be undone.
+          Tem certeza de que deseja excluir o módulo{" "}
+          <span className="font-medium break-all text-primary">{data?.name}</span>? Todos os dados relacionados ao
+          módulo serão removidos definitivamente. Esta ação não pode ser desfeita.
         </>
       }
     />

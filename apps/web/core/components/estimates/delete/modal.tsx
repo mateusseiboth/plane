@@ -70,8 +70,8 @@ export const DeleteEstimateModal = observer(function DeleteEstimateModal(props: 
         <div className="px-5">
           <div className="text-14 text-secondary">
             Excluindo a estimativa <span className="font-bold text-primary">{estimate?.name}</span>
-            &nbsp;system will remove it from all work items permanently. This action cannot be undone. If you add
-            estimates again, you will need to update all the work items.
+            &nbsp;o sistema vai removê-la de todos os chamados definitivamente. Esta ação não pode ser desfeita. Se
+            você usar estimativas de novo, será preciso atualizar todos os chamados.
           </div>
         </div>
 
@@ -80,7 +80,7 @@ export const DeleteEstimateModal = observer(function DeleteEstimateModal(props: 
             Cancelar
           </Button>
           <Button variant="error-fill" size="lg" onClick={handleDeleteEstimate} disabled={buttonLoader}>
-            {buttonLoader ? "Excluindo" : "Delete Estimate"}
+            {buttonLoader ? "Excluindo" : "Excluir estimativa"}
           </Button>
         </div>
       </div>

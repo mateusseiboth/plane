@@ -82,9 +82,9 @@ export const DeletePageModal = observer(function DeletePageModal(props: TConfirm
       title="Excluir página"
       content={
         <>
-          Tem certeza de que deseja excluir a página-{" "}
-          <span className="font-medium break-words break-all text-primary">{getPageName(name)}</span> ? The Page will be
-          deleted permanently. This action cannot be undone.
+          Tem certeza de que deseja excluir a página{" "}
+          <span className="font-medium break-words break-all text-primary">{getPageName(name)}</span>? A página será
+          excluída definitivamente. Esta ação não pode ser desfeita.
         </>
       }
     />

@@ -72,8 +72,8 @@ export const StateDeleteModal = observer(function StateDeleteModal(props: TState
       title="Excluir estado"
       content={
         <>
-          Tem certeza de que deseja excluir o estado- <span className="font-medium text-primary">{data?.name}</span>? All of
-          the data related to the state will be permanently removed. This action cannot be undone.
+          Tem certeza de que deseja excluir o estado <span className="font-medium text-primary">{data?.name}</span>?
+          Todos os dados relacionados ao estado serão removidos definitivamente. Esta ação não pode ser desfeita.
         </>
       }
     />
