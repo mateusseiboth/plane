@@ -20,6 +20,7 @@ import { Loader } from "@plane/ui";
 import { getDescriptionPlaceholderI18n, getTabIndex, sanitizeHTML } from "@plane/utils";
 // components
 import { GptAssistantPopover } from "@/components/core/modals/gpt-assistant-popover";
+import { AiImproveButton } from "@/components/editor/ai-improve-button";
 import { RichTextEditor } from "@/components/editor/rich-text";
 import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
 // helpers
@@ -268,6 +269,13 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
               )}
             />
             <div className="border-0.5 z-10 flex items-center justify-end gap-2 p-3">
+              {/* Na criação ainda não existe chamado: o project_id é o que dá
+                  contexto e permissão à rota. */}
+              <AiImproveButton
+                editorRef={editorRef as React.RefObject<any>}
+                workspaceSlug={workspaceSlug?.toString() ?? ""}
+                alvo={{ campo: "descricao", project_id: projectId ?? undefined }}
+              />
               {issueName && issueName.trim() !== "" && config?.has_llm_configured && (
                 <button
                   type="button"
@@ -279,10 +287,10 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
                   tabIndex={getIndex("feeling_lucky")}
                 >
                   {iAmFeelingLucky ? (
-                    "Generating response"
+                    "Gerando resposta"
                   ) : (
                     <>
-                      <Sparkle className="h-3.5 w-3.5" />I{"'"}m feeling lucky
+                      <Sparkle className="h-3.5 w-3.5" />Escrever por mim
                     </>
                   )}
                 </button>

@@ -15,6 +15,7 @@ import { EFileAssetType } from "@plane/types";
 import { Loader } from "@plane/ui";
 import { getDescriptionPlaceholderI18n, getTabIndex, sanitizeHTML } from "@plane/utils";
 // components
+import { AiImproveButton } from "@/components/editor/ai-improve-button";
 import { RichTextEditor } from "@/components/editor/rich-text/editor";
 import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
 // hooks
@@ -142,7 +143,16 @@ export const InboxIssueDescription = observer(function InboxIssueDescription(pro
         }}
       />
       <IndicadorDeConsulta consultando={consultando} className="mt-1" />
-      <ItensFaltantes itens={faltando} className="mt-1.5" />
+      <div className="mt-1.5 flex items-start justify-between gap-2">
+        <ItensFaltantes itens={faltando} />
+        {/* Na criação ainda não há chamado: o project_id é o que dá contexto e
+            permissão à rota. */}
+        <AiImproveButton
+          editorRef={editorRef as React.RefObject<any>}
+          workspaceSlug={workspaceSlug}
+          alvo={{ campo: "descricao", project_id: projectId }}
+        />
+      </div>
     </div>
   );
 });
