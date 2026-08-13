@@ -12,11 +12,11 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import type { EditorRefApi, TExtensions } from "@plane/editor";
 import { useTranslation } from "@plane/i18n";
 import type { EFileAssetType, TNameDescriptionLoader } from "@plane/types";
-import { getDescriptionPlaceholderI18n, sanitizeHTML } from "@plane/utils";
+import { getDescriptionPlaceholderI18n } from "@plane/utils";
 // components
 import { RichTextEditor } from "@/components/editor/rich-text";
 import { AiImproveButton, type AiContext } from "@/components/editor/ai-improve-button";
-import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes, textoDoEditor } from "@/components/ia";
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
 import { useWorkspace } from "@/hooks/store/use-workspace";
@@ -175,7 +175,7 @@ export const DescriptionInput = observer(function DescriptionInput(props: Props)
   const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "descricao",
-    texto: sanitizeHTML(descriptionHtml),
+    texto: textoDoEditor(descriptionHtml),
     projectId,
     issueId: entityId,
     tipo,

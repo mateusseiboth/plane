@@ -62,11 +62,26 @@ function normalizar(texto: string): string {
     .trim();
 }
 
+/**
+ * HTML do editor -> texto, com UMA LINHA POR BLOCO.
+ *
+ * A versão anterior trocava toda tag por espaço e depois colapsava `\s+`: o
+ * chamado inteiro chegava numa linha só. O checklist da IA lê seções, passos
+ * numerados e critérios DADO/QUANDO/ENTÃO por linha, e sem elas os cinco
+ * critérios do autor viravam um — o cenário de exceção, que exige dois, ficava
+ * inalcançável. Fim de parágrafo, de item de lista, de título e `<br>` viram
+ * quebra de linha; o resto das tags continua virando espaço.
+ */
+const FIM_DE_BLOCO = /<\/(?:p|div|li|h[1-6]|tr|blockquote|pre)>|<br\s*\/?>/gi;
+
 function semHtml(html: string): string {
   return html
+    .replace(FIM_DE_BLOCO, "\n")
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 

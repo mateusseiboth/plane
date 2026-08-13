@@ -17,12 +17,12 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TIssue } from "@plane/types";
 import { EFileAssetType } from "@plane/types";
 import { Loader } from "@plane/ui";
-import { getDescriptionPlaceholderI18n, getTabIndex, sanitizeHTML } from "@plane/utils";
+import { getDescriptionPlaceholderI18n, getTabIndex } from "@plane/utils";
 // components
 import { GptAssistantPopover } from "@/components/core/modals/gpt-assistant-popover";
 import { AiImproveButton } from "@/components/editor/ai-improve-button";
 import { RichTextEditor } from "@/components/editor/rich-text";
-import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes, textoDoEditor } from "@/components/ia";
 // helpers
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
@@ -95,7 +95,7 @@ export const IssueDescriptionEditor = observer(function IssueDescriptionEditor(p
   const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "descricao",
-    texto: sanitizeHTML(descriptionHtml),
+    texto: textoDoEditor(descriptionHtml),
     projectId,
     issueId,
     entityId,

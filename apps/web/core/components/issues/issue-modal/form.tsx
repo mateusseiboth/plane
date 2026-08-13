@@ -25,10 +25,9 @@ import {
   getTextContent,
   getChangedIssuefields,
   getTabIndex,
-  sanitizeHTML,
 } from "@plane/utils";
 // components
-import { PainelDeAnalise } from "@/components/ia";
+import { PainelDeAnalise, textoDoEditor } from "@/components/ia";
 import {
   IssueDefaultProperties,
   IssueDescriptionEditor,
@@ -173,7 +172,7 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
 
   // análise de levantamento de requisitos ao salvar
   const tituloAtual = watch("name") ?? "";
-  const descricaoAtual = sanitizeHTML(watch("description_html") ?? "");
+  const descricaoAtual = textoDoEditor(watch("description_html"));
   const tipoDeRequisito = useTipoDeRequisito(watch("label_ids"));
   const { projeto, entidade } = useContextoDeRequisito({
     workspaceSlug: workspaceSlug?.toString(),

@@ -154,6 +154,13 @@ desligado e registra o aviso no log.
   depender da IA estar de pé**.
 - Interface: texto fantasma no editor de descrição, no campo de título e na
   caixa de comentário. `Tab` aceita, `Esc` descarta, digitar substitui.
+- **O texto vai com as quebras de linha.** O editor guarda HTML; quem manda
+  para a IA converte com `textoDoEditor` (web) ou `semHtml` (api-ts), e os dois
+  põem `\n` onde o bloco terminava. Usar `sanitizeHTML` direto cola o fim de um
+  parágrafo no começo do outro (`…ofícioSituação atual`), e o checklist do
+  modelo — que procura conceito por fronteira de palavra e lê critérios
+  DADO/QUANDO/ENTÃO por linha — passa a cobrar do autor o que ele escreveu.
+  Medido no chamado das Sanções: 86 de nota com as quebras, 56 sem elas.
 
 ---
 

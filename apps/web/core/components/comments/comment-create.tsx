@@ -11,11 +11,11 @@ import { useForm, Controller } from "react-hook-form";
 import { EIssueCommentAccessSpecifier } from "@plane/constants";
 import type { EditorRefApi } from "@plane/editor";
 import type { TIssueComment, TCommentsOperations } from "@plane/types";
-import { cn, isCommentEmpty, sanitizeHTML } from "@plane/utils";
+import { cn, isCommentEmpty } from "@plane/utils";
 // components
 import { LiteTextEditor } from "@/components/editor/lite-text";
 import { AiImproveButton } from "@/components/editor/ai-improve-button";
-import { IndicadorDeConsulta, ItensFaltantes, PainelDeAnalise } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes, PainelDeAnalise, textoDoEditor } from "@/components/ia";
 // helpers
 import { colarTrechoNoEditor } from "@/helpers/colar-trecho.helper";
 // hooks
@@ -80,11 +80,11 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
   const chamado = getIssueById(entityId);
   const tipo = useTipoDeRequisito(chamado?.label_ids);
   const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
-  const comentarioEmTexto = sanitizeHTML(commentHTML ?? "");
+  const comentarioEmTexto = textoDoEditor(commentHTML);
   const contextoDoChamado = {
     projeto,
     titulo: chamado?.name,
-    descricao: sanitizeHTML(chamado?.description_html ?? ""),
+    descricao: textoDoEditor(chamado?.description_html),
   };
   const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,

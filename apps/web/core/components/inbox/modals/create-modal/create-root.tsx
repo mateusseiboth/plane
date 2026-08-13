@@ -15,9 +15,9 @@ import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TIssue } from "@plane/types";
 import { ToggleSwitch } from "@plane/ui";
-import { renderFormattedPayloadDate, getTabIndex, sanitizeHTML } from "@plane/utils";
+import { renderFormattedPayloadDate, getTabIndex } from "@plane/utils";
 // components
-import { PainelDeAnalise } from "@/components/ia";
+import { PainelDeAnalise, textoDoEditor } from "@/components/ia";
 // helpers
 import { colarTrechoNoEditor } from "@/helpers/colar-trecho.helper";
 // hooks
@@ -100,7 +100,7 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
 
   // análise de levantamento de requisitos ao salvar
   const tituloAtual = formData?.name ?? "";
-  const descricaoAtual = sanitizeHTML(formData?.description_html ?? "");
+  const descricaoAtual = textoDoEditor(formData?.description_html);
   const tipoDeRequisito = useTipoDeRequisito(formData?.label_ids);
   const { projeto } = useContextoDeRequisito({ workspaceSlug, projectId });
   const analise = useAnaliseDeChamado({

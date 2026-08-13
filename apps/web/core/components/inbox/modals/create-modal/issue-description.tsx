@@ -13,11 +13,11 @@ import { useTranslation } from "@plane/i18n";
 import type { TIssue } from "@plane/types";
 import { EFileAssetType } from "@plane/types";
 import { Loader } from "@plane/ui";
-import { getDescriptionPlaceholderI18n, getTabIndex, sanitizeHTML } from "@plane/utils";
+import { getDescriptionPlaceholderI18n, getTabIndex } from "@plane/utils";
 // components
 import { AiImproveButton } from "@/components/editor/ai-improve-button";
 import { RichTextEditor } from "@/components/editor/rich-text/editor";
-import { IndicadorDeConsulta, ItensFaltantes } from "@/components/ia";
+import { IndicadorDeConsulta, ItensFaltantes, textoDoEditor } from "@/components/ia";
 // hooks
 import { useEditorAsset } from "@/hooks/store/use-editor-asset";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
@@ -68,7 +68,7 @@ export const InboxIssueDescription = observer(function InboxIssueDescription(pro
   const { sugestao, faltando, consultando, propsDeFoco } = useTextoFantasmaCampo({
     workspaceSlug,
     campo: "descricao",
-    texto: sanitizeHTML(data?.description_html ?? ""),
+    texto: textoDoEditor(data?.description_html),
     projectId,
     issueId: data?.id,
     tipo,
