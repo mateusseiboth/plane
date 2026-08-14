@@ -7,6 +7,7 @@
 // translates that map into a Prisma `where` (it needs prisma to resolve
 // state groups → state ids).
 import prisma from "@db";
+import {instanteDaEntrada} from "@utils/prazo";
 
 type FilterMap = Record<string, string[]>;
 
@@ -202,10 +203,13 @@ export async function applyIssueFilters(
   // "<data>;<token>" (ex.: "2026-01-01;after,2026-01-31;before"). A versão
   // anterior lia só `raw[0]` e ainda tratava o token como se fosse a segunda
   // data: um intervalo virava igualdade na data inicial e devolvia 0 chamados.
-  const valid = (s: string) => {
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d;
-  };
+  //
+  // Agora que o vencimento tem hora, a borda do intervalo importa: `lte` com
+  // "2026-09-30" lido como 00:00 excluiria o chamado que vence às 17h do dia 30
+  // — justamente o dia que o usuário pediu. O Django legado comparava contra uma
+  // coluna DATE, então `__lte` já era inclusivo no dia inteiro; manter isso é
+  // paridade, não invenção. Por isso cada limite pega a sua borda do dia:
+  // início para `gte`, fim para `lte`. Ver @utils/prazo.
   /** Cada token diz qual borda do intervalo a data ocupa. */
   const BORDA: Record<string, "gte" | "lte"> = {
     after: "gte",
@@ -219,44 +223,49 @@ export async function applyIssueFilters(
   };
   const applyDate = (field: string, raw: string[]) => {
     const range: Record<string, Date> = {};
-    const soltas: Date[] = [];
+    const soltas: string[] = [];
+
+    const ehData = (texto?: string) => Boolean(texto) && instanteDaEntrada(texto, "inicio") !== null;
+    /** Grava o limite já na borda do dia que ele ocupa. */
+    const limite = (lado: "gte" | "lte", texto: string) => {
+      const instante = instanteDaEntrada(texto, lado === "gte" ? "inicio" : "fim");
+      if (instante) range[lado] = instante;
+    };
+    const emMilissegundos = (texto: string) => instanteDaEntrada(texto, "inicio")!.getTime();
 
     for (const entrada of raw) {
       const [primeira, segunda] = entrada.split(";").map((p) => p.trim());
-      const inicio = valid(primeira);
-      const fim = segunda ? valid(segunda) : null;
+      const token = segunda ? BORDA[segunda.toLowerCase()] : undefined;
 
-      // "<data>;<data>" já traz o intervalo inteiro numa entrada só.
-      if (inicio && fim) {
-        range.gte = inicio;
-        range.lte = fim;
+      // "<data>;<token>" — o token diz qual borda a data ocupa.
+      if (token) {
+        limite(token, primeira);
         continue;
       }
-      // "<lixo>;<data>" — só o limite superior é aproveitável.
-      if (fim) {
-        range.lte = fim;
+      // "<data>;<data>" traz o intervalo inteiro numa entrada só. Com a primeira
+      // ilegível, só o limite superior é aproveitável.
+      if (ehData(segunda)) {
+        if (ehData(primeira)) limite("gte", primeira);
+        limite("lte", segunda);
         continue;
       }
-      if (!inicio) continue;
-
-      const borda = segunda ? BORDA[segunda.toLowerCase()] : undefined;
-      if (borda) range[borda] = inicio;
-      else soltas.push(inicio);
+      if (ehData(primeira)) soltas.push(primeira);
     }
 
     // Duas datas sem token ("a,b") também descrevem um intervalo.
     if (soltas.length >= 2) {
-      const ordenadas = [...soltas].sort((x, y) => x.getTime() - y.getTime());
-      range.gte ??= ordenadas[0];
-      range.lte ??= ordenadas[ordenadas.length - 1];
-      soltas.length = 0;
+      const ordenadas = [...soltas].sort((x, y) => emMilissegundos(x) - emMilissegundos(y));
+      if (range.gte === undefined) limite("gte", ordenadas[0]);
+      if (range.lte === undefined) limite("lte", ordenadas[ordenadas.length - 1]);
+    } else if (soltas.length === 1 && !Object.keys(range).length) {
+      // Uma data solta é o DIA INTEIRO. Antes virava igualdade exata, o que só
+      // funcionava enquanto todo vencimento era meia-noite cravada; com hora,
+      // "vence em 30/09" não casaria com nada.
+      limite("gte", soltas[0]);
+      limite("lte", soltas[0]);
     }
 
-    if (Object.keys(range).length) {
-      where[field] = range;
-      return;
-    }
-    if (soltas.length === 1) where[field] = soltas[0];
+    if (Object.keys(range).length) where[field] = range;
   };
   if (filters.target_date?.length) applyDate("targetDate", filters.target_date);
   if (filters.start_date?.length) applyDate("startDate", filters.start_date);

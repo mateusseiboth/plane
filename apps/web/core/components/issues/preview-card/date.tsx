@@ -8,7 +8,7 @@ import { CalendarDays } from "lucide-react";
 // plane imports
 import { DueDatePropertyIcon, StartDatePropertyIcon } from "@plane/propel/icons";
 import type { TStateGroups } from "@plane/types";
-import { cn, renderFormattedDate, shouldHighlightIssueDueDate } from "@plane/utils";
+import { cn, hasSignificantTime, renderFormattedDate, renderFormattedDateTime, shouldHighlightIssueDueDate } from "@plane/utils";
 
 type Props = {
   startDate: string | null;
@@ -19,7 +19,9 @@ type Props = {
 export function WorkItemPreviewCardDate(props: Props) {
   const { startDate, stateGroup, targetDate } = props;
   // derived values
-  const isDateRangeEnabled = Boolean(startDate && targetDate);
+  // Com hora marcada o intervalo "início - prazo" esconderia justamente a hora,
+  // então o prazo passa a aparecer sozinho.
+  const isDateRangeEnabled = Boolean(startDate && targetDate) && !hasSignificantTime(targetDate);
   const shouldHighlightDate = shouldHighlightIssueDueDate(targetDate, stateGroup);
 
   if (!startDate && !targetDate) return null;
@@ -37,19 +39,19 @@ export function WorkItemPreviewCardDate(props: Props) {
             {renderFormattedDate(startDate)} - {renderFormattedDate(targetDate)}
           </span>
         </div>
-      ) : startDate ? (
-        <div className="flex h-full items-center gap-1">
-          <StartDatePropertyIcon className="size-3 shrink-0" />
-          <span>{renderFormattedDate(startDate)}</span>
-        </div>
-      ) : (
+      ) : targetDate ? (
         <div
           className={cn("flex h-full items-center gap-1", {
             "text-danger-primary": shouldHighlightDate,
           })}
         >
           <DueDatePropertyIcon className="size-3 shrink-0" />
-          <span>{renderFormattedDate(targetDate)}</span>
+          <span>{renderFormattedDateTime(targetDate)}</span>
+        </div>
+      ) : (
+        <div className="flex h-full items-center gap-1">
+          <StartDatePropertyIcon className="size-3 shrink-0" />
+          <span>{renderFormattedDate(startDate)}</span>
         </div>
       )}
     </div>

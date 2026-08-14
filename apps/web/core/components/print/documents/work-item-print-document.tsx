@@ -8,7 +8,7 @@ import { observer } from "mobx-react";
 // plane imports
 import { ISSUE_PRIORITIES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
-import { renderFormattedDate } from "@plane/utils";
+import { renderFormattedDate, renderFormattedDateTime } from "@plane/utils";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useLabel } from "@/hooks/store/use-label";
@@ -76,7 +76,7 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
             { label: "Responsáveis", value: memberNames(issue.assignee_ids) },
             { label: "Etiquetas", value: labelNames },
             { label: "Data de início", value: issue.start_date ? renderFormattedDate(issue.start_date) : "—" },
-            { label: "Prazo", value: issue.target_date ? renderFormattedDate(issue.target_date) : "—" },
+            { label: "Prazo", value: issue.target_date ? renderFormattedDateTime(issue.target_date) : "—" },
             { label: "Criado em", value: formatDateTime(issue.created_at) },
             { label: "Atualizado em", value: formatDateTime(issue.updated_at) },
             { label: "Criado por", value: getUserDetails(issue.created_by)?.display_name ?? "—" },

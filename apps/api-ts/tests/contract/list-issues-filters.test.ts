@@ -9,6 +9,7 @@
 import {afterAll, beforeAll, describe, expect, it} from "bun:test";
 import prisma from "@db";
 import {cleanDb} from "@tests/helpers/setup";
+import {inicioRecebido} from "@utils/prazo";
 import {
   addAssignee,
   addLabelToIssue,
@@ -108,7 +109,11 @@ describe("Filtros de chamados", () => {
         stateId: stateTodo,
         entityId: entity1,
         createdById: adminId,
-        startDate: new Date("2026-01-01"),
+        // Grava o mesmo instante que a API grava ao receber "2026-01-01":
+        // meia-noite NO FUSO DO ESCRITÓRIO. Cravar meia-noite UTC punha o
+        // início às 20h do dia 31/12 para quem olha a tela, e o filtro por
+        // 01/01 — que agora recorta o dia local — deixava de encontrá-lo.
+        startDate: inicioRecebido("2026-01-01")!,
         targetDate: new Date("2026-01-10"),
         sequenceId: 1,
         legacyTicketNumber: "458325",
@@ -194,7 +199,7 @@ describe("Filtros de chamados", () => {
       expect(item.label_ids).toEqual([labelCorrecaoA]);
       expect(item.assignee_ids).toEqual([assigneeId]);
       expect(item.state__group).toBe("unstarted");
-      expect(item.target_date).toBe("2026-01-10");
+      expect(item.target_date).toBe("2026-01-10T00:00:00.000Z");
       expect(item.entity).toMatchObject({id: entity1, name: "Prefeitura Alfa"});
     });
 
@@ -243,7 +248,7 @@ describe("Filtros de chamados", () => {
     it("order_by=target_date coloca os sem prazo por último", async () => {
       const page = await listProject("?order_by=target_date");
       const withDates = page.results.filter((i) => i.target_date).map((i) => i.target_date);
-      expect(withDates).toEqual(["2026-01-10", "2026-02-20"]);
+      expect(withDates).toEqual(["2026-01-10T00:00:00.000Z", "2026-02-20T00:00:00.000Z"]);
     });
   });
 

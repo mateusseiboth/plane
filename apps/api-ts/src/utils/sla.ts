@@ -1,7 +1,12 @@
 // SLA — automatic due date from label deadlines + priority adjustment (C).
 //
 // target_date = base + max(label.slaHours) + priorityAdjustment(priority)
-// All in CALENDAR hours. Returns null when no label carries an SLA (nothing to
+// All in CALENDAR hours.
+//
+// O instante calculado aqui sempre teve hora — o que o descartava era a
+// serialização, que recortava `target_date` na data. Agora ele chega inteiro à
+// tela: uma etiqueta de 4h aberta às 9h vence às 13h do MESMO dia, e não mais
+// "hoje" sem hora. Ver @utils/prazo. Returns null when no label carries an SLA (nothing to
 // auto-fill). Priority adjustment is read from Instance.configurations.priority_sla
 // (a map priority → +/- hours; negative shortens the deadline) and is only
 // applied when there is a label SLA to adjust.

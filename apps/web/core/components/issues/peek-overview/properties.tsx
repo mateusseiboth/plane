@@ -21,7 +21,7 @@ import {
   StatePropertyIcon,
   UserCirclePropertyIcon,
 } from "@plane/propel/icons";
-import {cn, getDate, renderFormattedPayloadDate, shouldHighlightIssueDueDate} from "@plane/utils";
+import {cn, getDate, getDateTime, renderFormattedPayloadDate, renderFormattedPayloadDateTime, shouldHighlightIssueDueDate} from "@plane/utils";
 // components
 import {SidebarPropertyListItem} from "@/components/common/layout/sidebar/property-list-item";
 import {DateDropdown} from "@/components/dropdowns/date";
@@ -76,7 +76,7 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
   const minDate = getDate(issue.start_date);
   minDate?.setDate(minDate.getDate());
 
-  const maxDate = getDate(issue.target_date);
+  const maxDate = getDateTime(issue.target_date);
   maxDate?.setDate(maxDate.getDate());
 
   return (
@@ -185,9 +185,10 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
               value={issue.target_date}
               onChange={(val) =>
                 issueOperations.update(workspaceSlug, projectId, issueId, {
-                  target_date: val ? renderFormattedPayloadDate(val) : null,
+                  target_date: val ? renderFormattedPayloadDateTime(val) : null,
                 })
               }
+              showTime
               placeholder={t("issue.add.due_date")}
               buttonVariant="transparent-with-text"
               minDate={minDate ?? undefined}

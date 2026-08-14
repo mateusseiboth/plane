@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { ISSUE_PRIORITIES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { TIssue } from "@plane/types";
-import { renderFormattedDate } from "@plane/utils";
+import { renderFormattedDateTime } from "@plane/utils";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
@@ -69,7 +69,7 @@ export const PrintIssuesTable = observer(function PrintIssuesTable(props: Props)
             <td className={CELL}>{getStateById(issue.state_id)?.name ?? "—"}</td>
             <td className={CELL}>{priorityLabel(issue.priority)}</td>
             <td className={CELL}>{assigneeNames(issue)}</td>
-            <td className={CELL}>{issue.target_date ? renderFormattedDate(issue.target_date) : "—"}</td>
+            <td className={CELL}>{issue.target_date ? renderFormattedDateTime(issue.target_date) : "—"}</td>
           </tr>
         ))}
       </tbody>

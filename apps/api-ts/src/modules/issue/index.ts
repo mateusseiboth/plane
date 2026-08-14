@@ -22,6 +22,7 @@ import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, clientIp, recordAudit} from "@
 import {registrarVersaoDaDescricao, serializarVersao} from "@utils/versoes-da-descricao";
 import {nextSequenceId} from "@utils/sequence";
 import {computeTargetDate} from "@utils/sla";
+import {inicioRecebido, vencimentoRecebido} from "@utils/prazo";
 import {sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-chamado";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
@@ -212,8 +213,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
           // null instead of being sent to Postgres as an invalid uuid.
           stateId: b.state || b.state_id || defaultState?.id || null,
           priority: b.priority ?? "none",
-          startDate: b.start_date ? new Date(b.start_date) : null,
-          targetDate: b.target_date ? new Date(b.target_date) : null,
+          // Datas puras ganham a borda do dia que corresponde ao seu sentido —
+          // início começa de manhã, vencimento vale até o fim do dia. Ver @utils/prazo.
+          startDate: inicioRecebido(b.start_date),
+          targetDate: vencimentoRecebido(b.target_date),
           isDraft: b.is_draft ?? false,
           estimatePointId: ponto?.id ?? null,
           entityId: b.entity_id || null,
@@ -350,8 +353,8 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       data.stateId = newStateId;
     }
     if (b.priority !== undefined) data.priority = b.priority;
-    if (b.start_date !== undefined) data.startDate = b.start_date ? new Date(b.start_date) : null;
-    if (b.target_date !== undefined) data.targetDate = b.target_date ? new Date(b.target_date) : null;
+    if (b.start_date !== undefined) data.startDate = inicioRecebido(b.start_date);
+    if (b.target_date !== undefined) data.targetDate = vencimentoRecebido(b.target_date);
     const entityIdValue = b.entity_id ?? b.entityId;
     if (entityIdValue !== undefined) {
       data.entityId = entityIdValue || null;
@@ -442,8 +445,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         if (c) changes.push(c);
       }
       if (b.target_date !== undefined) {
-        const oldTd = before.targetDate ? before.targetDate.toISOString().split("T")[0] : null;
-        const newTd = b.target_date ? new Date(b.target_date).toISOString().split("T")[0] : null;
+        // Instante inteiro, não só o dia: antecipar o prazo de 18h para 14h no
+        // mesmo dia é uma mudança real e não aparecia na trilha.
+        const oldTd = before.targetDate ? before.targetDate.toISOString() : null;
+        const newTd = vencimentoRecebido(b.target_date)?.toISOString() ?? null;
         const c = diffChange("target_date", oldTd, newTd, "updated the due date");
         if (c) changes.push(c);
       }

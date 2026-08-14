@@ -11,7 +11,14 @@ import { observer } from "mobx-react";
 import { useTranslation } from "@plane/i18n";
 import { StartDatePropertyIcon, DueDatePropertyIcon } from "@plane/propel/icons";
 import type { IIssueDisplayProperties, TIssue } from "@plane/types";
-import { getDate, renderFormattedPayloadDate, shouldHighlightIssueDueDate } from "@plane/utils";
+import {
+  getDate,
+  getDateTime,
+  hasSignificantTime,
+  renderFormattedPayloadDate,
+  renderFormattedPayloadDateTime,
+  shouldHighlightIssueDueDate,
+} from "@plane/utils";
 // components
 import { DateDropdown } from "@/components/dropdowns/date";
 import { DateRangeDropdown } from "@/components/dropdowns/date-range";
@@ -60,7 +67,7 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
   const handleTargetDate = (date: Date | null) => {
     if (issue.project_id) {
       updateSubIssue(workspaceSlug, issue.project_id, parentIssueId, issueId, {
-        target_date: date ? renderFormattedPayloadDate(date) : null,
+        target_date: date ? renderFormattedPayloadDateTime(date) : null,
       });
     }
   };
@@ -72,13 +79,18 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
     [issue.target_date, stateDetails?.group]
   );
   // date range is enabled only when both dates are available and both dates are enabled
+  // O intervalo unificado só sabe mostrar dias: com hora marcada usamos os campos separados.
   const isDateRangeEnabled: boolean = Boolean(
-    issue.start_date && issue.target_date && displayProperties?.start_date && displayProperties?.due_date
+    issue.start_date &&
+      issue.target_date &&
+      displayProperties?.start_date &&
+      displayProperties?.due_date &&
+      !hasSignificantTime(issue.target_date)
   );
 
   if (!displayProperties) return <></>;
 
-  const maxDate = getDate(issue.target_date);
+  const maxDate = getDateTime(issue.target_date);
   const minDate = getDate(issue.start_date);
 
   return (
@@ -191,6 +203,7 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
           <DateDropdown
             value={issue?.target_date ?? null}
             onChange={handleTargetDate}
+            showTime
             minDate={minDate}
             placeholder={t("common.order_by.due_date")}
             icon={<DueDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}

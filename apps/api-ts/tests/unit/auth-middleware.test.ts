@@ -8,7 +8,7 @@
  * Token ruim é 401; banco fora do ar é 503, que o front trata como falha
  * temporária.
  */
-import {afterEach, describe, expect, it, mock} from "bun:test";
+import {afterAll, afterEach, describe, expect, it, mock} from "bun:test";
 import Elysia from "elysia";
 import {SignJWT} from "jose";
 
@@ -42,7 +42,20 @@ const chamar = (app: Elysia, headers: Record<string, string>) =>
   app.handle(new Request("http://local/quem-sou", {headers}));
 
 describe("authPlugin", () => {
-  afterEach(() => mock.restore());
+  // `mock.restore()` do Bun NÃO desfaz `mock.module`: a troca do `@db` fica
+  // valendo para todos os arquivos carregados depois, inclusive para o código
+  // de PRODUÇÃO (`utils/filters.ts` chamava `prisma.label.findMany` num objeto
+  // que só tem `user` e `apiToken`). O sintoma aparecia e sumia conforme a
+  // ordem dos arquivos. Quem sujou, limpa: o `@db` volta a apontar para o
+  // cliente verdadeiro, que src/db.ts guarda em globalThis.
+  const devolverBanco = () =>
+    mock.module("@db", () => ({default: (globalThis as any).__prisma}));
+
+  afterEach(() => {
+    mock.restore();
+    devolverBanco();
+  });
+  afterAll(devolverBanco);
 
   it("aceita um JWT válido de usuário existente", async () => {
     const app = await montar(async () => USUARIO);

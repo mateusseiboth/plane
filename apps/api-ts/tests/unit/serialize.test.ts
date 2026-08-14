@@ -72,7 +72,9 @@ describe("serializeIssue", () => {
     expect(out.state__group).toBe("started");
     expect(out.state__name).toBe("Em Análise");
     expect(out.start_date).toBe("2026-01-05");
-    expect(out.target_date).toBe("2026-01-09");
+    // O vencimento sai com hora — é o que distingue "vence dia 9" de "vence
+    // dia 9 às 14h". O início continua data pura.
+    expect(out.target_date).toBe("2026-01-09T00:00:00.000Z");
     expect(out.created_at).toBe("2026-01-02T03:04:05.000Z");
     expect(out.entity).toEqual({id: "e1", name: "Prefeitura", entity_type: "cliente"});
     expect(out.legacy_ticket_number).toBe("12345");

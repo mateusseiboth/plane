@@ -16,7 +16,8 @@ import {
   ISSUE_TITLE_DOC_I,
   PT_FTS_CONFIG,
 } from "@utils/search";
-import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel} from "@utils/serialize";
+import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
+import {dataLocal} from "@utils/prazo";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
@@ -2319,7 +2320,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         sort_order: i.sortOrder ?? 0,
         created_at: i.createdAt?.toISOString(),
         updated_at: i.updatedAt?.toISOString(),
-        target_date: i.targetDate ? (i.targetDate instanceof Date ? i.targetDate.toISOString().split("T")[0] : i.targetDate) : null,
+        target_date: vencimento(i.targetDate),
         completed_at: i.completedAt ? (i.completedAt instanceof Date ? i.completedAt.toISOString() : i.completedAt) : null,
         assignee_ids: i.assignees?.map((a: any) => a.assigneeId) ?? [],
         label_ids: i.labels?.map((l: any) => l.labelId) ?? [],
@@ -2372,7 +2373,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const perPage = Number(query.per_page ?? 100);
 
     // Calendar groups by target_date — keyed by YYYY-MM-DD. Done in JS since the
-    // set of dates is open-ended.
+    // set of dates is open-ended. A chave usa o dia do FUSO DO ESCRITÓRIO: com
+    // hora no vencimento, `toISOString()` jogaria o que vence às 23h de sexta
+    // na casinha de sábado. Ver @utils/prazo.
     if (groupBy === "target_date") {
       const calIssues = await prisma.issue.findMany({
         where: {...where, targetDate: {not: null}},
@@ -2382,7 +2385,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       });
       const results: Record<string, any> = {};
       for (const i of calIssues as any[]) {
-        const key = i.targetDate ? new Date(i.targetDate).toISOString().split("T")[0] : "none";
+        const key = i.targetDate ? dataLocal(new Date(i.targetDate)) : "none";
         if (!results[key]) {
           results[key] = {
             results: [],

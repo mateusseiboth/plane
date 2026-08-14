@@ -21,7 +21,10 @@ import type { TIssue, IIssueDisplayProperties, TIssuePriorities } from "@plane/t
 import {
   cn,
   getDate,
+  getDateTime,
+  hasSignificantTime,
   renderFormattedPayloadDate,
+  renderFormattedPayloadDateTime,
   generateWorkItemLink,
   shouldHighlightIssueDueDate,
 } from "@plane/utils";
@@ -187,7 +190,7 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
 
   const handleTargetDate = async (date: Date | null) => {
     if (updateIssue)
-      await updateIssue(issue.project_id, issue.id, { target_date: date ? renderFormattedPayloadDate(date) : null });
+      await updateIssue(issue.project_id, issue.id, { target_date: date ? renderFormattedPayloadDateTime(date) : null });
   };
 
   const handleEstimate = async (value: string | undefined) => {
@@ -209,14 +212,20 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
   if (!displayProperties || !issue.project_id) return null;
 
   // date range is enabled only when both dates are available and both dates are enabled
+  // O intervalo é uma pílula compacta que só sabe mostrar dias; quando o prazo tem
+  // hora marcada voltamos aos campos separados, senão a hora sumiria do cartão.
   const isDateRangeEnabled: boolean = Boolean(
-    issue.start_date && issue.target_date && displayProperties.start_date && displayProperties.due_date
+    issue.start_date &&
+      issue.target_date &&
+      displayProperties.start_date &&
+      displayProperties.due_date &&
+      !hasSignificantTime(issue.target_date)
   );
 
   const defaultLabelOptions = issue?.label_ids?.map((id) => labelMap[id]) || [];
 
   const minDate = getDate(issue.start_date);
-  const maxDate = getDate(issue.target_date);
+  const maxDate = getDateTime(issue.target_date);
 
   const handleEventPropagation = (e: SyntheticEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -324,6 +333,7 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
           <DateDropdown
             value={issue?.target_date ?? null}
             onChange={handleTargetDate}
+            showTime
             minDate={minDate}
             placeholder={t("common.order_by.due_date")}
             icon={<DueDatePropertyIcon className="h-3 w-3 shrink-0" />}

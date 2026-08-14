@@ -10,6 +10,15 @@ export function dateOnly(d: any): string | null {
   return s ? s.split("T")[0] : null;
 }
 
+/**
+ * Vencimento do chamado — ISO COMPLETO, com hora.
+ *
+ * Era `dateOnly`, e o recorte descartava justamente o que o SLA calculava:
+ * "vence hoje às 14h" chegava na tela como "vence hoje". Demandas de poucas
+ * horas ficavam indistinguíveis das de dia inteiro. Ver @utils/prazo.
+ */
+export const vencimento = isoDate;
+
 export const ISSUE_INCLUDE = {
   state: { select: { id: true, name: true, color: true, group: true } },
   assignees: { where: { deletedAt: null }, select: { assigneeId: true } },
@@ -45,8 +54,10 @@ export function serializeIssue(issue: any): Record<string, unknown> {
 
     created_at:       isoDate(issue.createdAt),
     updated_at:       isoDate(issue.updatedAt),
+    // `start_date` continua data pura: é o dia em que o trabalho começa, não
+    // um instante. Só o vencimento pediu hora.
     start_date:       dateOnly(issue.startDate),
-    target_date:      dateOnly(issue.targetDate),
+    target_date:      vencimento(issue.targetDate),
     completed_at:     isoDate(issue.completedAt),
     archived_at:      isoDate(issue.archivedAt),
 

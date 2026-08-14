@@ -17,6 +17,7 @@ import { nextSequenceId } from "@utils/sequence";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, getProjectOrFail } from "@utils/workspace";
 import { serializeIssue } from "@utils/serialize";
+import { inicioRecebido, vencimentoRecebido } from "@utils/prazo";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 
 
@@ -543,8 +544,8 @@ export const premiumModule = new Elysia()
       await prisma.issue.updateMany({
         where: { id: u.id, projectId: project_id, workspaceId: ws.id, deletedAt: null },
         data: {
-          ...(u.start_date !== undefined && { startDate: u.start_date ? new Date(u.start_date) : null }),
-          ...(u.target_date !== undefined && { targetDate: u.target_date ? new Date(u.target_date) : null }),
+          ...(u.start_date !== undefined && { startDate: inicioRecebido(u.start_date) }),
+          ...(u.target_date !== undefined && { targetDate: vencimentoRecebido(u.target_date) }),
         },
       });
     }
@@ -579,7 +580,7 @@ export const premiumModule = new Elysia()
     const data: any = { updatedById: user.id };
     if (b.state !== undefined) data.stateId = b.state;
     if (b.priority !== undefined) data.priority = b.priority;
-    if (b.target_date !== undefined) data.targetDate = b.target_date ? new Date(b.target_date) : null;
+    if (b.target_date !== undefined) data.targetDate = vencimentoRecebido(b.target_date);
 
     const result = await prisma.issue.updateMany({
       where: { id: { in: issueIds }, projectId: project_id },

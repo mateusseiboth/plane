@@ -320,6 +320,100 @@ export const getDate = (date: string | Date | undefined | null): Date | undefine
   }
 };
 
+/**
+ * Um prazo chega do backend de duas formas: data pura ("2026-09-30") ou instante
+ * ISO em UTC ("2026-09-30T17:00:00Z"). Só a segunda carrega hora.
+ */
+const PADRAO_COM_HORA = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+
+/**
+ * Horários que o produto lê como "no dia", não como horário marcado. Um prazo
+ * às 23:59 ou à meia-noite é o jeito antigo de dizer "até o fim daquele dia";
+ * mostrar "30 set 2026 · 23:59" em cada cartão só polui a tela.
+ */
+const HORAS_SEM_SIGNIFICADO = new Set(["00:00", "23:59"]);
+
+/**
+ * Irmão do {@link getDate} que PRESERVA a hora.
+ *
+ * `getDate` corta a string em 10 caracteres de propósito: campos só-data não
+ * podem sofrer deslocamento de fuso. Para campos que têm hora de verdade isso
+ * joga fora justamente a informação que interessa, então aqui o instante ISO é
+ * lido inteiro — o browser converte de UTC para o fuso local, que é o mesmo
+ * fuso em que todo o resto do app formata datas.
+ *
+ * @example getDateTime("2026-09-30") // 30/09/2026 00:00 local
+ * @example getDateTime("2026-09-30T17:00:00Z") // 30/09/2026 14:00 em UTC-3
+ */
+export const getDateTime = (date: string | Date | undefined | null): Date | undefined => {
+  try {
+    if (!date || date === "") return undefined;
+    // Date já é um instante; só string precisa de interpretação.
+    if (typeof date !== "string") return getDate(date);
+
+    // Sem parte de hora o comportamento antigo continua valendo (meia-noite local).
+    if (!PADRAO_COM_HORA.test(date)) return getDate(date);
+
+    const parsedDate = parseISO(date);
+    return isValid(parsedDate) ? parsedDate : undefined;
+  } catch (_e) {
+    return undefined;
+  }
+};
+
+/**
+ * @description informa se a hora do valor merece aparecer na interface
+ * @example hasSignificantTime("2026-09-30") // false — não tem hora
+ * @example hasSignificantTime("2026-09-30T02:59:00Z") // false — 23:59 em UTC-3
+ * @example hasSignificantTime("2026-09-30T17:00:00Z") // true — 14:00 em UTC-3
+ */
+export const hasSignificantTime = (date: string | Date | undefined | null): boolean => {
+  const parsedDate = getDateTime(date);
+  if (!parsedDate || !isValid(parsedDate)) return false;
+  return !HORAS_SEM_SIGNIFICADO.has(format(parsedDate, "HH:mm"));
+};
+
+/**
+ * @description formata a data e acrescenta a hora só quando ela for significativa
+ * @example renderFormattedDateTime("2026-09-30") // 30 set 2026
+ * @example renderFormattedDateTime("2026-09-30T17:00:00Z") // 30 set 2026 · 14:00 (UTC-3)
+ */
+export const renderFormattedDateTime = (
+  date: string | Date | undefined | null,
+  formatToken: string = FORMATO_DATA
+): string | undefined => {
+  const parsedDate = getDateTime(date);
+  if (!parsedDate || !isValid(parsedDate)) return undefined;
+
+  let formattedDate;
+  try {
+    formattedDate = format(parsedDate, formatToken);
+  } catch (_e) {
+    formattedDate = format(parsedDate, FORMATO_DATA);
+  }
+
+  if (!hasSignificantTime(parsedDate)) return formattedDate;
+  return `${formattedDate} · ${format(parsedDate, "HH:mm")}`;
+};
+
+/**
+ * @description serializa um prazo para o payload preservando a hora escolhida
+ *
+ * Sem hora marcada continua saindo "yyyy-MM-dd", o contrato que o resto do
+ * sistema (gantt, layout de calendário, filtros) já entende. Com hora sai o
+ * instante ISO em UTC, que é o que o backend espera.
+ *
+ * @example renderFormattedPayloadDateTime(new Date(2026, 8, 30)) // "2026-09-30"
+ * @example renderFormattedPayloadDateTime(new Date(2026, 8, 30, 14)) // "2026-09-30T17:00:00.000Z" (UTC-3)
+ */
+export const renderFormattedPayloadDateTime = (date: Date | string | undefined | null): string | undefined => {
+  const parsedDate = getDateTime(date);
+  if (!parsedDate || !isValid(parsedDate)) return undefined;
+
+  if (parsedDate.getHours() === 0 && parsedDate.getMinutes() === 0) return format(parsedDate, "yyyy-MM-dd");
+  return parsedDate.toISOString();
+};
+
 export const isInDateFormat = (date: string) => {
   const datePattern = /^\d{4}-\d{2}-\d{2}$/;
   return datePattern.test(date);

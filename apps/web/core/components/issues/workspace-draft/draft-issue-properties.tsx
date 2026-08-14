@@ -11,7 +11,13 @@ import { useParams } from "next/navigation";
 import { DueDatePropertyIcon, StartDatePropertyIcon } from "@plane/propel/icons";
 // types
 import type { TIssuePriorities, TWorkspaceDraftIssue } from "@plane/types";
-import { getDate, renderFormattedPayloadDate, shouldHighlightIssueDueDate } from "@plane/utils";
+import {
+  getDate,
+  getDateTime,
+  renderFormattedPayloadDate,
+  renderFormattedPayloadDateTime,
+  shouldHighlightIssueDueDate,
+} from "@plane/utils";
 // components
 import { CycleDropdown } from "@/components/dropdowns/cycle";
 import { DateDropdown } from "@/components/dropdowns/date";
@@ -114,7 +120,7 @@ export const DraftIssueProperties = observer(function DraftIssueProperties(props
     issue?.project_id &&
     updateIssue &&
     updateIssue(issue.project_id, issue.id, {
-      target_date: date ? (renderFormattedPayloadDate(date) ?? undefined) : undefined,
+      target_date: date ? (renderFormattedPayloadDateTime(date) ?? undefined) : undefined,
     });
 
   const handleEstimate = (value: string | undefined) =>
@@ -127,7 +133,7 @@ export const DraftIssueProperties = observer(function DraftIssueProperties(props
   const minDate = getDate(issue.start_date);
   minDate?.setDate(minDate.getDate());
 
-  const maxDate = getDate(issue.target_date);
+  const maxDate = getDateTime(issue.target_date);
   maxDate?.setDate(maxDate.getDate());
 
   const handleEventPropagation = (e: React.MouseEvent) => {
@@ -194,6 +200,7 @@ export const DraftIssueProperties = observer(function DraftIssueProperties(props
         <DateDropdown
           value={issue?.target_date ?? null}
           onChange={handleTargetDate}
+          showTime
           minDate={minDate}
           placeholder="Data de vencimento"
           icon={<DueDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}

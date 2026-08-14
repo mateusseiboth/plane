@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import {differenceInCalendarDays} from "date-fns/differenceInCalendarDays";
+import {endOfDay} from "date-fns/endOfDay";
 import {isEmpty} from "lodash-es";
 import {v4 as uuidv4} from "uuid";
 // plane imports
@@ -26,7 +26,7 @@ import type {
 import {EIssueLayoutTypes} from "@plane/types";
 // local imports
 import {orderArrayBy} from "../array";
-import {getDate} from "../datetime";
+import {getDateTime, hasSignificantTime} from "../datetime";
 import {isEditorEmpty} from "../editor";
 
 type THandleIssuesMutation = (
@@ -149,8 +149,20 @@ export const createIssuePayload: (projectId: string, formData: Partial<TIssue>) 
   return payload;
 };
 
+/** Um prazo entra em destaque nas últimas 24 horas — e continua destacado depois de estourar. */
+const HORAS_DE_ALERTA_DE_PRAZO = 24;
+
+const UMA_HORA_EM_MS = 1000 * 60 * 60;
+
 /**
  * @description check if the issue due date should be highlighted
+ *
+ * Prazo sem hora vale até o fim do dia, então o limite vira 23:59 daquela data.
+ * Isso reproduz exatamente a regra antiga ("vence hoje ou já venceu"): o fim de
+ * hoje está sempre a menos de 24h e o fim de amanhã está sempre a mais de 24h.
+ * Prazo com hora usa o instante marcado, então "amanhã às 02:00" já fica
+ * vermelho hoje à noite e "hoje às 14:00" só fica quando o relógio passa.
+ *
  * @param date
  * @param stateGroup
  * @returns boolean
@@ -160,13 +172,13 @@ export const shouldHighlightIssueDueDate = (date: string | Date | null, stateGro
   // if the issue is completed or cancelled, don't highlight the due date
   if ([STATE_GROUPS.completed.key, STATE_GROUPS.cancelled.key].includes(stateGroup)) return false;
 
-  const parsedDate = getDate(date);
+  const parsedDate = getDateTime(date);
   if (!parsedDate) return false;
 
-  const targetDateDistance = differenceInCalendarDays(parsedDate, new Date());
+  const prazo = hasSignificantTime(date) ? parsedDate : endOfDay(parsedDate);
+  const horasRestantes = (prazo.getTime() - Date.now()) / UMA_HORA_EM_MS;
 
-  // if the issue is overdue, highlight the due date
-  return targetDateDistance <= 0;
+  return horasRestantes < HORAS_DE_ALERTA_DE_PRAZO;
 };
 
 export const getIssueBlocksStructure = (block: TIssue): IGanttBlock => ({

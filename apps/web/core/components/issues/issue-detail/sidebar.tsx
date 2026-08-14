@@ -21,7 +21,7 @@ import {
   EstimatePropertyIcon,
   ParentPropertyIcon,
 } from "@plane/propel/icons";
-import { cn, getDate, renderFormattedPayloadDate, shouldHighlightIssueDueDate } from "@plane/utils";
+import { cn, getDate, getDateTime, renderFormattedPayloadDate, renderFormattedPayloadDateTime, shouldHighlightIssueDueDate } from "@plane/utils";
 // components
 import { DateDropdown } from "@/components/dropdowns/date";
 import { EstimateDropdown } from "@/components/dropdowns/estimate";
@@ -80,7 +80,7 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
   const minDate = issue.start_date ? getDate(issue.start_date) : null;
   minDate?.setDate(minDate.getDate());
 
-  const maxDate = issue.target_date ? getDate(issue.target_date) : null;
+  const maxDate = issue.target_date ? getDateTime(issue.target_date) : null;
   maxDate?.setDate(maxDate.getDate());
 
   return (
@@ -170,9 +170,10 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                   value={issue.target_date}
                   onChange={(val) =>
                     issueOperations.update(workspaceSlug, projectId, issueId, {
-                      target_date: val ? renderFormattedPayloadDate(val) : null,
+                      target_date: val ? renderFormattedPayloadDateTime(val) : null,
                     })
                   }
+                  showTime
                   minDate={minDate ?? undefined}
                   disabled={!isEditable}
                   buttonVariant="transparent-with-text"

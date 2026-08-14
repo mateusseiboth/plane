@@ -8,10 +8,17 @@
  * reconhecida faz o filtro ser SILENCIOSAMENTE ignorado (não dá erro).
  */
 import {afterAll, beforeAll, describe, expect, it} from "bun:test";
-import prisma from "@db";
+// O Prisma de verdade: `auth-middleware.test.ts` troca o `@db` por um dublê e
+// o mock.restore() do Bun não desfaz a troca. Importar `@db` aqui fazia estes
+// testes falharem conforme a ORDEM dos arquivos — passavam sozinhos e
+// quebravam na suíte inteira.
+import {prismaReal} from "@tests/helpers/prisma-real";
 import {cleanDb} from "@tests/helpers/setup";
 import {createLabel, createProject, createUser, createWorkspace} from "@tests/helpers/factory";
 import {applyIssueFilters, normalizeFilters} from "@utils/filters";
+import {fimDoDia, inicioDoDia} from "@utils/prazo";
+
+const prisma = prismaReal();
 
 describe("normalizeFilters", () => {
   it("aceita os aliases Django de cada campo", () => {
@@ -212,25 +219,43 @@ describe("applyIssueFilters", () => {
     expect(where.stateId).toBeUndefined();
   });
 
-  it("interpreta intervalo de datas 'de;até'", async () => {
+  /**
+   * Agora que o vencimento tem hora, cada limite ocupa a BORDA do seu dia: o
+   * início para `gte`, o fim para `lte`. Com `lte` em 00:00, um intervalo que
+   * termina em 31/01 perderia tudo que vence ao longo do próprio dia 31 — e o
+   * Django legado, comparando contra uma coluna DATE, sempre incluiu o dia
+   * inteiro. Ver @utils/prazo.
+   */
+  it("interpreta intervalo de datas 'de;até' cobrindo os dias inteiros", async () => {
     const where = await applyIssueFilters(
       {},
       normalizeFilters({target_date: "2026-01-01;2026-01-31"}),
       scopeProject(),
     );
-    expect(where.targetDate.gte).toEqual(new Date("2026-01-01"));
-    expect(where.targetDate.lte).toEqual(new Date("2026-01-31"));
+    expect(where.targetDate.gte).toEqual(inicioDoDia(2026, 1, 1));
+    expect(where.targetDate.lte).toEqual(fimDoDia(2026, 1, 31));
   });
 
   it("aceita data única e ignora datas inválidas", async () => {
+    // Uma data solta é o DIA INTEIRO. Antes virava igualdade exata contra
+    // meia-noite UTC, o que só casava enquanto nenhuma data tinha hora.
     const exact = await applyIssueFilters({}, normalizeFilters({start_date: "2026-02-10"}), scopeProject());
-    expect(exact.startDate).toEqual(new Date("2026-02-10"));
+    expect(exact.startDate).toEqual({gte: inicioDoDia(2026, 2, 10), lte: fimDoDia(2026, 2, 10)});
 
     const bad = await applyIssueFilters({}, normalizeFilters({start_date: "não-é-data"}), scopeProject());
     expect(bad.startDate).toBeUndefined();
 
     const halfBad = await applyIssueFilters({}, normalizeFilters({target_date: "xx;2026-03-01"}), scopeProject());
-    expect(halfBad.targetDate).toEqual({lte: new Date("2026-03-01")});
+    expect(halfBad.targetDate).toEqual({lte: fimDoDia(2026, 3, 1)});
+  });
+
+  it("um limite já com hora é respeitado ao pé da letra", async () => {
+    const where = await applyIssueFilters(
+      {},
+      normalizeFilters({target_date: "2026-01-10T14:00:00.000Z;before"}),
+      scopeProject(),
+    );
+    expect(where.targetDate).toEqual({lte: new Date("2026-01-10T14:00:00.000Z")});
   });
 
   /**
@@ -245,39 +270,42 @@ describe("applyIssueFilters", () => {
 
     it("monta gte/lte a partir dos tokens after/before", async () => {
       expect(await alvo("2026-01-01;after,2026-01-31;before")).toEqual({
-        gte: new Date("2026-01-01"),
-        lte: new Date("2026-01-31"),
+        gte: inicioDoDia(2026, 1, 1),
+        lte: fimDoDia(2026, 1, 31),
       });
     });
 
     it("aceita apenas o limite inferior", async () => {
-      expect(await alvo("2026-01-01;after")).toEqual({gte: new Date("2026-01-01")});
+      expect(await alvo("2026-01-01;after")).toEqual({gte: inicioDoDia(2026, 1, 1)});
     });
 
     it("aceita apenas o limite superior", async () => {
-      expect(await alvo("2026-01-31;before")).toEqual({lte: new Date("2026-01-31")});
+      expect(await alvo("2026-01-31;before")).toEqual({lte: fimDoDia(2026, 1, 31)});
     });
 
     it("reconhece os apelidos from/to e gte/lte", async () => {
       expect(await alvo("2026-04-01;from,2026-04-30;to")).toEqual({
-        gte: new Date("2026-04-01"),
-        lte: new Date("2026-04-30"),
+        gte: inicioDoDia(2026, 4, 1),
+        lte: fimDoDia(2026, 4, 30),
       });
       expect(await alvo("2026-05-01;GTE,2026-05-31;LTE")).toEqual({
-        gte: new Date("2026-05-01"),
-        lte: new Date("2026-05-31"),
+        gte: inicioDoDia(2026, 5, 1),
+        lte: fimDoDia(2026, 5, 31),
       });
     });
 
     it("duas datas sem token também formam intervalo, na ordem certa", async () => {
       expect(await alvo("2026-06-30,2026-06-01")).toEqual({
-        gte: new Date("2026-06-01"),
-        lte: new Date("2026-06-30"),
+        gte: inicioDoDia(2026, 6, 1),
+        lte: fimDoDia(2026, 6, 30),
       });
     });
 
-    it("uma data com token desconhecido continua sendo igualdade", async () => {
-      expect(await alvo("2026-07-15;seila")).toEqual(new Date("2026-07-15"));
+    it("uma data com token desconhecido vira o dia inteiro", async () => {
+      expect(await alvo("2026-07-15;seila")).toEqual({
+        gte: inicioDoDia(2026, 7, 15),
+        lte: fimDoDia(2026, 7, 15),
+      });
     });
   });
 

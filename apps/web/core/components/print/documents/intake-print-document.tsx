@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { ISSUE_PRIORITIES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { TInboxIssueStatus } from "@plane/types";
-import { renderFormattedDate } from "@plane/utils";
+import { renderFormattedDateTime } from "@plane/utils";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
@@ -70,7 +70,7 @@ export const IntakePrintAction = observer(function IntakePrintAction(props: Sing
               { label: "Prioridade", value: priority ? t(priority.titleTranslationKey) : "—" },
               { label: "Criada em", value: formatDateTime(issue?.created_at) },
               { label: "Adiada até", value: inboxIssue.snoozed_till ? formatDateTime(inboxIssue.snoozed_till) : "—" },
-              { label: "Prazo", value: issue?.target_date ? renderFormattedDate(issue.target_date) : "—" },
+              { label: "Prazo", value: issue?.target_date ? renderFormattedDateTime(issue.target_date) : "—" },
               { label: "Duplicada de", value: inboxIssue.duplicate_issue_detail?.name ?? "—" },
             ]}
           />

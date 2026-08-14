@@ -4,18 +4,19 @@
  * See the LICENSE file for details.
  */
 
-import React, { useRef, useState } from "react";
+import React, { useId, useRef, useState } from "react";
 import { observer } from "mobx-react";
 import { createPortal } from "react-dom";
 import { usePopper } from "react-popper";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Clock } from "lucide-react";
 import { Combobox } from "@headlessui/react";
 // ui
 import type { Matcher } from "@plane/propel/calendar";
 import { Calendar } from "@plane/propel/calendar";
 import { CloseIcon } from "@plane/propel/icons";
+import { Input } from "@plane/propel/input";
 import { ComboDropDown } from "@plane/ui";
-import { cn, renderFormattedDate, getDate } from "@plane/utils";
+import { cn, getDateTime, renderFormattedDateTime, renderFormattedTime } from "@plane/utils";
 // helpers
 // hooks
 import { useUserProfile } from "@/hooks/store/user";
@@ -42,6 +43,8 @@ type Props = TDropdownProps & {
   formatToken?: string;
   renderByDefault?: boolean;
   labelClassName?: string;
+  /** Habilita a escolha de hora e minuto além do dia (prazos de poucas horas). */
+  showTime?: boolean;
 };
 
 export const DateDropdown = observer(function DateDropdown(props: Props) {
@@ -70,11 +73,13 @@ export const DateDropdown = observer(function DateDropdown(props: Props) {
     formatToken,
     renderByDefault = true,
     labelClassName = "",
+    showTime = false,
   } = props;
   // states
   const [isOpen, setIsOpen] = useState(defaultOpen);
   // refs
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const timeInputId = useId();
   // hooks
   const { data } = useUserProfile();
   const startOfWeek = data?.start_of_the_week;
@@ -116,6 +121,28 @@ export const DateDropdown = observer(function DateDropdown(props: Props) {
     }
   };
 
+  const selectedDate = getDateTime(value);
+
+  const handleDaySelect = (date: Date | null) => {
+    // Sem hora no seletor o comportamento antigo continua: escolheu o dia, fecha.
+    if (!showTime || !date) return dropdownOnChange(date);
+
+    // Trocar o dia não pode apagar a hora que a pessoa já escolheu, e o dropdown
+    // fica aberto porque ainda falta a metade do valor.
+    date.setHours(selectedDate?.getHours() ?? 0, selectedDate?.getMinutes() ?? 0, 0, 0);
+    onChange(date);
+  };
+
+  const handleTimeChange = (time: string) => {
+    const [hours, minutes] = time.split(":").map(Number);
+    // O input de hora devolve "" quando é limpo; aí não há o que aplicar.
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return;
+
+    const nextDate = new Date(selectedDate ?? new Date());
+    nextDate.setHours(hours, minutes, 0, 0);
+    onChange(nextDate);
+  };
+
   const disabledDays: Matcher[] = [];
   if (minDate) disabledDays.push({ before: minDate });
   if (maxDate) disabledDays.push({ after: maxDate });
@@ -139,7 +166,7 @@ export const DateDropdown = observer(function DateDropdown(props: Props) {
         className={buttonClassName}
         isActive={isOpen}
         tooltipHeading={placeholder}
-        tooltipContent={value ? renderFormattedDate(value, formatToken) : "None"}
+        tooltipContent={value ? renderFormattedDateTime(value, formatToken) : "None"}
         showTooltip={showTooltip}
         variant={buttonVariant}
         renderToolTipByDefault={renderByDefault}
@@ -147,7 +174,7 @@ export const DateDropdown = observer(function DateDropdown(props: Props) {
         {!hideIcon && icon}
         {BUTTON_VARIANTS_WITH_TEXT.includes(buttonVariant) && (
           <span className={cn("flex-grow truncate text-left text-body-xs-medium", labelClassName)}>
-            {value ? renderFormattedDate(value, formatToken) : placeholder}
+            {value ? renderFormattedDateTime(value, formatToken) : placeholder}
           </span>
         )}
         {isClearable && !disabled && isDateSelected && (
@@ -194,10 +221,10 @@ export const DateDropdown = observer(function DateDropdown(props: Props) {
               <Calendar
                 className="rounded-md border border-subtle p-3"
                 captionLayout="dropdown"
-                selected={getDate(value)}
-                defaultMonth={getDate(value)}
+                selected={selectedDate}
+                defaultMonth={selectedDate}
                 onSelect={(date: Date | undefined) => {
-                  dropdownOnChange(date ?? null);
+                  handleDaySelect(date ?? null);
                 }}
                 showOutsideDays
                 initialFocus
@@ -206,6 +233,28 @@ export const DateDropdown = observer(function DateDropdown(props: Props) {
                 fixedWeeks
                 weekStartsOn={startOfWeek}
               />
+              {showTime && (
+                <div className="flex items-center gap-2 border-t border-subtle px-3 py-2">
+                  <Clock className="size-3.5 shrink-0 text-tertiary" />
+                  <label className="grow text-caption-sm-regular text-secondary" htmlFor={timeInputId}>
+                    Horário
+                  </label>
+                  <Input
+                    id={timeInputId}
+                    type="time"
+                    inputSize="xs"
+                    className="w-24"
+                    value={selectedDate ? renderFormattedTime(selectedDate) : ""}
+                    onChange={(e) => handleTimeChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      // O input de hora usa Tab e as setas para andar entre os campos
+                      // de hora e minuto; se esses eventos subirem, o dropdown fecha
+                      // no meio da digitação. Só o Esc continua chegando lá.
+                      if (e.key !== "Escape") e.stopPropagation();
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </Combobox.Options>,
           document.body

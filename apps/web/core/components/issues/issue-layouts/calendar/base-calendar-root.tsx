@@ -138,7 +138,8 @@ export const BaseCalendarRoot = observer(function BaseCalendarRoot(props: IBaseC
       destinationDate,
       workspaceSlug?.toString(),
       issueProjectId,
-      updateIssue
+      updateIssue,
+      issueMap?.[issueId]?.target_date
     ).catch((err) => {
       setToast({
         title: "Erro!",

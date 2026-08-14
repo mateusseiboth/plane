@@ -12,22 +12,11 @@ import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import { inicioDeHoje } from "@utils/prazo";
+import { vencimento } from "@utils/serialize";
 
 /** Grupos que representam trabalho ainda aberto. */
 const GRUPOS_ABERTOS = ["backlog", "unstarted", "started", "triage"];
-
-/** Início do dia de hoje no fuso do servidor. */
-function inicioDeHoje(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function somandoDias(base: Date, dias: number): Date {
-  const d = new Date(base);
-  d.setDate(d.getDate() + dias);
-  return d;
-}
 
 export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
@@ -60,9 +49,11 @@ export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
       };
     }
 
-    const hoje = inicioDeHoje();
-    const amanha = somandoDias(hoje, 1);
-    const seteDiasAtras = somandoDias(hoje, -7);
+    // `agora` é o corte de atraso: com prazo em horas, um chamado que vencia
+    // às 14h já está atrasado às 15h, ainda que o dia não tenha virado.
+    const agora = new Date();
+    const amanha = inicioDeHoje(1);
+    const seteDiasAtras = inicioDeHoje(-7);
 
     const base = { workspaceId: ws.id, projectId: { in: projectIds }, deletedAt: null, isDraft: false } as const;
     const meus = { ...base, assignees: { some: { assigneeId: user.id, deletedAt: null } } };
@@ -81,8 +72,10 @@ export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
       etapas,
     ] = await Promise.all([
       prisma.issue.count({ where: { ...meus, ...abertos } }),
-      prisma.issue.count({ where: { ...meus, ...abertos, targetDate: { lt: hoje } } }),
-      prisma.issue.count({ where: { ...meus, ...abertos, targetDate: { gte: hoje, lt: amanha } } }),
+      prisma.issue.count({ where: { ...meus, ...abertos, targetDate: { lt: agora } } }),
+      // "Vence hoje" é o que AINDA vai vencer hoje. O que já passou da hora
+      // conta como atrasado — os dois números não podem somar o mesmo chamado.
+      prisma.issue.count({ where: { ...meus, ...abertos, targetDate: { gte: agora, lt: amanha } } }),
       prisma.issue.count({ where: { ...base, ...abertos, createdById: user.id } }),
       prisma.issue.count({ where: { ...base, state: { group: "triage" } } }),
       // Convenção do intake: -2 pendente, -1 recusado, 0 adiado, 1 aceito, 2 duplicado.
@@ -139,7 +132,7 @@ export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
         isDraft: false,
         assignees: { some: { assigneeId: user.id, deletedAt: null } },
         state: { group: { in: GRUPOS_ABERTOS } },
-        targetDate: { lt: inicioDeHoje() },
+        targetDate: { lt: new Date() },
       },
       orderBy: { targetDate: "asc" },
       take: limite,
@@ -158,7 +151,7 @@ export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
       id: c.id,
       name: c.name,
       priority: c.priority,
-      target_date: c.targetDate,
+      target_date: vencimento(c.targetDate),
       sequence_id: c.sequenceId,
       project_id: c.project.id,
       project_identifier: c.project.identifier,
