@@ -14,7 +14,6 @@ import type { IIssueDisplayProperties, TIssue } from "@plane/types";
 import {
   getDate,
   getDateTime,
-  hasSignificantTime,
   renderFormattedPayloadDate,
   renderFormattedPayloadDateTime,
   shouldHighlightIssueDueDate,
@@ -79,13 +78,8 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
     [issue.target_date, stateDetails?.group]
   );
   // date range is enabled only when both dates are available and both dates are enabled
-  // O intervalo unificado só sabe mostrar dias: com hora marcada usamos os campos separados.
   const isDateRangeEnabled: boolean = Boolean(
-    issue.start_date &&
-      issue.target_date &&
-      displayProperties?.start_date &&
-      displayProperties?.due_date &&
-      !hasSignificantTime(issue.target_date)
+    issue.start_date && issue.target_date && displayProperties?.start_date && displayProperties?.due_date
   );
 
   if (!displayProperties) return <></>;
@@ -149,7 +143,8 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
           <DateRangeDropdown
             value={{
               from: getDate(issue.start_date) || undefined,
-              to: getDate(issue.target_date) || undefined,
+              // `getDateTime` no prazo: é o único dos dois que pode ter hora.
+              to: getDateTime(issue.target_date) || undefined,
             }}
             placement="top-end"
             onSelect={(range) => {
@@ -161,6 +156,7 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
             }}
             isClearable
             mergeDates
+            showTime
             buttonVariant={issue.start_date || issue.target_date ? "border-with-text" : "border-without-text"}
             buttonClassName={shouldHighlight ? "text-danger-primary" : ""}
             disabled={!canEdit}

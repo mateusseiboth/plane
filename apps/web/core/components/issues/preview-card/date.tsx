@@ -8,7 +8,7 @@ import { CalendarDays } from "lucide-react";
 // plane imports
 import { DueDatePropertyIcon, StartDatePropertyIcon } from "@plane/propel/icons";
 import type { TStateGroups } from "@plane/types";
-import { cn, hasSignificantTime, renderFormattedDate, renderFormattedDateTime, shouldHighlightIssueDueDate } from "@plane/utils";
+import { cn, renderFormattedDate, renderFormattedDateTime, shouldHighlightIssueDueDate } from "@plane/utils";
 
 type Props = {
   startDate: string | null;
@@ -19,9 +19,7 @@ type Props = {
 export function WorkItemPreviewCardDate(props: Props) {
   const { startDate, stateGroup, targetDate } = props;
   // derived values
-  // Com hora marcada o intervalo "início - prazo" esconderia justamente a hora,
-  // então o prazo passa a aparecer sozinho.
-  const isDateRangeEnabled = Boolean(startDate && targetDate) && !hasSignificantTime(targetDate);
+  const isDateRangeEnabled = Boolean(startDate && targetDate);
   const shouldHighlightDate = shouldHighlightIssueDueDate(targetDate, stateGroup);
 
   if (!startDate && !targetDate) return null;
@@ -36,7 +34,8 @@ export function WorkItemPreviewCardDate(props: Props) {
         >
           <CalendarDays className="size-3 shrink-0" />
           <span>
-            {renderFormattedDate(startDate)} - {renderFormattedDate(targetDate)}
+            {/* Só o prazo pode ter hora; sem hora marcada sai idêntico a antes. */}
+            {renderFormattedDate(startDate)} - {renderFormattedDateTime(targetDate)}
           </span>
         </div>
       ) : targetDate ? (

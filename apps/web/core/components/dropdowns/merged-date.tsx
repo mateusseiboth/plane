@@ -7,7 +7,7 @@
 import React from "react";
 import { observer } from "mobx-react";
 // helpers
-import { formatDateRange, getDate } from "@plane/utils";
+import { formatDateRange, getDateTime } from "@plane/utils";
 
 type Props = {
   startDate: Date | string | null | undefined;
@@ -17,17 +17,21 @@ type Props = {
 
 /**
  * Formats merged date range display with smart formatting
- * - Single date: "Jan 24, 2025"
- * - Same year, same month: "Jan 24 - 28, 2025"
- * - Same year, different month: "Jan 24 - Feb 6, 2025"
- * - Different year: "Dec 28, 2024 - Jan 4, 2025"
+ * - Single date: "24 jan 2025"
+ * - Same year, same month: "24 - 28 jan 2025"
+ * - Same year, different month: "24 jan - 06 fev 2025"
+ * - Different year: "28 dez 2024 - 04 jan 2025"
+ * - Fim com hora marcada: "24 - 28 jan 2025 · 14:00"
  */
 export const MergedDateDisplay = observer(function MergedDateDisplay(props: Props) {
   const { startDate, endDate, className = "" } = props;
 
-  // Parse dates
-  const parsedStartDate = getDate(startDate);
-  const parsedEndDate = getDate(endDate);
+  // `getDateTime`, e não `getDate`: este último corta a string em 10 caracteres,
+  // o que além de jogar a hora fora erra o dia quando o prazo é um instante UTC
+  // (30/09 23:59 em UTC-3 chega como "2026-10-01T02:59:00Z" e virava 1º/10).
+  // Valores só-data — os de ciclos e módulos — caem no mesmo caminho de antes.
+  const parsedStartDate = getDateTime(startDate);
+  const parsedEndDate = getDateTime(endDate);
 
   const displayText = formatDateRange(parsedStartDate, parsedEndDate);
 

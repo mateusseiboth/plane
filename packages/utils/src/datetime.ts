@@ -374,6 +374,17 @@ export const hasSignificantTime = (date: string | Date | undefined | null): bool
 };
 
 /**
+ * A convenção do produto para dizer "este dia, nesta hora": `data · hora`.
+ * Mora num único lugar para que o rótulo de uma data solta e o de um intervalo
+ * terminem do mesmo jeito — quem já leu "30 set 2026 · 14:00" num cartão não
+ * precisa aprender outra notação no cartão do lado.
+ *
+ * Hora burocrática (ver {@link hasSignificantTime}) devolve o rótulo intacto.
+ */
+const withSignificantTime = (label: string, date: Date): string =>
+  hasSignificantTime(date) ? `${label} · ${format(date, "HH:mm")}` : label;
+
+/**
  * @description formata a data e acrescenta a hora só quando ela for significativa
  * @example renderFormattedDateTime("2026-09-30") // 30 set 2026
  * @example renderFormattedDateTime("2026-09-30T17:00:00Z") // 30 set 2026 · 14:00 (UTC-3)
@@ -392,8 +403,7 @@ export const renderFormattedDateTime = (
     formattedDate = format(parsedDate, FORMATO_DATA);
   }
 
-  if (!hasSignificantTime(parsedDate)) return formattedDate;
-  return `${formattedDate} · ${format(parsedDate, "HH:mm")}`;
+  return withSignificantTime(formattedDate, parsedDate);
 };
 
 /**
@@ -599,13 +609,13 @@ export const checkDateCriteria = (dateToCheck: Date | null, filterDate: Date, ty
 };
 
 /**
- * Intervalo de datas em português, encurtando o que se repete.
- * - Data única:                "24 jan 2025"
- * - Mesmo mês e ano:           "24 - 28 jan 2025"
+ * Só os dias do intervalo, encurtando o que se repete entre início e fim.
+ * - Data única:                 "24 jan 2025"
+ * - Mesmo mês e ano:            "24 - 28 jan 2025"
  * - Mesmo ano, meses distintos: "24 jan - 06 fev 2025"
  * - Anos distintos:             "28 dez 2024 - 04 jan 2025"
  */
-export const formatDateRange = (
+const formatDayRange = (
   parsedStartDate: Date | null | undefined,
   parsedEndDate: Date | null | undefined
 ): string => {
@@ -652,6 +662,36 @@ export const formatDateRange = (
   }
 
   return "";
+};
+
+/**
+ * Intervalo "início - prazo" para a pílula compacta dos cartões.
+ *
+ * Os dias saem condensados por {@link formatDayRange}; a hora, quando existe,
+ * entra como sufixo do rótulo inteiro — "24 - 28 jan 2025 · 14:00".
+ *
+ * Por que sufixo, e não colada ao dia do fim ("24 jan - 28 jan 14:00")?
+ * 1. A condensação existe justamente para fundir o que os dois dias têm em
+ *    comum; enfiar a hora no meio desfaz essa fusão e alonga a pílula.
+ * 2. Num intervalo só o fim pode ter hora — o início é sempre meia-noite —,
+ *    então não há ambiguidade sobre a quem a hora pertence.
+ * 3. É o mesmo `data · hora` que a data solta já usa: a pílula de intervalo e a
+ *    de vencimento terminam iguais.
+ *
+ * Sem hora marcada (ou nas 00:00/23:59 burocráticas) a saída é byte a byte a de
+ * antes — ciclos e módulos, que nunca têm hora, não mudam de aparência.
+ *
+ * @example formatDateRange(24/01/2025, 28/01/2025) // "24 - 28 jan 2025"
+ * @example formatDateRange(24/01/2025, 28/01/2025 14:00) // "24 - 28 jan 2025 · 14:00"
+ */
+export const formatDateRange = (
+  parsedStartDate: Date | null | undefined,
+  parsedEndDate: Date | null | undefined
+): string => {
+  const dayRange = formatDayRange(parsedStartDate, parsedEndDate);
+  if (!dayRange || !parsedEndDate) return dayRange;
+
+  return withSignificantTime(dayRange, parsedEndDate);
 };
 
 // Duration Helpers

@@ -22,7 +22,6 @@ import {
   cn,
   getDate,
   getDateTime,
-  hasSignificantTime,
   renderFormattedPayloadDate,
   renderFormattedPayloadDateTime,
   generateWorkItemLink,
@@ -212,14 +211,8 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
   if (!displayProperties || !issue.project_id) return null;
 
   // date range is enabled only when both dates are available and both dates are enabled
-  // O intervalo é uma pílula compacta que só sabe mostrar dias; quando o prazo tem
-  // hora marcada voltamos aos campos separados, senão a hora sumiria do cartão.
   const isDateRangeEnabled: boolean = Boolean(
-    issue.start_date &&
-      issue.target_date &&
-      displayProperties.start_date &&
-      displayProperties.due_date &&
-      !hasSignificantTime(issue.target_date)
+    issue.start_date && issue.target_date && displayProperties.start_date && displayProperties.due_date
   );
 
   const defaultLabelOptions = issue?.label_ids?.map((id) => labelMap[id]) || [];
@@ -275,7 +268,8 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
           <DateRangeDropdown
             value={{
               from: getDate(issue.start_date) || undefined,
-              to: getDate(issue.target_date) || undefined,
+              // `getDateTime` no prazo: é o único dos dois que pode ter hora.
+              to: getDateTime(issue.target_date) || undefined,
             }}
             onSelect={(range) => {
               handleStartDate(range?.from ?? null);
@@ -286,6 +280,7 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
             }}
             isClearable
             mergeDates
+            showTime
             buttonVariant={issue.start_date || issue.target_date ? "border-with-text" : "border-without-text"}
             buttonClassName={
               shouldHighlightIssueDueDate(issue.target_date, stateDetails?.group) ? "text-danger-primary" : ""
