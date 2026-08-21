@@ -165,6 +165,7 @@ model Workspace {
   projectUserProps   ProjectUserProperty[]
   entityContactTypes EntityContactType[]
   entityContacts     EntityContact[]
+  portalAccounts     PortalAccount[]
 
   @@map("workspaces")
 }
@@ -206,38 +207,38 @@ model WorkspaceMemberInvite {
 }
 
 model Project {
-  id                    String                @id @default(uuid()) @db.Uuid
-  createdAt             DateTime              @default(now()) @map("created_at")
-  updatedAt             DateTime              @updatedAt @map("updated_at")
-  deletedAt             DateTime?             @map("deleted_at")
-  createdById           String?               @map("created_by_id") @db.Uuid
-  updatedById           String?               @map("updated_by_id") @db.Uuid
-  workspace             Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workspaceId           String                @map("workspace_id") @db.Uuid
+  id                    String                 @id @default(uuid()) @db.Uuid
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  deletedAt             DateTime?              @map("deleted_at")
+  createdById           String?                @map("created_by_id") @db.Uuid
+  updatedById           String?                @map("updated_by_id") @db.Uuid
+  workspace             Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId           String                 @map("workspace_id") @db.Uuid
   name                  String
   identifier            String
-  description           String                @default("")
-  network               Int                   @default(2)
-  defaultAssigneeId     String?               @map("default_assignee_id") @db.Uuid
-  projectLeadId         String?               @map("project_lead_id") @db.Uuid
+  description           String                 @default("")
+  network               Int                    @default(2)
+  defaultAssigneeId     String?                @map("default_assignee_id") @db.Uuid
+  projectLeadId         String?                @map("project_lead_id") @db.Uuid
   emoji                 String?
-  iconProp              Json?                 @map("icon_prop")
-  coverImage            String?               @map("cover_image")
-  moduleView            Boolean               @default(false) @map("module_view")
-  cycleView             Boolean               @default(false) @map("cycle_view")
-  issueViewsView        Boolean               @default(false) @map("issue_views_view")
-  pageView              Boolean               @default(true) @map("page_view")
-  intakeView            Boolean               @default(false) @map("intake_view")
-  isTimeTrackingEnabled Boolean               @default(false) @map("is_time_tracking_enabled")
-  isIssueTypeEnabled    Boolean               @default(false) @map("is_issue_type_enabled")
-  estimateId            String?               @map("estimate_id") @db.Uuid
-  archiveIn             Int                   @default(0) @map("archive_in")
-  closeIn               Int                   @default(0) @map("close_in")
-  defaultStateId        String?               @map("default_state_id") @db.Uuid
+  iconProp              Json?                  @map("icon_prop")
+  coverImage            String?                @map("cover_image")
+  moduleView            Boolean                @default(false) @map("module_view")
+  cycleView             Boolean                @default(false) @map("cycle_view")
+  issueViewsView        Boolean                @default(false) @map("issue_views_view")
+  pageView              Boolean                @default(true) @map("page_view")
+  intakeView            Boolean                @default(false) @map("intake_view")
+  isTimeTrackingEnabled Boolean                @default(false) @map("is_time_tracking_enabled")
+  isIssueTypeEnabled    Boolean                @default(false) @map("is_issue_type_enabled")
+  estimateId            String?                @map("estimate_id") @db.Uuid
+  archiveIn             Int                    @default(0) @map("archive_in")
+  closeIn               Int                    @default(0) @map("close_in")
+  defaultStateId        String?                @map("default_state_id") @db.Uuid
   timezone              String?
-  externalSource        String?               @map("external_source")
-  externalId            String?               @map("external_id")
-  archivedAt            DateTime?             @map("archived_at")
+  externalSource        String?                @map("external_source")
+  externalId            String?                @map("external_id")
+  archivedAt            DateTime?              @map("archived_at")
   members               ProjectMember[]
   memberInvites         ProjectMemberInvite[]
   issues                Issue[]
@@ -256,6 +257,7 @@ model Project {
   slackChannels         SlackProjectChannel[]
   importJobs            ImportJob[]
   deployBoards          DeployBoard[]
+  portalAccess          PortalAccountProject[]
 
   @@unique([workspaceId, identifier, deletedAt])
   @@unique([workspaceId, name, deletedAt])
@@ -430,6 +432,7 @@ model Issue {
   timeLogs            IssueTimeLog[]
   versions            IssueVersion[]
   gitLinks            GitIssueLink[]
+  portalRequest       PortalRequest?
 
   @@index([legacyTicketNumber])
   @@map("issues")
@@ -1583,6 +1586,7 @@ model Entity {
   issues          Issue[]
   technicalVisits TechnicalVisit[]
   contacts        EntityContact[]
+  portalAccounts  PortalAccount[]
 
   @@map("entities")
 }
@@ -1882,4 +1886,59 @@ model TechnicalVisitContact {
 
   @@unique([visitId, contactId])
   @@map("technical_visit_contacts")
+}
+
+// ── Portal do cliente ─────────────────────────────────────────────────────────
+// Conta de acesso do CLIENTE, deliberadamente fora do modelo de usuário do
+// Plane: quem abre solicitação pelo portal não é membro do espaço, não ocupa
+// cadeira e não enxerga nada do produto além do que abriu.
+
+model PortalAccount {
+  id          String                 @id @default(uuid()) @db.Uuid
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+  deletedAt   DateTime?              @map("deleted_at")
+  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String                 @map("workspace_id") @db.Uuid
+  email       String
+  /// Hash bcrypt — a senha em claro nunca é gravada.
+  password    String
+  name        String
+  /// Entidade (prefeitura, câmara) que a pessoa representa, quando cadastrada.
+  entity      Entity?                @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  entityId    String?                @map("entity_id") @db.Uuid
+  isActive    Boolean                @default(true) @map("is_active")
+  lastLoginAt DateTime?              @map("last_login_at")
+  projects    PortalAccountProject[]
+  requests    PortalRequest[]
+
+  @@unique([workspaceId, email])
+  @@map("portal_accounts")
+}
+
+/// Sistemas que a conta enxerga no portal. Sem nenhuma linha, a conta não abre
+/// solicitação para projeto nenhum — acesso é concedido, não presumido.
+model PortalAccountProject {
+  id        String        @id @default(uuid()) @db.Uuid
+  createdAt DateTime      @default(now()) @map("created_at")
+  account   PortalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String        @map("account_id") @db.Uuid
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String        @map("project_id") @db.Uuid
+
+  @@unique([accountId, projectId])
+  @@map("portal_account_projects")
+}
+
+/// De quem é a solicitação. Fica fora de `issues` de propósito: o chamado é do
+/// projeto, e o vínculo com a conta do portal é só de quem o abriu.
+model PortalRequest {
+  id        String        @id @default(uuid()) @db.Uuid
+  createdAt DateTime      @default(now()) @map("created_at")
+  account   PortalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String        @map("account_id") @db.Uuid
+  issue     Issue         @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issueId   String        @unique @map("issue_id") @db.Uuid
+
+  @@map("portal_requests")
 }

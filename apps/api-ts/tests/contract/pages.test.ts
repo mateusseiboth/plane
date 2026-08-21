@@ -46,9 +46,15 @@ describe("TestPageListCreateAPIEndpoint", () => {
     expect(typeof data.total_count).toBe("number");
   });
 
-  it("create page without name returns 400", async () => {
+  // A página nasce SEM nome: o botão "Nova página" manda só o `access` e o nome
+  // é digitado no título do editor, depois. Exigir nome aqui quebrava a criação
+  // inteira ("Não foi possível criar a página").
+  it("create page without name returns 201 with an empty name", async () => {
     const res = await client.post(url(), { description_html: "<p>no name</p>" });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(201);
+    const data = (await res.json()) as any;
+    expect(data.name).toBe("");
+    expect(data.id).toBeDefined();
   });
 
   it("get page detail", async () => {

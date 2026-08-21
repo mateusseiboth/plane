@@ -1671,8 +1671,11 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
           </div>
 
-          {/* Satisfaction rating (after the survey) */}
-          {activeSession.rating_score != null && (
+          {/* Avaliação do cliente — leitura de gestão, só para o administrador.
+              Mostrar a nota ao atendente que acabou de ser avaliado muda a
+              conversa seguinte, e não é para isso que se pergunta ao cliente.
+              O servidor também não a envia para quem não é admin. */}
+          {isAdmin && activeSession.rating_score != null && (
             <div className="border-b border-subtle p-4">
               <div className="mb-2 text-11 font-semibold uppercase tracking-wider text-tertiary">Avaliação</div>
               <div className="flex items-center gap-1">

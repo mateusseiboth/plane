@@ -20,6 +20,13 @@ export async function requireWorkspaceMember(workspaceId: string, userId: string
   return m;
 }
 
+/** Administrador do espaço (papel 20). Configuração do espaço não é de membro. */
+export async function requireWorkspaceAdmin(workspaceId: string, userId: string) {
+  const m = await requireWorkspaceMember(workspaceId, userId);
+  if (m.role < 20) throw {status: 403, message: "Apenas administradores do espaço de trabalho."};
+  return m;
+}
+
 export async function requireWorkspaceWriter(workspaceId: string, userId: string) {
   const m = await requireWorkspaceMember(workspaceId, userId);
   if (m.role < 15) throw {status: 403, message: "Você não tem permissão para executar esta ação."};

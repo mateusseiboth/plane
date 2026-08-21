@@ -301,12 +301,14 @@ function desmarcarFavorita(workspaceId: string, pageId: string, userId: string) 
 async function createPage({ params, body, user, set }: PageContext) {
   const { ws } = await resolveScope(params, user.id);
   const b = (body ?? {}) as any;
-  if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
+  // A página nasce SEM nome e ganha um ao ser digitado no título do editor — é
+  // assim que o botão "Nova página" funciona: ele manda só o `access`. Exigir
+  // nome aqui devolvia 400 e nenhuma página era criada.
   const page = await prisma.page.create({
     data: {
       workspaceId: ws.id,
       ownedById: user.id,
-      name: b.name,
+      name: typeof b.name === "string" ? b.name : "",
       descriptionHtml: b.description_html ?? "<p></p>",
       descriptionStripped: (b.description_html ?? "").replace(HTML_TAGS, ""),
       descriptionJson: b.description ?? null,

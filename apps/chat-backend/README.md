@@ -73,15 +73,15 @@ refaz é o encerramento.
 {
   "type": "agent.close",
   "session_id": "uuid",
-  "project_id": "uuid",          // sistema atendido (classificação)
+  "project_id": "uuid", // sistema atendido (classificação)
   "contact": {
-    "contact_id": "uuid",        // contato já existente escolhido na busca
+    "contact_id": "uuid", // contato já existente escolhido na busca
     "name": "Fulano de Tal",
     "email": "fulano@x.gov.br",
-    "phone": "(67) 99999-0000",  // ausente → usa o telefone do atendimento
+    "phone": "(67) 99999-0000", // ausente → usa o telefone do atendimento
     "entity_id": "uuid",
-    "type_id": "uuid"
-  }
+    "type_id": "uuid",
+  },
 }
 ```
 
@@ -97,6 +97,36 @@ O que nasce aqui fica marcado com `external_source = 'chat'`.
 O `Contact` do chat (`chat_contacts`) **continua existindo**: ele é o histórico da
 conversa por telefone, não o cadastro do cliente. Ao encerrar, ele acompanha o
 nome, o e-mail e a entidade do contato gravado.
+
+## Quem atende, quem escolhe e quem lê a avaliação
+
+**O cliente não escolhe atendente.** O pré-chat do widget pergunta nome e sistema;
+a conversa entra na fila e a distribuição por peso decide. Escolher deixava a
+conversa parada na caixa de quem estava ocupado (ou fora do horário) com o resto
+da equipe livre.
+
+**Quem aparece como atendente** sai de `papeis.ts`, e são três perguntas
+diferentes que antes usavam o mesmo número (`role >= 15`):
+
+| Pergunta        | Papel mínimo    | Onde vale                                                   |
+| --------------- | --------------- | ----------------------------------------------------------- |
+| `ehAtendente`   | Atendimento (6) | listas de atendentes, alvo de transferência, membro de fila |
+| `podeGerenciar` | Membro (15)     | transferir atendimento, relatórios                          |
+| `ehAdmin`       | Admin (20)      | fila e robô na lista, avaliação do cliente                  |
+
+Os valores espelham `EUserPermissions` (`packages/constants/src/user.ts`) — este
+fork tem papéis ABAIXO de membro (TI 12, Qualidade 8, Atendimento 6), e o papel
+_Atendimento_ é justamente quem atende. Com o corte antigo ele não aparecia em
+lista nenhuma, mesmo conectado.
+
+**A avaliação é leitura de gestão.** Nota e comentário do cliente só vão para o
+administrador do espaço: o servidor não os envia a quem não é admin (lista de
+conversas, histórico e transcrição), e a tela do atendente também não os mostra.
+
+**Pesquisa só quando houve atendimento.** Conversa encerrada sem ninguém ter
+assumido não abre pesquisa de satisfação — não há atendimento a avaliar. Quem
+decide é o servidor (`rating.request`); a página do cliente nunca abre o
+formulário por conta própria.
 
 ## Testes
 

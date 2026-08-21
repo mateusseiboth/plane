@@ -43,6 +43,7 @@ import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 import { pluginRegistryModule } from "@modules/plugin-registry";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
 import { auditModule } from "@modules/audit";
+import { portalAdminModule, portalModule } from "@modules/portal";
 import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 
@@ -199,6 +200,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
   // after them, which would make /roles/ demand an X-Widget-Id header.
   .use(auditModule)
+  .use(portalAdminModule)
   .use(rolesModule)
   // Mounted before the SDK gateways so their global widget-auth hook doesn't leak
   // onto the SSE stream (see the rolesModule note above).
@@ -229,7 +231,13 @@ for (const evento of ["unhandledRejection", "uncaughtException"] as const) {
   });
 }
 
-export const app = new Elysia().use(authApp).use(apiApp);
+// ── Portal do cliente: fora do /api/v1 ───────────────────────────────────────
+// O endereço é do cliente, não da integração: `/portal?workspace=quality` é o
+// que vai no ofício e no rodapé do e-mail. Ele também não é uma rota do produto
+// — não usa o `authPlugin` e não conhece o crachá do Plane.
+const portalApp = new Elysia().use(corsConfig).onError(errorHandler).use(portalModule);
+
+export const app = new Elysia().use(authApp).use(portalApp).use(apiApp);
 
 if (import.meta.main) {
   app.listen(PORT);

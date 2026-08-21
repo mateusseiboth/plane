@@ -309,26 +309,6 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
   background:var(--bg);color:var(--txt);outline:none;transition:border-color .15s;
 }
 .pc-field input:focus,.pc-field select:focus{border-color:var(--brand)}
-.pc-att-list{display:flex;flex-direction:column;gap:8px}
-.pc-att{
-  display:flex;align-items:center;gap:10px;width:100%;
-  border:1.5px solid var(--border);border-radius:12px;padding:9px 12px;
-  background:var(--bg);color:var(--txt);cursor:pointer;text-align:left;
-  font-size:14px;transition:.15s;
-}
-.pc-att:hover{border-color:var(--brand)}
-.pc-att.sel{border-color:var(--brand);background:var(--brand-light)}
-@media(prefers-color-scheme:dark){.pc-att.sel{background:rgba(79,70,229,.18)}}
-.pc-att .pc-ava{
-  width:34px;height:34px;border-radius:50%;flex-shrink:0;
-  background:linear-gradient(135deg,var(--brand),#7c3aed);
-  color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center;
-}
-.pc-att .pc-meta{flex:1;min-width:0}
-.pc-att .pc-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pc-att .pc-st{font-size:11px;color:var(--txt3);display:flex;align-items:center;gap:5px}
-.pc-att .pc-st .dot{width:7px;height:7px;border-radius:50%;background:#9ca3af}
-.pc-att .pc-st.online .dot{background:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,.3)}
 #pc-submit{
   margin-top:4px;border:none;border-radius:14px;padding:13px 24px;
   background:linear-gradient(135deg,var(--brand),#7c3aed);
@@ -422,11 +402,6 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
     <div class="pc-field" id="pc-project-field">
       <label for="pc-project">Sistema / projeto</label>
       <select id="pc-project"><option value="">Selecione…</option></select>
-    </div>
-
-    <div class="pc-field" id="pc-att-field">
-      <label>Atendente (opcional)</label>
-      <div class="pc-att-list" id="pc-att-list"></div>
     </div>
 
     <button id="pc-submit">Iniciar atendimento</button>
@@ -727,10 +702,28 @@ function setHeader(name, sub) {
   if (sub) $("hsub").textContent = sub;
 }
 
-// ── Show ended screen (rating first, then thank-you + dog) ────────
+// ── Show ended screen (thank-you + dog; a pesquisa só quando o servidor pede) ──
 let chosenScore = 0;
+// A tela de encerrado está à mostra? É o que permite abrir a pesquisa quando o
+// "rating.request" chega DEPOIS do "session.closed" — a ordem normal do servidor.
+let encerrado = false;
 
-function showEnded(alreadyRated) {
+function mostrarPesquisa() {
+  $("rating-view").style.display = "flex";
+  $("done-view").style.display = "none";
+}
+
+/**
+ * O servidor pediu a avaliação. Ele só pede quando alguém realmente atendeu:
+ * quem abriu o chat, esperou na fila e desistiu não tem atendimento a avaliar,
+ * e recebia a pesquisa mesmo assim.
+ */
+function pedirAvaliacao() {
+  if (!encerrado || chosenScore) return;
+  mostrarPesquisa();
+}
+
+function showEnded(pedirNota) {
   $("footer").style.display = "none";
   msgs.style.display = "none";
   $("typing").style.display = "none";
@@ -744,8 +737,9 @@ function showEnded(alreadyRated) {
   if (dot) dot.style.background = "var(--txt3)";
   $("ended-proto").textContent = protocol ? "Protocolo " + protocol : "";
   $("ended").style.display = "flex";
-  if (alreadyRated) showDone();
-  else { $("rating-view").style.display = "flex"; $("done-view").style.display = "none"; }
+  encerrado = true;
+  if (pedirNota) mostrarPesquisa();
+  else showDone();
 }
 
 function showDone() {
@@ -803,16 +797,14 @@ $("rating-submit").onclick = async () => {
 };
 $("rating-skip").onclick = () => showDone();
 
-// ── Pre-chat (native): collect name + system (project) + attendant ─────────
-// URL pre-fills any of these: ?name=, ?system=<project identifier> | ?project=<id>,
-// ?attendant=<user id> (so the consuming system can inject the logged-in user).
+// ── Pre-chat (native): collect name + system (project) ─────────────────────
+// URL pre-fills any of these: ?name=, ?system=<project identifier> | ?project=<id>.
+// Quem atende NÃO se escolhe aqui: toda conversa entra na fila.
 const PREFILL = {
   name: params.get("name") || "",
   system: params.get("system") || "",   // project identifier (e.g. SIART)
   project: params.get("project") || "", // project uuid (alternative to system)
-  attendant: params.get("attendant") || "",
 };
-let pcAttendant = ""; // selected attendant id ("" = any available)
 
 function showChat() {
   $("prechat").classList.remove("on");
@@ -828,7 +820,6 @@ async function showPrechat() {
   $("footer").style.display = "none";
   $("ended").style.display = "none";
   $("pc-name").value = PREFILL.name;
-  pcAttendant = PREFILL.attendant;
 
   // Systems = Plane projects.
   try {
@@ -848,33 +839,6 @@ async function showPrechat() {
     }
     if (sel.options.length <= 1) $("pc-project-field").style.display = "none";
   } catch { $("pc-project-field").style.display = "none"; }
-
-  // Attendants the client may route to directly.
-  try {
-    const r = await (await fetch(API + "/workspaces/" + encodeURIComponent(WORKSPACE) + "/public/attendants/")).json();
-    const list = $("pc-att-list");
-    list.innerHTML = "";
-    const atts = (r.results || []).slice().sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
-    if (!atts.length) { $("pc-att-field").style.display = "none"; return; }
-
-    const mkBtn = (id, name, online, any) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "pc-att" + (pcAttendant === id ? " sel" : "");
-      b.dataset.id = id;
-      const ava = any ? "★" : esc((name[0] || "?").toUpperCase());
-      const st = any ? "" : '<div class="pc-st ' + (online ? "online" : "") + '"><span class="dot"></span>' + (online ? "Online" : "Offline") + "</div>";
-      b.innerHTML = '<div class="pc-ava">' + ava + '</div><div class="pc-meta"><div class="pc-name">' + esc(name) + "</div>" + st + "</div>";
-      b.onclick = () => {
-        pcAttendant = id;
-        [...list.children].forEach((c) => c.classList.toggle("sel", c.dataset.id === id));
-      };
-      return b;
-    };
-    list.appendChild(mkBtn("", "Qualquer atendente disponível", false, true));
-    atts.forEach((a) => list.appendChild(mkBtn(a.user_id, a.name, a.online, false)));
-    if (!pcAttendant && !list.querySelector(".pc-att.sel")) list.firstChild.classList.add("sel");
-  } catch { $("pc-att-field").style.display = "none"; }
 }
 
 function syncUrl(name, sel) {
@@ -883,7 +847,6 @@ function syncUrl(name, sel) {
     if (name) u.searchParams.set("name", name);
     const ident = sel && sel.selectedOptions[0] ? (sel.selectedOptions[0].dataset.identifier || "") : "";
     if (ident) u.searchParams.set("system", ident);
-    if (pcAttendant) u.searchParams.set("attendant", pcAttendant); else u.searchParams.delete("attendant");
     history.replaceState(null, "", u.toString());
   } catch { /* non-blocking */ }
 }
@@ -907,7 +870,6 @@ $("pc-submit").onclick = async () => {
         browser_id: browserId(),
         name: name || null,
         project_id: projectId || null,
-        attendant_id: pcAttendant || null,
       }),
     });
     if (!res.ok) throw new Error("Falha ao iniciar sessão (" + res.status + ")");
@@ -939,7 +901,8 @@ async function resumeSession(data) {
 
     if (hist.session) {
       if (hist.session.status === "closed") {
-        showEnded(hist.session.rating_score != null || hist.session.rating_state === "done");
+        // Pesquisa pendente é a que o servidor abriu e ninguém respondeu.
+        showEnded(hist.session.rating_state === "awaiting_score" && hist.session.rating_score == null);
         return;
       }
       if (hist.session.assigned_attendant_id) $("hsub").textContent = "Em atendimento · Protocolo " + protocol;
@@ -1000,7 +963,11 @@ function connect() {
     }
     if (m.type === "session.closed") {
       protocol = m.protocol || protocol;
-      showEnded();
+      showEnded(false);
+      return;
+    }
+    if (m.type === "rating.request") {
+      pedirAvaliacao();
     }
   };
 
@@ -1075,7 +1042,7 @@ $("hend").onclick = () => {
   ended = true;
   sendWs({ type: "client.end" });
   localStorage.removeItem(LS_KEY);
-  showEnded();
+  showEnded(false);
 };
 $("restart").onclick = () => { localStorage.removeItem(LS_KEY); location.reload(); };
 

@@ -8,6 +8,7 @@ import { nextSequenceId } from "@utils/sequence";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { notifyQualityOfIntake } from "@utils/notifications";
+import { findOrCreateIntake, findTriageState } from "@utils/intake";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
@@ -26,40 +27,6 @@ const DEFAULT_STATES = [
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-}
-
-// Find triage state by isTriage flag first, then fall back to group = "triage".
-// If none found, creates one automatically so intakes always have a proper state.
-async function findTriageState(projectId: string) {
-  const byFlag = await prisma.state.findFirst({ where: { projectId, isTriage: true, deletedAt: null } });
-  if (byFlag) return byFlag;
-
-  const byGroup = await prisma.state.findFirst({ where: { projectId, group: "triage", deletedAt: null } });
-  if (byGroup) {
-    await prisma.state.update({ where: { id: byGroup.id }, data: { isTriage: true } });
-    return byGroup;
-  }
-
-  // No triage state exists — create one so intakes are never placed in wrong state
-  const project = await prisma.project.findFirst({ where: { id: projectId, deletedAt: null }, select: { workspaceId: true } });
-  if (!project) return null;
-  return prisma.state.create({
-    data: {
-      projectId, workspaceId: project.workspaceId,
-      name: "Triagem", color: "#6366f1", group: "triage",
-      sequence: 5000, isTriage: true,
-      slug: "triagem",
-    },
-  });
-}
-
-// Find or create the single active Intake record for a project
-async function findOrCreateIntake(projectId: string, workspaceId: string) {
-  const existing = await prisma.intake.findFirst({
-    where: { projectId, deletedAt: null, isActive: true },
-  });
-  if (existing) return existing;
-  return prisma.intake.create({ data: { projectId, workspaceId } });
 }
 
 function formatProject(p: any, memberRole?: number) {

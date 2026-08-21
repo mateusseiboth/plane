@@ -12,7 +12,8 @@ export async function notifyQualityOfIntake(opts: {
   workspaceId: string;
   projectId: string;
   issueId: string;
-  actorId: string;
+  /** `null` quando a abertura veio do portal do cliente: não há ator do time. */
+  actorId: string | null;
   issueName: string;
 }): Promise<void> {
   const members = await prisma.projectMember.findMany({

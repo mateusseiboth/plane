@@ -25,7 +25,6 @@ export type ChatSession = {
   entity_contact_id?: string | null;
   status: string;
   assigned_attendant_id: string | null;
-  requested_attendant_id?: string | null;
   project_id?: string | null;
   project_identifier?: string | null;
   project_name?: string | null;

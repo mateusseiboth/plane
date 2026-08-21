@@ -12,6 +12,7 @@ import prisma from "@db";
 import { deliverOutbound } from "@/outbound";
 import { sendToSession, sendToWorkspace } from "@/ws/hub";
 import { getProvider } from "@/providers/provider";
+import { houveAtendimento } from "@/sessoes";
 
 const ASK_SCORE = "Antes de você ir: como você avalia o nosso atendimento? Responda com uma nota de *1 a 5* (sendo 5 excelente).";
 const ASK_COMMENT = "Obrigado pela nota! Quer deixar um comentário sobre o atendimento? (ou responda *não* para pular)";
@@ -40,6 +41,9 @@ export async function randomDog(): Promise<{ url: string; mime: string } | null>
 export async function requestRating(session: any) {
   // Already rated or already asking → don't pester the client again.
   if (session.ratingScore != null || session.ratingState) return;
+  // Ninguém atendeu, não há atendimento a avaliar. Quem abriu o chat, esperou e
+  // desistiu recebia a pesquisa de satisfação de um atendimento que não houve.
+  if (!houveAtendimento(session)) return;
   await prisma.chatSession.update({
     where: { id: session.id },
     data: { ratingState: "awaiting_score", ratingRequestedAt: new Date() },

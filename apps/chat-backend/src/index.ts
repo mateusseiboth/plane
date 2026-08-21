@@ -6,17 +6,19 @@ import { resolveAttendant, signClientToken, verifyClientToken, signWsTicket, ver
 import { nextProtocol } from "@/protocol";
 import { handleInboundClient, startBot, startNativeSession } from "@/bot/engine";
 import { registrarEncerramento } from "@/encerramento";
-import { availableAttendants, inicioDoDiaNoFuso } from "@/presence";
+import { inicioDoDiaNoFuso } from "@/presence";
 import { deliverOutbound } from "@/outbound";
 import { persistAndBroadcast, serializeMessage } from "@/messages";
 import { applyProviderMutation, deleteMessage, editMessage } from "@/message-actions";
-import { routeQueuedSession, drainQueuesForWorkspace, assignSessionToAttendant } from "@/queue/router";
+import { drainQueuesForWorkspace, assignSessionToAttendant } from "@/queue/router";
 import { getProvider } from "@/providers/provider";
 import { saveMedia, serveMedia } from "@/storage";
 import { startTimers } from "@/timers";
 import { requestRating, handleRatingReply, submitRating, randomDog } from "@/rating";
 import { attendantName } from "@/users";
 import { ratingsReport, slaReport } from "@/reports";
+import { ehAdmin, listarAtendentes, papelNoEspaco, podeGerenciar } from "@/papeis";
+import { semAvaliacao, serializeSession } from "@/sessoes";
 import {
   register,
   unregister,
@@ -36,37 +38,6 @@ import { configModule } from "@/config-routes";
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-function serializeSession(s: any) {
-  return {
-    id: s.id,
-    protocol: s.protocol,
-    channel: s.channel,
-    workspace_id: s.workspaceId,
-    contact_id: s.contactId ?? null,
-    // Responsável (cadastro do cliente) já vinculado a este atendimento.
-    entity_contact_id: s.entityContactId ?? null,
-    client_name: s.clientName ?? s.contact?.name ?? null,
-    contact_email: s.contact?.email ?? null,
-    contact_entity_id: s.contact?.entityId ?? null,
-    client_phone: s.clientPhone ?? null,
-    status: s.status,
-    queue_id: s.queueId ?? null,
-    assigned_attendant_id: s.assignedAttendantId ?? null,
-    requested_attendant_id: s.requestedAttendantId ?? null,
-    project_id: s.projectId ?? null,
-    project_identifier: s.projectIdentifier ?? null,
-    project_name: s.projectName ?? null,
-    last_client_message_at: s.lastClientMessageAt ?? null,
-    last_attendant_message_at: s.lastAttendantMessageAt ?? null,
-    client_last_read_at: s.clientLastReadAt ?? null,
-    rating_score: s.ratingScore ?? null,
-    rating_comment: s.ratingComment ?? null,
-    rating_state: s.ratingState ?? null,
-    created_at: s.createdAt,
-    closed_at: s.closedAt ?? null,
-  };
-}
-
 // Resolve the client-chosen "system" to a Plane project (by uuid or identifier).
 // `slug` is the Plane workspace slug (chat uses it as workspaceId).
 async function resolveProject(
@@ -123,19 +94,9 @@ async function closeSession(sessionId: string, closedById?: string | null) {
   return s;
 }
 
-// Workspace role >= 15 (admin / project manager). `slug` is the Plane workspace slug.
+/** Transfere atendimento e lê relatórios. `slug` é o slug do workspace do Plane. */
 async function isWorkspaceManager(slug: string, userId: string): Promise<boolean> {
-  try {
-    const rows = (await prisma.$queryRaw`
-      SELECT wm.role FROM workspace_members wm
-      JOIN workspaces w ON w.id = wm.workspace_id
-      WHERE w.slug = ${slug} AND wm.member_id::text = ${userId}
-        AND wm.deleted_at IS NULL AND wm.is_active = true
-      LIMIT 1`) as Array<{ role: number }>;
-    return Number(rows[0]?.role ?? 0) >= 15;
-  } catch {
-    return false;
-  }
+  return podeGerenciar(await papelNoEspaco(slug, userId));
 }
 
 // ── WebSocket dispatch ──────────────────────────────────────────────────────────
@@ -330,7 +291,7 @@ const app = new Elysia()
 
   // ── Public (token-less) lookups for the native pre-chat form ──
   // The "system" the client needs help with is a Plane project (e.g. SIART). The
-  // widget can also be deep-linked with ?system=<identifier> / ?attendant=<id>.
+  // widget can also be deep-linked with ?system=<identifier>.
   .get("/workspaces/:slug/public/projects/", async ({ params: { slug } }) => {
     try {
       const rows = (await prisma.$queryRaw`
@@ -344,27 +305,6 @@ const app = new Elysia()
       return { results: [] };
     }
   })
-  .get("/workspaces/:slug/public/attendants/", async ({ params: { slug } }) => {
-    let members: Array<{ id: string; name: string }> = [];
-    try {
-      members = (await prisma.$queryRaw`
-        SELECT u.id::text AS id,
-               COALESCE(NULLIF(u.display_name, ''), NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS name
-        FROM workspace_members wm
-        JOIN workspaces w ON w.id = wm.workspace_id
-        JOIN users u ON u.id = wm.member_id
-        WHERE w.slug = ${slug} AND wm.deleted_at IS NULL AND wm.is_active = true
-          AND wm.role >= 15
-        ORDER BY name ASC`) as Array<{ id: string; name: string }>;
-    } catch (e) {
-      console.error("[public/attendants]", e);
-    }
-    const onlineIds = new Set(await availableAttendants(slug, members.map((m) => m.id)));
-    return {
-      results: members.map((m) => ({ user_id: m.id, name: m.name ?? "Atendente", online: onlineIds.has(m.id) })),
-    };
-  })
-
   // ── Client: start a session ──
   .post("/sessions/", async ({ body, set }) => {
     const b = (body as any) ?? {};
@@ -382,7 +322,6 @@ const app = new Elysia()
     if (!session) {
       // Resolve the chosen "system" → a Plane project (by id or identifier).
       const project = await resolveProject(b.workspace_id, b.project_id, b.system);
-      const requestedAttendantId = b.attendant_id ? String(b.attendant_id) : null;
       const protocol = await nextProtocol(b.workspace_id);
       session = await prisma.chatSession.create({
         data: {
@@ -393,14 +332,13 @@ const app = new Elysia()
           projectId: project?.id ?? null,
           projectIdentifier: project?.identifier ?? null,
           projectName: project?.name ?? null,
-          requestedAttendantId,
           protocol,
           status: "bot",
           botState: "done",
         },
       });
-      // Native pre-chat: greet + route directly to the chosen attendant or queue.
-      startNativeSession(session.id, { attendantId: requestedAttendantId }).catch((e) => console.error("[startNativeSession]", e));
+      // Native pre-chat: greet + enqueue. Quem atende é a fila que decide.
+      startNativeSession(session.id).catch((e) => console.error("[startNativeSession]", e));
     }
 
     const token = await signClientToken(session.id, browserId);
@@ -415,7 +353,15 @@ const app = new Elysia()
     const full = role === "attendant"; // staff see deleted originals + edit history
     const messages = await prisma.chatMessage.findMany({ where: { sessionId: id }, orderBy: { createdAt: "asc" } });
     const session = await prisma.chatSession.findUnique({ where: { id }, include: { contact: true } });
-    return { session: session ? serializeSession(session) : null, results: messages.map((m) => serializeMessage(m, { full })) };
+    if (!session) return { session: null, results: messages.map((m) => serializeMessage(m, { full })) };
+    // O cliente vê a própria avaliação (é ela que diz se o formulário já foi
+    // respondido); do lado da equipe, só o administrador.
+    const podeVerAvaliacao = role === "client" || (await ehAdminDaConversa(session, headers));
+    const serializada = serializeSession(session);
+    return {
+      session: podeVerAvaliacao ? serializada : semAvaliacao(serializada),
+      results: messages.map((m) => serializeMessage(m, { full })),
+    };
   })
 
   // ── Read-only public view of a chat (for the editor chat-embed link) ──
@@ -434,7 +380,12 @@ const app = new Elysia()
       metadata: { protocolo: session.protocol, canal: session.channel, mensagens: messages.length },
     });
     // Staff transcript (shared via copy-link): show deleted originals + history.
-    return { session: serializeSession(session), results: messages.map((m) => serializeMessage(m, { full: true })) };
+    const serializada = serializeSession(session);
+    const podeVerAvaliacao = ehAdmin(viewer ? await papelNoEspaco(session.workspaceId, viewer.id) : 0);
+    return {
+      session: podeVerAvaliacao ? serializada : semAvaliacao(serializada),
+      results: messages.map((m) => serializeMessage(m, { full: true })),
+    };
   })
 
   // ── Attendant: list sessions for a workspace ──
@@ -447,20 +398,10 @@ const app = new Elysia()
     const status = (query as any).status as string | undefined;
 
     // Role-based visibility:
-    //   ONLY workspace admins (role >= 20) see the bot + queue and unassigned chats.
+    //   ONLY workspace admins see the bot + queue and unassigned chats.
     //   Everyone else (managers included) sees ONLY chats assigned to them and never
-    //   anything still in "bot" or "queued".
-    let role = 20;
-    try {
-      const rows = (await prisma.$queryRaw`
-        SELECT wm.role FROM workspace_members wm
-        JOIN workspaces w ON w.id = wm.workspace_id
-        WHERE w.slug = ${slug} AND wm.member_id::text = ${user.id}
-          AND wm.deleted_at IS NULL AND wm.is_active = true
-        LIMIT 1`) as Array<{ role: number }>;
-      role = Number(rows[0]?.role ?? 0);
-    } catch { role = 20; } // DB unavailable → allow all (degenerate case)
-    const isAdmin = role >= 20;
+    //   anything still in "bot" or "queued" — e sem a avaliação que o cliente deu.
+    const isAdmin = ehAdmin(await papelNoEspaco(slug, user.id));
 
     const requested = status ? status.split(",") : null;
     // A aba de encerrados mostra só o DIA CORRENTE: com o histórico do SAC são
@@ -528,7 +469,8 @@ const app = new Elysia()
           prisma.chatMessage.findFirst({ where: { sessionId: s.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { text: true, type: true, sender: true, createdAt: true } }),
         ]);
         const preview = last ? (last.text || (last.type === "image" ? "📷 Imagem" : last.type === "audio" ? "🎤 Áudio" : last.type === "video" ? "🎬 Vídeo" : last.type === "file" ? "📎 Arquivo" : "")) : "";
-        return { ...serializeSession(s), unread, last_message: preview, last_message_at: last?.createdAt ?? s.lastClientMessageAt ?? s.createdAt };
+        const serializada = isAdmin ? serializeSession(s) : semAvaliacao(serializeSession(s));
+        return { ...serializada, unread, last_message: preview, last_message_at: last?.createdAt ?? s.lastClientMessageAt ?? s.createdAt };
       })
     );
     return { results };
@@ -636,29 +578,15 @@ const app = new Elysia()
   })
 
   // ── Attendants of a workspace (for the transfer picker) ──
-  // Transfer targets are restricted to admins / project managers (role >= 15),
-  // matching who is allowed to perform the transfer.
+  // A lista é de quem ATENDE (papel Atendimento para cima), não de quem pode
+  // transferir: quem transfere é gestor, quem recebe é a equipe de atendimento.
   .get("/workspaces/:slug/attendants/", async ({ params: { slug }, headers, set }) => {
     const user = await resolveAttendant(headers);
     if (!user) {
       set.status = 401;
       return { detail: "Não autenticado." };
     }
-    let members: Array<{ id: string; name: string }> = [];
-    try {
-      const rows = (await prisma.$queryRaw`
-        SELECT u.id::text AS id,
-               COALESCE(NULLIF(u.display_name, ''), NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS name
-        FROM workspace_members wm
-        JOIN workspaces w ON w.id = wm.workspace_id
-        JOIN users u ON u.id = wm.member_id
-        WHERE w.slug = ${slug} AND wm.deleted_at IS NULL AND wm.is_active = true
-          AND wm.role >= 15
-        ORDER BY name ASC`) as Array<{ id: string; name: string }>;
-      members = rows;
-    } catch (e) {
-      console.error("[attendants]", e);
-    }
+    const members = await listarAtendentes(slug);
     const online = new Set(connectedUserIds(slug));
     return {
       results: members.map((m) => ({ user_id: m.id, name: m.name ?? "Atendente", online: online.has(m.id) })),
@@ -672,18 +600,8 @@ const app = new Elysia()
       set.status = 401;
       return { detail: "Não autenticado." };
     }
-    // Only admins / project managers (workspace role >= 15) may transfer.
-    let isManager = false;
-    try {
-      const rows = (await prisma.$queryRaw`
-        SELECT wm.role FROM workspace_members wm
-        JOIN workspaces w ON w.id = wm.workspace_id
-        WHERE w.slug = ${slug} AND wm.member_id::text = ${user.id}
-          AND wm.deleted_at IS NULL AND wm.is_active = true
-        LIMIT 1`) as Array<{ role: number }>;
-      isManager = Number(rows[0]?.role ?? 0) >= 15;
-    } catch { isManager = false; }
-    if (!isManager) {
+    // Só gestor transfere atendimento.
+    if (!(await isWorkspaceManager(slug, user.id))) {
       set.status = 403;
       return { detail: "Apenas administradores ou gestores podem transferir atendimentos." };
     }
@@ -958,6 +876,12 @@ const app = new Elysia()
 startHeartbeat();
 startTimers();
 console.log(`💬 chat-backend listening on :${PORT}`);
+
+/** A avaliação do cliente é leitura de gestão: só o administrador do espaço. */
+async function ehAdminDaConversa(session: { workspaceId: string }, headers: any): Promise<boolean> {
+  const user = await resolveAttendant(headers);
+  return user ? ehAdmin(await papelNoEspaco(session.workspaceId, user.id)) : false;
+}
 
 // ── auth helper for history endpoint ──
 async function authorizeSessionAccess(
