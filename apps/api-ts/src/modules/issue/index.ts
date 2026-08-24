@@ -15,6 +15,7 @@ import {
 } from "@utils/permission-checks";
 import {campoDeAtividade, pontoDoProjeto, type PontoDeEstimativa} from "@utils/estimate";
 import {resolverOrdenacao} from "@utils/issue-order";
+import {acompanharSolicitacao} from "@utils/atendimento-da-solicitacao";
 import {replicateToLinkedIntakes} from "@utils/intake-replication";
 import {notifyStateChange} from "@utils/notifications";
 import {publishRealtime} from "@utils/realtime";
@@ -482,6 +483,18 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         await replicateToLinkedIntakes(issue_id, targetState.group as "completed" | "cancelled");
       }
 
+      // A solicitação que originou o chamado fecha junto com ele — e reabre se
+      // o chamado voltar. Ver @utils/atendimento-da-solicitacao.
+      if (targetState) {
+        await acompanharSolicitacao({
+          issueId: issue_id,
+          grupo: targetState.group,
+          autorId: user.id,
+          workspaceId: ws.id,
+          projectId: project_id,
+        }).catch((e) => console.error("[acompanharSolicitacao]", e));
+      }
+
       // Andou de etapa: avisa quem tem de agir agora. Falhar aqui não pode
       // desfazer a movimentação — o chamado já mudou de lugar.
       if (targetState && before.state?.name && before.state.name !== targetState.name) {
@@ -539,6 +552,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       EProjectAction.ISSUE_DELETE_ALL,
     );
     await prisma.issue.update({where: {id: issue_id}, data: {deletedAt: new Date()}});
+    // A solicitação de origem vai junto: sem o chamado não há o que atender.
+    await prisma.intakeIssue.updateMany({
+      where: {issueId: issue_id, deletedAt: null},
+      data: {deletedAt: new Date()},
+    });
     publishRealtime(ws.id, {entity: "issue", action: "delete", project_id, id: issue_id, actor: user.id});
     recordAudit({
       workspaceId: ws.id,

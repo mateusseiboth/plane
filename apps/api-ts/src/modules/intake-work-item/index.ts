@@ -11,6 +11,7 @@ import { serializeIssue, ISSUE_INCLUDE, COMMENT_INCLUDE, serializeComment } from
 import { paginate } from "@utils/pagination";
 import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 import { registrarVersaoDaDescricao, serializarVersao } from "@utils/versoes-da-descricao";
+import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
 
 function isoDate(d: any) { if (!d) return null; return d instanceof Date ? d.toISOString() : String(d); }
 
@@ -144,6 +145,20 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
       }
       if (abriuVersao) changes.push({ field: "description", comment: "updated the description" });
       await recordActivities({ issueId: issue_id, workspaceId: ws.id, projectId: project_id, actorId: user.id }, changes);
+    }
+
+    // Concluir pela triagem fecha a solicitação igual a concluir pelo quadro.
+    // Ver @utils/atendimento-da-solicitacao.
+    if (newStateId !== undefined && before?.stateId !== newStateId) {
+      const grupo = await prisma.state.findFirst({ where: { id: newStateId }, select: { group: true } });
+      if (grupo)
+        await acompanharSolicitacao({
+          issueId: issue_id,
+          grupo: grupo.group,
+          autorId: user.id,
+          workspaceId: ws.id,
+          projectId: project_id,
+        }).catch((e) => console.error("[acompanharSolicitacao]", e));
     }
 
     return serializeIssue(updated);

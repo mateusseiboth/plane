@@ -499,7 +499,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       : null;
 
     // Use IntakeIssue as primary source so closed (declined/accepted) items are also visible
-    const iiWhere: any = {projectId: project_id, deletedAt: null};
+    // `issue.deletedAt: null` além do próprio: apagar o chamado deixava a
+    // solicitação viva numa fila que ninguém consegue atender, porque o chamado
+    // por trás dela não existe mais.
+    const iiWhere: any = {projectId: project_id, deletedAt: null, issue: {deletedAt: null}};
     if (statusFilter) iiWhere.status = {in: statusFilter};
 
     const [intakeIssues, total] = await Promise.all([

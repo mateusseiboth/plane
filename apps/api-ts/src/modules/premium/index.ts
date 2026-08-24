@@ -19,6 +19,7 @@ import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, get
 import { serializeIssue } from "@utils/serialize";
 import { inicioRecebido, vencimentoRecebido } from "@utils/prazo";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
+import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
 
 
 /**
@@ -589,10 +590,23 @@ export const premiumModule = new Elysia()
 
     // Um chamado por vez, pela sincronização idempotente (@utils/vinculos-do-chamado):
     // carimbar em lote com o mesmo deleted_at colidia com a chave única.
+    // Mudar o estado em massa também fecha (ou reabre) as solicitações de origem.
+    const grupoNovo = b.state !== undefined
+      ? (await prisma.state.findFirst({ where: { id: b.state }, select: { group: true } }))?.group
+      : undefined;
+
     for (const issueId of issueIds) {
       const escopo = { issueId, workspaceId: ws.id, projectId: project_id };
       if (b.assignees !== undefined) await sincronizarResponsaveis(escopo, b.assignees);
       if (b.labels !== undefined) await sincronizarEtiquetas(escopo, b.labels);
+      if (grupoNovo)
+        await acompanharSolicitacao({
+          issueId,
+          grupo: grupoNovo,
+          autorId: user.id,
+          workspaceId: ws.id,
+          projectId: project_id,
+        }).catch((e) => console.error("[acompanharSolicitacao]", e));
     }
 
     return { updated: result.count };
