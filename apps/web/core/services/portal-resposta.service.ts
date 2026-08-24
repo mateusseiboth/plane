@@ -4,14 +4,16 @@
  * See the LICENSE file for details.
  */
 
-// Resposta ao cliente do portal quando o chamado que ele abriu é concluído.
-// O backend é quem sabe quais chamados nasceram no portal e quais ainda estão
-// sem retorno — ver apps/api-ts/src/modules/portal/resposta.ts.
+// Resposta a quem abriu uma solicitação, quando o chamado dela é concluído.
+// Vale para QUALQUER origem — portal, atendimento ou aberta por dentro: em todas
+// há alguém do outro lado esperando retorno. O backend é quem sabe quais
+// chamados nasceram de solicitação e quais ainda estão sem resposta — ver
+// apps/api-ts/src/modules/portal/resposta.ts.
 
 import { API_BASE_URL } from "@plane/constants";
 import { APIService } from "@/services/api.service";
 
-/** Um chamado concluído, nascido no portal, ainda sem resposta ao cliente. */
+/** Um chamado concluído, nascido de uma solicitação, ainda sem resposta. */
 export type TRespostaPendente = {
   issue_id: string;
   project_id: string;
@@ -19,7 +21,10 @@ export type TRespostaPendente = {
   titulo: string;
   sistema: string;
   estado: string;
+  /** Nome de quem espera: a conta do portal ou quem abriu a solicitação. */
   cliente: string;
+  /** "portal" muda o que a janela promete — ver `resposta-ao-cliente-modal`. */
+  origem: string;
   concluido_em: string | null;
 };
 
@@ -35,7 +40,7 @@ export class PortalRespostaService extends APIService {
       .catch(() => []);
   }
 
-  /** Envia a resposta que o cliente vai ler no portal. */
+  /** Envia a resposta: o portal mostra na conta do cliente, as demais avisam quem abriu. */
   async responder(workspaceSlug: string, issueId: string, resposta: string): Promise<void> {
     return this.post(`/api/workspaces/${workspaceSlug}/portal-answers/${issueId}/`, { resposta })
       .then(() => undefined)

@@ -583,7 +583,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     });
     const intake = await findOrCreateIntake(project_id, ws.id);
     await prisma.intakeIssue.create({
-      data: {intakeId: intake.id, issueId: issue.id, workspaceId: ws.id, projectId: project_id, status: -2, source: "in-app"},
+      // `createdById` é quem fica esperando a resposta quando o chamado for
+      // concluído (ver modules/portal/resposta). Sem ele a fila não sabe o nome
+      // de quem pediu, nem para quem tocar o sino.
+      data: {intakeId: intake.id, issueId: issue.id, workspaceId: ws.id, projectId: project_id, status: -2, source: "in-app", createdById: user.id},
     });
     // Auto-assign the creator (+ any explicit assignee_ids), mirroring issue create.
     const assigneeIds: string[] = b.assignee_ids ?? b.assignees ?? [];

@@ -27,6 +27,20 @@ import { useRespostaAoCliente } from "@/hooks/use-resposta-ao-cliente";
 
 const LIMITE = 20000;
 
+/**
+ * O que a janela promete depende de onde veio a solicitação.
+ *
+ * Prometer "aparece em Minhas solicitações" para um pedido que o atendimento
+ * abriu pelo telefone seria mentira: não existe portal do outro lado. Ali a
+ * resposta chega pelo sino de quem abriu, e é isso que a frase diz.
+ */
+function ondeVaiAparecer(atual: { cliente?: string; origem?: string }): string {
+  const quem = atual.cliente || "Quem abriu";
+  if (atual.origem === "portal")
+    return `${quem} abriu esta solicitação pelo portal. O que você escrever aqui aparece para ele em “Minhas solicitações”.`;
+  return `${quem} abriu esta solicitação. O que você escrever aqui fica no chamado e avisa essa pessoa.`;
+}
+
 export function RespostaAoClienteModal() {
   const { workspaceSlug } = useParams();
   const { atual, adiar, resolver } = useRespostaAoCliente(workspaceSlug?.toString());
@@ -55,25 +69,26 @@ export function RespostaAoClienteModal() {
     }
   };
 
+  const doPortal = atual.origem === "portal";
+
   return (
     <ModalCore isOpen handleClose={adiar} width={EModalWidth.XXL}>
       <div className="flex flex-col gap-4 p-5">
         <div>
-          <h3 className="text-lg font-medium text-primary">Responder ao cliente</h3>
+          <h3 className="text-lg font-medium text-primary">
+            {doPortal ? "Responder ao cliente" : "Responder a solicitação"}
+          </h3>
           <p className="mt-1 text-13 text-secondary">
             <span className="font-medium">{atual.codigo}</span> · {atual.titulo}
           </p>
-          <p className="mt-2 text-13 text-secondary">
-            {atual.cliente || "O cliente"} abriu esta solicitação pelo portal. O que você escrever aqui aparece para ele
-            em “Minhas solicitações”.
-          </p>
+          <p className="mt-2 text-13 text-secondary">{ondeVaiAparecer(atual)}</p>
         </div>
 
         <textarea
           value={texto}
           maxLength={LIMITE}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="Conte o que foi feito, em uma linguagem que o cliente entenda."
+          placeholder="Conte o que foi feito, em uma linguagem que quem pediu entenda."
           className="focus:border-accent-primary min-h-40 w-full resize-y rounded-md border border-strong bg-layer-1 p-3 text-13 text-primary outline-none"
         />
 

@@ -120,7 +120,6 @@ const AGUARDANDO_RESPOSTA = {
 } as const;
 
 const PENDENTE_INCLUDE = {
-  account: { select: { name: true } },
   issue: {
     select: {
       id: true,
@@ -130,12 +129,43 @@ const PENDENTE_INCLUDE = {
       projectId: true,
       project: { select: { id: true, name: true, identifier: true } },
       state: { select: { name: true } },
+      // A conta do portal, quando a solicitação veio de lá.
+      portalRequest: { select: { account: { select: { name: true } } } },
     },
   },
 } as const;
 
-function serializarPendente(pedido: any) {
-  const chamado = pedido.issue;
+/**
+ * Nome de quem espera a resposta: a conta do portal ou quem abriu a solicitação.
+ *
+ * `IntakeIssue` guarda só o id de quem abriu, sem relação com `users` — daí os
+ * nomes virem prontos de fora, resolvidos numa consulta só para a lista inteira
+ * em vez de uma por linha.
+ */
+function nomeDeQuemEspera(solicitacao: any, nomes: Map<string, string>): string {
+  const conta = solicitacao.issue?.portalRequest?.account?.name;
+  if (conta) return conta;
+  return nomes.get(solicitacao.createdById ?? "") ?? "Quem abriu a solicitação";
+}
+
+/** Os nomes de quem abriu cada solicitação, numa consulta só. */
+async function nomesDeQuemAbriu(ids: (string | null)[]): Promise<Map<string, string>> {
+  const unicos = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+  if (!unicos.length) return new Map();
+  const pessoas = await prisma.user.findMany({
+    where: { id: { in: unicos } },
+    select: { id: true, displayName: true, firstName: true, lastName: true, email: true },
+  });
+  return new Map(
+    pessoas.map((p) => {
+      const completo = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+      return [p.id, p.displayName || completo || p.email || "Quem abriu a solicitação"];
+    })
+  );
+}
+
+function serializarPendente(solicitacao: any, nomes: Map<string, string>) {
+  const chamado = solicitacao.issue;
   return {
     issue_id: chamado.id,
     project_id: chamado.projectId,
@@ -143,7 +173,10 @@ function serializarPendente(pedido: any) {
     titulo: chamado.name,
     sistema: chamado.project?.name ?? "",
     estado: chamado.state?.name ?? "",
-    cliente: pedido.account?.name ?? "",
+    cliente: nomeDeQuemEspera(solicitacao, nomes),
+    // A tela promete coisas diferentes conforme a origem: o portal mostra na
+    // conta do cliente, as demais avisam quem abriu.
+    origem: solicitacao.source ?? "in-app",
     concluido_em: chamado.updatedAt?.toISOString() ?? null,
   };
 }
@@ -157,8 +190,9 @@ function serializarPendente(pedido: any) {
  * não recebe janela nenhuma.
  */
 export async function respostasPendentes(workspaceId: string, userId: string) {
-  const pedidos = await prisma.portalRequest.findMany({
+  const solicitacoes = await prisma.intakeIssue.findMany({
     where: {
+      deletedAt: null,
       issue: {
         ...AGUARDANDO_RESPOSTA,
         workspaceId,
@@ -169,17 +203,25 @@ export async function respostasPendentes(workspaceId: string, userId: string) {
     orderBy: { issue: { updatedAt: "desc" } },
     take: LIMITE.lista,
   });
-  return pedidos.map(serializarPendente);
+  const comChamado = solicitacoes.filter((s) => s.issue);
+  const nomes = await nomesDeQuemAbriu(comChamado.map((s) => s.createdById));
+  return comChamado.map((s) => serializarPendente(s, nomes));
 }
 
 export type PedidoAResponder = Awaited<ReturnType<typeof pedidoAResponder>>;
 
-/** O pedido do portal por trás de um chamado — `null` quando o chamado não nasceu no portal. */
+/**
+ * A solicitação por trás de um chamado — `null` quando o chamado não nasceu de uma.
+ *
+ * `IntakeIssue.issueId` é opcional no banco (apagar o chamado deixava o vínculo
+ * apontando para o nada), então a solicitação sem chamado é filtrada AQUI, uma
+ * vez só. Sem isso, cada uso adiante teria de repetir a verificação — ou pior,
+ * calar o compilador com `!` e quebrar em produção no dia em que aparecer uma.
+ */
 export async function pedidoAResponder(workspaceId: string, issueId: string) {
-  return prisma.portalRequest.findFirst({
-    where: { issueId, issue: { workspaceId, deletedAt: null } },
+  const solicitacao = await prisma.intakeIssue.findFirst({
+    where: { issueId, deletedAt: null, issue: { workspaceId, deletedAt: null } },
     include: {
-      account: { select: { id: true, name: true } },
       issue: {
         select: {
           id: true,
@@ -187,10 +229,13 @@ export async function pedidoAResponder(workspaceId: string, issueId: string) {
           projectId: true,
           workspaceId: true,
           state: { select: { group: true } },
+          portalRequest: { select: { id: true, accountId: true, account: { select: { name: true } } } },
         },
       },
     },
   });
+  if (!solicitacao?.issue) return null;
+  return { ...solicitacao, issue: solicitacao.issue };
 }
 
 /** Já foi respondido (ou explicitamente dispensado)? */
@@ -283,13 +328,66 @@ export async function registrarResposta(ctx: Contexto & { texto: string }) {
       origem: "portal",
       resposta_ao_cliente: "enviada",
       project_id: chamado.projectId,
-      conta_id: pedido.accountId,
+      conta_id: pedido.issue.portalRequest?.accountId ?? null,
       comentario_id: comentario.id,
       caracteres: texto.length,
     },
   });
 
+  // Quem abriu a solicitação pelo portal lê a resposta lá. Quem abriu por
+  // dentro — o atendimento repassando um pedido do telefone, alguém do time —
+  // não tem portal nenhum para abrir: precisa do sino.
+  await avisarQuemPediu({ solicitacao: pedido, autorId: autor.id, texto });
+
   return serializarResposta([comentario]);
+}
+
+/**
+ * Acende o sino de quem abriu a solicitação.
+ *
+ * Só para origem que NÃO é portal — no portal a resposta aparece na conta do
+ * cliente, e mandar notificação para uma conta que não é usuário do Plane não
+ * existe. Também não avisa quem respondeu a si mesmo: abrir e resolver o
+ * próprio pedido é rotina, e o sino nesse caso é só barulho.
+ */
+async function avisarQuemPediu(opts: {
+  solicitacao: NonNullable<PedidoAResponder>;
+  autorId: string;
+  texto: string;
+}): Promise<void> {
+  const { solicitacao, autorId, texto } = opts;
+  if (solicitacao.issue.portalRequest) return;
+
+  const destinatario = solicitacao.createdById;
+  if (!destinatario || destinatario === autorId) return;
+
+  const ativo = await prisma.user.findFirst({
+    where: { id: destinatario, isActive: true, deletedAt: null },
+    select: { id: true },
+  });
+  if (!ativo) return;
+
+  const chamado = solicitacao.issue;
+  await prisma.notification.create({
+    data: {
+      workspaceId: chamado.workspaceId,
+      projectId: chamado.projectId,
+      issueId: chamado.id,
+      receiverId: destinatario,
+      actorId: autorId,
+      title: "Resposta da sua solicitação",
+      message: texto.slice(0, 200),
+      entity: "issue",
+      entityId: chamado.id,
+      data: { type: "solicitacao_respondida" },
+      triggered: "comment",
+    },
+  });
+  publishRealtime(chamado.workspaceId, {
+    entity: "notification",
+    action: "create",
+    receiver: destinatario,
+  } as any);
 }
 
 /**
@@ -329,7 +427,7 @@ export async function dispensarResposta(ctx: Contexto & { motivo?: string }) {
       origem: "portal",
       resposta_ao_cliente: DISPENSADA,
       project_id: chamado.projectId,
-      conta_id: pedido.accountId,
+      conta_id: pedido.issue.portalRequest?.accountId ?? null,
       motivo: motivo || null,
     },
   });
