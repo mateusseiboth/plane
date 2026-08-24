@@ -92,8 +92,22 @@ export async function sistemasDaConta(conta: ContaDoPortal) {
   return vinculos.map((v) => v.project).toSorted((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 }
 
+/**
+ * Id vindo de fora tem formato de UUID?
+ *
+ * O portal é rota pública: o `sistema_id` do corpo e o `:id` da URL são
+ * digitados pelo navegador de quem quiser. Entregues crus ao Prisma, um valor
+ * como "ALMOXA" estoura `invalid input syntax for type uuid` — 500 no cliente e
+ * stack do driver no log, que ainda conta o formato da coluna. Filtrando aqui,
+ * id malformado segue o MESMO caminho de id inexistente, que é o que ele é.
+ */
+export function ehUuid(valor: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
+}
+
 /** O projeto pedido, se a conta tiver acesso a ele. */
 export async function sistemaLiberado(conta: ContaDoPortal, projectId: string) {
+  if (!ehUuid(projectId)) return null;
   const vinculo = await prisma.portalAccountProject.findFirst({
     where: { accountId: conta.id, projectId, project: { deletedAt: null } },
     select: { project: { select: { id: true, name: true, identifier: true, workspaceId: true } } },

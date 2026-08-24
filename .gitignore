@@ -44,6 +44,9 @@ pnpm-debug.log*
 
 # Anexos do chat gravados em disco (storage local do chat-backend)
 apps/chat-backend/media/
+# Uploads da API rodando local sem MEDIA_ROOT (anexos do portal, testes).
+apps/api-ts/media/*
+!apps/api-ts/media/issues/
 
 ## Django ##
 venv

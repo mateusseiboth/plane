@@ -11,7 +11,10 @@ import { SignJWT } from "jose";
 import prisma from "@db";
 
 export const CHAT_URL = (process.env.CHAT_URL ?? "http://localhost:8002").replace(/\/$/, "");
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret");
+// O padrão TEM de ser o mesmo de `src/auth.ts`. Quando divergia, rodar a suíte
+// sem exportar JWT_SECRET dava 401 "Não autenticado" em todos os e2e — uma
+// falha que parece de permissão e é só de segredo diferente dos dois lados.
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 
 /** Token equivalente ao emitido pelo login do Plane (mesmo segredo compartilhado). */
 export async function signPlaneToken(userId: string, email = "atendente@teste.local"): Promise<string> {

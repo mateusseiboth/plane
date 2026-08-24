@@ -43,7 +43,7 @@ import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 import { pluginRegistryModule } from "@modules/plugin-registry";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
 import { auditModule } from "@modules/audit";
-import { portalAdminModule, portalModule } from "@modules/portal";
+import { portalAdminModule, portalModule, portalRespostaModule } from "@modules/portal";
 import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 
@@ -201,6 +201,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // after them, which would make /roles/ demand an X-Widget-Id header.
   .use(auditModule)
   .use(portalAdminModule)
+  .use(portalRespostaModule)
   .use(rolesModule)
   // Mounted before the SDK gateways so their global widget-auth hook doesn't leak
   // onto the SSE stream (see the rolesModule note above).

@@ -108,6 +108,41 @@ describe("BuscaPorNumeroLegadoEIdentificador", () => {
     expect(data.results.issue.map((i: any) => i.id)).toContain(chamadoLegadoId);
   });
 
+  // ── Busca pela chave composta "ESIC-150", que é a que a pessoa copia ──────
+  //
+  // A paleta ⌘K consulta `/search/`, que tinha uma busca própria e mais curta —
+  // só título e número legado. Procurar por "ESIC-150" ali não achava nada,
+  // enquanto `/global-search/` devolvia o chamado em primeiro lugar. As duas
+  // rotas agora fazem a mesma busca.
+
+  const idsDaPaleta = async (termo: string) => {
+    const res = await client.get(`/workspaces/${wsSlug}/search/?search=${encodeURIComponent(termo)}`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as any;
+    return data.results.issue.map((i: any) => i.id);
+  };
+
+  it("a paleta acha pela chave composta do chamado", async () => {
+    expect(await idsDaPaleta(`${projectIdentifier}-150`)).toContain(chamadoLegadoId);
+  });
+
+  it("a paleta acha a chave composta em minúsculas", async () => {
+    expect(await idsDaPaleta(`${projectIdentifier.toLowerCase()}-150`)).toContain(chamadoLegadoId);
+  });
+
+  it("a paleta acha a chave composta escrita com espaço", async () => {
+    expect(await idsDaPaleta(`${projectIdentifier} 150`)).toContain(chamadoLegadoId);
+  });
+
+  it("a chave composta vem em primeiro lugar na paleta", async () => {
+    expect((await idsDaPaleta(`${projectIdentifier}-150`))[0]).toBe(chamadoLegadoId);
+  });
+
+  it("a busca global e a da paleta concordam sobre a chave composta", async () => {
+    const termo = `${projectIdentifier}-150`;
+    expect(await idsDaPaleta(termo)).toEqual(await idsDaBusca(termo));
+  });
+
   it("o resultado carrega o número legado, para a interface poder exibi-lo", async () => {
     const res = await client.get(`/workspaces/${wsSlug}/global-search/?q=500-2026`);
     const data = (await res.json()) as any;

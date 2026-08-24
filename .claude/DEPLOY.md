@@ -14,17 +14,24 @@ rsync -az --delete --exclude-from=deploy-excludes.txt ./ root@10.1.2.12:/root/pl
 cd /root/plane && pnpm install
 
 # 3. Build do frontend — os Dockerfiles .local só COPIAM build/client, não buildam
-pnpm --filter web build
+# O web PRECISA do caminho do servidor de edição colaborativa embutido no
+# bundle, senão o editor das páginas abre com a tarja "Conexão perdida".
+VITE_LIVE_BASE_PATH=/live pnpm --filter web build
 # O admin (god-mode) PRECISA do base path, senão os assets são pedidos em
 # /assets/... , o nginx entrega o index.html do app web e a tela abre EM BRANCO.
 VITE_ADMIN_BASE_PATH=/god-mode pnpm --filter admin build
 
+# 3b. Build do `live` (edição colaborativa) — ver a seção própria mais abaixo
+pnpm turbo run build --filter=live
+rm -rf apps/live/.deploy
+pnpm --filter live deploy --legacy --prod apps/live/.deploy
+
 # 4. Imagens
 docker compose -f docker-compose-local.yml build \
-  api-ts chat-backend web admin proxy db-migrate seeder chat-migrate sac-migrator
+  api-ts chat-backend web admin live proxy db-migrate seeder chat-migrate sac-migrator
 
 # 5. Subir + migrar
-docker compose -f docker-compose-local.yml up -d api-ts chat-backend web admin proxy
+docker compose -f docker-compose-local.yml up -d api-ts chat-backend web admin live proxy
 docker compose -f docker-compose-local.yml run --rm db-migrate     # Prisma (api-ts)
 docker compose -f docker-compose-local.yml run --rm chat-migrate   # SQL idempotente do chat
 docker compose -f docker-compose-local.yml run --rm seeder
@@ -33,6 +40,7 @@ docker compose -f docker-compose-local.yml run --rm seeder
 ## Excluir do rsync (obrigatório)
 
 `node_modules/`, `.git/`, `.turbo/`, `coverage/`, `apps/web/build/`,
+`apps/live/dist/`, `apps/live/.deploy/`,
 `apps/chat-backend/media/`, `apps/chat-backend/generated/`, `.react-router/`,
 `.next/`, `*.log` e — **crítico** — `apps/web/.env`, `apps/admin/.env`,
 `apps/space/.env`.
@@ -84,12 +92,110 @@ docker exec plane-plane-db psql -U plane -d postgres -c "CREATE DATABASE plane O
 Backup antes, se houver qualquer dúvida:
 `docker exec plane-plane-db pg_dump -U plane -d plane --clean --if-exists | gzip > /root/backups/plane-$(date +%F-%H%M).sql.gz`
 
+## Edição colaborativa das páginas (serviço `live`)
+
+O editor das páginas de projeto (wiki) é colaborativo: o navegador abre um
+WebSocket com o serviço `apps/live` (Hocuspocus/Yjs) e é ele quem lê e grava a
+descrição da página pela API. Sem esse serviço no ar, a página **abre e deixa
+digitar**, mas com a tarja vermelha **"Conexão perdida — Estamos com dificuldade
+para conectar ao servidor. Suas alterações serão sincronizadas e salvas a cada
+10 segundos."** no cabeçalho.
+
+São **três** peças, e faltar qualquer uma reproduz a mesma tarja:
+
+| peça | onde | o que acontece se faltar |
+|---|---|---|
+| serviço `live` | `docker-compose-local.yml` | ninguém atende o WebSocket |
+| rota `/live/` | `apps/proxy-ts/nginx.conf` | o handshake cai no app web e volta HTML |
+| `VITE_LIVE_BASE_PATH=/live` | **build do web** | o navegador tenta `ws://origem/collaboration` |
+
+### A variável é de BUILD, não de runtime
+
+`VITE_LIVE_BASE_PATH` é embutida no bundle pelo Vite (`define: process.env`),
+igual ao `VITE_API_BASE_URL` e ao `VITE_ADMIN_BASE_PATH`. Reiniciar container
+não muda nada: é preciso **reconstruir o web**.
+
+```bash
+VITE_LIVE_BASE_PATH=/live pnpm --filter web build
+# conferir DEPOIS do build (tem que aparecer, com o /live dentro):
+grep -o 'VITE_LIVE_BASE_PATH:"[^"]*"' apps/web/build/client/assets/*.js
+```
+
+Se a busca não devolver nada, ou devolver `VITE_LIVE_BASE_PATH||""`, o bundle
+saiu sem o caminho e a tarja volta.
+
+### Build do `live` — e a armadilha do `pnpm deploy`
+
+O `Dockerfile.live.local` só COPIA (mesmo padrão de web e admin). Mas o `dist`
+do live **não embute as dependências** (`express`, `@hocuspocus/*`,
+`@plane/editor`, `sharp`…) e o `node_modules` do pnpm é uma teia de symlinks
+que o `COPY` do Docker não segue. Por isso existe o passo do `pnpm deploy`, que
+materializa essa árvore em `apps/live/.deploy`:
+
+```bash
+pnpm turbo run build --filter=live                     # gera apps/live/dist
+rm -rf apps/live/.deploy
+pnpm --filter live deploy --legacy --prod apps/live/.deploy
+pnpm install                                           # ← OBRIGATÓRIO, leia abaixo
+```
+
+> **`pnpm deploy --prod` PODA o `node_modules` do workspace inteiro.** Depois
+> dele, `apps/web/node_modules`, `packages/*/node_modules` etc. ficam vazios e
+> qualquer build seguinte morre com
+> `ERR_PNPM_OUTDATED_LOCKFILE` / `pnpm install --production`. O conserto é um
+> `pnpm install` normal — então **rode o `pnpm deploy` por último**, depois dos
+> builds de web e admin, e sempre com o `pnpm install` logo atrás.
+>
+> O `--legacy` também é obrigatório: sem ele o pnpm 10+ recusa
+> (`ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE`).
+>
+> O `.deploy` só precisa ser refeito quando `apps/live/package.json` mudar.
+
+A imagem usa `node:22-bookworm-slim`, **não Alpine**: o `sharp` e os demais
+binários nativos vêm resolvidos pelo host (Debian/glibc) e no musl do Alpine o
+processo morre no primeiro `import`.
+
+### Variáveis do serviço
+
+| variável | valor no servidor | por quê |
+|---|---|---|
+| `PORT` | `3100` | porta do express do live |
+| `API_BASE_URL` | `http://proxy` | o live monta caminhos **sem** o `v1` (`/api/users/me/`); quem traduz para `/api/v1/...` é o nginx do proxy |
+| `LIVE_BASE_PATH` | `/live` | tem que casar com o `VITE_LIVE_BASE_PATH` do build |
+| `LIVE_SERVER_SECRET_KEY` | `plane-live-secret` | protege só `/live/pdf-export/` e `/live/convert-document/`; nunca vai ao navegador |
+| `REDIS_URL` | `redis://plane-redis:6379/` | sem ele cada réplica teria a própria cópia do documento |
+| `CORS_ALLOWED_ORIGINS` | origens do site | vale para as rotas HTTP; WebSocket não passa por CORS |
+
+O `live` **não pode** entrar no `depends_on` do proxy como dependência reversa
+(`live` → `proxy` → `live` é ciclo). Não é problema: o nginx resolve o nome a
+cada requisição (`resolver` + upstream em variável), então a ordem de subida é
+indiferente.
+
+### Conferir depois
+
+```bash
+docker compose -f docker-compose-local.yml ps live          # Up
+curl -s -o /dev/null -w "%{http_code}\n" http://10.1.2.12/live/health/   # 200
+
+# o que de fato importa: o handshake precisa devolver 101
+curl -s -i -N --max-time 8 \
+  -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  "http://10.1.2.12/live/collaboration?documentType=project_page" | head -3
+# HTTP/1.1 101 Switching Protocols
+```
+
+`200` no lugar do `101` = o nginx respondeu sem repassar o upgrade (falta
+`proxy_http_version 1.1` + `Upgrade`/`Connection` no location `/live/`).
+`404`/HTML = a rota `/live/` não existe e o pedido caiu no app web.
+
 ## Validação pós-deploy
 
 ```bash
 curl -o /dev/null -w "%{http_code}\n" http://10.1.2.12/                    # 200
 curl -o /dev/null -w "%{http_code}\n" http://10.1.2.12/api/v1/health/      # 200
 curl -o /dev/null -w "%{http_code}\n" http://10.1.2.12/chat-api/health/    # 200
+curl -o /dev/null -w "%{http_code}\n" http://10.1.2.12/live/health/        # 200
 ```
 
 O `./e2e-smoke.sh` da raiz (25 verificações) roda contra qualquer ambiente.
@@ -358,6 +464,27 @@ location / {
 > A edição direta em `/data/nginx/proxy_host/92.conf` funciona na hora, mas o
 > Nginx Proxy Manager regenera o arquivo a partir do banco dele assim que
 > alguém salvar o host pela interface — e o tempo real cai de novo, sem aviso.
+
+### WebSocket pelo HTTPS: nada a fazer (medido em 24/08/2026)
+
+O `/live` é WebSocket, e a suspeita natural era precisar de mais uma
+configuração no host 92 — como aconteceu com o SSE. **Não precisa.** O host já
+repassa o upgrade e já segura a conexão aberta; o `proxy_read_timeout 3600s` da
+receita acima cobre o WebSocket junto com o SSE, e o Hocuspocus ainda manda
+ping a cada ~30 s.
+
+```bash
+curl -s -i -N --http1.1 --max-time 10 \
+  -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  "https://plane.qualitysistemas.inf.br/live/collaboration?documentType=project_page"
+# HTTP/1.1 101 Switching Protocols   ← openresty, pelo 10.1.2.8
+```
+
+Página de projeto aberta por `https://plane.qualitysistemas.inf.br`, **220 s
+parada**: o `wss://` não caiu uma vez e a tarja não apareceu. Se um dia cair
+por volta dos 60 s, aí sim é o `proxy_read_timeout` do host 92 — e a correção é
+a mesma receita, na aba _Advanced_, nunca no arquivo.
 
 ## Armadilhas já resolvidas (não reintroduzir)
 

@@ -7,6 +7,11 @@ node_modules/
 .next/
 coverage/
 apps/web/build/
+# Artefatos do `live` construídos NO SERVIDOR (dist + node_modules resolvido
+# por `pnpm deploy`). Sem estas linhas o rsync leva o build da máquina de
+# desenvolvimento — ou apaga o do servidor com --delete.
+apps/live/dist/
+apps/live/.deploy/
 # O .env da RAIZ guarda a configuração do servidor (credencial da IA, entre
 # outras). Sem esta linha o rsync --delete o apaga a cada deploy e o recurso
 # volta a ficar desligado sem ninguém entender por quê.

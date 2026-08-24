@@ -171,6 +171,45 @@ services:
     ports:
       - "8002:8002"
 
+  # ── Edição colaborativa das páginas (Hocuspocus/Yjs) ──────────────────────
+  # Sem este serviço o editor das páginas de projeto abre com a tarja
+  # "Conexão perdida": o navegador tenta o WebSocket em ${origem}/live/collaboration
+  # e não há ninguém do outro lado.
+  live:
+    container_name: plane-live
+    build:
+      context: ./apps/live
+      # Igual a web e admin: o Dockerfile .local só COPIA o que foi construído
+      # fora (dist + as dependências resolvidas por `pnpm deploy`). Ver .claude/DEPLOY.md.
+      dockerfile: Dockerfile.live.local
+    restart: unless-stopped
+    networks:
+      - dev_env
+    environment:
+      PORT: 3100
+      NODE_ENV: production
+      # O `live` fala com a API pelo PROXY, não direto com o api-ts: ele monta
+      # caminhos SEM o `v1` (`/api/users/me/`, `/api/workspaces/.../pages/...`) e
+      # quem traduz para `/api/v1/...` é o nginx do proxy.
+      # Por isso o `live` NÃO pode entrar no `depends_on` do proxy como
+      # dependência reversa — seria um ciclo. O nginx resolve o nome a cada
+      # requisição (resolver + variável), então a ordem de subida não importa.
+      API_BASE_URL: ${LIVE_API_BASE_URL:-http://proxy}
+      # Precisa casar com o VITE_LIVE_BASE_PATH usado no build do web.
+      LIVE_BASE_PATH: ${LIVE_BASE_PATH:-/live}
+      # Protege só as rotas administrativas do live (pdf-export, convert-document).
+      # Nunca chega ao navegador.
+      LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY:-plane-live-secret}
+      # O CORS aqui vale para as rotas HTTP; o WebSocket não passa por CORS.
+      CORS_ALLOWED_ORIGINS: ${LIVE_CORS_ALLOWED_ORIGINS:-http://localhost,http://10.1.2.12,https://plane.qualitysistemas.inf.br}
+      # Sem Redis cada réplica ficaria com a própria cópia do documento.
+      REDIS_URL: ${LIVE_REDIS_URL:-redis://plane-redis:6379/}
+    depends_on:
+      - plane-redis
+      - api-ts
+    ports:
+      - "3100:3100"
+
   proxy:
     container_name: plane-proxy
     build:
@@ -183,6 +222,7 @@ services:
       - api-ts
       - web
       - chat-backend
+      - live
     ports:
       - "80:80"
 

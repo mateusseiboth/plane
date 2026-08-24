@@ -122,6 +122,52 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
 .detalhe .corpo{margin-top:16px;color:var(--tinta2);font-size:15px;line-height:1.7;overflow-wrap:anywhere}
 .detalhe .corpo p{margin-bottom:10px}
 .rodape{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
+/* A resposta que a equipe escreveu ao concluir o chamado. */
+.resposta{
+  margin-top:20px;border:1.5px solid var(--marca);border-radius:12px;
+  background:var(--marca-clara);padding:16px 18px;
+}
+.resposta .rotulo{font-size:13px;font-weight:700;color:var(--marca);text-transform:uppercase;letter-spacing:.04em}
+.resposta .texto{margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+.resposta .assina{margin-top:10px;font-size:13px;color:var(--tinta2)}
+/* ── Editor de texto ──────────────────────────────────────────────────────── */
+.editor{border:1.5px solid var(--linha);border-radius:10px;background:var(--fundo);overflow:hidden}
+.editor:focus-within{border-color:var(--marca)}
+.editor .barra{
+  display:flex;gap:2px;flex-wrap:wrap;padding:6px;
+  border-bottom:1px solid var(--linha);background:var(--papel);
+}
+.editor .barra button{
+  font:inherit;font-size:14px;line-height:1;min-width:32px;height:32px;padding:0 8px;
+  border:none;border-radius:7px;background:transparent;color:var(--tinta2);cursor:pointer;
+}
+.editor .barra button:hover{background:var(--fundo);color:var(--tinta)}
+.editor .barra .risco{width:1px;margin:4px 5px;background:var(--linha)}
+.editor .area{
+  min-height:170px;max-height:460px;overflow:auto;padding:12px 14px;
+  line-height:1.6;outline:none;overflow-wrap:anywhere;
+}
+.editor .area:empty::before{content:attr(data-vazio);color:var(--tinta3)}
+.editor .area p{margin-bottom:8px}
+.editor .area ul,.editor .area ol{margin:0 0 8px 22px}
+.editor .area a{color:var(--marca)}
+.editor.soltando{border-color:var(--marca);background:var(--marca-clara)}
+/* ── Anexos ───────────────────────────────────────────────────────────────── */
+.dica{font-size:13px;color:var(--tinta3)}
+.anexos{list-style:none;margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.anexo{
+  display:flex;align-items:center;gap:10px;font-size:14px;
+  border:1px solid var(--linha);border-radius:9px;padding:9px 12px;background:var(--papel);
+}
+.anexo .nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anexo .peso{color:var(--tinta3);font-size:13px;white-space:nowrap}
+.anexo .tirar{
+  font:inherit;border:none;background:none;color:var(--tinta3);cursor:pointer;
+  font-size:18px;line-height:1;padding:0 2px;
+}
+.anexo .tirar:hover{color:var(--alerta)}
+.anexo.falhou{border-color:var(--alerta);color:var(--alerta)}
+.anexo button.nome{text-align:left;cursor:pointer;color:var(--marca);text-decoration:underline}
 </style>
 </head>
 <body>
@@ -187,7 +233,26 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
       </div>
       <div class="campo">
         <label for="descricao">O que está acontecendo</label>
-        <textarea id="descricao" placeholder="Descreva com as suas palavras: o que você tentou fazer, o que apareceu na tela e desde quando acontece."></textarea>
+        <div class="editor" id="editor">
+          <div class="barra" role="toolbar" aria-label="Formatação">
+            <button type="button" data-comando="bold" title="Negrito"><strong>N</strong></button>
+            <button type="button" data-comando="italic" title="Itálico"><em>I</em></button>
+            <button type="button" data-comando="underline" title="Sublinhado"><u>S</u></button>
+            <span class="risco"></span>
+            <button type="button" data-comando="insertUnorderedList" title="Lista">•—</button>
+            <button type="button" data-comando="insertOrderedList" title="Lista numerada">1—</button>
+            <span class="risco"></span>
+            <button type="button" id="por-link" title="Inserir link">🔗</button>
+            <button type="button" data-comando="removeFormat" title="Limpar formatação">✕</button>
+            <span class="risco"></span>
+            <button type="button" id="escolher" title="Anexar arquivo">📎 Anexar</button>
+          </div>
+          <div id="descricao" class="area" contenteditable="true" role="textbox" aria-multiline="true"
+               data-vazio="Descreva com as suas palavras: o que você tentou fazer, o que apareceu na tela e desde quando acontece."></div>
+        </div>
+        <input type="file" id="arquivos" multiple class="escondido" />
+        <ul class="anexos" id="anexos-novos"></ul>
+        <span class="dica" id="dica-anexos"></span>
       </div>
       <button class="botao" id="enviar">Enviar solicitação</button>
     </form>
@@ -203,6 +268,15 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
       <h2 style="margin-top:8px" id="d-titulo"></h2>
       <div class="pe" style="margin-top:6px;font-size:13px;color:var(--tinta3)" id="d-pe"></div>
       <div class="corpo" id="d-corpo"></div>
+      <div class="escondido" id="d-anexos-caixa" style="margin-top:18px">
+        <label style="font-size:14px;font-weight:600;color:var(--tinta2)">Anexos</label>
+        <ul class="anexos" id="d-anexos"></ul>
+      </div>
+      <div class="resposta escondido" id="d-resposta">
+        <div class="rotulo">Resposta da equipe</div>
+        <div class="texto" id="d-resposta-texto"></div>
+        <div class="assina" id="d-resposta-assina"></div>
+      </div>
       <div class="rodape">
         <button class="botao vazado" id="d-voltar">Voltar</button>
       </div>
@@ -225,6 +299,38 @@ function esc(t) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
   });
 }
+/**
+ * A peneira do que a página injeta como HTML.
+ *
+ * O texto do chamado passa pela mão de duas pessoas: o cliente, que escreve no
+ * editor daqui, e a equipe, que edita no editor do produto (imagem, menção,
+ * tabela…). Nada disso deve virar marcação viva nesta página, então só a mesma
+ * lista curta de tags sobrevive — as demais viram o texto que carregavam.
+ */
+var TAGS_OK = { P:1, BR:1, STRONG:1, B:1, EM:1, I:1, U:1, S:1, UL:1, OL:1, LI:1, A:1, BLOCKQUOTE:1, CODE:1, PRE:1 };
+var TAGS_FORA = { SCRIPT:1, STYLE:1, SVG:1, MATH:1, IFRAME:1, OBJECT:1, EMBED:1, NOSCRIPT:1, TEMPLATE:1, LINK:1, META:1 };
+
+function limparHtml(bruto) {
+  var doc = new DOMParser().parseFromString(String(bruto || ""), "text/html");
+  var elementos = doc.body.querySelectorAll("*");
+  // De trás para frente: trocar um elemento pelos filhos não invalida a lista.
+  for (var i = elementos.length - 1; i >= 0; i--) {
+    var el = elementos[i];
+    if (TAGS_FORA[el.tagName]) { el.remove(); continue; }
+    if (!TAGS_OK[el.tagName]) { el.replaceWith.apply(el, el.childNodes); continue; }
+    for (var j = el.attributes.length - 1; j >= 0; j--) {
+      var nome = el.attributes[j].name;
+      var eLinkBom = el.tagName === "A" && nome === "href" && /^(https?:|mailto:)/i.test(el.getAttribute("href") || "");
+      if (!eLinkBom) el.removeAttribute(nome);
+    }
+    if (el.tagName === "A" && el.getAttribute("href")) {
+      el.setAttribute("target", "_blank");
+      el.setAttribute("rel", "noopener noreferrer nofollow");
+    }
+  }
+  return doc.body.innerHTML;
+}
+
 function mostrar(tela) {
   ["tela-entrada", "tela-lista", "tela-nova", "tela-detalhe"].forEach(function (id) {
     $(id).classList.toggle("escondido", id !== tela);
@@ -294,7 +400,8 @@ function cartaoDoPedido(p) {
   botao.className = "cartao pedido";
   botao.innerHTML =
     '<span class="cabeca"><span class="codigo">' + esc(p.codigo) + '</span>' +
-    '<span class="chip" data-grupo="' + esc(p.grupo) + '">' + esc(p.situacao) + "</span></span>" +
+    '<span class="chip" data-grupo="' + esc(p.grupo) + '">' + esc(p.situacao) + "</span>" +
+    (p.resposta ? '<span class="chip" data-grupo="completed">✓ Respondida</span>' : "") + "</span>" +
     '<span class="titulo" style="display:block">' + esc(p.titulo) + "</span>" +
     '<span class="pe"><span>' + esc(p.sistema) + "</span><span>Aberta em " + esc(dataCurta(p.aberta_em)) + "</span></span>";
   botao.onclick = function () { verDetalhe(p); };
@@ -327,11 +434,221 @@ function verDetalhe(p) {
   $("d-titulo").textContent = p.titulo;
   $("d-pe").textContent = p.sistema + " · aberta em " + dataCurta(p.aberta_em);
   // A descrição é o texto que o próprio cliente escreveu, guardado como HTML.
-  $("d-corpo").textContent = String(p.descricao_html || "").replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim();
+  // Já veio limpo do servidor; passa pela peneira daqui de novo porque a equipe
+  // também edita esse campo, com um editor que aceita muito mais coisa.
+  $("d-corpo").innerHTML = limparHtml(p.descricao_html);
+  desenharAnexosDoDetalhe(p);
+  // A resposta da equipe só existe depois que o chamado é concluído.
+  var r = p.resposta;
+  $("d-resposta").classList.toggle("escondido", !r);
+  if (r) {
+    $("d-resposta-texto").textContent = r.texto || "";
+    $("d-resposta-assina").textContent =
+      (r.respondida_por || "Equipe") + (r.respondida_em ? " · " + dataCurta(r.respondida_em) : "");
+  }
   mostrar("tela-detalhe");
 }
 
 $("d-voltar").onclick = function () { mostrar("tela-lista"); };
+
+// ── Editor de texto ──────────────────────────────────────────────────────
+// Um contenteditable com barra de botões, e nada além disso. O editor do
+// produto é React + TipTap: traria bundle, build e o peso do app inteiro para
+// uma página pública que o cliente abre duas vezes por mês. Aqui o que importa
+// é negrito, lista, link e anexo — o resto é ruído.
+//
+// O HTML que sai daqui NÃO é confiável: quem limpa é o servidor
+// (modules/portal/texto-rico). Isto é conveniência de digitação, não segurança.
+var editor = $("descricao");
+
+// Enter cria parágrafo em vez de div (o que o resto do sistema guarda).
+try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (e) {}
+
+Array.prototype.forEach.call(document.querySelectorAll(".barra [data-comando]"), function (botao) {
+  botao.onmousedown = function (e) { e.preventDefault(); };
+  botao.onclick = function () {
+    editor.focus();
+    document.execCommand(botao.dataset.comando, false, null);
+  };
+});
+
+$("por-link").onmousedown = function (e) { e.preventDefault(); };
+$("por-link").onclick = function () {
+  editor.focus();
+  var endereco = window.prompt("Endereço do link (começando com https://)", "https://");
+  if (!endereco) return;
+  if (!/^(https?:\\/\\/|mailto:)/i.test(endereco)) {
+    erro("erro-nova", "O link precisa começar com https:// ou mailto:.");
+    return;
+  }
+  document.execCommand("createLink", false, endereco);
+};
+
+// Colar de Word/e-mail traz um monte de marcação inútil; entra só o texto.
+// Imagem no clipboard (print de tela) vira anexo, que é onde a equipe procura.
+editor.addEventListener("paste", function (e) {
+  var dados = e.clipboardData;
+  if (!dados) return;
+  e.preventDefault();
+  if (dados.files && dados.files.length) { adicionarArquivos(dados.files); return; }
+  document.execCommand("insertText", false, dados.getData("text/plain"));
+});
+
+["dragenter", "dragover"].forEach(function (evento) {
+  $("editor").addEventListener(evento, function (e) {
+    e.preventDefault();
+    $("editor").classList.add("soltando");
+  });
+});
+["dragleave", "drop"].forEach(function (evento) {
+  $("editor").addEventListener(evento, function () { $("editor").classList.remove("soltando"); });
+});
+$("editor").addEventListener("drop", function (e) {
+  if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+  e.preventDefault();
+  adicionarArquivos(e.dataTransfer.files);
+});
+
+// ── Anexos ───────────────────────────────────────────────────────────────
+var MAX_ARQUIVOS = 5;
+var TETO_PADRAO = 25 * 1024 * 1024;
+var TETO_VIDEO = 100 * 1024 * 1024;
+var EXTENSOES_OK = "png jpg jpeg gif webp heic heif bmp mp4 m4v mov webm mkv 3gp mp3 ogg oga wav m4a pdf txt log csv docx xlsx".split(" ");
+var EXTENSOES_DE_VIDEO = "mp4 m4v mov webm mkv 3gp".split(" ");
+/** Arquivos escolhidos e ainda não enviados — sobem depois que a solicitação nasce. */
+var pendentes = [];
+
+$("dica-anexos").textContent =
+  "Até " + MAX_ARQUIVOS + " arquivos: imagem, vídeo, áudio, PDF, texto ou planilha. " +
+  "25 MB cada, e até 100 MB para vídeo.";
+
+function extensaoDe(nome) {
+  var partes = String(nome || "").toLowerCase().split(".");
+  return partes.length > 1 ? partes.pop() : "";
+}
+
+function tamanhoLegivel(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1).replace(".", ",") + " MB";
+}
+
+/** A mesma recusa que o servidor faria, só que sem esperar a subida. */
+function recusa(arquivo) {
+  var extensao = extensaoDe(arquivo.name);
+  if (EXTENSOES_OK.indexOf(extensao) < 0) return "“" + arquivo.name + "”: tipo de arquivo não aceito.";
+  var teto = EXTENSOES_DE_VIDEO.indexOf(extensao) >= 0 ? TETO_VIDEO : TETO_PADRAO;
+  if (arquivo.size > teto) return "“" + arquivo.name + "” passa de " + tamanhoLegivel(teto) + ".";
+  if (!arquivo.size) return "“" + arquivo.name + "” está vazio.";
+  return "";
+}
+
+function adicionarArquivos(lista) {
+  var problemas = [];
+  Array.prototype.forEach.call(lista, function (arquivo) {
+    if (pendentes.length >= MAX_ARQUIVOS) {
+      problemas.push("Cada solicitação aceita até " + MAX_ARQUIVOS + " arquivos.");
+      return;
+    }
+    var motivo = recusa(arquivo);
+    if (motivo) { problemas.push(motivo); return; }
+    pendentes.push(arquivo);
+  });
+  erro("erro-nova", problemas.length ? problemas[0] : "");
+  desenharPendentes();
+}
+
+function linhaDeAnexo(nome, tamanho, aoTirar) {
+  var linha = document.createElement("li");
+  linha.className = "anexo";
+  var rotulo = document.createElement("span");
+  rotulo.className = "nome";
+  rotulo.textContent = nome;
+  var peso = document.createElement("span");
+  peso.className = "peso";
+  peso.textContent = tamanhoLegivel(tamanho);
+  linha.appendChild(rotulo);
+  linha.appendChild(peso);
+  if (aoTirar) {
+    var tirar = document.createElement("button");
+    tirar.type = "button";
+    tirar.className = "tirar";
+    tirar.title = "Remover";
+    tirar.textContent = "×";
+    tirar.onclick = aoTirar;
+    linha.appendChild(tirar);
+  }
+  return linha;
+}
+
+function desenharPendentes() {
+  var alvo = $("anexos-novos");
+  alvo.innerHTML = "";
+  pendentes.forEach(function (arquivo, posicao) {
+    alvo.appendChild(
+      linhaDeAnexo(arquivo.name, arquivo.size, function () {
+        pendentes.splice(posicao, 1);
+        desenharPendentes();
+      })
+    );
+  });
+}
+
+$("escolher").onclick = function () { $("arquivos").click(); };
+$("arquivos").onchange = function () {
+  adicionarArquivos($("arquivos").files);
+  $("arquivos").value = "";
+};
+
+/** Sobe um arquivo já com a solicitação criada. Devolve o erro, ou "" se deu certo. */
+async function subirAnexo(solicitacaoId, arquivo) {
+  var formulario = new FormData();
+  formulario.append("arquivo", arquivo, arquivo.name);
+  var res = await fetch(API + "/solicitacoes/" + solicitacaoId + "/anexos", {
+    method: "POST",
+    headers: token ? { Authorization: "Bearer " + token } : {},
+    body: formulario,
+  });
+  if (res.ok) return "";
+  var dados = await res.json().catch(function () { return {}; });
+  return "“" + arquivo.name + "”: " + (dados.detail || "não foi possível anexar.");
+}
+
+/**
+ * Baixa o anexo do próprio cliente.
+ * Vai por fetch, e não por link: o crachá do portal viaja no cabeçalho, e
+ * cabeçalho não cabe num href.
+ */
+async function baixarAnexo(solicitacaoId, anexo) {
+  var res = await fetch(API + "/solicitacoes/" + solicitacaoId + "/anexos/" + anexo.id, {
+    headers: token ? { Authorization: "Bearer " + token } : {},
+  });
+  // O detalhe não tem caixa de aviso própria; um alerta basta para um caso raro.
+  if (!res.ok) { window.alert("Não foi possível baixar o anexo."); return; }
+  var endereco = URL.createObjectURL(await res.blob());
+  var link = document.createElement("a");
+  link.href = endereco;
+  link.download = anexo.nome || "anexo";
+  link.click();
+  setTimeout(function () { URL.revokeObjectURL(endereco); }, 30000);
+}
+
+function desenharAnexosDoDetalhe(p) {
+  var anexos = p.anexos || [];
+  $("d-anexos-caixa").classList.toggle("escondido", !anexos.length);
+  var alvo = $("d-anexos");
+  alvo.innerHTML = "";
+  anexos.forEach(function (anexo) {
+    var linha = linhaDeAnexo(anexo.nome, anexo.tamanho, null);
+    var rotulo = document.createElement("button");
+    rotulo.type = "button";
+    rotulo.className = "nome";
+    rotulo.textContent = anexo.nome;
+    rotulo.onclick = function () { baixarAnexo(p.id, anexo); };
+    linha.replaceChild(rotulo, linha.firstChild);
+    alvo.appendChild(linha);
+  });
+}
 
 // ── Nova ─────────────────────────────────────────────────────────────────
 async function carregarSistemas() {
@@ -357,21 +674,34 @@ $("form-nova").onsubmit = async function (e) {
   erro("erro-nova", "");
   $("enviar").disabled = true;
   try {
-    await api("/solicitacoes", {
+    var criada = await api("/solicitacoes", {
       method: "POST",
       body: {
         sistema_id: $("sistema").value,
         titulo: $("titulo").value.trim(),
-        descricao_html: $("descricao").value.trim(),
+        descricao_html: editor.innerHTML,
       },
     });
+    // O anexo só sobe depois: ele pertence a uma solicitação que já existe, e
+    // é isso que permite conferir dono antes de gravar arquivo nenhum.
+    var falhas = [];
+    for (var i = 0; i < pendentes.length; i++) {
+      $("enviar").textContent = "Enviando anexo " + (i + 1) + " de " + pendentes.length + "…";
+      var falha = await subirAnexo(criada.id, pendentes[i]);
+      if (falha) falhas.push(falha);
+    }
     $("titulo").value = "";
-    $("descricao").value = "";
+    editor.innerHTML = "";
+    pendentes = [];
+    desenharPendentes();
     mostrar("tela-lista");
     await carregarPedidos();
+    // A solicitação foi aberta de qualquer jeito; o que faltou foi o arquivo.
+    if (falhas.length) window.alert("Solicitação aberta, mas um anexo não subiu:\\n" + falhas.join("\\n"));
   } catch (e2) {
     erro("erro-nova", e2.message);
   } finally {
+    $("enviar").textContent = "Enviar solicitação";
     $("enviar").disabled = false;
   }
 };

@@ -35,6 +35,36 @@ function assetFileName(asset: { asset: string; id: string; attributes: unknown }
 }
 
 /**
+ * O anexo do chamado como o painel do produto o consome.
+ *
+ * `asset_url` é o que faz o clique abrir o arquivo, e ele depende da convenção
+ * com que o anexo foi gravado: os uploads da API v2 e do portal usam o id do
+ * `file_assets` como chave no storage (um UUID), enquanto os registros vindos
+ * do SAC guardam o caminho antigo. As duas formas convivem, então a URL sai de
+ * qual delas está ali.
+ */
+function serializeIssueAttachment(a: any, slug: string, projectId: string, workspaceId: string) {
+  const asset: string = a.asset ?? "";
+  const assetUrl = UUID_RE.test(asset)
+    ? `/api/assets/v2/workspaces/${slug}/projects/${projectId}/${asset}/`
+    : `/media/${asset}`;
+  return {
+    id: a.id,
+    asset,
+    asset_url: assetUrl,
+    attributes: a.attributes ?? {},
+    issue: a.issueId,
+    issue_id: a.issueId,
+    workspace: workspaceId,
+    project: projectId,
+    created_by: a.createdById ?? null,
+    updated_by: a.updatedById ?? null,
+    created_at: a.createdAt?.toISOString(),
+    updated_at: a.updatedAt?.toISOString(),
+  };
+}
+
+/**
  * Converte a resposta do storage em download ("salvar como") em vez de
  * visualização inline. Reaproveita o corpo e os headers que `serveAsset` já
  * montou (Content-Type e cache) e só acrescenta o Content-Disposition.
@@ -479,20 +509,20 @@ export const assetV2Module = new Elysia({ prefix: "/assets/v2/workspaces/:slug" 
     return {updated: ids.length};
   })
 
-  .get("/projects/:project_id/issues/:issue_id/attachments/", async ({params: {slug, project_id, issue_id}, user, query}) => {
+  // Lista CRUA, sem envelope de paginação: é o contrato que o painel do chamado
+  // consome (`TIssueAttachment[]` em issue_attachment.service.ts). Envelopada, a
+  // lista chegava como objeto no `addAttachments` do store e o painel ficava
+  // vazio mesmo com anexo no banco. A rota /api/v1 equivalente segue paginada —
+  // é ela que o app móvel usa.
+  .get("/projects/:project_id/issues/:issue_id/attachments/", async ({params: {slug, project_id, issue_id}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
-    const where = {issueId: issue_id, deletedAt: null};
-    return paginate({
-      query: (skip, take) => prisma.issueAttachment.findMany({where, skip, take, orderBy: {createdAt: "desc"}}),
-      count: () => prisma.issueAttachment.count({where}),
-      cursor: (query as any).cursor as string | undefined,
-      transform: (items) => items.map((a: any) => ({
-        id: a.id, issue: issue_id, workspace: ws.id, project: project_id,
-        asset: a.asset, attributes: a.attributes ?? {},
-        created_at: a.createdAt?.toISOString(), updated_at: a.updatedAt?.toISOString(),
-      })),
+    const anexos = await prisma.issueAttachment.findMany({
+      where: {issueId: issue_id, deletedAt: null},
+      orderBy: {createdAt: "desc"},
+      take: 200,
     });
+    return anexos.map((a) => serializeIssueAttachment(a, slug, project_id, ws.id));
   })
 
   .post("/projects/:project_id/issues/:issue_id/attachments/", async ({params: {slug, project_id, issue_id}, body, user, set}) => {

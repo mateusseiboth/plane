@@ -14,8 +14,19 @@ import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
+import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
+import { publishRealtime } from "@utils/realtime";
 import { checkRateLimit } from "@utils/rate-limiter";
 import { getWorkspaceOrFail, requireWorkspaceAdmin } from "@utils/workspace";
+import {
+  conferirArquivo,
+  contarAnexos,
+  guardarAnexo,
+  LIMITES_DE_ANEXO,
+  primeirosBytes,
+  servirAnexoDoCliente,
+  TETO_DO_CORPO,
+} from "@modules/portal/anexos";
 import {
   autenticar,
   contaAtiva,
@@ -27,7 +38,20 @@ import {
   type ContaDoPortal,
 } from "@modules/portal/conta";
 import { paginaDoPortal } from "@modules/portal/pagina";
-import { abrirSolicitacao, solicitacaoDaConta, solicitacoesDaConta } from "@modules/portal/solicitacoes";
+import {
+  dispensarResposta,
+  estaConcluido,
+  jaResolvido,
+  pedidoAResponder,
+  registrarResposta,
+  respostasPendentes,
+} from "@modules/portal/resposta";
+import {
+  abrirSolicitacao,
+  chamadoDaConta,
+  solicitacaoDaConta,
+  solicitacoesDaConta,
+} from "@modules/portal/solicitacoes";
 import { assinarTokenDoPortal, lerTokenDoPortal } from "@modules/portal/token";
 
 /** Mesma frase para e-mail inexistente e senha errada: a tela não entrega quem existe. */
@@ -58,6 +82,22 @@ const naoAutenticado = (set: any) => {
 };
 
 export const portalModule = new Elysia({ prefix: "/portal" })
+  /**
+   * Corta o upload gigante ANTES de a API ler o corpo.
+   *
+   * Sem isto o servidor bufferiza os 500 MB inteiros só para depois descobrir
+   * que não cabiam — e num endereço público isso é o ataque mais barato que
+   * existe. O teto aqui é o do maior arquivo aceito mais a folga do multipart;
+   * quem decide de verdade, por tipo de arquivo, é `conferirArquivo`.
+   */
+  .onRequest(({ request, set }) => {
+    if (!request.url.includes("/anexos")) return;
+    const tamanho = Number(request.headers.get("content-length") ?? 0);
+    if (!Number.isFinite(tamanho) || tamanho <= TETO_DO_CORPO) return;
+    set.status = 413;
+    return { detail: "O arquivo passa do limite aceito pelo portal." };
+  })
+
   // ── A página ────────────────────────────────────────────────────────────────
   .get("/", ({ set }) => {
     set.headers["content-type"] = "text/html; charset=utf-8";
@@ -156,6 +196,102 @@ export const portalModule = new Elysia({ prefix: "/portal" })
     }
     set.status = 201;
     return abrirSolicitacao(conta, sistema, b, headers as any);
+  })
+
+  // ── Anexar arquivo à solicitação ──────────────────────────────────────────
+  // Upload de gente de fora: tudo que dá para recusar é recusado antes de o
+  // arquivo virar registro. Ver `modules/portal/anexos` para os tetos e a
+  // lista de tipos.
+  .post("/api/solicitacoes/:id/anexos", async ({ params: { id }, body, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+
+    if (!checkRateLimit(`portal-anexo:${conta.id}`, LIMITES_DE_ANEXO.envios.max, LIMITES_DE_ANEXO.envios.janelaMs)) {
+      set.status = 429;
+      return { detail: "Muitos envios seguidos. Aguarde alguns minutos e tente de novo." };
+    }
+
+    const chamado = await chamadoDaConta(conta, id);
+    if (!chamado) {
+      set.status = 404;
+      return { detail: "Solicitação não encontrada." };
+    }
+
+    const arquivo = (body as any)?.arquivo as Blob | undefined;
+    if (!arquivo || typeof arquivo.arrayBuffer !== "function") {
+      set.status = 400;
+      return { detail: "Escolha um arquivo para anexar." };
+    }
+
+    if ((await contarAnexos(chamado.issueId)) >= LIMITES_DE_ANEXO.porSolicitacao) {
+      set.status = 400;
+      return { detail: `Cada solicitação aceita até ${LIMITES_DE_ANEXO.porSolicitacao} arquivos.` };
+    }
+
+    const conferencia = conferirArquivo({
+      nome: (arquivo as File).name ?? "arquivo",
+      tipoInformado: arquivo.type ?? "",
+      tamanho: arquivo.size,
+      inicio: await primeirosBytes(arquivo),
+    });
+    if (!conferencia.aceito) {
+      set.status = conferencia.situacao;
+      return { detail: conferencia.detalhe };
+    }
+
+    // Falha de storage não é culpa de quem está do outro lado: a mensagem diz o
+    // que fazer, e o motivo técnico fica no log do servidor.
+    const anexo = await guardarAnexo({
+      ...chamado,
+      arquivo,
+      nome: conferencia.nome,
+      tipo: conferencia.tipo,
+      tamanho: arquivo.size,
+    }).catch((erro) => {
+      console.error("[portal] falha ao guardar anexo:", erro);
+      return null;
+    });
+    if (!anexo) {
+      set.status = 502;
+      return { detail: "Não foi possível guardar o arquivo agora. Tente de novo em instantes." };
+    }
+
+    // A equipe pode estar com o chamado aberto: o anexo chega sem F5.
+    publishRealtime(chamado.workspaceId, {
+      entity: "issue",
+      action: "update",
+      project_id: chamado.projectId,
+      id: chamado.issueId,
+    });
+    recordAudit({
+      workspaceId: chamado.workspaceId,
+      entity: AUDIT_ENTITIES.ATTACHMENT,
+      entityId: anexo.id,
+      action: AUDIT_ACTIONS.CREATE,
+      actor: { id: conta.id, email: conta.email },
+      headers: headers as any,
+      metadata: { origem: "portal", issue_id: chamado.issueId, nome: anexo.nome, tipo: anexo.tipo },
+    });
+
+    set.status = 201;
+    return anexo;
+  })
+
+  // ── Baixar o anexo que o próprio cliente enviou ───────────────────────────
+  .get("/api/solicitacoes/:id/anexos/:anexoId", async ({ params: { id, anexoId }, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+    const chamado = await chamadoDaConta(conta, id);
+    if (!chamado) {
+      set.status = 404;
+      return { detail: "Solicitação não encontrada." };
+    }
+    const arquivo = await servirAnexoDoCliente(chamado.issueId, anexoId);
+    if (!arquivo) {
+      set.status = 404;
+      return { detail: "Anexo não encontrado." };
+    }
+    return arquivo;
   });
 
 // ── Administração das contas (crachá do Plane, só administrador) ─────────────
@@ -306,4 +442,60 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
     });
     set.status = 204;
     return null;
+  });
+
+// ── Resposta ao cliente (crachá do Plane, quem trabalha no chamado) ──────────
+//
+// A resposta é OPCIONAL, e de propósito. Recusar a conclusão sem resposta
+// significaria o cartão voltar sozinho para a coluna anterior no quadro,
+// derrubar conclusão em massa e travar automação — para punir a equipe por algo
+// que já aconteceu. Aqui a conclusão sempre passa, e o pedido de resposta vem
+// logo atrás: quem não vai responder tem de dizer isso em um clique, e o
+// "dispensada" fica gravado com nome e hora. Enquanto ninguém fizer nem uma
+// coisa nem outra, o chamado continua na fila de pendências (ver
+// `respostasPendentes`) — a cobrança substitui o bloqueio.
+
+export const portalRespostaModule = new Elysia({ prefix: "/workspaces/:slug/portal-answers" })
+  .use(authPlugin)
+
+  // O que este usuário precisa responder ao cliente.
+  .get("/pending/", async ({ params: { slug }, user }: any) => {
+    const ws = await getWorkspaceOrFail(slug);
+    return { results: await respostasPendentes(ws.id, user.id) };
+  })
+
+  // Responder (ou dispensar a resposta) de um chamado nascido no portal.
+  .post("/:issue_id/", async ({ params: { slug, issue_id }, body, user, set, headers }: any) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const pedido = await pedidoAResponder(ws.id, issue_id);
+    // Chamado que não veio do portal não tem a quem responder.
+    if (!pedido) {
+      set.status = 404;
+      return { detail: "Este chamado não veio do portal do cliente." };
+    }
+    await requireProjectAction(ws.id, pedido.issue.projectId, user.id, EProjectAction.COMMENT_CREATE);
+
+    if (!estaConcluido(pedido)) {
+      set.status = 400;
+      return { detail: "Responda ao cliente quando o chamado estiver concluído." };
+    }
+    if (await jaResolvido(issue_id)) {
+      set.status = 409;
+      return { detail: "Este chamado já foi respondido." };
+    }
+
+    const b = (body ?? {}) as any;
+    const ctx = { pedido, autor: user, headers };
+    if (b.pular) {
+      set.status = 201;
+      return dispensarResposta({ ...ctx, motivo: b.motivo });
+    }
+
+    const texto = String(b.resposta ?? "").trim();
+    if (!texto) {
+      set.status = 400;
+      return { detail: "Escreva a resposta ao cliente ou marque que vai concluir sem responder." };
+    }
+    set.status = 201;
+    return { resposta: await registrarResposta({ ...ctx, texto }) };
   });

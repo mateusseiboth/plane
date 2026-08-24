@@ -952,6 +952,11 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     // Exactly the selected tab's status (closed chats live only under "Encerrados").
     const base = sessions.filter((s) => s.status === listFilter);
     if (!search.trim()) return base;
+    // Na aba de encerrados quem procura é o servidor: `refreshSessions` manda o
+    // termo justamente para furar o recorte do dia corrente. Filtrar de novo aqui
+    // só teria como esconder o que ele achou — e o que o servidor devolveu tem de
+    // aparecer.
+    if (listFilter === "closed") return base;
     const q = search.trim().toLowerCase();
     return base.filter(
       (s) =>

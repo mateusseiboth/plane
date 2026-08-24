@@ -154,6 +154,44 @@ describe("Portal do cliente", () => {
     expect(dela.results.length).toBe(0);
   });
 
+  /**
+   * O portal é rota pública: o que chega no corpo e na URL vem do navegador de
+   * quem quiser. Id que não é UUID chegava cru no Prisma e virava 500 com stack
+   * do driver no log — vazando o formato do banco e transformando erro de
+   * digitação em erro do servidor. A resposta certa é a mesma de um id que não
+   * existe, para não diferenciar "malformado" de "não é seu".
+   */
+  describe("id malformado não vira erro do servidor", () => {
+    it("sistema_id que não é UUID é recusado como sistema indisponível", async () => {
+      const res = await portalClient(token).post("/solicitacoes", {
+        titulo: "Chute no identificador",
+        sistema_id: "ALMOXA",
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it("solicitação sem sistema_id nenhum também", async () => {
+      const res = await portalClient(token).post("/solicitacoes", { titulo: "Sem sistema" });
+      expect(res.status).toBe(403);
+    });
+
+    it("anexar em solicitação de id malformado responde 404, não 500", async () => {
+      const corpo = new FormData();
+      corpo.append("arquivo", new Blob(["oi"], { type: "text/plain" }), "nota.txt");
+      const res = await fetch(`${TEST_API_BASE_URL}/portal/api/solicitacoes/nao-e-uuid/anexos`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: corpo,
+      });
+      expect(res.status).toBe(404);
+    });
+
+    it("ler solicitação de id malformado responde 404, não 500", async () => {
+      const res = await portalClient(token).get("/solicitacoes/nao-e-uuid");
+      expect(res.status).toBe(404);
+    });
+  });
+
   it("conta desativada deixa de entrar na hora", async () => {
     await admin.patch(`/workspaces/${wsSlug}/portal-accounts/${contaId}`, { is_active: false });
     const res = await portalClient(token).get("/solicitacoes");

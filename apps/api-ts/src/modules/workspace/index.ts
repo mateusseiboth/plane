@@ -1,21 +1,13 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {serializarCiclos} from "@modules/cycle";
-import {Prisma} from "@prisma/client";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
 import {resolverOrdenacao} from "@utils/issue-order";
 import {paginate} from "@utils/pagination";
 import {sincronizarFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
-import {
-  COMMENT_FTS_DOC_C,
-  ensureSearchIndexes,
-  grafiaCanonicaDoNumeroLegado,
-  ISSUE_FTS_DOC_I,
-  ISSUE_TITLE_DOC_I,
-  PT_FTS_CONFIG,
-} from "@utils/search";
+import {buscarChamados, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
 import {dataLocal} from "@utils/prazo";
 import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
@@ -658,7 +650,12 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return visit;
   })
 
-  // ── Legacy PowerK search (backward compat) ──────────────────────────────
+  // ── Busca da paleta ⌘K ───────────────────────────────────────────────────
+  //
+  // Mesma busca de `/global-search/` (ver `buscarChamados`), só que agrupada no
+  // formato antigo que a paleta consome. Esta rota tinha uma busca própria, curta
+  // — título e número legado, nada mais —, e por isso "ALMOXA-954" não achava o
+  // chamado que a outra rota devolvia em primeiro lugar.
 
   .get("/:slug/search/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
@@ -667,30 +664,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // assim que a pessoa copia e cola. A coluna guarda o valor puro.
     const q = (((query as any).search ?? (query as any).query ?? "") as string).trim().replace(/^#/, "");
     if (!q) return {results: {issue: [], project: [], page: [], cycle: [], module: [], workspace: [], issue_view: []}};
-    // "500/2026" e "5002026" procuram o mesmo chamado que "500-2026".
-    const grafiaCanonica = grafiaCanonicaDoNumeroLegado(q);
-    const numerosLegados = grafiaCanonica ? [q, grafiaCanonica] : [q];
-    const [issues, projects] = await Promise.all([
-      prisma.issue.findMany({
-        where: {
-          workspaceId: ws.id,
-          deletedAt: null,
-          OR: [
-            {name: {contains: q, mode: "insensitive"}},
-            ...numerosLegados.map((n) => ({legacyTicketNumber: {contains: n}})),
-          ],
-        },
-        select: {
-          id: true,
-          name: true,
-          sequenceId: true,
-          priority: true,
-          legacyTicketNumber: true,
-          project: {select: {id: true, identifier: true}},
-          state: {select: {group: true}},
-        },
-        take: 10,
-      }),
+    const [chamados, projects] = await Promise.all([
+      buscarChamados(ws.id, q, 10),
       prisma.project.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
         select: {id: true, name: true, identifier: true},
@@ -699,15 +674,15 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     ]);
     return {
       results: {
-        issue: issues.map((i: any) => ({
-          id: i.id,
-          name: i.name,
-          sequence_id: i.sequenceId,
-          project_id: i.project?.id,
-          project__identifier: i.project?.identifier,
+        issue: chamados.map((c) => ({
+          id: c.id,
+          name: c.name,
+          sequence_id: c.sequence_id,
+          project_id: c.project_id,
+          project__identifier: c.project_identifier,
           workspace__slug: ws.slug,
-          legacy_ticket_number: i.legacyTicketNumber ?? null,
-          is_intake: i.state?.group === "triage",
+          legacy_ticket_number: c.legacy_ticket_number,
+          is_intake: c.state_group === "triage",
           type_id: null,
         })),
         project: projects.map((p: any) => ({id: p.id, name: p.name, identifier: p.identifier, workspace__slug: ws.slug})),
@@ -735,118 +710,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // Hard cap so "show everything" stays bounded; the client controls the page size.
     const limit = Math.min(Math.max(Number(query.limit) || 100, 1), 250);
 
-    // "SIARTW-32" / "siartw 32" → project identifier + sequence number.
-    const identifierMatch = q.match(/^([A-Za-z][A-Za-z0-9]*)[-\s](\d{1,10})$/);
-    const identifierBranch = identifierMatch
-      ? Prisma.sql`
-        UNION
-        SELECT i.id FROM issues i
-          JOIN projects p ON p.id = i.project_id
-         WHERE i.deleted_at IS NULL AND i.is_draft = false
-           AND upper(p.identifier) = upper(${identifierMatch[1]})
-           AND i.sequence_id = ${Number(identifierMatch[2])}`
-      : Prisma.empty;
-    const identifierBoost = identifierMatch
-      ? Prisma.sql`+ (CASE WHEN upper(p.identifier) = upper(${identifierMatch[1]}) AND i.sequence_id = ${Number(identifierMatch[2])} THEN 100 ELSE 0 END)`
-      : Prisma.empty;
-
-    // "500/2026", "500 2026" e "5002026" procuram o "500-2026" que está gravado.
-    const grafiaCanonica = grafiaCanonicaDoNumeroLegado(q);
-    const varianteLegadaBranch = grafiaCanonica
-      ? Prisma.sql`
-        UNION
-        SELECT i.id FROM issues i
-         WHERE i.deleted_at IS NULL AND i.is_draft = false
-           AND i.legacy_ticket_number ILIKE '%' || ${grafiaCanonica} || '%'`
-      : Prisma.empty;
-    const varianteLegadaBoost = grafiaCanonica
-      ? Prisma.sql`+ (CASE WHEN i.legacy_ticket_number = ${grafiaCanonica} THEN 100 ELSE 0 END)`
-      : Prisma.empty;
-
-    // ── Chamados + solicitações: full-text e trigrama nativos do Postgres ─────
-    //
-    // A busca é escrita como UNIÃO de buscas independentes, uma por índice, e
-    // NÃO como um `OR` gigante. O motivo é o plano de execução: um `OR` que
-    // mistura colunas diferentes e um `EXISTS` em comentários não é conversível
-    // em varredura por índice, então o Postgres varria as 51 mil linhas de
-    // `issues` calculando `to_tsvector` em cada uma — 13 s a 23 s por busca. Com
-    // a união, cada braço entra pelo seu GIN (idx_issues_fts,
-    // idx_issues_name_trgm, idx_issues_legacy_trgm, idx_comments_fts) e o mesmo
-    // resultado sai em dezenas de milissegundos.
-    //
-    // Braços:
-    //  - título + descrição + número legado, com radical e sem acento (FTS)
-    //  - título com tolerância a erro de digitação (trigrama)
-    //  - número do chamado legado, como a pessoa digita ("500-2026")
-    //  - corpo dos comentários (FTS)
-    //  - identificador "SIARTW-32", quando o termo tem essa cara
-    //
-    // O trigrama de comentário (`comment_stripped % q`) foi retirado de
-    // propósito: medido em produção, custava de 3 s a 8 s e não trazia
-    // praticamente nada — similaridade de um termo curto contra um comentário
-    // longo quase nunca passa do limiar.
-    type IssueRow = {
-      id: string;
-      name: string;
-      sequence_id: number;
-      priority: string;
-      legacy_ticket_number: string | null;
-      state_group: string | null;
-      state_name: string | null;
-      project_id: string | null;
-      project_identifier: string | null;
-      project_name: string | null;
-    };
-
-    const ftsDoc = Prisma.raw(ISSUE_FTS_DOC_I);
-    const titleDoc = Prisma.raw(ISSUE_TITLE_DOC_I);
-    const commentDoc = Prisma.raw(COMMENT_FTS_DOC_C);
-    const cfg = Prisma.raw(`'${PT_FTS_CONFIG}'`);
-
-    const issueRowsP = prisma.$queryRaw<IssueRow[]>(Prisma.sql`
-      WITH achados AS (
-        SELECT i.id FROM issues i
-         WHERE i.deleted_at IS NULL AND i.is_draft = false
-           AND ${ftsDoc} @@ websearch_to_tsquery(${cfg}, ${q})
-        UNION
-        SELECT i.id FROM issues i
-         WHERE i.deleted_at IS NULL AND i.is_draft = false
-           AND (i.name % ${q} OR i.name ILIKE '%' || ${q} || '%')
-        UNION
-        SELECT i.id FROM issues i
-         WHERE i.deleted_at IS NULL AND i.is_draft = false
-           AND i.legacy_ticket_number ILIKE '%' || ${q} || '%'
-        UNION
-        SELECT c.issue_id FROM issue_comments c
-         WHERE c.deleted_at IS NULL
-           AND ${commentDoc} @@ websearch_to_tsquery(${cfg}, ${q})
-        ${varianteLegadaBranch}
-        ${identifierBranch}
-      )
-      SELECT i.id, i.name, i.sequence_id, i.priority, i.legacy_ticket_number,
-             s."group" AS state_group, s.name AS state_name,
-             p.id AS project_id, p.identifier AS project_identifier, p.name AS project_name
-      FROM issues i
-      JOIN achados a ON a.id = i.id
-      LEFT JOIN states s ON s.id = i.state_id
-      LEFT JOIN projects p ON p.id = i.project_id
-      WHERE i.workspace_id = ${ws.id}::uuid
-        AND i.deleted_at IS NULL
-        AND i.is_draft = false
-      ORDER BY (
-        (CASE WHEN i.legacy_ticket_number = ${q} THEN 100 ELSE 0 END)
-        + ts_rank(${titleDoc}, websearch_to_tsquery(${cfg}, ${q})) * 4
-        + similarity(i.name, ${q}) * 2
-        + (CASE WHEN i.name ILIKE '%' || ${q} || '%' THEN 1 ELSE 0 END)
-        + similarity(coalesce(i.legacy_ticket_number,''), ${q})
-        ${varianteLegadaBoost}
-        ${identifierBoost}
-      ) DESC, i.updated_at DESC
-      LIMIT ${limit}
-    `);
-
     const [issueRows, projects, pages, cycles, modules] = await Promise.all([
-      issueRowsP,
+      buscarChamados(ws.id, q, limit),
       prisma.project.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
         select: {id: true, name: true, identifier: true},
@@ -869,7 +734,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       }),
     ]);
 
-    const toProject = (r: IssueRow) => (r.project_id ? {id: r.project_id, identifier: r.project_identifier, name: r.project_name} : null);
+    const toProject = (r: ChamadoEncontrado) => (r.project_id ? {id: r.project_id, identifier: r.project_identifier, name: r.project_name} : null);
 
     const intakes = issueRows.filter((r) => r.state_group === "triage");
     const workItems = issueRows.filter((r) => r.state_group !== "triage");

@@ -55,6 +55,14 @@ export const PowerKModalSearchResults = observer(function PowerKModalSearchResul
                 value = `${value}-${item.sequence_id}`;
               }
 
+              // A chave que a pessoa copia da tela é composta ("ALMOXA-954"), e é
+              // ela que vai para a caixa de busca. Fica explícita no `value` para
+              // que o filtro do cmdk concorde com o servidor em vez de só ser
+              // contornado pelo `forceMount`.
+              if ("project__identifier" in item && "sequence_id" in item) {
+                value = `${value}-${item.project__identifier}-${item.sequence_id}`;
+              }
+
               if ("legacy_ticket_number" in item && item.legacy_ticket_number) {
                 value = `${value}-${item.legacy_ticket_number}`;
               }

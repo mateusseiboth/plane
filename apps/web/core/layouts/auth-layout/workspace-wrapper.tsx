@@ -42,6 +42,8 @@ import {useUser, useUserPermissions} from "@/hooks/store/user";
 import {usePlatformOS} from "@/hooks/use-platform-os";
 import {useRealtimeChannel} from "@/hooks/use-realtime";
 import {useAvisoDeChamado} from "@/hooks/use-aviso-de-chamado";
+// components
+import {RespostaAoClienteModal} from "@/components/portal/resposta-ao-cliente-modal";
 
 interface IWorkspaceAuthWrapper {
   children: ReactNode;
@@ -250,5 +252,13 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
     );
   }
 
-  return <>{children}</>;
+  // A janela que pede a resposta ao cliente mora aqui, e não numa tela: o
+  // chamado do portal pode ser concluído no quadro, no detalhe, no peek, na
+  // planilha ou na triagem, e a cobrança precisa aparecer venha de onde vier.
+  return (
+    <>
+      {children}
+      <RespostaAoClienteModal />
+    </>
+  );
 });

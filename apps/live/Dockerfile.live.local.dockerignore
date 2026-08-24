@@ -1,4 +1,8 @@
+# O node_modules da RAIZ do contexto é a teia de symlinks do pnpm; quem vai
+# para a imagem é o .deploy/node_modules, materializado por `pnpm deploy`.
 node_modules/
 .turbo/
 *.log
 .env*
+src/
+tests/

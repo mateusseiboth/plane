@@ -19,14 +19,16 @@ import { notifyQualityOfIntake } from "@utils/notifications";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
 import type { ContaDoPortal } from "@modules/portal/conta";
+import { ehUuid } from "@modules/portal/conta";
+import { anexoDoChamado } from "@modules/portal/anexos";
+import { RESPOSTA_INCLUDE, serializarResposta } from "@modules/portal/resposta";
 import { situacaoDaSolicitacao } from "@modules/portal/situacao";
+import { limparTextoDoCliente, textoSemMarcacao } from "@modules/portal/texto-rico";
 
 /** De onde veio, para a equipe distinguir da abertura feita pelo time. */
 const ORIGEM = "portal";
 
-const LIMITE = { titulo: 250, descricao: 20000 } as const;
-
-const HTML = /<[^>]+>/g;
+const LIMITE = { titulo: 250 } as const;
 
 const SOLICITACAO_INCLUDE = {
   issue: {
@@ -34,6 +36,14 @@ const SOLICITACAO_INCLUDE = {
       state: { select: { name: true, group: true, color: true, isTriage: true } },
       project: { select: { name: true, identifier: true } },
       intakeIssues: { where: { deletedAt: null }, select: { status: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      // A resposta que a equipe escreveu ao concluir. Ver @modules/portal/resposta.
+      comments: RESPOSTA_INCLUDE,
+      // Os arquivos que o cliente anexou. Ver @modules/portal/anexos.
+      attachments: {
+        where: { deletedAt: null },
+        select: { id: true, attributes: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   },
 } as const;
@@ -57,6 +67,8 @@ function serializar(pedido: any) {
     descricao_html: chamado.descriptionHtml ?? "<p></p>",
     situacao: situacao.rotulo,
     grupo: situacao.grupo,
+    resposta: serializarResposta(chamado.comments),
+    anexos: (chamado.attachments ?? []).map(anexoDoChamado),
     aberta_em: chamado.createdAt?.toISOString() ?? null,
     atualizada_em: chamado.updatedAt?.toISOString() ?? null,
   };
@@ -77,7 +89,8 @@ export async function abrirSolicitacao(
   headers?: Record<string, string | undefined>
 ) {
   const titulo = texto(dados.titulo, LIMITE.titulo);
-  const descricaoHtml = texto(dados.descricao_html, LIMITE.descricao);
+  // O texto vem de um editor no navegador do CLIENTE: só entra depois de limpo.
+  const descricaoHtml = limparTextoDoCliente(dados.descricao_html);
   const triagem = await findTriageState(sistema.id);
 
   const pedido = await prisma.$transaction(async (tx) => {
@@ -88,8 +101,8 @@ export async function abrirSolicitacao(
         sequenceId: await nextSequenceId(tx, sistema.id),
         name: titulo,
         stateId: triagem?.id ?? null,
-        descriptionHtml: descricaoHtml || "<p></p>",
-        descriptionStripped: descricaoHtml.replace(HTML, ""),
+        descriptionHtml: descricaoHtml,
+        descriptionStripped: textoSemMarcacao(descricaoHtml),
         // Ninguém do time abriu isto: quem abriu está em `portal_requests`.
         createdById: null,
         entityId: conta.entityId,
@@ -150,8 +163,29 @@ export async function solicitacoesDaConta(conta: ContaDoPortal) {
   return pedidos.map(serializar);
 }
 
+/**
+ * O chamado por trás da solicitação, quando ela é mesmo daquela conta.
+ *
+ * É a checagem de dono usada por quem precisa gravar alguma coisa no chamado
+ * (anexo, por exemplo) e não do texto que o cliente lê. `null` também aqui
+ * quando não é dela: dizer "403" seria confirmar que a solicitação existe.
+ */
+export async function chamadoDaConta(
+  conta: ContaDoPortal,
+  issueId: string
+): Promise<{ issueId: string; projectId: string; workspaceId: string } | null> {
+  if (!ehUuid(issueId)) return null;
+  const pedido = await prisma.portalRequest.findFirst({
+    where: { accountId: conta.id, issueId, issue: { deletedAt: null } },
+    select: { issue: { select: { id: true, projectId: true, workspaceId: true } } },
+  });
+  if (!pedido?.issue) return null;
+  return { issueId: pedido.issue.id, projectId: pedido.issue.projectId, workspaceId: pedido.issue.workspaceId };
+}
+
 /** Uma solicitação da conta. `null` quando não é dela — e não 403, que confirmaria a existência. */
 export async function solicitacaoDaConta(conta: ContaDoPortal, issueId: string) {
+  if (!ehUuid(issueId)) return null;
   const pedido = await prisma.portalRequest.findFirst({
     where: { accountId: conta.id, issueId, issue: { deletedAt: null } },
     include: SOLICITACAO_INCLUDE,
