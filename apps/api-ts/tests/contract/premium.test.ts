@@ -196,3 +196,77 @@ describe("TestIssueViewAPIEndpoints", () => {
     expect(data.results).toBeInstanceOf(Array);
   });
 });
+
+describe("TestTimeLogAPIEndpoints", () => {
+  let client: ReturnType<typeof apiClient>;
+  let wsSlug: string;
+  let projectId: string;
+  let issueId: string;
+
+  beforeAll(async () => {
+    await cleanDb();
+    const user = await createUser();
+    const token = await createApiToken(user.id);
+    const ws = await createWorkspace(user.id);
+    wsSlug = ws.slug;
+    const project = await createProject(ws.id, user.id);
+    projectId = project.id;
+    const issue = await createIssue(project.id, ws.id, { createdById: user.id });
+    issueId = issue.id;
+    client = apiClient(token.token);
+  });
+
+  afterAll(() => cleanDb());
+
+  const url = () => `/workspaces/${wsSlug}/projects/${projectId}/issues/${issueId}/time-logs/`;
+
+  it("cria o log já no snake_case que a tela lê", async () => {
+    const res = await client.post(url(), { duration_minutes: 90, logged_date: "2026-08-25", description: "Alguma coisa com certeza" });
+    expect(res.status).toBe(201);
+    const data = await res.json() as any;
+    expect(data.duration_minutes).toBe(90);
+    expect(data.logged_date).toBe("2026-08-25");
+    expect(data.description).toBe("Alguma coisa com certeza");
+    // O objeto cru do Prisma vazava camelCase e a tela mostrava "NaNh NaNm".
+    expect(data.durationMinutes).toBeUndefined();
+    expect(data.loggedDate).toBeUndefined();
+  });
+
+  it("lista os logs em snake_case", async () => {
+    const res = await client.get(`${url()}?cursor=100:0:0`);
+    expect(res.status).toBe(200);
+    const data = await res.json() as any;
+    expect(data.results).toBeInstanceOf(Array);
+    expect(data.results.length).toBeGreaterThan(0);
+    const log = data.results[0];
+    expect(log.duration_minutes).toBe(90);
+    expect(log.logged_date).toBe("2026-08-25");
+    expect(log.member_detail).not.toBeNull();
+    expect(log.durationMinutes).toBeUndefined();
+  });
+
+  it("recusa duração que não é número", async () => {
+    const res = await client.post(url(), { duration_minutes: "abc", logged_date: "2026-08-25" });
+    expect(res.status).toBe(400);
+  });
+
+  it("exige duração e data", async () => {
+    const res = await client.post(url(), { description: "sem nada" });
+    expect(res.status).toBe(400);
+  });
+
+  it("atualiza e devolve snake_case", async () => {
+    const created = await (await client.post(url(), { duration_minutes: 30, logged_date: "2026-08-24" })).json() as any;
+    const res = await client.patch(`${url()}${created.id}/`, { duration_minutes: 45 });
+    expect(res.status).toBe(200);
+    const data = await res.json() as any;
+    expect(data.duration_minutes).toBe(45);
+    expect(data.logged_date).toBe("2026-08-24");
+  });
+
+  it("remove o log", async () => {
+    const created = await (await client.post(url(), { duration_minutes: 15, logged_date: "2026-08-23" })).json() as any;
+    const res = await client.delete(`${url()}${created.id}/`);
+    expect(res.status).toBe(204);
+  });
+});

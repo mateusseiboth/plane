@@ -16,7 +16,7 @@ import { paginate } from "@utils/pagination";
 import { nextSequenceId } from "@utils/sequence";
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, getProjectOrFail } from "@utils/workspace";
-import { serializeIssue } from "@utils/serialize";
+import { serializeIssue, serializeTimeLog, TIME_LOG_INCLUDE } from "@utils/serialize";
 import { inicioRecebido, vencimentoRecebido } from "@utils/prazo";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
@@ -130,9 +130,10 @@ export const premiumModule = new Elysia()
     await getProjectOrFail(ws.id, project_id, user.id);
     const where = { issueId: issue_id, deletedAt: null };
     return paginate({
-      query: (skip, take) => prisma.issueTimeLog.findMany({ where, skip, take, include: { member: { select: { id: true, displayName: true } } }, orderBy: { loggedDate: "desc" } }),
+      query: (skip, take) => prisma.issueTimeLog.findMany({ where, skip, take, include: TIME_LOG_INCLUDE, orderBy: { loggedDate: "desc" } }),
       count: () => prisma.issueTimeLog.count({ where }),
       cursor: query.cursor as string | undefined,
+      transform: (logs) => logs.map(serializeTimeLog),
     });
   })
 
@@ -142,30 +143,41 @@ export const premiumModule = new Elysia()
     const b = body as any;
     if (!b.duration_minutes || !b.logged_date) { set.status = 400; return { detail: "duration_minutes e logged_date são obrigatórios." }; }
 
+    // Duração precisa virar inteiro positivo aqui: um "abc" gravado como NaN
+    // reaparece na tela como "NaNh NaNm".
+    const minutos = Math.trunc(Number(b.duration_minutes));
+    if (!Number.isFinite(minutos) || minutos <= 0) { set.status = 400; return { detail: "duration_minutes deve ser um número de minutos maior que zero." }; }
+
     const log = await prisma.issueTimeLog.create({
       data: {
         issueId: issue_id, workspaceId: ws.id, projectId: project_id,
         memberId: b.member_id ?? user.id,
         loggedDate: new Date(b.logged_date),
-        durationMinutes: b.duration_minutes,
+        durationMinutes: minutos,
         description: b.description ?? null,
         createdById: user.id,
       },
+      include: TIME_LOG_INCLUDE,
     });
     set.status = 201;
-    return log;
+    return serializeTimeLog(log);
   })
 
-  .patch("/workspaces/:slug/projects/:project_id/issues/:issue_id/time-logs/:log_id/", async ({ params: { slug, project_id, issue_id, log_id }, body, user }) => {
+  .patch("/workspaces/:slug/projects/:project_id/issues/:issue_id/time-logs/:log_id/", async ({ params: { slug, project_id, issue_id, log_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
     const data: any = {};
-    if (b.duration_minutes !== undefined) data.durationMinutes = b.duration_minutes;
+    if (b.duration_minutes !== undefined) {
+      const minutos = Math.trunc(Number(b.duration_minutes));
+      if (!Number.isFinite(minutos) || minutos <= 0) { set.status = 400; return { detail: "duration_minutes deve ser um número de minutos maior que zero." }; }
+      data.durationMinutes = minutos;
+    }
     if (b.logged_date !== undefined) data.loggedDate = new Date(b.logged_date);
     if (b.description !== undefined) data.description = b.description;
     if (b.is_approved !== undefined) data.isApproved = b.is_approved;
-    return prisma.issueTimeLog.update({ where: { id: log_id }, data });
+    const log = await prisma.issueTimeLog.update({ where: { id: log_id }, data, include: TIME_LOG_INCLUDE });
+    return serializeTimeLog(log);
   })
 
   .delete("/workspaces/:slug/projects/:project_id/issues/:issue_id/time-logs/:log_id/", async ({ params: { slug, project_id, log_id }, user, set }) => {

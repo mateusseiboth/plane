@@ -211,3 +211,37 @@ export function serializeModule(mod: any): Record<string, unknown> {
     completed_estimate_points: mod.completedEstimatePoints ?? 0,
   };
 }
+
+// Include shape para o log de tempo, para serializeTimeLog montar member_detail.
+export const TIME_LOG_INCLUDE = {
+  member: { select: { id: true, displayName: true } },
+} as const;
+
+/**
+ * Log de tempo do chamado.
+ *
+ * A tela lê `duration_minutes` e `logged_date`; devolver o objeto cru do Prisma
+ * entregava `durationMinutes`/`loggedDate` e o card aparecia como
+ * "NaNh NaNm · Invalid Date" — o campo chega `undefined` sem erro nenhum.
+ */
+export function serializeTimeLog(log: any): Record<string, unknown> {
+  const m = log.member;
+  return {
+    id:               log.id,
+    issue_id:         log.issueId ?? null,
+    project_id:       log.projectId ?? null,
+    workspace_id:     log.workspaceId ?? null,
+    member_id:        log.memberId ?? null,
+    member_detail:    m ? { id: m.id, display_name: m.displayName ?? "" } : null,
+    // Data pura: o log é do dia, não de um instante. Mandar ISO com hora faria a
+    // tela recuar um dia em fusos negativos.
+    logged_date:      dateOnly(log.loggedDate),
+    duration_minutes: log.durationMinutes ?? 0,
+    description:      log.description ?? null,
+    is_approved:      log.isApproved ?? false,
+    approved_by:      log.approvedById ?? null,
+    created_at:       isoDate(log.createdAt),
+    updated_at:       isoDate(log.updatedAt),
+    created_by:       log.createdById ?? null,
+  };
+}

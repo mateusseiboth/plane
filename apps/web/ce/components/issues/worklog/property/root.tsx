@@ -3,7 +3,7 @@ import { Clock, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@plane/propel/button";
 import { Dialog, EDialogWidth } from "@plane/propel/dialog";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import { cn } from "@plane/utils";
+import { cn, renderFormattedDate } from "@plane/utils";
 
 type TTimeLog = {
   id: string;
@@ -64,12 +64,15 @@ export function IssueWorklogProperty({ workspaceSlug, projectId, issueId, disabl
     }
     setSaving(true);
     try {
-      await fetch(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/time-logs/`, {
+      const res = await fetch(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/time-logs/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ duration_minutes: mins, logged_date: form.logged_date, description: form.description || null }),
       });
+      // `fetch` só rejeita em erro de rede: sem conferir o status, um 400 saía
+      // como "Salvo" e o log simplesmente não aparecia.
+      if (!res.ok) throw new Error(await res.text());
       setToast({ type: TOAST_TYPE.SUCCESS, title: "Salvo", message: "Horas registradas." });
       setForm({ duration_minutes: "", logged_date: new Date().toISOString().split("T")[0], description: "" });
       setLogForm(false);
@@ -84,9 +87,10 @@ export function IssueWorklogProperty({ workspaceSlug, projectId, issueId, disabl
   const handleDelete = async (logId: string) => {
     setDeleting(logId);
     try {
-      await fetch(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/time-logs/${logId}/`, {
+      const res = await fetch(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/time-logs/${logId}/`, {
         method: "DELETE", credentials: "include",
       });
+      if (!res.ok) throw new Error(await res.text());
       load();
     } catch {
       setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "Falha ao remover." });
@@ -164,7 +168,7 @@ export function IssueWorklogProperty({ workspaceSlug, projectId, issueId, disabl
                     <div>
                       <p className="text-sm font-medium">{minutesToDisplay(log.duration_minutes)}</p>
                       <p className="text-xs text-secondary-text">
-                        {new Date(log.logged_date).toLocaleDateString("pt-BR")}
+                        {renderFormattedDate(log.logged_date)}
                         {log.description && ` · ${log.description}`}
                       </p>
                     </div>

@@ -11,6 +11,7 @@ import {
   serializeLabel,
   serializeModule,
   serializeState,
+  serializeTimeLog,
 } from "@utils/serialize";
 
 describe("isoDate / dateOnly", () => {
@@ -194,5 +195,52 @@ describe("serializeModule", () => {
     expect(out.link_module).toEqual([]);
     expect(out.sort_order).toBe(65535);
     expect(out.view_props).toEqual({filters: {}});
+  });
+});
+
+describe("serializeTimeLog", () => {
+  const bruto = {
+    id: "tl1",
+    issueId: "i1",
+    projectId: "p1",
+    workspaceId: "w1",
+    memberId: "u1",
+    member: {id: "u1", displayName: "mateus"},
+    loggedDate: new Date("2026-08-25T00:00:00.000Z"),
+    durationMinutes: 90,
+    description: "Alguma coisa com certeza",
+    isApproved: false,
+    approvedById: null,
+    createdAt: new Date("2026-08-25T12:00:00.000Z"),
+    updatedAt: new Date("2026-08-25T12:00:00.000Z"),
+    createdById: "u1",
+  };
+
+  it("expõe duração e data no snake_case que a tela lê", () => {
+    const out = serializeTimeLog(bruto) as any;
+    // O defeito original: a tela lia duration_minutes/logged_date e recebia
+    // undefined, virando "NaNh NaNm · Invalid Date".
+    expect(out.duration_minutes).toBe(90);
+    expect(out.logged_date).toBe("2026-08-25");
+    expect(out.description).toBe("Alguma coisa com certeza");
+    expect(out.member_id).toBe("u1");
+    expect(out.member_detail).toEqual({id: "u1", display_name: "mateus"});
+    expect(out.issue_id).toBe("i1");
+    expect(out.is_approved).toBe(false);
+    expect(out.created_at).toBe("2026-08-25T12:00:00.000Z");
+  });
+
+  it("não devolve nenhuma chave em camelCase", () => {
+    const out = serializeTimeLog(bruto) as any;
+    expect(out.durationMinutes).toBeUndefined();
+    expect(out.loggedDate).toBeUndefined();
+  });
+
+  it("aceita registro sem membro carregado e sem descrição", () => {
+    const out = serializeTimeLog({id: "tl2", durationMinutes: 0, loggedDate: null}) as any;
+    expect(out.member_detail).toBeNull();
+    expect(out.description).toBeNull();
+    expect(out.duration_minutes).toBe(0);
+    expect(out.logged_date).toBeNull();
   });
 });
