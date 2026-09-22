@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { useMember } from "@/hooks/store/use-member";
 import { chatApi, type RatingsReport, type SlaReport } from "@/services/chat.service";
+import { RelatorioDeLigacoes } from "@/components/chat/ligacoes/relatorio-de-ligacoes";
 
 type Stats = Awaited<ReturnType<ReturnType<typeof chatApi>["dashboard"]>>;
 
@@ -274,6 +275,8 @@ export const ChatDashboard = observer(function ChatDashboard({ slug, apiUrl }: {
           </div>
         </div>
       )}
+
+      <RelatorioDeLigacoes slug={slug} apiUrl={apiUrl} />
     </div>
   );
 });

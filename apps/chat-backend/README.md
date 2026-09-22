@@ -128,7 +128,43 @@ assumido não abre pesquisa de satisfação — não há atendimento a avaliar. 
 decide é o servidor (`rating.request`); a página do cliente nunca abre o
 formulário por conta própria.
 
+## Ligações (FreePBX)
+
+Substitui o módulo "tickets" da intranet: o PBX registra cada ligação e ela entra
+na **mesma caixa** do atendimento. Contrato completo e exemplo de dialplan em
+`.claude/ligacoes-freepbx.md`.
+
+- A ligação é uma `chat_sessions` com `channel = "phone"` mais a linha de
+  `chat_ligacoes` (call_id, origem, ramal, início, fim, duração, gravação,
+  descrição, quem concluiu, chamado vinculado). Protocolo, histórico e relatórios
+  valem sem tela nova.
+- **Entrada:** `POST /workspaces/:slug/telefonia/ligacoes/` com o token de serviço
+  (`Authorization: Bearer` ou `X-Api-Token`). Idempotente pelo `call_id`: 201 no
+  primeiro envio, 200 no reenvio (atualiza fim, duração e gravação).
+- Quem ligou é identificado pelo telefone (`buscarResponsavelPorTelefone`, a mesma
+  busca do bot); o ramal (`chat_ramais`) diz de quem é a ligação e o atendente é
+  avisado pelo WS (`session.assigned`). Não atendida já entra encerrada; sem
+  ramal conhecido, espera alguém assumir.
+- **Atendente** (`chat.atender`): `GET /ligacoes/:id/`, `POST .../assumir/`,
+  `POST .../concluir/` (sistema + descrição, e o contato quando o telefone não
+  identificou), `POST .../chamado/` (o front cria a solicitação no api-ts e informa
+  qual foi).
+- **Configuração** (`chat.administrar`): `/config/telefonia/` (token: só o hash e os
+  4 últimos caracteres ficam gravados; ramais).
+- **Relatório** (`chat.gerenciar`): `GET /reports/ligacoes/?days=N`, por atendente,
+  entidade e sistema.
+- Histórico do cliente (conversas + ligações): `GET /sessions/:id/historico-do-cliente/`.
+  Lista filtrável por tipo: `GET /sessions/?channel=phone` ou `?channel=whatsapp,native`.
+- Ligação fica **fora** do SLA de primeira resposta, do timer de inatividade e da
+  fila automática (`WITHOUT_PHONE` / `isPhoneSession` em `src/canais.ts`).
+
+Código em `src/ligacoes/` (rotas finas → service → DAO) e migração
+`prisma/sql/0012_ligacoes.sql`.
+
 ## Testes
+
+Rode **arquivo por arquivo**: o `mock.module("@db")` de
+`tests/horario-atendimento.test.ts` vaza quando a pasta roda inteira.
 
 Os testes e2e batem numa instância **em execução** (`CHAT_URL`) ligada ao **mesmo
 banco** que a suíte, e a identificação por telefone exige as tabelas do Plane

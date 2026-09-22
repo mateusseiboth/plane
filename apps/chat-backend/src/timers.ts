@@ -5,6 +5,7 @@
 //    auto-close at 20min.
 
 import prisma from "@db";
+import { WITHOUT_PHONE } from "@/canais";
 import { deliverOutbound } from "@/outbound";
 import { requestRating } from "@/rating";
 import { sendToSession, sendToUser } from "@/ws/hub";
@@ -15,9 +16,11 @@ function render(t: string, vars: Record<string, string>): string {
   return t.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
 }
 
-async function checkSla() {
+// Ligação (channel "phone") fica fora dos dois timers: não há cliente digitando
+// do outro lado, então não há resposta a cobrar nem inatividade a encerrar.
+export async function checkSla() {
   const active = await prisma.chatSession.findMany({
-    where: { status: "active", assignedAttendantId: { not: null } },
+    where: { status: "active", assignedAttendantId: { not: null }, ...WITHOUT_PHONE },
     select: { id: true, assignedAttendantId: true, lastClientMessageAt: true, lastAttendantMessageAt: true },
   });
   const now = Date.now();
@@ -32,9 +35,9 @@ async function checkSla() {
   }
 }
 
-async function checkIdle() {
+export async function checkIdle() {
   const sessions = await prisma.chatSession.findMany({
-    where: { status: { in: ["bot", "queued"] } },
+    where: { status: { in: ["bot", "queued"] }, ...WITHOUT_PHONE },
     select: { id: true, workspaceId: true, protocol: true, channel: true, clientPhone: true, createdAt: true, lastClientMessageAt: true, idlePromptedAt: true },
   });
   const now = Date.now();
