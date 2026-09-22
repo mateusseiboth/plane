@@ -82,7 +82,10 @@ describe("mural de recados", () => {
   });
 
   it("concessão por pessoa libera a publicação para o TI", async () => {
-    const put = await admin.put(`/workspaces/${slug}/roles/members/${tiId}/`, { granted: ["mural.publish"], revoked: [] });
+    const put = await admin.put(`/workspaces/${slug}/roles/members/${tiId}/`, {
+      granted: ["mural.publish"],
+      revoked: [],
+    });
     expect(put.status).toBe(200);
     expect((await publish(ti)).res.status).toBe(201);
     await admin.put(`/workspaces/${slug}/roles/members/${tiId}/`, { granted: [], revoked: [] });
@@ -184,7 +187,13 @@ describe("mural de recados", () => {
 
   it("anexo do próprio espaço aparece com nome; de outro espaço é recusado", async () => {
     const anexo = await prisma.fileAsset.create({
-      data: { workspaceId: wsId, asset: `ws/${wsId}/cartaz.pdf`, size: 10, attributes: { name: "cartaz.pdf" }, isUploaded: true },
+      data: {
+        workspaceId: wsId,
+        asset: `ws/${wsId}/cartaz.pdf`,
+        size: 10,
+        attributes: { name: "cartaz.pdf" },
+        isUploaded: true,
+      },
     });
     const { res, body } = await publish(gestor, { title: "Com anexo", attachment_id: anexo.id });
     expect(res.status).toBe(201);

@@ -4,7 +4,7 @@ import type { MuralFieldError } from "@modules/mural/mural.rules";
 export class MuralError extends Error {
   constructor(
     message: string,
-    readonly status = 422,
+    readonly status = 422
   ) {
     super(message);
     this.name = new.target.name;

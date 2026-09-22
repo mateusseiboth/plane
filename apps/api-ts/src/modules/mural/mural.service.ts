@@ -51,7 +51,7 @@ export function createMuralService({ dao, notify, publish, now }: MuralDeps) {
         autor: autorPorId.get(r.authorId),
         anexo: r.attachmentId ? anexoPorId.get(r.attachmentId) : undefined,
         readAt: leituraPorRecado.get(r.id),
-      }),
+      })
     );
   };
 
@@ -79,7 +79,12 @@ export function createMuralService({ dao, notify, publish, now }: MuralDeps) {
   };
 
   const readSet = async (ctx: MuralContext, recados: MuralRecadoRow[]) => {
-    const leituras = recados.length ? await dao.findLeiturasDoUsuario(ctx.userId, recados.map((r) => r.id)) : [];
+    const leituras = recados.length
+      ? await dao.findLeiturasDoUsuario(
+          ctx.userId,
+          recados.map((r) => r.id)
+        )
+      : [];
     return new Set(leituras.map((l) => l.recadoId));
   };
 
@@ -105,8 +110,8 @@ export function createMuralService({ dao, notify, publish, now }: MuralDeps) {
       const vigentes = await dao.findVigentes(ctx.workspaceId, now());
       const lidos = await readSet(ctx, vigentes);
       const escolhidos = selectRecadosDaHome(
-        vigentes.map((r) => ({ ...r, isRead: lidos.has(r.id) })),
-        LIDOS_NA_HOME,
+        vigentes.map((r) => Object.assign(r, { isRead: lidos.has(r.id) })),
+        LIDOS_NA_HOME
       );
       return hydrate(ctx, escolhidos);
     },
@@ -115,7 +120,7 @@ export function createMuralService({ dao, notify, publish, now }: MuralDeps) {
     async pendingRequired(ctx: MuralContext) {
       const obrigatorios = await dao.findVigentes(ctx.workspaceId, now(), { isRequired: true });
       const lidos = await readSet(ctx, obrigatorios);
-      const pendentes = obrigatorios.filter((r) => !lidos.has(r.id)).reverse();
+      const pendentes = obrigatorios.filter((r) => !lidos.has(r.id)).toReversed();
       return hydrate(ctx, pendentes);
     },
 
@@ -161,7 +166,7 @@ export function createMuralService({ dao, notify, publish, now }: MuralDeps) {
       return {
         read: membros
           .filter(isLeitor)
-          .map((p) => ({ ...serializePessoa(p), read_at: leituraPorPessoa.get(p.id)!.toISOString() })),
+          .map((p) => Object.assign(serializePessoa(p), { read_at: leituraPorPessoa.get(p.id)!.toISOString() })),
         unread: membros.filter((p) => !isLeitor(p)).map(serializePessoa),
       };
     },

@@ -76,7 +76,7 @@ describe("validateRecadoInput na criação", () => {
     const anexo = "0198f7a4-1b2c-7d3e-8f40-123456789abc";
     const r = validateRecadoInput(
       { ...valido, is_pinned: true, is_required: true, attachment_id: anexo },
-      { partial: false, now: AGORA },
+      { partial: false, now: AGORA }
     );
     expect(r.data).toMatchObject({ isPinned: true, isRequired: true, attachmentId: anexo });
   });
@@ -134,9 +134,9 @@ describe("buildPeriodoDoMural", () => {
   });
 });
 
-describe("selectRecadosDaHome", () => {
-  const hora = (h: number) => new Date(Date.UTC(2026, 8, 22, h));
+const hora = (h: number) => new Date(Date.UTC(2026, 8, 22, h));
 
+describe("selectRecadosDaHome", () => {
   it("não lidos primeiro, depois fixados, depois os mais novos", () => {
     const lista = [
       recado({ id: "lido-novo", isRead: true, publishedAt: hora(12) }),
@@ -155,7 +155,7 @@ describe("selectRecadosDaHome", () => {
   it("fixados e não lidos sempre aparecem; lidos comuns respeitam o limite", () => {
     const lidos = Array.from({ length: 6 }, (_, i) => recado({ id: `lido-${i}`, isRead: true, publishedAt: hora(i) }));
     const fixados = Array.from({ length: 4 }, (_, i) =>
-      recado({ id: `fixado-${i}`, isRead: true, isPinned: true, publishedAt: hora(i) }),
+      recado({ id: `fixado-${i}`, isRead: true, isPinned: true, publishedAt: hora(i) })
     );
     const escolhidos = selectRecadosDaHome([...lidos, ...fixados], 2).map((r) => r.id);
     expect(escolhidos.filter((id) => id.startsWith("fixado"))).toHaveLength(4);

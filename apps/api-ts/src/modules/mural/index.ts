@@ -5,7 +5,7 @@
  * Todo membro do espaço LÊ. Publicar, editar, inativar e ver quem leu exige
  * `mural.publish` (matriz de ações, com exceção por pessoa). Ver .claude/mural.md.
  */
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
 import { muralDao } from "@modules/mural/mural.dao";
 import { MuralValidationError } from "@modules/mural/mural.errors";
@@ -54,13 +54,13 @@ export const muralModule = new Elysia({ prefix: "/workspaces/:slug/mural" })
   .use(authPlugin)
 
   .get("/", async ({ params: { slug }, user, query }) =>
-    service.list(await readerContext(slug, user.id), query as Record<string, unknown>),
+    service.list(await readerContext(slug, user.id), query as Record<string, unknown>)
   )
 
   .get("/home/", async ({ params: { slug }, user }) => service.home(await readerContext(slug, user.id)))
 
   .get("/pending-required/", async ({ params: { slug }, user }) =>
-    service.pendingRequired(await readerContext(slug, user.id)),
+    service.pendingRequired(await readerContext(slug, user.id))
   )
 
   .post("/", async ({ params: { slug }, user, body, set }) => {
@@ -70,7 +70,7 @@ export const muralModule = new Elysia({ prefix: "/workspaces/:slug/mural" })
   })
 
   .get("/:recado_id/", async ({ params: { slug, recado_id }, user }) =>
-    service.get(await readerContext(slug, user.id), recado_id),
+    service.get(await readerContext(slug, user.id), recado_id)
   )
 
   .patch("/:recado_id/", async ({ params: { slug, recado_id }, user, body, set }) => {
@@ -85,5 +85,5 @@ export const muralModule = new Elysia({ prefix: "/workspaces/:slug/mural" })
   })
 
   .get("/:recado_id/readers/", async ({ params: { slug, recado_id }, user }) =>
-    service.readers(await publisherContext(slug, user.id), recado_id),
+    service.readers(await publisherContext(slug, user.id), recado_id)
   );

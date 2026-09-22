@@ -50,6 +50,8 @@ const makeService = (overrides: Partial<MuralDeps["dao"]> = {}) => {
   return { service, dao, notify, publish };
 };
 
+const pessoa = (id: string) => ({ id, displayName: id, firstName: "", lastName: "", avatarUrl: null, avatar: null });
+
 const ctx = { workspaceId: WS, slug: "ws", userId: "autor", canPublish: true };
 
 describe("create", () => {
@@ -58,7 +60,11 @@ describe("create", () => {
     const dto = await service.create(ctx, { title: "Feriado", description_html: "<p>x</p>" });
 
     expect(dao.createRecado).toHaveBeenCalledTimes(1);
-    expect((dao.createRecado as any).mock.calls[0][0]).toMatchObject({ workspaceId: WS, authorId: "autor", title: "Feriado" });
+    expect((dao.createRecado as any).mock.calls[0][0]).toMatchObject({
+      workspaceId: WS,
+      authorId: "autor",
+      title: "Feriado",
+    });
     expect(notify).toHaveBeenCalledWith({ workspaceId: WS, recadoId: "r1", actorId: "autor", title: "Feriado" });
     expect(publish).toHaveBeenCalledWith(WS, { entity: "mural", action: "create", id: "r1", actor: "autor" });
     expect(dto.title).toBe("Feriado");
@@ -95,7 +101,7 @@ describe("update", () => {
 
   it("recado de outro espaço não existe", async () => {
     const { service } = makeService({ findRecado: mock(async () => null) } as any);
-    expect(service.update(ctx, "r1", { is_pinned: true })).rejects.toBeInstanceOf(MuralNotFoundError);
+    await expect(service.update(ctx, "r1", { is_pinned: true })).rejects.toBeInstanceOf(MuralNotFoundError);
   });
 });
 
@@ -108,14 +114,13 @@ describe("markRead", () => {
 
   it("recado inativo não é encontrado por quem só lê", async () => {
     const { service, dao } = makeService({ findRecado: mock(async () => recadoDoBanco({ isActive: false })) } as any);
-    expect(service.markRead({ ...ctx, canPublish: false }, "r1")).rejects.toBeInstanceOf(MuralNotFoundError);
+    await expect(service.markRead({ ...ctx, canPublish: false }, "r1")).rejects.toBeInstanceOf(MuralNotFoundError);
     expect(dao.saveLeitura).not.toHaveBeenCalled();
   });
 });
 
 describe("readers", () => {
   it("separa quem leu de quem não leu entre os membros ativos", async () => {
-    const pessoa = (id: string) => ({ id, displayName: id, firstName: "", lastName: "", avatarUrl: null, avatar: null });
     const { service } = makeService({
       findMembrosAtivos: mock(async () => [pessoa("a"), pessoa("b"), pessoa("c")]),
       findLeiturasDoRecado: mock(async () => [{ userId: "b", readAt: AGORA }]),

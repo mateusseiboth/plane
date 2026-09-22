@@ -35,7 +35,7 @@ const serializeAnexo = (a: Anexo, slug: string) => ({
 
 export function serializeRecado(
   r: MuralRecadoRow,
-  extra: { slug: string; now: Date; autor?: MuralPessoa; anexo?: Anexo; readAt?: Date },
+  extra: { slug: string; now: Date; autor?: MuralPessoa; anexo?: Anexo; readAt?: Date }
 ) {
   return {
     id: r.id,

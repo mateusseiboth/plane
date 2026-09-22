@@ -62,7 +62,8 @@ const readExpiresAt: FieldReader = (valor, data, now) => {
   }
   const instante = vencimentoRecebido(valor);
   if (!instante) return { path: "expires_at", message: "Data de validade inválida." };
-  if (instante.getTime() <= now.getTime()) return { path: "expires_at", message: "A validade precisa ser uma data futura." };
+  if (instante.getTime() <= now.getTime())
+    return { path: "expires_at", message: "A validade precisa ser uma data futura." };
   data.expiresAt = instante;
   return null;
 };
@@ -104,7 +105,7 @@ const OBRIGATORIOS_NA_CRIACAO = new Set(["title", "description_html"]);
  */
 export function validateRecadoInput(
   body: Record<string, unknown>,
-  { partial, now }: ValidateOptions,
+  { partial, now }: ValidateOptions
 ): { data: RecadoData; errors: MuralFieldError[] } {
   const data: RecadoData = {};
   const isLido = (campo: string) => hasOwn(body, campo) || (!partial && OBRIGATORIOS_NA_CRIACAO.has(campo));
@@ -131,15 +132,16 @@ type RecadoDaHome = { isPinned: boolean; isRead: boolean; publishedAt: Date };
 
 const pesoNaHome = (r: RecadoDaHome) => (r.isRead ? 0 : 2) + (r.isPinned ? 1 : 0);
 
+const isSempreVisivel = (r: RecadoDaHome) => !r.isRead || r.isPinned;
+
 /**
  * Seção da home: TODO não lido e TODO fixado aparecem; dos lidos comuns só os
  * `lidosComuns` mais novos, para a seção não virar o histórico inteiro.
  */
 export function selectRecadosDaHome<T extends RecadoDaHome>(recados: T[], lidosComuns: number): T[] {
-  const ordenados = [...recados].sort(
-    (a, b) => pesoNaHome(b) - pesoNaHome(a) || b.publishedAt.getTime() - a.publishedAt.getTime(),
+  const ordenados = recados.toSorted(
+    (a, b) => pesoNaHome(b) - pesoNaHome(a) || b.publishedAt.getTime() - a.publishedAt.getTime()
   );
-  const isSempreVisivel = (r: T) => !r.isRead || r.isPinned;
-  const comuns = ordenados.filter((r) => !isSempreVisivel(r)).slice(0, lidosComuns);
-  return ordenados.filter((r) => isSempreVisivel(r) || comuns.includes(r));
+  const comuns = new Set(ordenados.filter((r) => !isSempreVisivel(r)).slice(0, lidosComuns));
+  return ordenados.filter((r) => isSempreVisivel(r) || comuns.has(r));
 }
