@@ -19,6 +19,8 @@ As linhas marcadas com **(em obra)** ainda NÃO estão no ar.
 | Painel de TV: Qualidade **(em obra)** | `/<slug>/painel/qualidade?key=<chave>` | chave de painel |
 | Painel de TV: Atendimento **(em obra)** | `/<slug>/painel/atendimento?key=<chave>` | chave de painel; abas trocam sozinhas |
 | Painel de TV: Mapa **(em obra)** | `/<slug>/painel/mapa?key=<chave>` | chave de painel |
+| Painel de TV: Backups **(em obra)** | `/<slug>/painel/backups?key=<chave>&uf=<UF>&dias=<1 a 30>` | chave de painel |
+| Painel de Backups interativo **(em obra)** | `/<slug>/painel/backups?interativo=1&entidade=<busca>&sistema=<1,3,4,8>&situacao=<em-dia,atrasado,nunca>&ordem=<atraso,entidade,problema>&dias=<1 a 30>` | login do Plane (ou chave de painel com `?interativo=1`) |
 
 As chaves de painel são criadas em *Configurações → Painéis de TV*. Há a chave GERAL,
 que abre todos os painéis, e chaves restritas a painéis escolhidos; a chave aparece uma
