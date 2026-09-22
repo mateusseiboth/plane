@@ -1,6 +1,6 @@
 /**
  * Painéis de TV: gestão das chaves (`panel.manage`) e as rotas de dados, que
- * abrem por CHAVE (sem login) ou por SESSÃO de quem pode ver relatórios.
+ * abrem por CHAVE (sem login) ou por SESSÃO de qualquer membro ativo do espaço.
  *
  * Precisa de uma API rodando contra o banco de teste (API_BASE_URL), com
  * CHAT_INTERNAL_URL apontando para o chat falso servido aqui (porta 8299).
@@ -34,6 +34,8 @@ describe("painéis de TV", () => {
   let gestor: Client;
   let gestorToken: string;
   let visualizadorToken: string;
+  let semRelatorioToken: string;
+  let deForaToken: string;
   let chatFalso: ReturnType<typeof Bun.serve>;
   let chaveGeral: string;
   let chaveDoTi: string;
@@ -65,6 +67,18 @@ describe("painéis de TV", () => {
     gestorToken = g.token;
     const v = await createMemberWithToken(ws.id, 5);
     visualizadorToken = v.token;
+
+    // Membro comum com `report.view` NEGADO por exceção: é o caso do dono do
+    // produto, que quer a TV aberta para a equipe inteira sem dar relatório.
+    const sem = await createMemberWithToken(ws.id, 15);
+    semRelatorioToken = sem.token;
+    await prisma.workspaceMember.updateMany({
+      where: { workspaceId: ws.id, memberId: sem.user.id },
+      data: { revokedActions: ["report.view"] },
+    });
+
+    // Logado, mas de outro espaço: continua fora.
+    deForaToken = (await createApiToken((await createUser()).id)).token;
 
     const projeto = await createProject(ws.id, dono.id);
     const triagem = await createState(projeto.id, ws.id, { name: STATE.TRIAGEM, group: "triage", sequence: 1000 });
@@ -187,11 +201,20 @@ describe("painéis de TV", () => {
       expect((await comChave("/mapa/", criada.key)).status).toBe(401);
     });
 
-    it("quem está logado e vê relatórios abre sem chave; o Visualizador recebe 403", async () => {
-      const comSessao = await fetch(tv("/quadro/ti/"), { headers: { "X-Api-Key": gestorToken } });
-      expect(comSessao.status).toBe(200);
-      const semAcao = await fetch(tv("/quadro/ti/"), { headers: { "X-Api-Key": visualizadorToken } });
-      expect(semAcao.status).toBe(403);
+    it("qualquer membro do espaço abre sem chave, mesmo sem report.view", async () => {
+      const gestorNaSessao = await fetch(tv("/quadro/ti/"), { headers: { "X-Api-Key": gestorToken } });
+      expect(gestorNaSessao.status).toBe(200);
+
+      const visualizador = await fetch(tv("/quadro/ti/"), { headers: { "X-Api-Key": visualizadorToken } });
+      expect(visualizador.status).toBe(200);
+
+      const membroSemRelatorio = await fetch(tv("/mapa/"), { headers: { "X-Api-Key": semRelatorioToken } });
+      expect(membroSemRelatorio.status).toBe(200);
+    });
+
+    it("quem está logado mas não é do espaço recebe 403", async () => {
+      const deFora = await fetch(tv("/quadro/ti/"), { headers: { "X-Api-Key": deForaToken } });
+      expect(deFora.status).toBe(403);
     });
 
     it("o mapa traz pontos, totais e as listas laterais", async () => {

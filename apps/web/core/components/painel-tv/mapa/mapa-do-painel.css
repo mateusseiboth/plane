@@ -1,0 +1,166 @@
+/*
+ * Mapa de chamados do painel de TV: o que não dá para escrever com utilitário
+ * do Tailwind, porque o marcador é HTML que o Leaflet injeta (`L.divIcon`) e
+ * não passa pelo varredor de classes.
+ */
+
+.mapa-do-painel {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background-color: #0b0e13;
+}
+
+/*
+ * O tile de terreno é claro demais para uma sala de TV com o painel escuro.
+ * Escurecer um pouco e realçar a cor mantém rio, relevo e vegetação legíveis
+ * de longe sem estourar o branco.
+ */
+.mapa-do-painel .leaflet-tile-pane {
+  filter: brightness(0.78) saturate(1.2) contrast(1.06);
+}
+
+.mapa-do-painel .leaflet-container {
+  height: 100%;
+  width: 100%;
+  background-color: #0b0e13;
+  font-family: inherit;
+  outline: none;
+}
+
+.mapa-do-painel .leaflet-control-attribution {
+  background-color: rgba(11, 14, 19, 0.72);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+  padding: 1px 6px;
+}
+
+.mapa-do-painel .leaflet-control-attribution a {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* ── Marcador ─────────────────────────────────────────────────────────────── */
+
+.marcador-do-mapa {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marcador-do-mapa__bolha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--diametro);
+  height: var(--diametro);
+  border-radius: 9999px;
+  background-color: var(--cor);
+  color: #0b0b0b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--tamanho-do-numero);
+  line-height: 1;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.marcador-do-mapa--destaque .marcador-do-mapa__bolha {
+  border-color: #ffffff;
+  border-width: 4px;
+}
+
+/* Anel pulsante: há chamado urgente ("cliente parado") nesta cidade. */
+.marcador-do-mapa__pulso {
+  position: absolute;
+  inset: calc(var(--diametro) / -2 * 0.28);
+  border-radius: 9999px;
+  border: 2px solid var(--cor-critica);
+  animation: pulso-do-marcador 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulso-do-marcador {
+  0%,
+  100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.1;
+    transform: scale(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marcador-do-mapa__pulso {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+/* Selo do backup atrasado; a letra fica junto porque cor sozinha não informa. */
+.marcador-do-mapa__selo {
+  position: absolute;
+  top: calc(var(--diametro) / -6);
+  right: calc(var(--diametro) / -6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background-color: var(--cor-de-atencao);
+  border: 1.5px solid rgba(0, 0, 0, 0.55);
+  color: #0b0b0b;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Contorno escuro no nome: sem ele, o nome some sobre o relevo claro do tile. */
+.marcador-do-mapa__rotulo {
+  position: absolute;
+  top: calc(var(--diametro) + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow:
+    0 0 4px #0b0e13,
+    0 0 4px #0b0e13,
+    0 1px 3px #0b0e13;
+}
+
+.marcador-do-mapa--destaque .marcador-do-mapa__rotulo {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* ── Cartão que aparece ao passar o ponteiro ──────────────────────────────── */
+
+.mapa-do-painel .leaflet-tooltip.cartao-do-mapa {
+  background-color: #1a1a19;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+.mapa-do-painel .leaflet-tooltip.cartao-do-mapa::before {
+  display: none;
+}
+
+.cartao-do-mapa__titulo {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.cartao-do-mapa__linha {
+  color: rgba(255, 255, 255, 0.7);
+}

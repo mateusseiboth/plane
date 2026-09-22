@@ -154,7 +154,7 @@ const buildPaineis = (contexto: Contexto): TCartaoDeLink[] =>
         chave: `painel-${painel}`,
         titulo: TITULO_DO_PAINEL[painel],
         descricao: "Para deixar aberto na TV da sala. Abre com a sua conta, ou com a chave de painel.",
-        quemUsa: "Quem está logado no Plane.",
+        quemUsa: "Qualquer pessoa do espaço, com login, ou a TV com a chave de painel.",
       },
       `/${contexto.slug}/painel/${painel}`
     )

@@ -29,6 +29,8 @@ catalog:
   i18next: 25.10.9
   i18next-icu: 2.4.3
   i18next-resources-to-backend: 1.2.1
+  leaflet: 1.9.4
+  "@types/leaflet": 1.9.20
   lodash-es: 4.18.1
   lucide-react: 0.469.0
   mobx-react: 9.1.1

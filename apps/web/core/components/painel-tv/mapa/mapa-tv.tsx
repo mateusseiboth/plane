@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Database, MapPin, TriangleAlert } from "lucide-react";
 import { COR_DA_GRAVIDADE, FUNDO_DO_CARTAO, STATUS } from "../cores";
 import { useRolagemAutomatica } from "../use-painel-tv";
-import { MapaDeMs } from "./mapa-svg";
+import { MapaDeMs } from "./mapa-de-ms";
 
 export type TEntidadeDoPonto = {
   id: string;
