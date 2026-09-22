@@ -240,6 +240,40 @@ Contrato, regras e decisões em `.claude/chat-disparo.md`. Código em `src/dispa
 
 Sem `CHAT_PUBLIC_URL`, o arquivo vai à Z-API em base64; com ela, pela URL pública.
 
+## Presença do atendente (a conexão nasce no login)
+
+Estar online no chat é ter pelo menos um WebSocket de atendente vivo no hub
+(`ws/hub.ts`, `connectedUserIds`), e é isso que `presence.availableAttendants`
+consulta para distribuir a fila. Esse socket só nascia dentro da tela do chat:
+quem nunca abria a tela ficava offline o dia inteiro, e o atendimento esperava
+por gente que estava trabalhando ali do lado. Agora o Plane abre a conexão assim
+que a pessoa entra no espaço de trabalho, para quem tem `chat.atender`
+(`usePresencaDoAtendente`, montado no wrapper do espaço, pergunta a mesma ação
+que o `ws-ticket` exige). A conexão em si é o módulo
+`components/chat/conexao-do-atendente.ts`, o MESMO que a tela do chat usa, com o
+mesmo ticket de `/workspaces/:slug/ws-ticket/`, a mesma resposta ao ping e
+reconexão que dobra a espera até 30s.
+
+Isso não mexe em quem SAI: o status invisível do atendente
+(`chat_attendant_status`) e o horário de atendimento do espaço continuam
+decidindo no servidor, dentro de `availableAttendants` e `isWithinBusinessHours`.
+A presença só informa que a pessoa está no sistema.
+
+Ficar online sem estar no chat criou um problema novo: a conversa chega e ninguém
+vê. `message.new` é entregue a quem está com a conversa ABERTA, então quem está em
+outra tela não recebia nada. Por isso o servidor manda, para os sockets do
+atendente da conversa, dois avisos enxutos (`aviso-do-atendente.ts`):
+
+- `session.assigned` e `session.transferred` passaram a levar `client_name`;
+- `session.client_message` (novo) leva `session_id`, `client_name` e um resumo da
+  mensagem, sem o conteúdo completo da conversa.
+
+Fora da tela do chat eles viram um aviso que fica na tela até ser fechado, com
+som, atalho para `/<slug>/chat/` e, quando a permissão do navegador já foi
+concedida, um aviso do sistema. A permissão nunca é pedida na abertura do Plane:
+a pergunta sem contexto é recusada e depois não dá para pedir de novo. Quem pede
+é a tela do chat.
+
 ## Testes
 
 Rode **arquivo por arquivo**: o `mock.module("@db")` de

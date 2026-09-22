@@ -22,6 +22,7 @@ import { saveMedia, serveMedia } from "@/storage";
 import { startTimers } from "@/timers";
 import { submitRating, randomDog } from "@/rating";
 import { attendantName } from "@/users";
+import { nomeDoCliente } from "@/aviso-do-atendente";
 import { ratingsReport, slaReport } from "@/reports";
 import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
 import { withoutAvaliacao, serializeSession } from "@/sessoes";
@@ -635,7 +636,12 @@ const app = new Elysia()
     });
 
     // Let the target attendant (and the whole workspace) know live.
-    sendToUser(toUserId, { type: "session.transferred", session_id: id, to_user_id: toUserId });
+    sendToUser(toUserId, {
+      type: "session.transferred",
+      session_id: id,
+      to_user_id: toUserId,
+      client_name: nomeDoCliente(updated),
+    });
     sendToWorkspace(slug, { type: "session.activity", session_id: id });
     sendToSession(id, { type: "session.assigned", session_id: id, attendant_id: toUserId });
 

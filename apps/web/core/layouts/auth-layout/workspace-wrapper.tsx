@@ -42,6 +42,7 @@ import {useUser, useUserPermissions} from "@/hooks/store/user";
 import {usePlatformOS} from "@/hooks/use-platform-os";
 import {useRealtimeChannel} from "@/hooks/use-realtime";
 import {useAvisoDeChamado} from "@/hooks/use-aviso-de-chamado";
+import {usePresencaDoAtendente} from "@/hooks/use-presenca-do-atendente";
 // components
 import {RespostaAoClienteModal} from "@/components/portal/resposta-ao-cliente-modal";
 import {MuralAvisoObrigatorio} from "@/components/mural/aviso-obrigatorio";
@@ -58,6 +59,9 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
   // open the realtime (SSE) channel for this workspace so views can live-update
   useRealtimeChannel(workspaceSlug?.toString());
   useAvisoDeChamado(workspaceSlug?.toString());
+  // Quem atende fica online no chat assim que entra no sistema, sem precisar
+  // abrir a tela do atendimento.
+  usePresencaDoAtendente(workspaceSlug?.toString());
   // store hooks
   const {signOut, data: currentUser} = useUser();
   const {fetchPartialProjects} = useProject();

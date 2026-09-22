@@ -32,6 +32,12 @@ type SetToastProps =
       title: string;
       message?: string;
       actionItems?: React.ReactNode;
+      /**
+       * Tempo em milissegundos até sumir sozinho. `0` mantém o aviso na tela até
+       * a pessoa fechar, para o que ela precisa ver mesmo estando longe do
+       * computador (um atendimento chegando, por exemplo). Padrão: 5000.
+       */
+      timeout?: number;
     };
 
 type PromiseToastCallback<ToastData> = (data: ToastData) => string;
@@ -252,6 +258,7 @@ export const setToast = (props: SetToastProps) => {
   let toastId: string | undefined;
   if (props.type !== TOAST_TYPE.LOADING) {
     toastId = toastManager.add({
+      ...(props.timeout === undefined ? {} : { timeout: props.timeout }),
       data: {
         type: props.type,
         title: props.title,

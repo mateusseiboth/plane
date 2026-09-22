@@ -58,6 +58,13 @@ import { FerramentasDoCompositor } from "@/components/chat/atendente/ferramentas
 import { GerenciadorDeConversas } from "@/components/chat/atendente/gerenciador-de-conversas";
 import { PainelDoCadastro } from "@/components/chat/atendente/painel-do-cadastro";
 import { IniciarPeloResponsavel } from "@/components/chat/atendente/whatsapp-do-responsavel";
+// Conexão e alertas são compartilhados com a presença global (fora desta tela).
+import { notifyDesktop, playAlert } from "@/components/chat/avisos-do-chat";
+import {
+  abrirConexaoDoAtendente,
+  type ConexaoDoAtendente,
+  type EstadoDaConexao,
+} from "@/components/chat/conexao-do-atendente";
 
 const chatService = new ChatService();
 
@@ -83,40 +90,6 @@ function IndicadorDeConexao({estado}: {estado: keyof typeof CONEXAO}) {
       <span className="truncate">{texto}</span>
     </div>
   );
-}
-
-// Desktop notification on inbound messages (best-effort; ignored if blocked).
-function notifyDesktop(title: string, body: string) {
-  try {
-    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    const n = new Notification(title, { body, icon: "/favicon.ico", tag: "plane-chat" });
-    n.onclick = () => {
-      window.focus();
-      n.close();
-    };
-  } catch {
-    /* ignore */
-  }
-}
-
-function playAlert() {
-  try {
-    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.frequency.value = 880;
-    g.gain.value = 0.1;
-    o.start();
-    setTimeout(() => {
-      o.stop();
-      ctx.close();
-    }, 350);
-  } catch {
-    /* ignore */
-  }
 }
 
 function formatTime(ts: string) {
@@ -498,7 +471,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [editingText, setEditingText] = useState("");
   const [historyFor, setHistoryFor] = useState<string | null>(null);
 
-  const wsRef = useRef<WebSocket | null>(null);
+  const conexaoRef = useRef<ConexaoDoAtendente | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -535,8 +508,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
       const { results, session } = await api.history(id);
       setMessages(results);
       setClientReadAt(session?.client_last_read_at ?? null);
-      wsRef.current?.send(JSON.stringify({ type: "agent.open", session_id: id }));
-      wsRef.current?.send(JSON.stringify({ type: "agent.read", session_id: id }));
+      conexaoRef.current?.enviar({ type: "agent.open", session_id: id });
+      conexaoRef.current?.enviar({ type: "agent.read", session_id: id });
       setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, unread: 0 } : s)));
       setNewAssigned((prev) => {
         if (!prev.has(id)) return prev;
@@ -607,7 +580,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
    * WebSocket caiu quando percebe que parou de receber mensagem, o que no
    * atendimento significa deixar cliente esperando sem saber.
    */
-  const [conexao, setConexao] = useState<"conectando" | "conectado" | "reconectando">("conectando");
+  const [conexao, setConexao] = useState<EstadoDaConexao>("conectando");
 
   const avisoDoSistemaIndisponivel =
     typeof window !== "undefined" && typeof Notification !== "undefined" && !window.isSecureContext;
@@ -630,12 +603,13 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     };
   }, [naoLidasAtivas]);
 
-  // Load config + connect the single attendant WebSocket.
+  // Carrega a configuração e abre a conexão do atendente. É o MESMO módulo que a
+  // presença global usa fora desta tela: ticket, resposta ao ping e reconexão
+  // iguais nos dois lugares.
   useEffect(() => {
     if (!slug) return;
-    let ws: WebSocket | null = null;
+    let conexaoLocal: ConexaoDoAtendente | null = null;
     let stop = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     (async () => {
       try {
@@ -648,184 +622,151 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
         const a = chatApi(cfg.api_url);
         const { results } = await a.listSessions(slug);
-        if (!stop) setSessions(results);
+        if (stop) return;
+        setSessions(results);
         // Vindo da tela de contatos (`?sessao=`): abre a conversa recém-iniciada.
         const pedida = readSessaoDaUrl(window.location.search);
-        if (pedida && !stop) void openSessionRef.current?.(pedida);
+        if (pedida) void openSessionRef.current?.(pedida);
 
-        // Fetch a short-lived WS ticket via REST (cookies work fine for REST).
-        // This avoids depending on cookies being forwarded to Bun's WS upgrade path.
-        const fetchTicket = async (): Promise<string | null> => {
-          try {
-            const r = await fetch(`${cfg.api_url}/workspaces/${encodeURIComponent(slug)}/ws-ticket/`, {
-              credentials: "include",
-            });
-            if (!r.ok) return null;
-            const d = await r.json();
-            return d.ticket ?? null;
-          } catch {
-            return null;
+        const aoReceber = (msg: any) => {
+          // Client is typing in the open conversation → show the indicator.
+          if (msg.type === "typing" && msg.who === "client") {
+            if (msg.session_id === activeRef.current) {
+              setClientTyping(true);
+              if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+              typingTimerRef.current = setTimeout(() => setClientTyping(false), 3000);
+            }
+            return;
+          }
+          // Client read up to msg.at → my earlier messages turn blue.
+          if (msg.type === "read.receipt" && msg.who === "client") {
+            if (msg.session_id === activeRef.current && msg.at) setClientReadAt(msg.at);
+            return;
+          }
+
+          if (msg.type === "message.new") {
+            // Conversa que ainda não está na lista: é gente nova chegando pelo
+            // WhatsApp. Sem este refresh a linha só aparecia no próximo
+            // recarregamento da página — o atendente não via o cliente entrar.
+            if (!sessionsRef.current.some((s) => s.id === msg.message.session_id)) {
+              void refreshSessionsRef.current?.();
+            }
+            const isActive = msg.message.session_id === activeRef.current;
+            if (isActive && msg.message.sender === "client") setClientTyping(false);
+            if (isActive) {
+              // Replace temp optimistic message if text/sender match
+              setMessages((prev) => {
+                const idx = prev.findIndex(
+                  (m) => m.id.startsWith("temp-") && m.text === msg.message.text && m.sender === msg.message.sender
+                );
+                if (idx >= 0) {
+                  const next = [...prev];
+                  next[idx] = msg.message;
+                  return next;
+                }
+                return [...prev, msg.message];
+              });
+            } else if (msg.message.sender === "client") {
+              setSessions((prev) =>
+                prev.map((s) =>
+                  s.id === msg.message.session_id ? { ...s, unread: (s.unread ?? 0) + 1 } : s
+                )
+              );
+            }
+            // Desktop notification for inbound client messages when the tab is
+            // not focused or the message isn't in the open conversation.
+            if (msg.message.sender === "client" && (document.hidden || !isActive)) {
+              playAlert();
+              const sess = sessionsRef.current.find((s) => s.id === msg.message.session_id);
+              const who = sess?.client_name || sess?.client_phone || "Visitante";
+              const preview =
+                msg.message.text ||
+                (msg.message.type === "image"
+                  ? "📷 Imagem"
+                  : msg.message.type === "audio"
+                    ? "🎤 Áudio"
+                    : msg.message.type === "file"
+                      ? "📎 Arquivo"
+                      : "Nova mensagem");
+              notifyDesktop(`Nova mensagem de ${who}`, preview);
+            }
+            return;
+          }
+
+          // Falha de envio ao WhatsApp (ou o reenvio que deu certo).
+          if (msg.type === "message.status")
+            return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
+          if (msg.type === "message.edit")
+            return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
+          if (msg.type === "message.delete")
+            // Staff receive the full message (deleted_at + original text kept).
+            return setMessages((prev) =>
+              prev.map((m) =>
+                m.id === (msg.message?.id ?? msg.message_id)
+                  ? msg.message ?? { ...m, deleted_at: new Date().toISOString(), text: null }
+                  : m
+              )
+            );
+
+          // A chat became assigned to me (direct route / queue pickup). The
+          // backend only delivers session.assigned to the chosen attendant (or to
+          // whoever has it open), so treat it as a new, unread arrival: bump the
+          // unread badge, beep, and notify on the desktop when the tab is hidden.
+          if (msg.type === "session.assigned") {
+            void refreshSessionsRef.current?.();
+            const sid = msg.session_id;
+            if (sid && sid !== activeRef.current) {
+              // Flag as a new arrival (survives the list refresh, which would
+              // otherwise reset the backend-computed unread count to 0).
+              setNewAssigned((prev) => new Set(prev).add(sid));
+              playAlert();
+              const sess = sessionsRef.current.find((s) => s.id === sid);
+              const who = sess?.client_name || sess?.client_phone || "Visitante";
+              notifyDesktop("Novo atendimento", `${who} iniciou um atendimento.`);
+            }
+            return;
+          }
+
+          if (
+            msg.type === "session.activity" ||
+            msg.type === "session.queued" ||
+            msg.type === "session.closed" ||
+            msg.type === "session.transferred"
+          ) {
+            void refreshSessionsRef.current?.();
+            if (msg.type === "session.closed" && msg.session_id === activeRef.current) {
+              setSessions((prev) =>
+                prev.map((s) => (s.id === msg.session_id ? { ...s, status: "closed" } : s))
+              );
+            }
+            if (msg.type === "session.transferred") {
+              playAlert();
+              notifyDesktop("Atendimento transferido", "Um atendimento foi transferido para você.");
+            }
+            return;
+          }
+
+          if (msg.type === "alert.sla") {
+            playAlert();
+            setSlaSessions((prev) => new Set(prev).add(msg.session_id));
           }
         };
 
-        const connect = async () => {
-          if (stop) return;
-          const ticket = await fetchTicket();
-          if (stop) return;
-
-          const wsUrl =
-            `${cfg.ws_url}?workspace=${encodeURIComponent(slug)}` +
-            (ticket ? `&ticket=${encodeURIComponent(ticket)}` : "");
-
-          ws = new WebSocket(wsUrl);
-          wsRef.current = ws;
-
-          ws.onopen = () => {
-            setConexao("conectado");
-            // Re-subscribe to active session on (re)connect
+        conexaoLocal = abrirConexaoDoAtendente({
+          apiUrl: cfg.api_url,
+          wsUrl: cfg.ws_url,
+          workspaceSlug: slug,
+          onEstado: setConexao,
+          onAbriu: (enviar) => {
+            // Reassina a conversa aberta e recarrega a lista: o que aconteceu
+            // enquanto a conexão esteve fora não é reenviado.
             const cur = activeRef.current;
-            if (cur) ws?.send(JSON.stringify({ type: "agent.open", session_id: cur }));
-            // Refresh session list in case we missed events during disconnect
+            if (cur) enviar({ type: "agent.open", session_id: cur });
             void refreshSessionsRef.current?.();
-          };
-
-          ws.onmessage = (ev) => {
-            const msg = JSON.parse(ev.data);
-            if (msg.type === "ping") return ws?.send(JSON.stringify({ type: "pong" }));
-
-            // Client is typing in the open conversation → show the indicator.
-            if (msg.type === "typing" && msg.who === "client") {
-              if (msg.session_id === activeRef.current) {
-                setClientTyping(true);
-                if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-                typingTimerRef.current = setTimeout(() => setClientTyping(false), 3000);
-              }
-              return;
-            }
-            // Client read up to msg.at → my earlier messages turn blue.
-            if (msg.type === "read.receipt" && msg.who === "client") {
-              if (msg.session_id === activeRef.current && msg.at) setClientReadAt(msg.at);
-              return;
-            }
-
-            if (msg.type === "message.new") {
-              // Conversa que ainda não está na lista: é gente nova chegando pelo
-              // WhatsApp. Sem este refresh a linha só aparecia no próximo
-              // recarregamento da página — o atendente não via o cliente entrar.
-              if (!sessionsRef.current.some((s) => s.id === msg.message.session_id)) {
-                void refreshSessionsRef.current?.();
-              }
-              const isActive = msg.message.session_id === activeRef.current;
-              if (isActive && msg.message.sender === "client") setClientTyping(false);
-              if (isActive) {
-                // Replace temp optimistic message if text/sender match
-                setMessages((prev) => {
-                  const idx = prev.findIndex(
-                    (m) => m.id.startsWith("temp-") && m.text === msg.message.text && m.sender === msg.message.sender
-                  );
-                  if (idx >= 0) {
-                    const next = [...prev];
-                    next[idx] = msg.message;
-                    return next;
-                  }
-                  return [...prev, msg.message];
-                });
-              } else if (msg.message.sender === "client") {
-                setSessions((prev) =>
-                  prev.map((s) =>
-                    s.id === msg.message.session_id ? { ...s, unread: (s.unread ?? 0) + 1 } : s
-                  )
-                );
-              }
-              // Desktop notification for inbound client messages when the tab is
-              // not focused or the message isn't in the open conversation.
-              if (msg.message.sender === "client" && (document.hidden || !isActive)) {
-                playAlert();
-                const sess = sessionsRef.current.find((s) => s.id === msg.message.session_id);
-                const who = sess?.client_name || sess?.client_phone || "Visitante";
-                const preview =
-                  msg.message.text ||
-                  (msg.message.type === "image"
-                    ? "📷 Imagem"
-                    : msg.message.type === "audio"
-                      ? "🎤 Áudio"
-                      : msg.message.type === "file"
-                        ? "📎 Arquivo"
-                        : "Nova mensagem");
-                notifyDesktop(`Nova mensagem — ${who}`, preview);
-              }
-              return;
-            }
-
-            // Falha de envio ao WhatsApp (ou o reenvio que deu certo).
-            if (msg.type === "message.status")
-              return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
-            if (msg.type === "message.edit")
-              return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
-            if (msg.type === "message.delete")
-              // Staff receive the full message (deleted_at + original text kept).
-              return setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === (msg.message?.id ?? msg.message_id)
-                    ? msg.message ?? { ...m, deleted_at: new Date().toISOString(), text: null }
-                    : m
-                )
-              );
-
-            // A chat became assigned to me (direct route / queue pickup). The
-            // backend only delivers session.assigned to the chosen attendant (or to
-            // whoever has it open), so treat it as a new, unread arrival: bump the
-            // unread badge, beep, and notify on the desktop when the tab is hidden.
-            if (msg.type === "session.assigned") {
-              void refreshSessionsRef.current?.();
-              const sid = msg.session_id;
-              if (sid && sid !== activeRef.current) {
-                // Flag as a new arrival (survives the list refresh, which would
-                // otherwise reset the backend-computed unread count to 0).
-                setNewAssigned((prev) => new Set(prev).add(sid));
-                playAlert();
-                const sess = sessionsRef.current.find((s) => s.id === sid);
-                const who = sess?.client_name || sess?.client_phone || "Visitante";
-                notifyDesktop("Novo atendimento", `${who} iniciou um atendimento.`);
-              }
-              return;
-            }
-
-            if (
-              msg.type === "session.activity" ||
-              msg.type === "session.queued" ||
-              msg.type === "session.closed" ||
-              msg.type === "session.transferred"
-            ) {
-              void refreshSessionsRef.current?.();
-              if (msg.type === "session.closed" && msg.session_id === activeRef.current) {
-                setSessions((prev) =>
-                  prev.map((s) => (s.id === msg.session_id ? { ...s, status: "closed" } : s))
-                );
-              }
-              if (msg.type === "session.transferred") {
-                playAlert();
-                notifyDesktop("Atendimento transferido", "Um atendimento foi transferido para você.");
-              }
-              return;
-            }
-
-            if (msg.type === "alert.sla") {
-              playAlert();
-              setSlaSessions((prev) => new Set(prev).add(msg.session_id));
-            }
-          };
-
-          ws.onclose = (ev) => {
-            // 1000 = normal closure (intentional), don't reconnect
-            if (!stop && ev.code !== 1000) {
-              setConexao("reconectando");
-              reconnectTimer = setTimeout(() => void connect(), 3000);
-            }
-          };
-        };
-
-        void connect();
+          },
+          onEvento: aoReceber,
+        });
+        conexaoRef.current = conexaoLocal;
       } catch (e: any) {
         setError(e?.detail || "Falha ao carregar o chat.");
       }
@@ -833,15 +774,15 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
     return () => {
       stop = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close(1000, "unmount");
+      conexaoLocal?.fechar();
+      conexaoRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   const activeSession = sessions.find((s) => s.id === activeId) ?? null;
   const slaActive = activeId ? slaSessions.has(activeId) : false;
-  const send = (payload: any) => wsRef.current?.send(JSON.stringify(payload));
+  const send = (payload: any) => conexaoRef.current?.enviar(payload);
 
   const handleSend = () => {
     if (!activeId || !draft.trim()) return;
