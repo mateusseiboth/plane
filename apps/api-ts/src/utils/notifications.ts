@@ -16,16 +16,7 @@ export async function notifyQualityOfIntake(opts: {
   actorId: string | null;
   issueName: string;
 }): Promise<void> {
-  const members = await prisma.projectMember.findMany({
-    where: {projectId: opts.projectId, isActive: true, deletedAt: null},
-    include: {workflowRole: {select: {key: true, level: true}}},
-  });
-
-  const receivers = members
-    .filter((m) => m.memberId !== opts.actorId)
-    // permissao-estrutural: escolhe QUEM é avisado (o setor Qualidade), não quem pode agir.
-    .filter((m) => m.workflowRole?.key === "qualidade" || m.workflowRole?.level === 8 || m.role === 8)
-    .map((m) => m.memberId);
+  const receivers = (await findQualidadeDoProjeto(opts.projectId)).filter((id) => id !== opts.actorId);
 
   if (!receivers.length) return;
 
@@ -45,6 +36,63 @@ export async function notifyQualityOfIntake(opts: {
       triggered: "intake",
     })),
   });
+}
+
+/** Quem é do setor Qualidade no projeto: nível 8 legado ou função de chave "qualidade". */
+async function findQualidadeDoProjeto(projectId: string): Promise<string[]> {
+  const members = await prisma.projectMember.findMany({
+    where: {projectId, isActive: true, deletedAt: null},
+    include: {workflowRole: {select: {key: true, level: true}}},
+  });
+  return (
+    members
+      // permissao-estrutural: escolhe QUEM é avisado (o setor Qualidade), não quem pode agir.
+      .filter((m) => m.workflowRole?.key === "qualidade" || m.workflowRole?.level === 8 || m.role === 8)
+      .map((m) => m.memberId)
+  );
+}
+
+/**
+ * Avisa quem trabalha no chamado que o CLIENTE mexeu nele pelo portal:
+ * respondeu, reabriu ou encerrou.
+ *
+ * Vai para os responsáveis ativos. Chamado sem responsável (ainda na triagem,
+ * por exemplo) avisa a Qualidade do projeto, que é quem cuida da entrada: o
+ * recado do cliente não pode cair no vazio.
+ */
+export async function notifyInteracaoDoCliente(opts: {
+  workspaceId: string;
+  projectId: string;
+  issueId: string;
+  title: string;
+  message: string;
+  tipo: string;
+}): Promise<void> {
+  const responsaveis = await prisma.issueAssignee.findMany({
+    where: {issueId: opts.issueId, deletedAt: null, assignee: {isActive: true, deletedAt: null}},
+    select: {assigneeId: true},
+  });
+  const receivers = responsaveis.length
+    ? [...new Set(responsaveis.map((r) => r.assigneeId))]
+    : await findQualidadeDoProjeto(opts.projectId);
+  if (!receivers.length) return;
+
+  await prisma.notification.createMany({
+    data: receivers.map((receiverId) => ({
+      workspaceId: opts.workspaceId,
+      projectId: opts.projectId,
+      issueId: opts.issueId,
+      receiverId,
+      actorId: null,
+      title: opts.title,
+      message: opts.message.slice(0, 200),
+      entity: "issue",
+      entityId: opts.issueId,
+      data: {type: "portal_cliente", tipo: opts.tipo},
+      triggered: "comment",
+    })),
+  });
+  avisarSino(opts.workspaceId, receivers);
 }
 
 /**

@@ -87,7 +87,8 @@ type Entrada = {
   issueId: string;
   /** Grupo do estado em que o chamado acabou de entrar (`completed`, `started`, …). */
   grupo: string;
-  autorId: string;
+  /** `null` quando quem mexeu foi o cliente, pelo portal: não há usuário do Plane por trás. */
+  autorId: string | null;
   workspaceId: string;
   projectId: string;
 };

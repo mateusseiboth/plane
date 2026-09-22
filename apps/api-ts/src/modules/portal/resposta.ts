@@ -32,6 +32,7 @@
  * caminho fica de fora porque nenhum caminho precisa colaborar.
  */
 
+import type { Prisma } from "@prisma/client";
 import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { publishRealtime } from "@utils/realtime";
@@ -40,7 +41,16 @@ import { publishRealtime } from "@utils/realtime";
 export const MARCA_DA_RESPOSTA = "portal_resposta";
 
 /** `newValue` da marca de "concluí sem responder". */
-const DISPENSADA = "dispensada";
+export const DISPENSADA = "dispensada";
+
+/**
+ * A marca que a resposta (ou a dispensa) ganha quando o CLIENTE reabre a
+ * solicitação. A fila de pendências e o "já respondido" olham só a marca
+ * vigente: sem trocar a marca, o chamado reaberto e concluído de novo nunca
+ * voltaria a pedir resposta. O texto continua no chamado e na conversa do
+ * portal, como histórico.
+ */
+export const MARCA_DA_RESPOSTA_ANTERIOR = "portal_resposta_anterior";
 
 /** Grupo de estado que conta como conclusão (ver `packages/constants/src/state.ts`). */
 const GRUPO_CONCLUIDO = "completed";
@@ -74,19 +84,6 @@ function paraHtml(texto: string): string {
   if (!paragrafos.length) return "<p></p>";
   return paragrafos.map((p) => `<p>${escapar(p).replace(/\n/g, "<br />")}</p>`).join("");
 }
-
-/** O comentário-resposta do chamado, quando existe. */
-export const RESPOSTA_INCLUDE = {
-  where: { externalSource: MARCA_DA_RESPOSTA, deletedAt: null },
-  orderBy: { createdAt: "desc" },
-  take: 1,
-  select: {
-    commentHtml: true,
-    commentStripped: true,
-    createdAt: true,
-    actor: { select: { displayName: true, firstName: true, lastName: true } },
-  },
-} as const;
 
 function nomeDeQuemRespondeu(actor: { displayName: string; firstName: string; lastName: string } | null): string {
   if (!actor) return "Equipe de atendimento";
@@ -433,4 +430,19 @@ export async function dispensarResposta(ctx: Contexto & { motivo?: string }) {
   });
 
   return { dispensada: true as const };
+}
+
+/**
+ * Arquiva a resposta e a dispensa vigentes: o cliente reabriu, e a próxima
+ * conclusão tem de pedir retorno de novo. Ver `MARCA_DA_RESPOSTA_ANTERIOR`.
+ */
+export async function archiveRespostaVigente(tx: Prisma.TransactionClient, issueId: string): Promise<void> {
+  await tx.issueComment.updateMany({
+    where: { issueId, externalSource: MARCA_DA_RESPOSTA, deletedAt: null },
+    data: { externalSource: MARCA_DA_RESPOSTA_ANTERIOR },
+  });
+  await tx.issueActivity.updateMany({
+    where: { issueId, field: MARCA_DA_RESPOSTA, deletedAt: null },
+    data: { field: MARCA_DA_RESPOSTA_ANTERIOR },
+  });
 }

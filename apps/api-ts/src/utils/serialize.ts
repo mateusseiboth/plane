@@ -90,12 +90,25 @@ export function serializeIssue(issue: any): Record<string, unknown> {
 }
 
 // Include shape for comments so serializeComment can build actor_detail.
+// `issue.portalRequest.account` dá nome ao comentário que o cliente escreveu
+// pelo portal: ele não tem `actor` (a conta do portal não é usuário do Plane).
 export const COMMENT_INCLUDE = {
   actor: { select: { id: true, displayName: true, firstName: true, lastName: true, email: true, avatar: true, avatarUrl: true } },
+  issue: { select: { portalRequest: { select: { account: { select: { name: true } } } } } },
 } as const;
 
+/** Marca do comentário escrito pelo cliente no portal (ver `modules/portal/conversa`). */
+const MARCA_DO_CLIENTE_DO_PORTAL = "portal_cliente";
+
+/** O "autor" que a tela desenha no comentário do cliente do portal. */
+function buildAutorDoPortal(c: any) {
+  if (c.actor || c.externalSource !== MARCA_DO_CLIENTE_DO_PORTAL) return c.actor;
+  const conta = c.issue?.portalRequest?.account?.name ?? "Cliente";
+  return { id: "", displayName: `${conta} (cliente)`, firstName: conta, lastName: "", email: "", avatar: "", avatarUrl: null };
+}
+
 export function serializeComment(c: any): Record<string, unknown> {
-  const a = c.actor;
+  const a = buildAutorDoPortal(c);
   return {
     id:               c.id,
     workspace:        c.workspaceId ?? null,

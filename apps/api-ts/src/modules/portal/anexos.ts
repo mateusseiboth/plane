@@ -309,8 +309,14 @@ export async function anexosDaSolicitacao(issueId: string): Promise<AnexoDoPorta
   return anexos.map(anexoDoChamado);
 }
 
-export function contarAnexos(issueId: string): Promise<number> {
-  return prisma.issueAttachment.count({ where: { issueId, deletedAt: null } });
+/**
+ * Quantos anexos já contam para o limite. Sem `interacaoId`, os da solicitação
+ * inteira (a abertura); com ele, só os que subiram junto daquela resposta do
+ * cliente: cada resposta tem o seu próprio limite, como a abertura.
+ */
+export function contarAnexos(issueId: string, interacaoId?: string | null): Promise<number> {
+  const daInteracao = interacaoId ? { attributes: { path: ["interacao"], equals: interacaoId } } : {};
+  return prisma.issueAttachment.count({ where: { issueId, deletedAt: null, ...daInteracao } });
 }
 
 /** Bytes que bastam para reconhecer o formato, sem carregar o arquivo inteiro. */
@@ -333,9 +339,17 @@ export async function guardarAnexo(dados: {
   nome: string;
   tipo: string;
   tamanho: number;
+  /** A resposta do cliente a que o arquivo pertence, quando não é da abertura. */
+  interacao?: string | null;
 }): Promise<AnexoDoPortal> {
   const id = randomUUID();
-  const atributos = { name: dados.nome, type: dados.tipo, size: dados.tamanho, origem: ORIGEM };
+  const atributos = {
+    name: dados.nome,
+    type: dados.tipo,
+    size: dados.tamanho,
+    origem: ORIGEM,
+    ...(dados.interacao ? { interacao: dados.interacao } : {}),
+  };
 
   await prisma.fileAsset.create({
     data: {
