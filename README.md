@@ -70,6 +70,7 @@ We have evolved Plane Community Edition in two major directions:
 | **Paywalls / "Pro" gating** | Upgrade modals, badges & feature flags gate features | **All paywalls removed** — upgrade UI renders nothing and gated CE features (bulk operations, page move/share, issue embeds) are enabled for everyone. |
 | **Whitelabel branding** | Hardcoded "Plane" | **Single switch point** (`APP_NAME` / `VITE_APP_NAME`) — defaults to **"Avião"**; titles, metadata and chrome derive from it. |
 | **Developer docs** | — | In-app **Widgets & Custom Integrations** docs page (`/<workspace>/developers/widgets`), linked from the home "Manage widgets" dialog. |
+| **Workspace wiki** | Paid ("Wiki" in the plan table) | **Wiki at `/<workspace>/wiki`**: nested pages (create child, move, reorder, archive with the subtree), the same collaborative editor and version history as project pages, **file attachment block** in the editor, wiki search plus wiki pages in ⌘K and global search. Access by the permission matrix (`wiki.view`, `wiki.edit`). Legacy import: `apps/api-ts/scripts/import-wiki-legado.ts`. See [`.claude/wiki.md`](./.claude/wiki.md). |
 | **Client portal** | — | **Public request portal** (`/portal?workspace=<slug>`) with its own login: the client picks a system, opens a request and follows its status. Own account model (no Plane seat), requests land in the project's **intake/triage**. |
 
 > A living backlog of these features lives in [`ToDo.md`](./ToDo.md),
