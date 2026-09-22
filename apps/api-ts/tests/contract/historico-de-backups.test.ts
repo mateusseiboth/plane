@@ -72,11 +72,13 @@ describe("histórico do painel de backups", () => {
     expect((await comChave(`?entidade=${entidadeId}`, chaveDoTi)).status).toBe(403);
   });
 
-  it("quem está logado e vê relatórios abre sem chave; o Visualizador recebe 403", async () => {
+  it("qualquer membro do espaço abre o histórico sem chave, inclusive o Visualizador", async () => {
     const comSessao = await fetch(historico(`?entidade=${entidadeId}`), { headers: { "X-Api-Key": gestorToken } });
     expect(comSessao.status).toBe(200);
-    const semAcao = await fetch(historico(`?entidade=${entidadeId}`), { headers: { "X-Api-Key": visualizadorToken } });
-    expect(semAcao.status).toBe(403);
+    const visualizador = await fetch(historico(`?entidade=${entidadeId}`), {
+      headers: { "X-Api-Key": visualizadorToken },
+    });
+    expect(visualizador.status).toBe(200);
   });
 
   it("sem entidade, a recusa volta no campo", async () => {
