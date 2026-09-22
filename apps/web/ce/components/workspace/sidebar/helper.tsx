@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { Contact, FileBarChart, MessageSquare, Wrench } from "lucide-react";
+import { BookOpen, Contact, FileBarChart, MessageSquare, Wrench } from "lucide-react";
 import {
   AnalyticsIcon,
   ArchiveIcon,
@@ -55,5 +55,7 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <Contact className={cn("size-4 flex-shrink-0", className)} />;
     case "reports":
       return <FileBarChart className={cn("size-4 flex-shrink-0", className)} />;
+    case "wiki":
+      return <BookOpen className={cn("size-4 flex-shrink-0", className)} />;
   }
 };

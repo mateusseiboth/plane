@@ -135,6 +135,12 @@ export const coreRoutes: RouteConfigEntry[] = [
         route(":workspaceSlug/visits", "./(all)/[workspaceSlug]/(projects)/visits/page.tsx"),
         route(":workspaceSlug/visits/:visitId", "./(all)/[workspaceSlug]/(projects)/visits/[visitId]/page.tsx"),
 
+        // Wiki do espaço (páginas sem sistema)
+        layout("./(all)/[workspaceSlug]/(projects)/wiki/layout.tsx", [
+          route(":workspaceSlug/wiki", "./(all)/[workspaceSlug]/(projects)/wiki/page.tsx"),
+          route(":workspaceSlug/wiki/:pageId", "./(all)/[workspaceSlug]/(projects)/wiki/[pageId]/page.tsx"),
+        ]),
+
         // Contatos (responsáveis das entidades)
         route(":workspaceSlug/contatos", "./(all)/[workspaceSlug]/(projects)/contatos/page.tsx"),
 

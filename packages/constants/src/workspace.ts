@@ -216,6 +216,8 @@ export interface IWorkspaceSidebarNavigationItem {
   href: string;
   access: EUserWorkspaceRoles[];
   highlight: (pathname: string, url: string) => boolean;
+  /** Ação da matriz de permissões exigida para o item aparecer (ex.: "wiki.view"). */
+  action?: string;
 }
 
 export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspaceSidebarNavigationItem> = {
@@ -309,6 +311,24 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Wiki do espaço: quem enxerga é decidido pela ação `wiki.view` da matriz,
+  // não pelo nível; por isso `access` lista todas as funções.
+  wiki: {
+    key: "wiki",
+    labelTranslationKey: "sidebar.wiki",
+    href: `/wiki/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: "wiki.view",
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   analytics: {
     key: "analytics",
     labelTranslationKey: "analytics",
@@ -345,6 +365,7 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["visits"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["chat"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["contatos"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["wiki"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["reports"],

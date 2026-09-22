@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { useParams, useRouter } from "next/navigation";
 import { Search, X, FileText, Inbox, ArrowUpRight } from "lucide-react";
-import { cn } from "@plane/utils";
+import { cn, getPaginaPath } from "@plane/utils";
 import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
 import { WorkspaceService } from "@/services/workspace.service";
 
@@ -22,7 +22,10 @@ const workspaceService = new WorkspaceService();
 const CATEGORY_LABEL: Record<string, string> = {
   "Work Items": "Chamados",
   Intakes: "Solicitações",
+  Pages: "Páginas",
 };
+
+const CATEGORIES = ["Work Items", "Intakes", "Pages"] as const;
 
 const PRIORITY_COLOR: Record<string, string> = {
   urgent: "text-red-600 bg-red-50",
@@ -35,13 +38,25 @@ const PRIORITY_COLOR: Record<string, string> = {
 type SearchResult = {
   id: string;
   name: string;
-  type: "issue" | "intake";
+  type: "issue" | "intake" | "page";
   sequence_id?: number | null;
   legacy_ticket_number?: string | null;
   ticket_number?: string | null;
   priority?: string | null;
   state?: { name: string; group: string } | null;
   project?: { id: string; identifier: string; name: string } | null;
+  project_ids?: string[];
+};
+
+type TResults = { issues: SearchResult[]; intakes: SearchResult[]; pages: SearchResult[] };
+
+const SEM_RESULTADOS: TResults = { issues: [], intakes: [], pages: [] };
+
+/** Para onde cada tipo de resultado leva. A página sem sistema abre na wiki. */
+const PATH_BY_TYPE: Record<SearchResult["type"], (slug: string, item: SearchResult) => string> = {
+  intake: (slug, item) => `/${slug}/global-intake/?projectId=${item.project?.id}&inboxIssueId=${item.id}`,
+  issue: (slug, item) => `/${slug}/projects/${item.project?.id}/issues/${item.id}/`,
+  page: (slug, item) => getPaginaPath({ workspaceSlug: slug, pageId: item.id, projectIds: item.project_ids }),
 };
 
 type Props = {
@@ -51,7 +66,7 @@ type Props = {
 
 export function GlobalSearchModal({ isOpen, onClose }: Props) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ issues: SearchResult[]; intakes: SearchResult[] }>({ issues: [], intakes: [] });
+  const [results, setResults] = useState<TResults>(SEM_RESULTADOS);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +77,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
   useEffect(() => {
     if (isOpen) {
       setQuery("");
-      setResults({ issues: [], intakes: [] });
+      setResults(SEM_RESULTADOS);
       setSelected(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
@@ -70,30 +85,25 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
 
   useEffect(() => {
     if (!debouncedQuery.trim() || !workspaceSlug) {
-      setResults({ issues: [], intakes: [] });
+      setResults(SEM_RESULTADOS);
       return;
     }
     setLoading(true);
     workspaceService
       .globalSearch(workspaceSlug.toString(), debouncedQuery)
-      .then((r) => setResults({ issues: r.issues ?? [], intakes: r.intakes ?? [] }))
+      .then((r) => setResults({ issues: r.issues ?? [], intakes: r.intakes ?? [], pages: r.pages ?? [] }))
       .finally(() => setLoading(false));
   }, [debouncedQuery, workspaceSlug]);
 
   const allResults: Array<SearchResult & { _category: string }> = [
     ...results.issues.map((i) => ({ ...i, _category: "Work Items" })),
     ...results.intakes.map((i) => ({ ...i, _category: "Intakes" })),
+    ...results.pages.map((i) => Object.assign({}, i, { _category: "Pages" })),
   ];
 
   const navigate = useCallback(
     (item: SearchResult) => {
-      const slug = workspaceSlug?.toString();
-      if (item.type === "intake") {
-        router.push(`/${slug}/global-intake/?projectId=${item.project?.id}&inboxIssueId=${item.id}`);
-      } else {
-        // Work item — use browse/[PROJ-SEQ] pattern OR peek in project
-        router.push(`/${slug}/projects/${item.project?.id}/issues/${item.id}/`);
-      }
+      router.push(PATH_BY_TYPE[item.type](workspaceSlug?.toString() ?? "", item));
       onClose();
     },
     [workspaceSlug, router, onClose]
@@ -127,7 +137,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                     ref={inputRef}
                     value={query}
                     onChange={(e) => { setQuery(e.target.value); setSelected(0); }}
-                    placeholder="Buscar chamados, solicitações, chamados legados… (#1234-2026)"
+                    placeholder="Buscar chamados, solicitações, páginas… (#1234-2026)"
                     className="flex-1 bg-transparent text-15 text-primary outline-none placeholder:text-tertiary"
                   />
                   {loading && <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />}
@@ -143,7 +153,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                 <div className="max-h-[60vh] overflow-y-auto p-2">
                   {!query && (
                     <p className="px-4 py-6 text-center text-13 text-secondary">
-                      Digite para buscar chamados, solicitações, chamados legados ou identificadores de sistema.
+                      Digite para buscar chamados, solicitações, páginas da wiki, chamados legados ou identificadores de sistema.
                     </p>
                   )}
                   {query && !loading && allResults.length === 0 && (
@@ -153,7 +163,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                   )}
 
                   {/* Group by category */}
-                  {["Work Items", "Intakes"].map((category) => {
+                  {CATEGORIES.map((category) => {
                     const items = allResults.filter((r) => r._category === category);
                     if (items.length === 0) return null;
                     const baseIdx = allResults.findIndex((r) => r._category === category);
