@@ -53,6 +53,16 @@ const TERRENO = {
   zoomMaximo: 14,
 };
 
+/**
+ * Rodovias por cima do terreno: o National Geographic quase não desenha
+ * estrada nessa escala, e as BRs ligando as cidades são o que a equipe usa
+ * para se localizar. A camada da Esri é transparente, feita para sobrepor.
+ */
+const RODOVIAS = {
+  url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+  zoomMaximo: 14,
+};
+
 const toLimites = (limites: L.LatLngBounds): LimitesDoMapa => ({
   sul: limites.getSouth(),
   oeste: limites.getWest(),
@@ -179,6 +189,7 @@ function MapaComTerreno({
     terreno.on("tileload", onTileCarregado);
     terreno.on("tileerror", onTileComErro);
     terreno.addTo(mapa);
+    L.tileLayer(RODOVIAS.url, { maxZoom: RODOVIAS.zoomMaximo, keepBuffer: 4, opacity: 0.95 }).addTo(mapa);
 
     marcadores.current = L.layerGroup().addTo(mapa);
     mapaVivo.current = mapa;
