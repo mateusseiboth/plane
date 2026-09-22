@@ -27,7 +27,11 @@ import { isPainelDaChave, readChaveDaRequisicao, type PainelDaChave } from "@mod
 import { chaveDao } from "@modules/painel-tv/chaves/chave.dao";
 import { ChaveDePainelInvalidaError, PainelDesconhecidoError } from "@modules/painel-tv/chaves/chave.errors";
 import { createChaveService } from "@modules/painel-tv/chaves/chave.service";
-import { findPainelDeBackups, readDiasDoPainel } from "@modules/painel-tv/backups/backups.service";
+import {
+  findHistoricoDeBackups,
+  findPainelDeBackups,
+  readDiasDoPainel,
+} from "@modules/painel-tv/backups/backups.service";
 import { findMapa } from "@modules/painel-tv/mapa/mapa.service";
 import { isPainelDoQuadro } from "@modules/painel-tv/quadro/colunas";
 import { findQuadro } from "@modules/painel-tv/quadro/quadro.service";
@@ -161,6 +165,18 @@ export const painelDaTvModule = new Elysia({ prefix: "/api/v1/tv/:slug" })
     return findPainelDeBackups(acesso.workspaceId, {
       uf: typeof query.uf === "string" ? query.uf : null,
       dias: readDiasDoPainel(query.dias),
+    });
+  })
+
+  // Detalhe do painel interativo: o histórico de UMA entidade × sistema. Mesma
+  // porta de entrada do painel (a mesma chave abre os dois), só leitura.
+  .get("/backups/historico/", async (ctx) => {
+    const { query } = ctx as Contexto;
+    const acesso = await requirePainel(ctx as Contexto, "backups");
+    return findHistoricoDeBackups(acesso.workspaceId, {
+      entidade: query.entidade,
+      sistema: query.sistema,
+      dias: query.dias,
     });
   })
 
