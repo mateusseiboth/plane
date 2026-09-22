@@ -170,7 +170,6 @@ export const coreRoutes: RouteConfigEntry[] = [
         route(":workspaceSlug/reports/:reportId", "./(all)/[workspaceSlug]/(projects)/reports/[reportId]/page.tsx"),
 
         // Plugin Store
-        route(":workspaceSlug/plugins", "./(all)/[workspaceSlug]/(projects)/plugins/page.tsx"),
 
         // Archived Projects
         layout("./(all)/[workspaceSlug]/(projects)/projects/(detail)/archives/layout.tsx", [

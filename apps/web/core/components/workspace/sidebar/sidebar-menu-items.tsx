@@ -8,7 +8,7 @@ import React, { useMemo } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { Ellipsis, LayoutDashboard, Puzzle } from "lucide-react";
+import { Ellipsis, LayoutDashboard } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
 import {
@@ -172,14 +172,6 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
                 <PluginSidebarItems />
                 {canAccessExtensions && (
                   <>
-                    <Link href={`/${workspaceSlug}/plugins`}>
-                      <SidebarNavItem isActive={pathname?.startsWith(`/${workspaceSlug}/plugins`) ?? false}>
-                        <div className="flex w-full items-center gap-1.5 truncate">
-                          <Puzzle className="size-4 flex-shrink-0" />
-                          <span className="truncate text-13 font-medium">Loja de plugins</span>
-                        </div>
-                      </SidebarNavItem>
-                    </Link>
                     <Link href={`/${workspaceSlug}/developers/widgets`}>
                       <SidebarNavItem isActive={pathname?.startsWith(`/${workspaceSlug}/developers`) ?? false}>
                         <div className="flex w-full items-center gap-1.5 truncate">

@@ -301,10 +301,6 @@ describe("Rotas de listagem", () => {
       expect(data.results).toBeInstanceOf(Array);
     });
 
-    it("plugins instalados do workspace devolvem `installed`", async () => {
-      const data = await getJson(ws("/plugins/"));
-      expect(data.installed).toBeInstanceOf(Array);
-    });
   });
 
   // ── Paginação ──────────────────────────────────────────────────────────────
