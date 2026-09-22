@@ -61,6 +61,12 @@ const TERRENO = {
 const RODOVIAS = {
   url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
   zoomMaximo: 14,
+  /**
+   * Na escala do estado a Esri só desenha as federais. Pedir o tile de DOIS
+   * níveis acima e desenhá-lo com um quarto do tamanho traz as estaduais
+   * (Nioaque a Guia Lopes, por exemplo) sem mudar o enquadramento.
+   */
+  niveisAcima: 2,
 };
 
 const toLimites = (limites: L.LatLngBounds): LimitesDoMapa => ({
@@ -189,7 +195,17 @@ function MapaComTerreno({
     terreno.on("tileload", onTileCarregado);
     terreno.on("tileerror", onTileComErro);
     terreno.addTo(mapa);
-    L.tileLayer(RODOVIAS.url, { maxZoom: RODOVIAS.zoomMaximo, keepBuffer: 4, opacity: 0.95 }).addTo(mapa);
+    // Painel próprio: as estradas ganham contraste no CSS sem escurecer o terreno.
+    mapa.createPane("rodovias").style.zIndex = "350";
+    L.tileLayer(RODOVIAS.url, {
+      pane: "rodovias",
+      maxZoom: RODOVIAS.zoomMaximo,
+      tileSize: 256 / 2 ** RODOVIAS.niveisAcima,
+      zoomOffset: RODOVIAS.niveisAcima,
+      keepBuffer: 2,
+      opacity: 0.95,
+      updateWhenIdle: true,
+    }).addTo(mapa);
 
     marcadores.current = L.layerGroup().addTo(mapa);
     mapaVivo.current = mapa;

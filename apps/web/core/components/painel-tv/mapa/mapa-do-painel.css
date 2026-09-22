@@ -21,6 +21,11 @@
   filter: brightness(0.86) saturate(1.25) contrast(1.05);
 }
 
+/* As estradas vêm finas e claras: mais contraste para lerem de longe. */
+.mapa-do-painel .leaflet-rodovias-pane {
+  filter: saturate(2) contrast(1.6) brightness(0.85);
+}
+
 .mapa-do-painel .leaflet-container {
   height: 100%;
   width: 100%;
