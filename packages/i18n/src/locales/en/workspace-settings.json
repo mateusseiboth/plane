@@ -540,6 +540,9 @@
       "auditoria": {
         "title": "Audit trail (LGPD)"
       },
+      "paineis_tv": {
+        "title": "TV panels"
+      },
       "email": {
         "title": "E-mail (SMTP)"
       },

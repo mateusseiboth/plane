@@ -2293,3 +2293,39 @@ model CurriculoConfig {
 
   @@map("curriculo_config")
 }
+
+/// Chave de API de painel de TV (W18): abre os painéis sem login do Plane. Só o
+/// hash SHA-256 e os 4 últimos caracteres são gravados; o valor aparece uma vez,
+/// na criação. Ver `.claude/paineis-tv.md`.
+model PainelChave {
+  id          String    @id @default(uuid()) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  workspaceId String    @map("workspace_id") @db.Uuid
+  name        String    @db.VarChar(120)
+  keyHash     String    @unique @map("key_hash") @db.VarChar(64)
+  lastFour    String    @map("last_four") @db.VarChar(4)
+  /// Painéis que a chave abre: ti, qualidade, atendimento, mapa.
+  scopes      String[]  @default([])
+  isActive    Boolean   @default(true) @map("is_active")
+  lastUsedAt  DateTime? @map("last_used_at")
+  createdById String?   @map("created_by_id") @db.Uuid
+  revokedAt   DateTime? @map("revoked_at")
+  revokedById String?   @map("revoked_by_id") @db.Uuid
+
+  @@index([workspaceId])
+  @@map("panel_keys")
+}
+
+/// Colunas de um painel de TV (TI, Qualidade) no espaço. Sem linha, vale o padrão
+/// do código (`modules/painel-tv/quadro/colunas.ts`).
+model PainelConfig {
+  workspaceId String   @map("workspace_id") @db.Uuid
+  panel       String   @db.VarChar(20)
+  columns     Json     @default("[]")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedById String?  @map("updated_by_id") @db.Uuid
+
+  @@id([workspaceId, panel])
+  @@map("panel_settings")
+}

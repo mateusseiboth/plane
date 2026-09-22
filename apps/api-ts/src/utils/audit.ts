@@ -68,6 +68,8 @@ export const AUDIT_ENTITIES = {
   // Disparo em massa do chat (gravado pelo chat-backend, src/disparo/).
   CHAT_DISPARO: "chat_disparo",
   AUDIT_LOG: "audit_log",
+  // Chave de API de painel de TV (W18): credencial de leitura sem login.
+  PANEL_KEY: "panel_key",
   OUVIDORIA: "ouvidoria",
   CURRICULO: "curriculo",
   // Denúncia NÃO entra aqui: nada da denúncia vai para a trilha, para que a

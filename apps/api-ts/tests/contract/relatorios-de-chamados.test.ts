@@ -2,7 +2,7 @@
  * Relatórios de chamados sobre os marcos por etapa: analítico por usuário,
  * devolvidos, sintético semanal, balanço, visão por sistema × tipo, tendência com
  * período livre, visitas por UF e sistema, log consolidado, horas analíticas e o
- * painel de TV. Todos exigem `report.view`. API de verdade + banco de teste.
+ * Todos exigem `report.view`. API de verdade + banco de teste.
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import {
@@ -185,14 +185,7 @@ describe("relatórios de chamados (marcos por etapa)", () => {
   };
 
   it("sem report.view a função recebe 403", async () => {
-    const rotas = [
-      "milestones-by-user/",
-      "returned/",
-      "weekly-summary/",
-      "balance/",
-      "ticket-log/",
-      "tv-panel/?setor=ti",
-    ];
+    const rotas = ["milestones-by-user/", "returned/", "weekly-summary/", "balance/", "ticket-log/"];
     const respostas = await Promise.all(rotas.map((rota) => getJson(rota, ti)));
     expect(respostas.map((r) => r.status)).toEqual(rotas.map(() => 403));
   });
@@ -330,24 +323,6 @@ describe("relatórios de chamados (marcos por etapa)", () => {
       [30, "layout", chamado.c],
     ]);
     expect(dev.entries[0].issue.ticket_number).toMatch(/^\d+-\d{4}$/);
-  });
-
-  it("painel de TV do TI: colunas, pessoas e alerta de urgente", async () => {
-    const { status, body } = await getJson(`tv-panel/?setor=ti&project_ids=${p1}`);
-    expect(status).toBe(200);
-    expect(body.colunas.map((c: any) => [c.chave, c.chamados.map((x: any) => x.id)])).toEqual([
-      ["a_fazer", [chamado.b]],
-      ["em_desenvolvimento", [chamado.c]],
-      ["em_teste", []],
-    ]);
-    expect(body.alertas.map((c: any) => c.id)).toEqual([chamado.b]);
-    expect(body.por_pessoa.map((p: any) => [p.name, p.chamados.map((x: any) => x.id)])).toEqual([
-      ["Davi Dev", [chamado.c]],
-    ]);
-  });
-
-  it("painel de TV recusa setor desconhecido", async () => {
-    expect((await getJson("tv-panel/?setor=financeiro")).status).toBe(400);
   });
 
   it("tempo em cada etapa continua lendo o histórico", async () => {

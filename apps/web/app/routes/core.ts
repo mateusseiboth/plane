@@ -47,13 +47,14 @@ export const coreRoutes: RouteConfigEntry[] = [
   // ALL APP ROUTES
   // ========================================================================
   layout("./(all)/layout.tsx", [
+    // Painéis de TV: tela cheia, FORA do layout do espaço — abrem sem login do
+    // Plane, com a chave do painel em `?key=` (ver .claude/paineis-tv.md).
+    route(":workspaceSlug/painel/:painel", "./(all)/painel/[workspaceSlug]/[painel]/page.tsx"),
+
     // ======================================================================
     // WORKSPACE-SCOPED ROUTES
     // ======================================================================
     layout("./(all)/[workspaceSlug]/layout.tsx", [
-      // Painel de TV (tela cheia, sem o menu lateral dos sistemas)
-      route(":workspaceSlug/painel/:setor", "./(all)/[workspaceSlug]/(painel)/painel/[setor]/page.tsx"),
-
       // ====================================================================
       // PROJECTS APP SECTION - WORKSPACE LEVEL ROUTES
       // ====================================================================
@@ -384,6 +385,10 @@ export const coreRoutes: RouteConfigEntry[] = [
           route(
             ":workspaceSlug/settings/auditoria",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/auditoria/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/settings/paineis-tv",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/paineis-tv/page.tsx"
           ),
         ]),
 

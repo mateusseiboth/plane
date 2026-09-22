@@ -39,6 +39,8 @@ import { intakeWorkItemModule } from "@modules/intake-work-item";
 import { technicalVisitModule } from "@modules/technical-visit";
 import { reportsModule } from "@modules/reports";
 import { reportsDeChamadosModule } from "@modules/reports/rotas-de-chamados";
+import { painelDeTvModule } from "@modules/painel-tv/rotas-de-gestao";
+import { painelDaTvModule } from "@modules/painel-tv/rotas-da-tv";
 import { customWidgetModule } from "@modules/custom-widget";
 import { customWebhookModule } from "@modules/custom-webhook";
 import { widgetModule } from "@modules/widget";
@@ -227,6 +229,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(technicalVisitModule)
   .use(reportsModule)
   .use(reportsDeChamadosModule)
+  // Gestão das chaves e das colunas dos painéis de TV (panel.manage).
+  .use(painelDeTvModule)
   // rolesModule MUST be registered before the SDK gateways: those use a
   // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
   // after them, which would make /roles/ demand an X-Widget-Id header.
@@ -290,7 +294,12 @@ const trabalheConoscoApp = new Elysia().use(corsConfig).onError(errorHandler).us
 // usuário logado de toda rota registrada depois dele.
 const internoApp = new Elysia().onError(errorHandler).use(internoChatModule);
 
-export const app = new Elysia().use(authApp).use(portalApp).use(trabalheConoscoApp).use(internoApp).use(apiApp);
+// ── Painéis de TV: chave de painel OU sessão, nunca o `authPlugin` global ────
+// Montado ANTES do `apiApp` pelo mesmo motivo das rotas internas: o `authPlugin`
+// de lá exigiria usuário logado, e a TV não tem login.
+const painelApp = new Elysia().use(corsConfig).onError(errorHandler).use(painelDaTvModule);
+
+export const app = new Elysia().use(authApp).use(portalApp).use(trabalheConoscoApp).use(internoApp).use(painelApp).use(apiApp);
 
 if (import.meta.main) {
   app.listen(PORT);

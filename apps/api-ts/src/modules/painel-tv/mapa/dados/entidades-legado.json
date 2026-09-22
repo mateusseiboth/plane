@@ -1,0 +1,2154 @@
+{
+  "3": {
+    "sac": 3,
+    "lat": -22.017563,
+    "lon": -57.032819,
+    "cidade": "Caracol",
+    "uf": "MS",
+    "ibge": 5002803
+  },
+  "4": {
+    "sac": 4,
+    "lat": -19.833459,
+    "lon": -54.829014,
+    "cidade": "Corguinho",
+    "uf": "MS",
+    "ibge": 5003108
+  },
+  "5": {
+    "sac": 5,
+    "lat": -18.675249,
+    "lon": -53.641805,
+    "cidade": "Figueirão",
+    "uf": "MS",
+    "ibge": 5003900
+  },
+  "6": {
+    "sac": 6,
+    "lat": -19.006537,
+    "lon": -57.610947,
+    "cidade": "Ladário",
+    "uf": "MS",
+    "ibge": 5005202
+  },
+  "8": {
+    "sac": 8,
+    "lat": -19.448515,
+    "lon": -54.988128,
+    "cidade": "Rio Negro",
+    "uf": "MS",
+    "ibge": 5007307
+  },
+  "10": {
+    "sac": 10,
+    "lat": -20.440455,
+    "lon": -54.864843,
+    "cidade": "Terenos",
+    "uf": "MS",
+    "ibge": 5008008
+  },
+  "14": {
+    "sac": 14,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "15": {
+    "sac": 15,
+    "lat": -22.017563,
+    "lon": -57.035458,
+    "cidade": "Caracol",
+    "uf": "MS",
+    "ibge": 5002803
+  },
+  "16": {
+    "sac": 16,
+    "lat": -18.679221,
+    "lon": -53.636319,
+    "cidade": "Figueirão",
+    "uf": "MS",
+    "ibge": 5003900
+  },
+  "17": {
+    "sac": 17,
+    "lat": -19.006537,
+    "lon": -57.610947,
+    "cidade": "Ladário",
+    "uf": "MS",
+    "ibge": 5005202
+  },
+  "18": {
+    "sac": 18,
+    "lat": -19.827979,
+    "lon": -54.831347,
+    "cidade": "Corguinho",
+    "uf": "MS",
+    "ibge": 5003108
+  },
+  "19": {
+    "sac": 19,
+    "lat": -20.366532,
+    "lon": -51.424599,
+    "cidade": "Selvíria",
+    "uf": "MS",
+    "ibge": 5007802
+  },
+  "20": {
+    "sac": 20,
+    "lat": -18.101171,
+    "lon": -54.549672,
+    "cidade": "Pedro Gomes",
+    "uf": "MS",
+    "ibge": 5006408
+  },
+  "21": {
+    "sac": 21,
+    "lat": -19.450133,
+    "lon": -54.988697,
+    "cidade": "Rio Negro",
+    "uf": "MS",
+    "ibge": 5007307
+  },
+  "22": {
+    "sac": 22,
+    "lat": -20.449395,
+    "lon": -54.865067,
+    "cidade": "Terenos",
+    "uf": "MS",
+    "ibge": 5008008
+  },
+  "23": {
+    "sac": 23,
+    "lat": -19.920553,
+    "lon": -54.362706,
+    "cidade": "Bandeirantes",
+    "uf": "MS",
+    "ibge": 5001508
+  },
+  "24": {
+    "sac": 24,
+    "lat": -20.238344,
+    "lon": -56.387185,
+    "cidade": "Miranda",
+    "uf": "MS",
+    "ibge": 5005608
+  },
+  "25": {
+    "sac": 25,
+    "lat": -19.008453,
+    "lon": -57.627436,
+    "cidade": "Corumbá",
+    "uf": "MS",
+    "ibge": 5003207
+  },
+  "26": {
+    "sac": 26,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "27": {
+    "sac": 70,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "28": {
+    "sac": 28,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "29": {
+    "sac": 29,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "30": {
+    "sac": 30,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "34": {
+    "sac": 34,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "36": {
+    "sac": 36,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "37": {
+    "sac": 37,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "66": {
+    "sac": 66,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "72": {
+    "sac": 72,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "76": {
+    "sac": 76,
+    "lat": -20.13907,
+    "lon": -54.400122,
+    "cidade": "Jaraguari",
+    "uf": "MS",
+    "ibge": 5004908
+  },
+  "79": {
+    "sac": 79,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "86": {
+    "sac": 86,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "91": {
+    "sac": 91,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "98": {
+    "sac": 98,
+    "lat": -20.440455,
+    "lon": -54.864836,
+    "cidade": "Terenos",
+    "uf": "MS",
+    "ibge": 5008008
+  },
+  "99": {
+    "sac": 99,
+    "lat": -20.444991,
+    "lon": -53.759311,
+    "cidade": "Ribas do Rio Pardo",
+    "uf": "MS",
+    "ibge": 5007109
+  },
+  "100": {
+    "sac": 100,
+    "lat": -22.192516,
+    "lon": -55.945311,
+    "cidade": "Antônio João",
+    "uf": "MS",
+    "ibge": 5000906
+  },
+  "104": {
+    "sac": 104,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "108": {
+    "sac": 108,
+    "lat": -22.193144,
+    "lon": -55.944268,
+    "cidade": "Antônio João",
+    "uf": "MS",
+    "ibge": 5000906
+  },
+  "111": {
+    "sac": 223,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "112": {
+    "sac": 112,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "113": {
+    "sac": 113,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "114": {
+    "sac": 102,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "116": {
+    "sac": 116,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "121": {
+    "sac": 204,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "126": {
+    "sac": 151,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "127": {
+    "sac": 128,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "129": {
+    "sac": 121,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "130": {
+    "sac": 126,
+    "lat": -20.536785,
+    "lon": -56.713582,
+    "cidade": "Bodoquena",
+    "uf": "MS",
+    "ibge": 5002159
+  },
+  "133": {
+    "sac": 141,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "134": {
+    "sac": 158,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "137": {
+    "sac": 142,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "139": {
+    "sac": 124,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "140": {
+    "sac": 144,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "141": {
+    "sac": 145,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "142": {
+    "sac": 148,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "143": {
+    "sac": 146,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "144": {
+    "sac": 150,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "146": {
+    "sac": 155,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "150": {
+    "sac": 172,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "151": {
+    "sac": 168,
+    "lat": -22.225899,
+    "lon": -54.796042,
+    "cidade": "Dourados",
+    "uf": "MS",
+    "ibge": 5003702
+  },
+  "152": {
+    "sac": 176,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "153": {
+    "sac": 178,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "154": {
+    "sac": 180,
+    "lat": -22.534154,
+    "lon": -55.731002,
+    "cidade": "Ponta Porã",
+    "uf": "MS",
+    "ibge": 5006606
+  },
+  "156": {
+    "sac": 175,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "157": {
+    "sac": 179,
+    "lat": -19.830234,
+    "lon": -54.832217,
+    "cidade": "Corguinho",
+    "uf": "MS",
+    "ibge": 5003108
+  },
+  "158": {
+    "sac": 164,
+    "lat": -21.15986,
+    "lon": -55.826988,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "159": {
+    "sac": 184,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "160": {
+    "sac": 182,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "161": {
+    "sac": 185,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "162": {
+    "sac": 173,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "163": {
+    "sac": 181,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "164": {
+    "sac": 177,
+    "lat": -20.687719,
+    "lon": -55.283239,
+    "cidade": "Dois Irmãos do Buriti",
+    "uf": "MS",
+    "ibge": 5003488
+  },
+  "165": {
+    "sac": 196,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "166": {
+    "sac": 205,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "169": {
+    "sac": 207,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "170": {
+    "sac": 208,
+    "lat": -18.918454,
+    "lon": -54.844646,
+    "cidade": "Rio Verde de Mato Grosso",
+    "uf": "MS",
+    "ibge": 5007406
+  },
+  "171": {
+    "sac": 211,
+    "lat": -20.086573,
+    "lon": -51.102862,
+    "cidade": "Aparecida do Taboado",
+    "uf": "MS",
+    "ibge": 5001003
+  },
+  "173": {
+    "sac": 216,
+    "lat": -21.453371,
+    "lon": -56.106651,
+    "cidade": "Guia Lopes da Laguna",
+    "uf": "MS",
+    "ibge": 5004106
+  },
+  "174": {
+    "sac": 198,
+    "lat": -18.805318,
+    "lon": -52.617999,
+    "cidade": "Chapadão do Sul",
+    "uf": "MS",
+    "ibge": 5002951
+  },
+  "175": {
+    "sac": 209,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "176": {
+    "sac": 210,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "177": {
+    "sac": 221,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "178": {
+    "sac": 222,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "179": {
+    "sac": 217,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "180": {
+    "sac": 187,
+    "lat": -18.546568,
+    "lon": -53.124185,
+    "cidade": "Costa Rica",
+    "uf": "MS",
+    "ibge": 5003256
+  },
+  "181": {
+    "sac": 215,
+    "lat": -22.0402,
+    "lon": -54.613434,
+    "cidade": "Douradina",
+    "uf": "MS",
+    "ibge": 5003504
+  },
+  "182": {
+    "sac": 202,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "183": {
+    "sac": 97,
+    "lat": -19.954691,
+    "lon": -54.888332,
+    "cidade": "Rochedo",
+    "uf": "MS",
+    "ibge": 5007505
+  },
+  "184": {
+    "sac": 226,
+    "lat": -18.915858,
+    "lon": -54.843662,
+    "cidade": "Rio Verde de Mato Grosso",
+    "uf": "MS",
+    "ibge": 5007406
+  },
+  "185": {
+    "sac": 229,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "186": {
+    "sac": 166,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "187": {
+    "sac": 239,
+    "lat": -19.533417,
+    "lon": -54.04413,
+    "cidade": "Camapuã",
+    "uf": "MS",
+    "ibge": 5002605
+  },
+  "189": {
+    "sac": 238,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "190": {
+    "sac": 251,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "191": {
+    "sac": 192,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "192": {
+    "sac": 191,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "193": {
+    "sac": 246,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "194": {
+    "sac": 203,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "195": {
+    "sac": 197,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "196": {
+    "sac": 161,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "197": {
+    "sac": 163,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "198": {
+    "sac": 160,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "199": {
+    "sac": 159,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "200": {
+    "sac": 154,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "201": {
+    "sac": 194,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "202": {
+    "sac": 231,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "203": {
+    "sac": 195,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "204": {
+    "sac": 235,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "205": {
+    "sac": 234,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "206": {
+    "sac": 189,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "207": {
+    "sac": 190,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "208": {
+    "sac": 137,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "209": {
+    "sac": 232,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "210": {
+    "sac": 236,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "211": {
+    "sac": 152,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "212": {
+    "sac": 233,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "213": {
+    "sac": 140,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "214": {
+    "sac": 153,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "215": {
+    "sac": 230,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "216": {
+    "sac": 237,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "217": {
+    "sac": 193,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "218": {
+    "sac": 220,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "219": {
+    "sac": 156,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "220": {
+    "sac": 219,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "221": {
+    "sac": 110,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "222": {
+    "sac": 245,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "223": {
+    "sac": 248,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "224": {
+    "sac": 250,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "225": {
+    "sac": 243,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "226": {
+    "sac": 167,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "227": {
+    "sac": 247,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "228": {
+    "sac": 249,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "229": {
+    "sac": 256,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "230": {
+    "sac": 264,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "231": {
+    "sac": 227,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "232": {
+    "sac": 240,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "236": {
+    "sac": 252,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "237": {
+    "sac": 253,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "238": {
+    "sac": 201,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "239": {
+    "sac": 200,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "240": {
+    "sac": 65,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "241": {
+    "sac": 228,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "242": {
+    "sac": 242,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "243": {
+    "sac": 254,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "244": {
+    "sac": 244,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "245": {
+    "sac": 206,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "247": {
+    "sac": 138,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "248": {
+    "sac": 139,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "251": {
+    "sac": 260,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "252": {
+    "sac": 261,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "253": {
+    "sac": 13,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "255": {
+    "sac": 11,
+    "lat": -19.925633,
+    "lon": -54.361149,
+    "cidade": "Bandeirantes",
+    "uf": "MS",
+    "ibge": 5001508
+  },
+  "256": {
+    "sac": 266,
+    "lat": -22.554777,
+    "lon": -55.14712,
+    "cidade": "Laguna Carapã",
+    "uf": "MS",
+    "ibge": 5005251
+  },
+  "257": {
+    "sac": 265,
+    "lat": -21.158119,
+    "lon": -55.830588,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "258": {
+    "sac": 7,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "259": {
+    "sac": 9,
+    "lat": -19.96048,
+    "lon": -54.891403,
+    "cidade": "Rochedo",
+    "uf": "MS",
+    "ibge": 5007505
+  },
+  "260": {
+    "sac": 268,
+    "lat": -20.445911,
+    "lon": -52.863428,
+    "cidade": "Água Clara",
+    "uf": "MS",
+    "ibge": 5000203
+  },
+  "261": {
+    "sac": 267,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "262": {
+    "sac": 269,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "263": {
+    "sac": 280,
+    "lat": -19.025998,
+    "lon": -53.010333,
+    "cidade": "Paraíso das Águas",
+    "uf": "MS",
+    "ibge": 5006275
+  },
+  "264": {
+    "sac": 279,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "265": {
+    "sac": 276,
+    "lat": -19.025998,
+    "lon": -53.010333,
+    "cidade": "Paraíso das Águas",
+    "uf": "MS",
+    "ibge": 5006275
+  },
+  "266": {
+    "sac": 271,
+    "lat": -22.554777,
+    "lon": -55.14712,
+    "cidade": "Laguna Carapã",
+    "uf": "MS",
+    "ibge": 5005251
+  },
+  "267": {
+    "sac": 272,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "268": {
+    "sac": 273,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "269": {
+    "sac": 274,
+    "lat": -20.443282,
+    "lon": -52.877825,
+    "cidade": "Água Clara",
+    "uf": "MS",
+    "ibge": 5000203
+  },
+  "270": {
+    "sac": 89,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "271": {
+    "sac": 122,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "273": {
+    "sac": 285,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "274": {
+    "sac": 286,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "275": {
+    "sac": 287,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "276": {
+    "sac": 288,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "277": {
+    "sac": 282,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "278": {
+    "sac": 289,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "279": {
+    "sac": 290,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "280": {
+    "sac": 291,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "281": {
+    "sac": 292,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "282": {
+    "sac": 293,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "283": {
+    "sac": 294,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "284": {
+    "sac": 275,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "285": {
+    "sac": 295,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "286": {
+    "sac": 284,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "288": {
+    "sac": 296,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "289": {
+    "sac": 278,
+    "lat": -19.7322,
+    "lon": -51.930624,
+    "cidade": "Inocência",
+    "uf": "MS",
+    "ibge": 5004403
+  },
+  "290": {
+    "sac": 297,
+    "lat": -21.155293,
+    "lon": -55.828798,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "291": {
+    "sac": 298,
+    "lat": -21.156059,
+    "lon": -55.808186,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "292": {
+    "sac": 299,
+    "lat": -21.142337,
+    "lon": -55.830127,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "293": {
+    "sac": 300,
+    "lat": -21.154746,
+    "lon": -55.829733,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "294": {
+    "sac": 301,
+    "lat": -21.149622,
+    "lon": -55.721999,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "295": {
+    "sac": 302,
+    "lat": -21.017816,
+    "lon": -55.553113,
+    "cidade": "Nioaque",
+    "uf": "MS",
+    "ibge": 5005806
+  },
+  "297": {
+    "sac": 281,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "298": {
+    "sac": 304,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "299": {
+    "sac": 305,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "300": {
+    "sac": 306,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "301": {
+    "sac": 111,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "302": {
+    "sac": 61,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "303": {
+    "sac": 241,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "304": {
+    "sac": 258,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "305": {
+    "sac": 259,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "306": {
+    "sac": 262,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "307": {
+    "sac": 277,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "308": {
+    "sac": 283,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "309": {
+    "sac": 307,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "310": {
+    "sac": 308,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "311": {
+    "sac": 309,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "312": {
+    "sac": 310,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "313": {
+    "sac": 311,
+    "lat": -19.006537,
+    "lon": -57.610947,
+    "cidade": "Ladário",
+    "uf": "MS",
+    "ibge": 5005202
+  },
+  "314": {
+    "sac": 312,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "315": {
+    "sac": 313,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "316": {
+    "sac": 170,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "317": {
+    "sac": 314,
+    "lat": -22.654676,
+    "lon": -53.858885,
+    "cidade": "Novo Horizonte do Sul",
+    "uf": "MS",
+    "ibge": 5006259
+  },
+  "318": {
+    "sac": 315,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "319": {
+    "sac": 316,
+    "lat": -22.948751,
+    "lon": -55.624702,
+    "cidade": "Aral Moreira",
+    "uf": "MS",
+    "ibge": 5001243
+  },
+  "320": {
+    "sac": 317,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "321": {
+    "sac": 318,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "322": {
+    "sac": 319,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "323": {
+    "sac": 320,
+    "lat": -21.462894,
+    "lon": -54.377507,
+    "cidade": "Nova Alvorada do Sul",
+    "uf": "MS",
+    "ibge": 5006002
+  },
+  "324": {
+    "sac": 321,
+    "lat": -22.164322,
+    "lon": -53.770009,
+    "cidade": "Angélica",
+    "uf": "MS",
+    "ibge": 5000856
+  },
+  "325": {
+    "sac": 322,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "326": {
+    "sac": 323,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "327": {
+    "sac": 324,
+    "lat": -22.415496,
+    "lon": -54.230219,
+    "cidade": "Glória de Dourados",
+    "uf": "MS",
+    "ibge": 5004007
+  },
+  "328": {
+    "sac": 325,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "329": {
+    "sac": 326,
+    "lat": -18.800297,
+    "lon": -52.623479,
+    "cidade": "Chapadão do Sul",
+    "uf": "MS",
+    "ibge": 5002951
+  },
+  "330": {
+    "sac": 327,
+    "lat": -19.02227,
+    "lon": -53.010546,
+    "cidade": "Paraíso das Águas",
+    "uf": "MS",
+    "ibge": 5006275
+  },
+  "331": {
+    "sac": 328,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "332": {
+    "sac": 329,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "333": {
+    "sac": 330,
+    "lat": -21.463194,
+    "lon": -54.378676,
+    "cidade": "Nova Alvorada do Sul",
+    "uf": "MS",
+    "ibge": 5006002
+  },
+  "334": {
+    "sac": 331,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "335": {
+    "sac": 332,
+    "lat": -22.281998,
+    "lon": -54.166471,
+    "cidade": "Deodápolis",
+    "uf": "MS",
+    "ibge": 5003454
+  },
+  "336": {
+    "sac": 333,
+    "lat": -22.193643,
+    "lon": -55.946651,
+    "cidade": "Antônio João",
+    "uf": "MS",
+    "ibge": 5000906
+  },
+  "337": {
+    "sac": 334,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "338": {
+    "sac": 335,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "339": {
+    "sac": 336,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "340": {
+    "sac": 337,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "341": {
+    "sac": 338,
+    "lat": -22.157325,
+    "lon": -53.772942,
+    "cidade": "Angélica",
+    "uf": "MS",
+    "ibge": 5000856
+  },
+  "342": {
+    "sac": 339,
+    "lat": -19.533419,
+    "lon": -54.041702,
+    "cidade": "Camapuã",
+    "uf": "MS",
+    "ibge": 5002605
+  },
+  "343": {
+    "sac": 340,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "344": {
+    "sac": 33,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "345": {
+    "sac": 270,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "346": {
+    "sac": 341,
+    "lat": -21.481463,
+    "lon": -56.140161,
+    "cidade": "Jardim",
+    "uf": "MS",
+    "ibge": 5005004
+  },
+  "347": {
+    "sac": 342,
+    "lat": -23.101466,
+    "lon": -55.233712,
+    "cidade": "AMAMBAI",
+    "uf": "MS",
+    "ibge": 5000609
+  },
+  "348": {
+    "sac": 343,
+    "lat": -21.696131,
+    "lon": -57.88459,
+    "cidade": "Porto Murtinho",
+    "uf": "MS",
+    "ibge": 5006903
+  },
+  "349": {
+    "sac": 344,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "350": {
+    "sac": 345,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "351": {
+    "sac": 346,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "352": {
+    "sac": 347,
+    "lat": -19.919239,
+    "lon": -54.36097,
+    "cidade": "Bandeirantes",
+    "uf": "MS",
+    "ibge": 5001508
+  },
+  "353": {
+    "sac": 348,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "354": {
+    "sac": 349,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "356": {
+    "sac": 350,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "357": {
+    "sac": 351,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "358": {
+    "sac": 352,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "359": {
+    "sac": 353,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "360": {
+    "sac": 354,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "361": {
+    "sac": 355,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "362": {
+    "sac": 356,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "363": {
+    "sac": 357,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "364": {
+    "sac": 358,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "365": {
+    "sac": 359,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "366": {
+    "sac": 360,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "369": {
+    "sac": 361,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "374": {
+    "sac": 362,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "383": {
+    "sac": 363,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "385": {
+    "sac": 364,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "386": {
+    "sac": 9999,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "387": {
+    "sac": 9999,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "388": {
+    "sac": 9999,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "389": {
+    "sac": 365,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "390": {
+    "sac": 366,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "391": {
+    "sac": 9999,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  },
+  "395": {
+    "sac": 367,
+    "lat": null,
+    "lon": null,
+    "cidade": "",
+    "uf": "",
+    "ibge": null
+  }
+}
