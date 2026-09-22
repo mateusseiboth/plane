@@ -37,3 +37,20 @@ describe("PROJECT_ACTION_GROUPS", () => {
     }
   });
 });
+
+describe("EProjectAction", () => {
+  it("é objeto simples (as const), não enum", () => {
+    expect(EProjectAction.ISSUE_VIEW).toBe("issue.view");
+    expect(Object.keys(EProjectAction)).toContain("ISSUE_PRIORITY");
+  });
+
+  it("alterar prioridade tem rótulo e vem por padrão só para Gestor e admin", async () => {
+    const { ROLE_PERMISSIONS } = await import("../src/project-permissions");
+    expect(PROJECT_ACTION_LABELS[EProjectAction.ISSUE_PRIORITY]).toBe("Alterar a prioridade do chamado");
+    const donos = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, acoes]) => acoes.includes(EProjectAction.ISSUE_PRIORITY))
+      .map(([papel]) => Number(papel))
+      .sort((a, b) => a - b);
+    expect(donos).toEqual([18, 20]);
+  });
+});

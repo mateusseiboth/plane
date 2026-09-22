@@ -14,8 +14,8 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { nextSequenceId } from "@utils/sequence";
-import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
-import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter, getProjectOrFail } from "@utils/workspace";
+import {EProjectAction, requireProjectAction, requireWorkspaceAction, requireRoleAction} from "@utils/permission-checks";
+import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import { serializeIssue, serializeTimeLog, TIME_LOG_INCLUDE } from "@utils/serialize";
 import { inicioRecebido, vencimentoRecebido } from "@utils/prazo";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
@@ -200,8 +200,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/projects/:project_id/intakes/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_SETTINGS);
     const b = body as any;
     const intake = await prisma.intake.create({
       data: { projectId: project_id, workspaceId: ws.id, name: b.name ?? "Intake", description: b.description ?? "", createdById: user.id },
@@ -276,7 +275,7 @@ export const premiumModule = new Elysia()
 
   .get("/workspaces/:slug/import-jobs/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.IMPORT_MANAGE);
     const where = { workspaceId: ws.id, deletedAt: null };
     return paginate({
       query: (skip, take) => prisma.importJob.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
@@ -287,7 +286,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/import-jobs/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.IMPORT_MANAGE);
     const b = body as any;
     if (!b.source) { set.status = 400; return { detail: "source é obrigatório (jira|linear|asana|clickup|github|notion|confluence|csv)." }; }
     const job = await prisma.importJob.create({
@@ -303,7 +302,7 @@ export const premiumModule = new Elysia()
 
   .get("/workspaces/:slug/import-jobs/:job_id/", async ({ params: { slug, job_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.IMPORT_MANAGE);
     return prisma.importJob.findFirstOrThrow({ where: { id: job_id, workspaceId: ws.id } });
   })
 
@@ -394,7 +393,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/issue-types/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ISSUE_TYPE_MANAGE);
     const b = body as any;
     if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const type = await prisma.issueType.create({
@@ -414,7 +413,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/issue-properties/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ISSUE_TYPE_MANAGE);
     const b = body as any;
     if (!b.name || !b.property_type) { set.status = 400; return { detail: "name e property_type são obrigatórios." }; }
     const prop = await prisma.issueProperty.create({
@@ -584,9 +583,14 @@ export const premiumModule = new Elysia()
   .post("/workspaces/:slug/projects/:project_id/issues/bulk-update/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     // Bulk edit touches items the caller did not author, so it needs ISSUE_EDIT_ALL.
-    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
+    const { role } = await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
 
     const b = body as any;
+    // Em lote não há "antes" por chamado: mandar prioridade já é alterá-la. E
+    // mover em lote pula a matriz de transições (canTransition é por chamado),
+    // então só quem move para qualquer etapa pode.
+    if (b.priority !== undefined) requireRoleAction(role, EProjectAction.ISSUE_PRIORITY);
+    if (b.state !== undefined) requireRoleAction(role, EProjectAction.STATE_MOVE_UNRESTRICTED);
     const issueIds: string[] = b.issue_ids ?? [];
     if (!issueIds.length) { set.status = 400; return { detail: "issue_ids é obrigatório." }; }
 
@@ -859,8 +863,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/projects/:project_id/deploy-boards/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_SETTINGS);
     const b = body as any;
     const board = await prisma.deployBoard.create({
       data: {

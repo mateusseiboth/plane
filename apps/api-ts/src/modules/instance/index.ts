@@ -557,6 +557,7 @@ export const instanceModule = new Elysia({ prefix: "/instances" })
       cursor: query.cursor as string | undefined,
       transform: (workspaces) =>
         workspaces.map((workspace: any) => {
+          // permissao-estrutural: dono exibido na lista do god mode, não checagem de acesso.
           const ownerMember = workspace.members.find((member: any) => member.role >= 20) ?? workspace.members[0];
 
           return {

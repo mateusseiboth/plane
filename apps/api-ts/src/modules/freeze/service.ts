@@ -1,9 +1,13 @@
-// Congelar e descongelar entidade ou usuário. Uma estratégia por tipo de
-// alvo; o histórico (quem, quando, por quê) é comum e fica em freeze_events.
+// Congelar e descongelar. Uma estratégia por tipo de alvo; o histórico (quem,
+// quando, por quê) é comum e fica em freeze_events.
 //
-// Congelar a entidade desliga junto os contatos e as contas do portal que
-// estavam ligados, e grava QUAIS foram desligados. Descongelar religa só esses:
-// quem já estava inativo antes do congelamento continua inativo.
+//  - entity:  a entidade do espaço. Desliga junto os contatos e as contas do
+//             portal que estavam ligados e grava QUAIS foram; descongelar religa
+//             só esses (quem já estava inativo antes continua inativo).
+//  - member:  o vínculo da pessoa com UM espaço. A conta segue entrando e os
+//             outros espaços não mudam.
+//  - account: a conta inteira (admin da instância). Bloqueia o login e derruba
+//             as sessões; não pertence a espaço nenhum.
 
 import prisma from "@db";
 import type { Prisma } from "@prisma/client";
@@ -11,7 +15,7 @@ import { createFieldError } from "@utils/field-error";
 
 type Tx = Prisma.TransactionClient;
 
-export const FREEZE_SUBJECTS = { ENTITY: "entity", USER: "user" } as const;
+export const FREEZE_SUBJECTS = { ENTITY: "entity", MEMBER: "member", ACCOUNT: "account" } as const;
 export type FreezeSubjectKind = (typeof FREEZE_SUBJECTS)[keyof typeof FREEZE_SUBJECTS];
 
 export const FREEZE_ACTIONS = { FREEZE: "freeze", UNFREEZE: "unfreeze" } as const;
@@ -21,19 +25,20 @@ export type FreezeAffected = { contact_ids?: string[]; portal_account_ids?: stri
 
 export type FreezeRequest = {
   kind: FreezeSubjectKind;
-  workspaceId: string;
+  /** Nulo no congelamento da conta. */
+  workspaceId: string | null;
   subjectId: string;
   actorId: string;
   reason: string | null;
 };
 
 type FreezeStrategy = {
-  /** Confere que o alvo existe no espaço e pode ser congelado por quem pediu. */
-  require: (workspaceId: string, subjectId: string, actorId: string) => Promise<void>;
+  /** Confere que o alvo existe e pode ser congelado por quem pediu. */
+  require: (request: FreezeRequest) => Promise<void>;
   /** Marca como congelado; devolve `null` se já estava congelado. */
-  freeze: (tx: Tx, subjectId: string, reason: string) => Promise<FreezeAffected | null>;
+  freeze: (tx: Tx, request: FreezeRequest) => Promise<FreezeAffected | null>;
   /** Tira o congelamento; devolve `false` se não estava congelado. */
-  unfreeze: (tx: Tx, subjectId: string, affected: FreezeAffected) => Promise<boolean>;
+  unfreeze: (tx: Tx, request: FreezeRequest, affected: FreezeAffected) => Promise<boolean>;
 };
 
 export const MAX_REASON_LENGTH = 500;
@@ -41,15 +46,17 @@ export const MAX_REASON_LENGTH = 500;
 const ALREADY_FROZEN = { status: 409, message: "Já está congelado." };
 const NOT_FROZEN = { status: 409, message: "Não está congelado." };
 
-async function requireEntity(workspaceId: string, entityId: string) {
+// ── Entidade ──────────────────────────────────────────────────────────────────
+
+async function requireEntity({ workspaceId, subjectId }: FreezeRequest) {
   const entity = await prisma.entity.findFirst({
-    where: { id: entityId, workspaceId, deletedAt: null },
+    where: { id: subjectId, workspaceId: workspaceId ?? undefined, deletedAt: null },
     select: { id: true },
   });
   if (!entity) throw { status: 404, message: "Entidade não encontrada." };
 }
 
-async function freezeEntity(tx: Tx, entityId: string, reason: string): Promise<FreezeAffected | null> {
+async function freezeEntity(tx: Tx, { subjectId: entityId, reason }: FreezeRequest): Promise<FreezeAffected | null> {
   const marked = await tx.entity.updateMany({
     where: { id: entityId, frozenAt: null },
     data: { frozenAt: new Date(), frozenReason: reason },
@@ -70,7 +77,7 @@ async function freezeEntity(tx: Tx, entityId: string, reason: string): Promise<F
   return { contact_ids: contactIds, portal_account_ids: accountIds };
 }
 
-async function unfreezeEntity(tx: Tx, entityId: string, affected: FreezeAffected): Promise<boolean> {
+async function unfreezeEntity(tx: Tx, { subjectId: entityId }: FreezeRequest, affected: FreezeAffected) {
   const cleared = await tx.entity.updateMany({
     where: { id: entityId, frozenAt: { not: null } },
     data: { frozenAt: null, frozenReason: null },
@@ -87,31 +94,61 @@ async function unfreezeEntity(tx: Tx, entityId: string, affected: FreezeAffected
   return true;
 }
 
-async function requireFreezableUser(workspaceId: string, userId: string, actorId: string) {
-  if (userId === actorId) throw createFieldError("member", "Você não pode congelar o próprio usuário.");
-  const member = await prisma.workspaceMember.findFirst({
-    where: { workspaceId, memberId: userId, deletedAt: null },
-    select: { member: { select: { isInstanceAdmin: true } } },
-  });
-  if (!member) throw { status: 404, message: "Membro não encontrado." };
-  if (member.member.isInstanceAdmin) {
-    throw { status: 403, message: "Não é possível congelar um administrador da instância." };
-  }
+// ── Vínculo com o espaço ──────────────────────────────────────────────────────
+
+function requireNotSelf({ subjectId, actorId }: FreezeRequest) {
+  if (subjectId === actorId) throw createFieldError("member", "Você não pode congelar o próprio usuário.");
 }
 
-async function freezeUser(tx: Tx, userId: string, reason: string): Promise<FreezeAffected | null> {
+async function requireMember(request: FreezeRequest) {
+  requireNotSelf(request);
+  const member = await prisma.workspaceMember.findFirst({
+    where: { workspaceId: request.workspaceId ?? undefined, memberId: request.subjectId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!member) throw { status: 404, message: "Membro não encontrado." };
+}
+
+async function freezeMember(tx: Tx, { workspaceId, subjectId, reason }: FreezeRequest) {
+  const marked = await tx.workspaceMember.updateMany({
+    where: { workspaceId: workspaceId ?? undefined, memberId: subjectId, deletedAt: null, frozenAt: null },
+    data: { frozenAt: new Date(), frozenReason: reason, isActive: false },
+  });
+  return marked.count === 0 ? null : {};
+}
+
+async function unfreezeMember(tx: Tx, { workspaceId, subjectId }: FreezeRequest) {
+  const cleared = await tx.workspaceMember.updateMany({
+    where: { workspaceId: workspaceId ?? undefined, memberId: subjectId, deletedAt: null, frozenAt: { not: null } },
+    data: { frozenAt: null, frozenReason: null, isActive: true },
+  });
+  return cleared.count > 0;
+}
+
+// ── Conta inteira ─────────────────────────────────────────────────────────────
+
+async function requireAccount(request: FreezeRequest) {
+  requireNotSelf(request);
+  const user = await prisma.user.findFirst({
+    where: { id: request.subjectId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!user) throw { status: 404, message: "Usuário não encontrado." };
+}
+
+async function freezeAccount(tx: Tx, { subjectId, reason }: FreezeRequest) {
   const now = new Date();
   // `tokenUpdatedAt` derruba na hora todas as sessões abertas (ver utils/session.ts).
   const marked = await tx.user.updateMany({
-    where: { id: userId, frozenAt: null },
+    where: { id: subjectId, frozenAt: null },
     data: { frozenAt: now, frozenReason: reason, isActive: false, tokenUpdatedAt: now },
   });
   return marked.count === 0 ? null : {};
 }
 
-async function unfreezeUser(tx: Tx, userId: string): Promise<boolean> {
+async function unfreezeAccount(tx: Tx, { subjectId }: FreezeRequest) {
   const cleared = await tx.user.updateMany({
-    where: { id: userId, frozenAt: { not: null }, deletedAt: null },
+    where: { id: subjectId, frozenAt: { not: null }, deletedAt: null },
     data: { frozenAt: null, frozenReason: null, isActive: true },
   });
   return cleared.count > 0;
@@ -119,7 +156,8 @@ async function unfreezeUser(tx: Tx, userId: string): Promise<boolean> {
 
 const STRATEGIES: Record<FreezeSubjectKind, FreezeStrategy> = {
   entity: { require: requireEntity, freeze: freezeEntity, unfreeze: unfreezeEntity },
-  user: { require: requireFreezableUser, freeze: freezeUser, unfreeze: (tx, id) => unfreezeUser(tx, id) },
+  member: { require: requireMember, freeze: freezeMember, unfreeze: unfreezeMember },
+  account: { require: requireAccount, freeze: freezeAccount, unfreeze: unfreezeAccount },
 };
 
 export function readFreezeReason(value: unknown, required: boolean): string | null {
@@ -147,18 +185,23 @@ function recordFreezeEvent(tx: Tx, request: FreezeRequest, action: FreezeAction,
 
 export async function applyFreeze(request: FreezeRequest): Promise<FreezeAffected> {
   const strategy = STRATEGIES[request.kind];
-  await strategy.require(request.workspaceId, request.subjectId, request.actorId);
+  await strategy.require(request);
   return prisma.$transaction(async (tx) => {
-    const affected = await strategy.freeze(tx, request.subjectId, request.reason ?? "");
+    const affected = await strategy.freeze(tx, request);
     if (!affected) throw ALREADY_FROZEN;
     await recordFreezeEvent(tx, request, FREEZE_ACTIONS.FREEZE, affected);
     return affected;
   });
 }
 
-async function findLastFreezeAffected(tx: Tx, kind: FreezeSubjectKind, subjectId: string): Promise<FreezeAffected> {
+async function findLastFreezeAffected(tx: Tx, request: FreezeRequest): Promise<FreezeAffected> {
   const last = await tx.freezeEvent.findFirst({
-    where: { subjectKind: kind, subjectId, action: FREEZE_ACTIONS.FREEZE },
+    where: {
+      workspaceId: request.workspaceId,
+      subjectKind: request.kind,
+      subjectId: request.subjectId,
+      action: FREEZE_ACTIONS.FREEZE,
+    },
     orderBy: { createdAt: "desc" },
     select: { affected: true },
   });
@@ -167,17 +210,17 @@ async function findLastFreezeAffected(tx: Tx, kind: FreezeSubjectKind, subjectId
 
 export async function applyUnfreeze(request: FreezeRequest): Promise<FreezeAffected> {
   const strategy = STRATEGIES[request.kind];
-  await strategy.require(request.workspaceId, request.subjectId, request.actorId);
+  await strategy.require(request);
   return prisma.$transaction(async (tx) => {
-    const affected = await findLastFreezeAffected(tx, request.kind, request.subjectId);
-    if (!(await strategy.unfreeze(tx, request.subjectId, affected))) throw NOT_FROZEN;
+    const affected = await findLastFreezeAffected(tx, request);
+    if (!(await strategy.unfreeze(tx, request, affected))) throw NOT_FROZEN;
     await recordFreezeEvent(tx, request, FREEZE_ACTIONS.UNFREEZE, affected);
     return affected;
   });
 }
 
 /** Histórico do alvo, do mais novo para o mais antigo, com o nome de quem fez. */
-export async function listFreezeEvents(workspaceId: string, kind: FreezeSubjectKind, subjectId: string) {
+export async function listFreezeEvents(workspaceId: string | null, kind: FreezeSubjectKind, subjectId: string) {
   const events = await prisma.freezeEvent.findMany({
     where: { workspaceId, subjectKind: kind, subjectId },
     orderBy: { createdAt: "desc" },

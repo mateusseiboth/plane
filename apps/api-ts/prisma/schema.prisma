@@ -197,6 +197,14 @@ model WorkspaceMember {
   // Configurable role (H1). When set, it overrides the legacy `role` Int.
   workflowRole   WorkflowRole? @relation(fields: [workflowRoleId], references: [id])
   workflowRoleId String?       @map("workflow_role_id") @db.Uuid
+  // Exceções por pessoa sobre a função (ações do catálogo). Valem no espaço e em
+  // todos os sistemas dele; a negação vence a concessão e a função.
+  grantedActions Json          @default("[]") @map("granted_actions")
+  revokedActions Json          @default("[]") @map("revoked_actions")
+  // Congelado NESTE espaço (o vínculo fica inativo). A conta segue valendo nos
+  // outros espaços; congelar a conta inteira é do admin da instância (users.frozen_at).
+  frozenAt       DateTime?     @map("frozen_at")
+  frozenReason   String?       @map("frozen_reason")
 
   @@unique([workspaceId, memberId, deletedAt])
   @@map("workspace_members")
@@ -1092,6 +1100,10 @@ model WorkflowRole {
   level            Int                   @default(10) // hierarchy & legacy role-Int compatibility
   isSystem         Boolean               @default(false) @map("is_system")
   permissions      Json                  @default("[]") // array of EProjectAction strings
+  // Ações do catálogo que esta função já "viu". Ação nova fora desta lista entra
+  // uma vez, se estiver no padrão da função (mergeNewActions); nulo = funções
+  // gravadas antes do catálogo (BASELINE_KNOWN_ACTIONS).
+  knownActions     Json?                 @map("known_actions")
   transitions      RoleStateTransition[]
   workspaceMembers WorkspaceMember[]
   projectMembers   ProjectMember[]
@@ -1929,23 +1941,25 @@ model TechnicalVisitContact {
 // cadeira e não enxerga nada do produto além do que abriu.
 
 model PortalAccount {
-  id          String                 @id @default(uuid()) @db.Uuid
-  createdAt   DateTime               @default(now()) @map("created_at")
-  updatedAt   DateTime               @updatedAt @map("updated_at")
-  deletedAt   DateTime?              @map("deleted_at")
-  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workspaceId String                 @map("workspace_id") @db.Uuid
-  email       String
+  id             String                 @id @default(uuid()) @db.Uuid
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  deletedAt      DateTime?              @map("deleted_at")
+  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId    String                 @map("workspace_id") @db.Uuid
+  email          String
   /// Hash bcrypt — a senha em claro nunca é gravada.
-  password    String
-  name        String
+  password       String
+  name           String
   /// Entidade (prefeitura, câmara) que a pessoa representa, quando cadastrada.
-  entity      Entity?                @relation(fields: [entityId], references: [id], onDelete: SetNull)
-  entityId    String?                @map("entity_id") @db.Uuid
-  isActive    Boolean                @default(true) @map("is_active")
-  lastLoginAt DateTime?              @map("last_login_at")
-  projects    PortalAccountProject[]
-  requests    PortalRequest[]
+  entity         Entity?                @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  entityId       String?                @map("entity_id") @db.Uuid
+  isActive       Boolean                @default(true) @map("is_active")
+  lastLoginAt    DateTime?              @map("last_login_at")
+  /// Versão da sessão do portal: trocar a senha derruba os crachás anteriores.
+  tokenUpdatedAt DateTime?              @map("token_updated_at")
+  projects       PortalAccountProject[]
+  requests       PortalRequest[]
 
   @@unique([workspaceId, email])
   @@map("portal_accounts")
@@ -2001,16 +2015,17 @@ model EntityContactProject {
 // desligou junto (contatos e contas do portal da entidade), para que
 // descongelar religue exatamente isso e nada mais.
 model FreezeEvent {
-  id          String    @id @default(uuid()) @db.Uuid
-  createdAt   DateTime  @default(now()) @map("created_at")
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workspaceId String    @map("workspace_id") @db.Uuid
-  subjectKind String    @map("subject_kind") @db.VarChar(20)
-  subjectId   String    @map("subject_id") @db.Uuid
-  action      String    @db.VarChar(20)
+  id          String     @id @default(uuid()) @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at")
+  // Nulo no congelamento da conta inteira, que é da instância e não de um espaço.
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String?    @map("workspace_id") @db.Uuid
+  subjectKind String     @map("subject_kind") @db.VarChar(20)
+  subjectId   String     @map("subject_id") @db.Uuid
+  action      String     @db.VarChar(20)
   reason      String?
-  actorId     String?   @map("actor_id") @db.Uuid
-  affected    Json      @default("{}")
+  actorId     String?    @map("actor_id") @db.Uuid
+  affected    Json       @default("{}")
 
   @@index([subjectKind, subjectId, createdAt])
   @@map("freeze_events")

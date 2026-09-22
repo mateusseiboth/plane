@@ -175,6 +175,8 @@ export interface ConfirmConfig {
 export interface SDKInitOptions {
   baseUrl: string;
   pluginId: string;
+  /** Workspace em que o plugin está aberto; vai como `workspace_slug` em toda chamada. */
+  workspaceSlug?: string;
 }
 
 // ── Plugin graphical surfaces ───────────────────────────────────────────────

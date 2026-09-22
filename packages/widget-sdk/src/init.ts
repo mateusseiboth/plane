@@ -31,7 +31,7 @@ declare global {
 }
 
 export function initializeSDK(options: SDKInitOptions): WidgetSDKInstance {
-  configureHttp(options.baseUrl, options.widgetId);
+  configureHttp(options.baseUrl, options.widgetId, options.workspaceSlug);
   configureStorage(options.widgetId);
 
   const sdk: WidgetSDKInstance = {

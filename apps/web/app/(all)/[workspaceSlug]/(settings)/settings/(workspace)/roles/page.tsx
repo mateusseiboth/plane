@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { ArrowRight, Plus, Trash2, X, Shield } from "lucide-react";
-import { EProjectAction, PROJECT_ACTION_GROUPS, PROJECT_ACTION_LABELS } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { Dialog, EDialogWidth } from "@plane/propel/dialog";
 import { CustomSelect, ToggleSwitch } from "@plane/ui";
@@ -10,12 +9,11 @@ import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view
 import { PageHead } from "@/components/core/page-title";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUserPermissions } from "@/hooks/store/user";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { useMyWorkspaceActions, useRoleActionCatalog } from "@/hooks/use-workflow-role";
+import { groupActionCatalog } from "@/components/roles/group-action-catalog";
+import { MemberOverridesPanel } from "@/components/roles/member-overrides-panel";
 import { STATE_GROUP_LABELS, WORKFLOW_STATE_TEMPLATE } from "@/constants/workflow-roles";
 import rolesService, { type TWorkflowRole, type TRoleTransition } from "@/services/roles.service";
-
-const ACTION_KEYS = Object.values(EProjectAction) as string[];
 
 /**
  * Seletor de etapa das transições.
@@ -23,7 +21,11 @@ const ACTION_KEYS = Object.values(EProjectAction) as string[];
  * `CustomSelect` em vez do `<select>` nativo: o nativo ignora o tema e, no modo
  * escuro, abre com fundo branco e texto branco.
  */
-function EtapaSelect(props: { valor: string; opcoes: { value: string; label: string }[]; onChange: (v: string) => void }) {
+function EtapaSelect(props: {
+  valor: string;
+  opcoes: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
   const { valor, opcoes, onChange } = props;
   const atual = opcoes.find((o) => o.value === valor);
   return (
@@ -90,28 +92,28 @@ function CreateRoleModal({
         <div className="p-6">
           <div className="mb-5 flex items-center justify-between">
             <Dialog.Title>Nova função</Dialog.Title>
-            <button onClick={onClose} className="rounded p-1 text-secondary-text hover:bg-surface-2">
+            <button onClick={onClose} className="text-secondary-text rounded p-1 hover:bg-surface-2">
               <X className="h-4 w-4" />
             </button>
           </div>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-secondary-text">Nome *</label>
+              <label className="text-xs text-secondary-text mb-1 block font-medium">Nome *</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-strong"
+                className="text-sm w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-primary outline-none focus:border-accent-strong"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-secondary-text">
+              <label className="text-xs text-secondary-text mb-1 block font-medium">
                 Nível (hierarquia: 5 visualizador … 20 admin)
               </label>
               <input
                 type="number"
                 value={level}
                 onChange={(e) => setLevel(Number(e.target.value))}
-                className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-strong"
+                className="text-sm w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-primary outline-none focus:border-accent-strong"
               />
             </div>
           </div>
@@ -131,8 +133,12 @@ function CreateRoleModal({
 
 const WorkspaceRolesPage = observer(() => {
   const { currentWorkspace } = useWorkspace();
-  const { allowPermissions } = useUserPermissions();
   const slug = currentWorkspace?.slug ?? "";
+  // Catálogo e "quem pode editar" vêm da API: ação nova registrada no backend
+  // aparece aqui sozinha, com rótulo e grupo.
+  const { data: catalog = [] } = useRoleActionCatalog(slug);
+  const { can, isLoading: isMyActionsLoading } = useMyWorkspaceActions(slug);
+  const grupos = useMemo(() => groupActionCatalog(catalog), [catalog]);
 
   const [roles, setRoles] = useState<TWorkflowRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,7 +151,7 @@ const WorkspaceRolesPage = observer(() => {
   const [savingPerms, setSavingPerms] = useState(false);
   const [savingTrans, setSavingTrans] = useState(false);
 
-  const canManage = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManage = can("role.manage");
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -169,6 +175,7 @@ const WorkspaceRolesPage = observer(() => {
     setTransitions(selected.transitions);
   }, [selected]);
 
+  if (isMyActionsLoading) return <div className="text-sm text-secondary-text py-8 text-center">Carregando...</div>;
   if (!canManage) return <NotAuthorizedView section="settings" />;
 
   const togglePerm = (key: string) =>
@@ -182,7 +189,7 @@ const WorkspaceRolesPage = observer(() => {
   const alternarGrupo = (acoes: string[], marcar: boolean) =>
     setPerms((prev) => {
       const next = new Set(prev);
-      for (const acao of acoes) (marcar ? next.add(acao) : next.delete(acao));
+      for (const acao of acoes) marcar ? next.add(acao) : next.delete(acao);
       return next;
     });
 
@@ -217,7 +224,13 @@ const WorkspaceRolesPage = observer(() => {
   const addTransition = () =>
     setTransitions((prev) => [
       ...prev,
-      { from_group: "unstarted", from_state_name: "A Fazer", to_group: "started", to_state_name: "Em Desenvolvimento", allowed: true },
+      {
+        from_group: "unstarted",
+        from_state_name: "A Fazer",
+        to_group: "started",
+        to_state_name: "Em Desenvolvimento",
+        allowed: true,
+      },
     ]);
 
   const updateTransition = (idx: number, patch: Partial<TRoleTransition>) =>
@@ -255,12 +268,12 @@ const WorkspaceRolesPage = observer(() => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between border-b border-subtle pb-3">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-medium text-primary">
+            <h3 className="text-lg flex items-center gap-2 font-medium text-primary">
               <Shield className="h-5 w-5" /> Funções e permissões
             </h3>
             <p className="text-xs text-secondary-text">
-              Crie funções, defina o que cada uma pode fazer e quais transições de etapa pode realizar. Quem participa do
-              projeto enxerga todos os chamados, em qualquer etapa.
+              Crie funções, defina o que cada uma pode fazer e quais transições de etapa pode realizar. Para uma pessoa
+              específica, use as exceções por pessoa.
             </p>
           </div>
           <Button variant="primary" prependIcon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
@@ -269,7 +282,7 @@ const WorkspaceRolesPage = observer(() => {
         </div>
 
         {loading ? (
-          <div className="py-8 text-center text-sm text-secondary-text">Carregando...</div>
+          <div className="text-sm text-secondary-text py-8 text-center">Carregando...</div>
         ) : (
           <div className="flex gap-4">
             {/* Lista de funções — ordenada pelo nível, que é a hierarquia real. */}
@@ -298,7 +311,9 @@ const WorkspaceRolesPage = observer(() => {
                         {r.level}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className={`block truncate text-13 ${ativa ? "font-medium text-primary" : "text-primary"}`}>
+                        <span
+                          className={`block truncate text-13 ${ativa ? "font-medium text-primary" : "text-primary"}`}
+                        >
                           {r.name}
                         </span>
                         <span className="block truncate text-11 text-tertiary">
@@ -316,28 +331,28 @@ const WorkspaceRolesPage = observer(() => {
               <div className="flex-1 space-y-6">
                 <div className="flex items-start justify-between gap-4 rounded-lg border border-subtle bg-surface-2 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-15 font-medium text-primary">{selected.name}</p>
+                    <p className="text-15 truncate font-medium text-primary">{selected.name}</p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <span className="rounded bg-surface-3 px-1.5 py-0.5 text-11 text-secondary-text">
+                      <span className="bg-surface-3 text-secondary-text rounded px-1.5 py-0.5 text-11">
                         nível {selected.level}
                       </span>
-                      <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-11 text-secondary-text">
+                      <span className="bg-surface-3 font-mono text-secondary-text rounded px-1.5 py-0.5 text-11">
                         {selected.key}
                       </span>
                       {selected.is_system && (
-                        <span className="rounded bg-surface-3 px-1.5 py-0.5 text-11 text-secondary-text">
+                        <span className="bg-surface-3 text-secondary-text rounded px-1.5 py-0.5 text-11">
                           função do sistema
                         </span>
                       )}
                       <span className="text-11 text-tertiary">
-                        {perms.size} de {ACTION_KEYS.length} permissões
+                        {perms.size} de {catalog.length} permissões
                       </span>
                     </div>
                   </div>
                   {!selected.is_system && (
                     <button
                       onClick={() => deleteRole(selected)}
-                      className="shrink-0 rounded p-1.5 text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      className="text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 shrink-0 rounded p-1.5"
                       title="Excluir função"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -356,8 +371,9 @@ const WorkspaceRolesPage = observer(() => {
                     </Button>
                   </div>
 
-                  {PROJECT_ACTION_GROUPS.map((grupo) => {
-                    const marcadas = grupo.actions.filter((a) => perms.has(a)).length;
+                  {grupos.map((grupo) => {
+                    const chaves = grupo.actions.map((a) => a.key);
+                    const marcadas = chaves.filter((a) => perms.has(a)).length;
                     const todasMarcadas = marcadas === grupo.actions.length;
                     return (
                       <div key={grupo.label} className="overflow-hidden rounded-lg border border-subtle">
@@ -369,7 +385,7 @@ const WorkspaceRolesPage = observer(() => {
                             </span>
                             <button
                               type="button"
-                              onClick={() => alternarGrupo(grupo.actions, !todasMarcadas)}
+                              onClick={() => alternarGrupo(chaves, !todasMarcadas)}
                               className="rounded px-1.5 py-0.5 text-11 text-accent-primary hover:bg-accent-subtle"
                             >
                               {todasMarcadas ? "Desmarcar todas" : "Marcar todas"}
@@ -377,12 +393,12 @@ const WorkspaceRolesPage = observer(() => {
                           </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2">
-                          {grupo.actions.map((key) => (
+                          {grupo.actions.map(({ key, label }) => (
                             <label
                               key={key}
                               className="flex cursor-pointer items-center justify-between gap-3 border-b border-subtle px-3 py-2 last:border-b-0 hover:bg-surface-2 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0"
                             >
-                              <span className="text-12 text-primary">{PROJECT_ACTION_LABELS[key] ?? key}</span>
+                              <span className="text-12 text-primary">{label}</span>
                               <ToggleSwitch value={perms.has(key)} onChange={() => togglePerm(key)} size="sm" />
                             </label>
                           ))}
@@ -392,12 +408,19 @@ const WorkspaceRolesPage = observer(() => {
                   })}
                 </section>
 
+                <MemberOverridesPanel slug={slug} catalog={catalog} roles={roles} />
+
                 {/* Transitions */}
                 <section>
                   <div className="mb-2 flex items-center justify-between">
                     <h4 className="text-13 font-semibold text-primary">Transições de etapa permitidas</h4>
                     <div className="flex gap-2">
-                      <Button variant="secondary" size="sm" prependIcon={<Plus className="h-3.5 w-3.5" />} onClick={addTransition}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        prependIcon={<Plus className="h-3.5 w-3.5" />}
+                        onClick={addTransition}
+                      >
                         Adicionar
                       </Button>
                       <Button variant="primary" size="sm" loading={savingTrans} onClick={saveTransitions}>
@@ -406,7 +429,7 @@ const WorkspaceRolesPage = observer(() => {
                     </div>
                   </div>
                   <div className="overflow-hidden rounded-lg border border-subtle">
-                    <p className="border-b border-subtle bg-surface-2 px-3 py-2 text-11 text-secondary-text">
+                    <p className="text-secondary-text border-b border-subtle bg-surface-2 px-3 py-2 text-11">
                       Sem nenhuma linha, esta função não move chamado por tabela — quem precisa de acesso total usa a
                       permissão <strong className="text-primary">Mover para qualquer etapa</strong>.
                     </p>
@@ -437,7 +460,7 @@ const WorkspaceRolesPage = observer(() => {
                           />
                           <button
                             onClick={() => removeTransition(idx)}
-                            className="ml-auto rounded p-1 text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                            className="text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 ml-auto rounded p-1"
                             title="Remover transição"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -449,7 +472,7 @@ const WorkspaceRolesPage = observer(() => {
                 </section>
               </div>
             ) : (
-              <div className="flex-1 py-8 text-center text-sm text-secondary-text">Selecione uma função.</div>
+              <div className="text-sm text-secondary-text flex-1 py-8 text-center">Selecione uma função.</div>
             )}
           </div>
         )}

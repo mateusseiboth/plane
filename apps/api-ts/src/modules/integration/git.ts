@@ -2,7 +2,8 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
-import { getWorkspaceOrFail, requireWorkspaceWriter } from "@utils/workspace";
+import { getWorkspaceOrFail } from "@utils/workspace";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git" })
   .use(authPlugin)
@@ -11,7 +12,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .get("/configs/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     return prisma.gitIntegrationConfig.findMany({
       where: { workspaceId: ws.id, deletedAt: null },
       select: { id: true, provider: true, appId: true, installationId: true, isActive: true, createdAt: true, repositories: { where: { deletedAt: null }, select: { id: true, name: true, fullName: true, projectId: true, syncEnabled: true } } },
@@ -20,7 +21,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .post("/configs/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const b = body as any;
     if (!b.provider) { set.status = 400; return { detail: "O provedor é obrigatório (github | gitlab | bitbucket)." }; }
 
@@ -45,7 +46,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .patch("/configs/:config_id/", async ({ params: { slug, config_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.is_active !== undefined) data.isActive = b.is_active;
@@ -56,7 +57,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .delete("/configs/:config_id/", async ({ params: { slug, config_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     await prisma.gitIntegrationConfig.update({ where: { id: config_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -66,7 +67,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .get("/configs/:config_id/repositories/", async ({ params: { slug, config_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const where = { configId: config_id, deletedAt: null };
     return paginate({
       query: (skip, take) => prisma.gitRepository.findMany({ where, skip, take }),
@@ -77,7 +78,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .post("/configs/:config_id/repositories/", async ({ params: { slug, config_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const b = body as any;
     if (!b.repo_id || !b.name || !b.full_name || !b.url) { set.status = 400; return { detail: "repo_id, name, full_name e url são obrigatórios." }; }
 
@@ -95,7 +96,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .patch("/repositories/:repo_id/", async ({ params: { slug, repo_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.project_id !== undefined) data.projectId = b.project_id;
@@ -105,7 +106,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .delete("/repositories/:repo_id/", async ({ params: { slug, repo_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     await prisma.gitRepository.update({ where: { id: repo_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -115,7 +116,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .get("/repositories/:repo_id/issue-links/", async ({ params: { slug, repo_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const where = { repositoryId: repo_id, deletedAt: null };
     return paginate({
       query: (skip, take) => prisma.gitIssueLink.findMany({ where, skip, take, include: { issue: { select: { id: true, name: true, sequenceId: true } } } }),
@@ -126,7 +127,7 @@ export const gitIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/git"
 
   .post("/repositories/:repo_id/issue-links/", async ({ params: { slug, repo_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const b = body as any;
     const link = await prisma.gitIssueLink.create({
       data: {

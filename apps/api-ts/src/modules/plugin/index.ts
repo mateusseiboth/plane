@@ -2,6 +2,7 @@ import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 // Plugins are stored as a JSON array in workspace settings (key: "installed_plugins")
 
@@ -39,11 +40,7 @@ export const pluginModule = new Elysia({ prefix: "/workspaces/:slug/plugins" })
   // Install a plugin
   .post("/:pluginId/install/", async ({ params: { slug, pluginId }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await requireWorkspaceMember(ws.id, user.id);
-    if (member.role < 20) {
-      set.status = 403;
-      return { detail: "Apenas administradores do workspace podem instalar plugins." };
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PLUGIN_MANAGE);
     const installed = await getInstalledPlugins(ws.id);
     if (!installed.includes(pluginId)) {
       installed.push(pluginId);
@@ -56,11 +53,7 @@ export const pluginModule = new Elysia({ prefix: "/workspaces/:slug/plugins" })
   // Uninstall a plugin
   .delete("/:pluginId/uninstall/", async ({ params: { slug, pluginId }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await requireWorkspaceMember(ws.id, user.id);
-    if (member.role < 20) {
-      set.status = 403;
-      return { detail: "Apenas administradores do workspace podem desinstalar plugins." };
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PLUGIN_MANAGE);
     const installed = await getInstalledPlugins(ws.id);
     const updated = installed.filter((id) => id !== pluginId);
     await setInstalledPlugins(ws.id, updated);

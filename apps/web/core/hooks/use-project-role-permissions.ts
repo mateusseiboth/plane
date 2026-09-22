@@ -19,7 +19,8 @@ import { useParams } from "next/navigation";
 import { EUserProjectRoles } from "@plane/types";
 import { EProjectAction, canPerform } from "@plane/constants";
 import { useUserPermissions } from "@/hooks/store/user";
-import { useWorkflowRole } from "@/hooks/use-workflow-role";
+import { isActionAllowed } from "@/lib/permissoes/acao-efetiva";
+import { useMyWorkspaceActions, useWorkflowRole } from "@/hooks/use-workflow-role";
 
 export function useProjectRolePermissions(projectId?: string) {
   const { workspaceSlug, projectId: routerProjectId } = useParams();
@@ -35,12 +36,16 @@ export function useProjectRolePermissions(projectId?: string) {
 
   // Role configurável do workspace (tela "Funções e permissões"). Espelha o
   // resolveRole do backend: match por nível do papel legado.
-  const { workflowRole, isLoading: isPermissionsLoading } = useWorkflowRole(slug, role);
+  const { workflowRole, isLoading: isRolesLoading } = useWorkflowRole(slug, role);
+  // Exceções por pessoa (concedido/negado na tela de Funções) valem em todos os
+  // sistemas do espaço, por cima da função, como no backend.
+  const { data: myActions, isLoading: isMyActionsLoading } = useMyWorkspaceActions(slug);
+  const isPermissionsLoading = isRolesLoading || isMyActionsLoading;
 
   const can = (action: EProjectAction): boolean => {
     if (!role) return false;
-    if (workflowRole) return workflowRole.permissions.includes(action);
-    return canPerform(role, action);
+    const base = workflowRole ? workflowRole.permissions : canPerform(role, action) ? [action] : [];
+    return isActionAllowed(action, base, myActions);
   };
 
   // ── Viewing ──────────────────────────────────────────────────────────────
@@ -60,6 +65,8 @@ export function useProjectRolePermissions(projectId?: string) {
   const canDeleteIssue    = canDeleteAllIssues;
   const canAssignSelf     = can(EProjectAction.ISSUE_ASSIGN_SELF);
   const canAssignOthers   = can(EProjectAction.ISSUE_ASSIGN_OTHERS);
+  /** Alterar a prioridade (Gestor e admin por padrão; demais por concessão). */
+  const canChangePriority = can(EProjectAction.ISSUE_PRIORITY);
 
   // ── State transitions ────────────────────────────────────────────────────
   const canMoveUnrestricted         = can(EProjectAction.STATE_MOVE_UNRESTRICTED);
@@ -140,6 +147,7 @@ export function useProjectRolePermissions(projectId?: string) {
     canDeleteIssue,         // alias: canDeleteAllIssues (deprecated)
     canAssignSelf,
     canAssignOthers,
+    canChangePriority,
 
     // ── State transitions ────────────────────────────────────────────────
     canMoveUnrestricted,

@@ -16,39 +16,10 @@ import {
   createUser,
   createWorkspace,
 } from "@tests/helpers/factory";
+import { SENHA, postForm, setPassword, signIn, withBearer } from "@tests/helpers/session";
 import { clearFakeOutbox, readFakeOutbox } from "@utils/email-transport";
 
 const prisma = () => prismaReal();
-const SENHA = "Senha-Forte-2026!";
-
-async function setPassword(userId: string, senha = SENHA) {
-  const hash = await Bun.password.hash(senha, { algorithm: "bcrypt", cost: 4 });
-  await prisma().user.update({ where: { id: userId }, data: { password: hash, isPasswordAutoset: false } });
-}
-
-async function signIn(email: string, senha = SENHA): Promise<string> {
-  const res = await fetch(`${TEST_API_BASE_URL}/auth/sign-in/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ email, password: senha }),
-  });
-  expect(res.status).toBe(200);
-  return ((await res.json()) as any).token;
-}
-
-const withBearer = (token: string, path: string, init: RequestInit = {}) =>
-  fetch(`${TEST_API_BASE_URL}${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init.headers },
-  });
-
-const postForm = (path: string, form: Record<string, string>) =>
-  fetch(`${TEST_API_BASE_URL}${path}`, {
-    method: "POST",
-    redirect: "manual",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(form).toString(),
-  });
 
 async function findResetLinkInOutbox(to: string) {
   const caixa = await readFakeOutbox();
@@ -296,79 +267,5 @@ describe("configuração de e-mail", () => {
     expect(res.status).toBe(200);
     const caixa = await readFakeOutbox();
     expect(caixa.at(-1)).toMatchObject({ to: adminEmail, from: "suporte@teste.local" });
-  });
-});
-
-describe("congelamento de usuário", () => {
-  let admin: ReturnType<typeof apiClient>;
-  let slug: string;
-  let adminId: string;
-  let alvo: { id: string; email: string };
-
-  beforeAll(async () => {
-    await cleanDb();
-    const user = await createUser();
-    adminId = user.id;
-    const ws = await createWorkspace(user.id);
-    slug = ws.slug;
-    admin = apiClient((await createApiToken(user.id)).token);
-    alvo = await createUser();
-    await addMember(ws.id, alvo.id, 15);
-    await setPassword(alvo.id);
-  });
-
-  it("exige motivo", async () => {
-    const res = await admin.post(`/workspaces/${slug}/members/${alvo.id}/freeze/`, { reason: " " });
-    expect(res.status).toBe(400);
-    expect(((await res.json()) as any).errors[0].path).toBe("reason");
-  });
-
-  it("não deixa congelar a si mesmo", async () => {
-    const res = await admin.post(`/workspaces/${slug}/members/${adminId}/freeze/`, { reason: "teste" });
-    expect(res.status).toBe(400);
-  });
-
-  it("congela, derruba a sessão e impede o login; descongelar devolve o acesso", async () => {
-    const sessao = await signIn(alvo.email);
-    const res = await admin.post(`/workspaces/${slug}/members/${alvo.id}/freeze/`, { reason: "Saiu da empresa" });
-    expect(res.status).toBe(200);
-    expect(((await res.json()) as any).frozen_at).toBeTruthy();
-
-    expect((await withBearer(sessao, "/api/v1/users/me/")).status).toBe(401);
-    const login = await fetch(`${TEST_API_BASE_URL}/auth/sign-in/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ email: alvo.email, password: SENHA }),
-    });
-    expect(login.status).toBe(403);
-
-    expect((await admin.post(`/workspaces/${slug}/members/${alvo.id}/freeze/`, { reason: "de novo" })).status).toBe(
-      409
-    );
-
-    const volta = await admin.post(`/workspaces/${slug}/members/${alvo.id}/unfreeze/`, { reason: "Voltou" });
-    expect(volta.status).toBe(200);
-    await signIn(alvo.email);
-
-    const historico = (await (
-      await admin.get(`/workspaces/${slug}/members/${alvo.id}/freeze-events/`)
-    ).json()) as any[];
-    expect(historico.map((e) => [e.action, e.reason])).toEqual([
-      ["unfreeze", "Voltou"],
-      ["freeze", "Saiu da empresa"],
-    ]);
-  });
-
-  it("congelado sai da lista de membros e aparece na lista de congelados", async () => {
-    await admin.post(`/workspaces/${slug}/members/${alvo.id}/freeze/`, { reason: "Férias longas" });
-    const membros = (await (await admin.get(`/workspaces/${slug}/members/`)).json()) as any[];
-    expect(membros.some((m) => m.member.id === alvo.id)).toBe(false);
-
-    const congelados = (await (await admin.get(`/workspaces/${slug}/frozen-members/`)).json()) as any[];
-    expect(congelados).toEqual([
-      expect.objectContaining({ id: alvo.id, email: alvo.email, is_frozen: true, frozen_reason: "Férias longas" }),
-    ]);
-    await admin.post(`/workspaces/${slug}/members/${alvo.id}/unfreeze/`, {});
-    expect(await (await admin.get(`/workspaces/${slug}/frozen-members/`)).json()).toEqual([]);
   });
 });

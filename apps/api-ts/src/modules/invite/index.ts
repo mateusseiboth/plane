@@ -1,9 +1,10 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {paginate} from "@utils/pagination";
-import {getProjectOrFail, getWorkspaceOrFail, requireWorkspaceWriter} from "@utils/workspace";
+import {getWorkspaceOrFail} from "@utils/workspace";
 import {randomUUID} from "crypto";
 import Elysia from "elysia";
+import {EProjectAction, requireProjectAction, requireWorkspaceAction, resolveProjectMember, roleCan} from "@utils/permission-checks";
 
 export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
   .use(authPlugin)
@@ -13,7 +14,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
   // Returns IWorkspaceMemberInvitation[] — frontend expects plain array
   .get("/invitations/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
     const where: any = {workspaceId: ws.id};
     if (query.accepted !== undefined) where.accepted = query.accepted === "true";
     else where.accepted = false; // default: only pending
@@ -29,7 +30,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .post("/invitations/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
     const b = body as any;
     if (!b.emails?.length) {
       set.status = 400;
@@ -59,13 +60,13 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .get("/invitations/:pk/", async ({params: {slug, pk}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
     return prisma.workspaceMemberInvite.findFirstOrThrow({where: {id: pk, workspaceId: ws.id}});
   })
 
   .patch("/invitations/:pk/", async ({params: {slug, pk}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = b.role;
@@ -78,7 +79,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .delete("/invitations/:pk/", async ({params: {slug, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
     await prisma.workspaceMemberInvite.delete({where: {id: pk}});
     set.status = 204;
     return null;
@@ -126,8 +127,8 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .get("/projects/:project_id/invitations/", async ({params: {slug, project_id}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) {
+    const {role} = await resolveProjectMember(ws.id, project_id, user.id);
+    if (!roleCan(role, EProjectAction.MEMBER_MANAGE)) {
       return {
         results: [],
         total_count: 0,
@@ -149,11 +150,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .post("/projects/:project_id/invitations/", async ({params: {slug, project_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) {
-      set.status = 403;
-      return {detail: "Permissão negada."};
-    }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.MEMBER_MANAGE);
 
     const b = body as any;
     if (!b.emails?.length) {
@@ -185,12 +182,8 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .delete("/projects/:project_id/invitations/:pk/", async ({params: {slug, project_id, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const {member} = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) {
-      set.status = 403;
-      return {detail: "Permissão negada."};
-    }
-    await prisma.projectMemberInvite.delete({where: {id: pk}});
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.MEMBER_MANAGE);
+    await prisma.projectMemberInvite.deleteMany({where: {id: pk, projectId: project_id, workspaceId: ws.id}});
     set.status = 204;
     return null;
   });

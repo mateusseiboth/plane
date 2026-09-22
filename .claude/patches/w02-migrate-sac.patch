@@ -1,0 +1,102 @@
+--- a/apps/api-ts/scripts/migrate-sac.ts	2026-09-22 10:20:22.090559795 -0400
++++ b/apps/api-ts/scripts/migrate-sac.ts	2026-09-22 10:20:38.427979009 -0400
+@@ -29,6 +29,7 @@
+ import {PrismaPg} from "@prisma/adapter-pg";
+ import {PrismaClient} from "@prisma/client";
+ import {Pool as PgPool} from "pg";
++import {isContaDaCasa, resolveNivelDoSetor} from "../src/utils/papel-do-setor";
+ import {seedWorkflowRoles} from "../src/utils/permissions";
+ import {DEFAULT_STATES, ensureProjectDefaults} from "../src/utils/project-defaults";
+ 
+@@ -301,44 +302,14 @@
+   /** Domínio corporativo: é ele que distingue equipe de contato do cliente. */
+   const DOMINIO_INTERNO = (process.env.DOMINIO_INTERNO ?? "@qualitysistemas.com.br").toLowerCase();
+ 
+-  const INTERNAL_SECTORS = [
+-    "ti",
+-    "tecnologia",
+-    "t.i",
+-    "tecnologia da informação",
+-    "gestao de qualidade",
+-    "gestão de qualidade",
+-    "qualidade",
+-    "atendimento",
+-    "gestao de projetos",
+-    "gestão de projetos",
+-    "projetos",
+-    "diretoria",
+-    "administracao",
+-    "administração",
+-    "financeiro",
+-    "comercial",
+-    "suporte",
+-  ];
+-
+   /**
+-   * Quem é da casa.
+-   *
+-   * O rótulo de setor NÃO serve para isso. "Suporte Técnico" tem 205 contas no
+-   * legado e nenhuma delas é da Quality: são os contatos técnicos das
+-   * prefeituras (gmail, hotmail, terra, bol). Como INTERNAL_SECTORS casava com
+-   * "suporte", os 205 entraram como equipe e apareciam para escolher como
+-   * responsável e como atendente de fila.
+-   *
+-   * O domínio corporativo é o que separa de verdade — a equipe inteira tem
+-   * e-mail @qualitysistemas.com.br. O setor continua valendo, mas só para
+-   * escolher a FUNÇÃO da pessoa.
++   * Quem é da casa (entra ativo). A regra mora em `src/utils/papel-do-setor.ts`:
++   * equipe interna precisa do e-mail corporativo (o rótulo "Suporte Técnico"
++   * sozinho deixava entrar 205 contatos de prefeitura), e representante,
++   * consultor e técnico entram com o e-mail que tiverem, na função mais restrita.
+    */
+   function isInternalUser(setor: string, email: string): boolean {
+-    const dominioOk = (email ?? "").toLowerCase().trim().endsWith(DOMINIO_INTERNO);
+-    if (!dominioOk) return false;
+-    const s = (setor ?? "").toLowerCase().trim();
+-    return INTERNAL_SECTORS.some((i) => s.includes(i));
++    return isContaDaCasa(setor, email, DOMINIO_INTERNO);
+   }
+ 
+   log("\n👤  Migrating usuarios → users");
+@@ -497,27 +468,11 @@
+ 
+   // ── Sector → project role mapping ─────────────────────────────────────────────
+   // Returns the EUserProjectRoles-compatible role number for a given SAC sector string.
++  // O fallback devolvia 10, que não existe no modelo de papéis (20/18/15/12/8/6/5):
++  // financeiro, comercial e outros caíam na Qualidade pelo arredondamento. A regra
++  // (e os testes) moram em `src/utils/papel-do-setor.ts`.
+   function projectRoleForSetor(setor: string): number {
+-    const s = (setor ?? "").toLowerCase().trim();
+-
+-    // Gestores de projeto → GESTOR_PROJETO (18)
+-    if (s.includes("gestor") || s.includes("gestão de proj") || s.includes("gestao de proj") || s.includes("projetos")) return 18;
+-
+-    // TI team → TI (12)
+-    if (s.includes("ti") || s.includes("tecnologia") || s.includes("t.i") || s.includes("informação") || s.includes("informacao"))
+-      return 12;
+-
+-    // Quality team → QUALIDADE (8) — can review intakes, approve/return work
+-    if (s.includes("qualidade") || s.includes("quality") || s.includes("qual")) return 8;
+-
+-    // Service desk / support → ATENDIMENTO (6) — creates chamados only
+-    if (s.includes("atendimento") || s.includes("suporte") || s.includes("support") || s.includes("service")) return 6;
+-
+-    // Management / Directors → GESTOR_PROJETO (18)
+-    if (s.includes("diretoria") || s.includes("administra") || s.includes("gerencia") || s.includes("gerência")) return 18;
+-
+-    // Financial / commercial → MEMBER (10)
+-    return 10;
++    return resolveNivelDoSetor(setor);
+   }
+ 
+   // ── 3. sistemas → projects (one project per sistema) ────────────────────────
+@@ -942,7 +897,8 @@
+         });
+         if (!existingMember) {
+           await prisma.projectMember.create({
+-            data: {projectId, workspaceId: workspace.id, memberId: userId, role: 10, isActive: true},
++            // Nível da pessoa pelo setor; 10 não existe no modelo de papéis.
++            data: {projectId, workspaceId: workspace.id, memberId: userId, role: userProjectRoleMap.get(userId) ?? resolveNivelDoSetor(""), isActive: true},
+           });
+           projectLinks++;
+         }

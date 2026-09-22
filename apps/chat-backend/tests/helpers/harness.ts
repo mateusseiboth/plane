@@ -7,7 +7,7 @@
  * slug do workspace do Plane.
  */
 
-import { SignJWT } from "jose";
+import { SignJWT, decodeJwt } from "jose";
 import prisma from "@db";
 
 export const CHAT_URL = (process.env.CHAT_URL ?? "http://localhost:8002").replace(/\/$/, "");
@@ -120,8 +120,37 @@ export type AttendantSocket = {
   close(): void;
 };
 
+/**
+ * Garante que o espaço de teste exista no Plane e que a pessoa atenda nele
+ * (`chat.atender` na função gravada). O ticket do WS exige a ação: sem isto o
+ * teste levaria 403 no slug aleatório. Idempotente.
+ */
+export async function ensureAtendenteNoEspaco(workspace: string, userId: string): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO workspaces (id, created_at, updated_at, name, slug, timezone)
+    VALUES (gen_random_uuid(), now(), now(), ${workspace}, ${workspace}, 'UTC')
+    ON CONFLICT (slug) DO NOTHING`;
+  await prisma.$executeRaw`
+    INSERT INTO workflow_roles (id, created_at, updated_at, workspace_id, name, key, level, is_system, permissions)
+    SELECT gen_random_uuid(), now(), now(), w.id, 'Administrador', 'admin', 20, true,
+           '["chat.atender","chat.gerenciar","chat.administrar"]'::jsonb
+    FROM workspaces w
+    WHERE w.slug = ${workspace}
+      AND NOT EXISTS (SELECT 1 FROM workflow_roles r WHERE r.workspace_id = w.id AND r.key = 'admin' AND r.deleted_at IS NULL)`;
+  await prisma.$executeRaw`
+    INSERT INTO workspace_members (id, created_at, updated_at, workspace_id, member_id, role, is_active)
+    SELECT gen_random_uuid(), now(), now(), w.id, ${userId}::uuid, 20, true
+    FROM workspaces w
+    WHERE w.slug = ${workspace}
+      AND NOT EXISTS (
+        SELECT 1 FROM workspace_members m
+        WHERE m.workspace_id = w.id AND m.member_id = ${userId}::uuid AND m.deleted_at IS NULL)`;
+}
+
 /** Faz o fluxo real: pega o ticket via REST (com o token do Plane) e abre o WS. */
 export async function connectAttendant(workspace: string, token: string): Promise<AttendantSocket> {
+  const userId = decodeJwt(token).sub;
+  if (userId) await ensureAtendenteNoEspaco(workspace, userId);
   const res = await fetch(`${CHAT_URL}/workspaces/${workspace}/ws-ticket/`, {
     headers: { Authorization: `Bearer ${token}` },
   });

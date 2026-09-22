@@ -8,7 +8,8 @@ import prisma from "@db";
 import { isSmtpSecurity, readDefaultSecurity, resolveSmtpConfig, type SmtpConfig } from "@utils/email-config";
 import { sendEmail } from "@utils/email";
 import { createFieldError } from "@utils/field-error";
-import { getWorkspaceOrFail, requireWorkspaceAdmin } from "@utils/workspace";
+import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
+import { getWorkspaceOrFail } from "@utils/workspace";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -74,14 +75,14 @@ export const emailConfigModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/email-config/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAdmin(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const instance = await prisma.instance.findFirst({ select: { configurations: true } });
     return buildEmailConfigDto(instance?.configurations);
   })
 
   .patch("/email-config/", async ({ params: { slug }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAdmin(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const instance = await readInstanceOrFail();
     const configurations = (instance.configurations as any) ?? {};
     const b = (body as any) ?? {};
@@ -94,7 +95,7 @@ export const emailConfigModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/email-config/test/", async ({ params: { slug }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAdmin(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     try {
       await sendEmail(user.email, {
         subject: "Teste de envio de e-mail",

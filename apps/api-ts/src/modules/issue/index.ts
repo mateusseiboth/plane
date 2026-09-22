@@ -5,14 +5,7 @@ import {paginate} from "@utils/pagination";
 import {COMMENT_INCLUDE, ISSUE_INCLUDE, serializeComment, serializeIssue} from "@utils/serialize";
 import {diffChange, recordActivities, type ActivityChange} from "@utils/activity";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
-import {
-  EProjectAction,
-  canTransition,
-  requireOwnOrAll,
-  requireProjectAction,
-  resolveRole,
-  roleCan,
-} from "@utils/permission-checks";
+import {EProjectAction, canTransition, requireOwnOrAll, requireProjectAction, resolveRole, roleCan, requireRoleAction} from "@utils/permission-checks";
 import {campoDeAtividade, pontoDoProjeto, type PontoDeEstimativa} from "@utils/estimate";
 import {resolverOrdenacao} from "@utils/issue-order";
 import {acompanharSolicitacao} from "@utils/atendimento-da-solicitacao";
@@ -27,6 +20,7 @@ import {inicioRecebido, vencimentoRecebido} from "@utils/prazo";
 import {sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-chamado";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
+import {isPriorityChange} from "@utils/prioridade";
 
 // State-transition rules are now data-driven (utils/permission-checks.ts), seeded
 // per workspace and editable through the roles API. See utils/permissions.ts for
@@ -308,7 +302,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
 
     // Editing any work item needs ISSUE_EDIT_ALL; authors get by with
     // ISSUE_EDIT_OWN. Visualizador (5) holds neither.
-    const {member} = await requireOwnOrAll(
+    const {role} = await requireOwnOrAll(
       ws.id,
       project_id,
       user.id,
@@ -318,6 +312,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     );
 
     const b = body as any;
+    if (isPriorityChange(before?.priority, b.priority)) requireRoleAction(role, EProjectAction.ISSUE_PRIORITY);
 
     // Use unchecked scalar fields throughout (updatedById/stateId/entityId/parentId).
     // Mixing relation-style connects (e.g. updatedBy:{connect}) forces Prisma's
@@ -340,7 +335,6 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       // Validate state transition against the role's configurable workflow (H3)
       targetState = await prisma.state.findFirst({where: {id: newStateId}, select: {id: true, name: true, group: true}});
       if (before && targetState) {
-        const role = await resolveRole(ws.id, member.role, (member as any).workflowRoleId);
         const allowed = await canTransition(
           role,
           {group: before.state?.group ?? "backlog", name: before.state?.name ?? ""},

@@ -17,8 +17,9 @@
 import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
-import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import { getWorkspaceOrFail } from "@utils/workspace";
 import crypto from "node:crypto";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 // ── Allowed tables (same whitelist as custom-widget) ─────────────────────────
 const ALLOWED_TABLES = new Set([
@@ -218,10 +219,7 @@ export const customWebhookModule = new Elysia()
 
   .get("/workspaces/:slug/custom-webhooks/", async ({ params: { slug }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-    });
-    if (!member || member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem gerenciar integrações customizadas." }; }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
 
     const hooks = await prisma.customWebhook.findMany({
       where: { workspaceId: ws.id, deletedAt: null },
@@ -233,10 +231,7 @@ export const customWebhookModule = new Elysia()
 
   .post("/workspaces/:slug/custom-webhooks/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-    });
-    if (!member || member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem criar integrações customizadas." }; }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
 
     const b = body as any;
     if (!b.name || !b.js_code) { set.status = 400; return { detail: "name e js_code são obrigatórios." }; }
@@ -261,10 +256,7 @@ export const customWebhookModule = new Elysia()
 
   .get("/workspaces/:slug/custom-webhooks/:hook_id/", async ({ params: { slug, hook_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-    });
-    if (!member || member.role < 20) { set.status = 403; return { detail: "Apenas administradores." }; }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
 
     const hook = await prisma.customWebhook.findFirst({
       where: { id: hook_id, workspaceId: ws.id, deletedAt: null },
@@ -282,10 +274,7 @@ export const customWebhookModule = new Elysia()
 
   .patch("/workspaces/:slug/custom-webhooks/:hook_id/", async ({ params: { slug, hook_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-    });
-    if (!member || member.role < 20) { set.status = 403; return { detail: "Apenas administradores." }; }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
 
     const b = body as any;
     const data: any = {};
@@ -303,10 +292,7 @@ export const customWebhookModule = new Elysia()
 
   .delete("/workspaces/:slug/custom-webhooks/:hook_id/", async ({ params: { slug, hook_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-    });
-    if (!member || member.role < 20) { set.status = 403; return { detail: "Apenas administradores." }; }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
 
     await prisma.customWebhook.update({ where: { id: hook_id }, data: { deletedAt: new Date() } });
     set.status = 204;
@@ -317,10 +303,7 @@ export const customWebhookModule = new Elysia()
 
   .get("/workspaces/:slug/custom-webhooks/:hook_id/logs/", async ({ params: { slug, hook_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
-    });
-    if (!member || member.role < 20) { set.status = 403; return { detail: "Apenas administradores." }; }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
 
     const logs = await prisma.customWebhookAuditLog.findMany({
       where: { webhookId: hook_id, workspaceId: ws.id },

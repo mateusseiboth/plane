@@ -10,7 +10,8 @@ import {
 } from "@modules/entity/service";
 import { createFieldError } from "@utils/field-error";
 import { paginate } from "@utils/pagination";
-import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter } from "@utils/workspace";
+import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 
 const NAME_REQUIRED = "O nome é obrigatório.";
 
@@ -45,7 +46,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/entities/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     const data = readEntityData((body as any) ?? {});
     if (!data.name) throw createFieldError("name", NAME_REQUIRED);
     await requireValidEntityData(ws.id, data, { id: null, relatedEntityId: null, usesThirdPartyCnpj: false });
@@ -81,7 +82,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .patch("/entities/:entity_id/", async ({ params: { slug, entity_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     const current = await prisma.entity.findFirst({ where: { id: entity_id, workspaceId: ws.id, deletedAt: null } });
     if (!current) throw { status: 404, message: "Entidade não encontrada." };
     const data = readEntityData((body as any) ?? {});
@@ -94,7 +95,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .delete("/entities/:entity_id/", async ({ params: { slug, entity_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     await prisma.entity.update({ where: { id: entity_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;

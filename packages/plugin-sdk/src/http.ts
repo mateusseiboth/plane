@@ -1,9 +1,20 @@
 let _baseUrl = "";
 let _pluginId = "";
+let _workspaceSlug: string | undefined;
 
-export function configureHttp(baseUrl: string, pluginId: string) {
+/**
+ * `workspaceSlug` é o workspace em que o plugin está aberto. Ele vai em toda
+ * chamada ao gateway como `workspace_slug` (a não ser que a chamada informe outro):
+ * as rotas de dados e a config de workspace exigem esse parâmetro.
+ */
+export function configureHttp(baseUrl: string, pluginId: string, workspaceSlug?: string) {
   _baseUrl = baseUrl.replace(/\/$/, "");
   _pluginId = pluginId;
+  _workspaceSlug = workspaceSlug || undefined;
+}
+
+export function currentWorkspaceSlug(): string | undefined {
+  return _workspaceSlug;
 }
 
 /** Internal: base URL of the plugin-sdk gateway (no trailing slash). */
@@ -17,10 +28,9 @@ export function currentPluginId(): string {
 
 function buildUrl(path: string, query?: Record<string, string | number | boolean | undefined>): string {
   const url = new URL(`${sdkGatewayBase()}${path}`);
-  if (query) {
-    for (const [k, v] of Object.entries(query)) {
-      if (v !== undefined) url.searchParams.set(k, String(v));
-    }
+  const params = { ...query, workspace_slug: query?.workspace_slug ?? _workspaceSlug };
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined) url.searchParams.set(k, String(v));
   }
   return url.toString();
 }

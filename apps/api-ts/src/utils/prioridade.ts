@@ -53,3 +53,12 @@ export function rotuloDePrioridade(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   return POR_TEXTO.get(semAcento(valor)) ?? null;
 }
+
+/**
+ * O pedido MUDA a prioridade gravada? Só a mudança exige `issue.priority`: o
+ * formulário reenvia todos os campos, e reenviar o mesmo valor não é alterar.
+ */
+export function isPriorityChange(atual: string | null | undefined, recebida: unknown): boolean {
+  if (recebida === undefined) return false;
+  return recebida !== (atual ?? "none");
+}

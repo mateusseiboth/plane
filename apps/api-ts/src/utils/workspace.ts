@@ -20,18 +20,21 @@ export async function requireWorkspaceMember(workspaceId: string, userId: string
   return m;
 }
 
-/** Administrador do espaço (papel 20). Configuração do espaço não é de membro. */
-export async function requireWorkspaceAdmin(workspaceId: string, userId: string) {
-  const m = await requireWorkspaceMember(workspaceId, userId);
-  if (m.role < 20) throw {status: 403, message: "Apenas administradores do espaço de trabalho."};
-  return m;
+/**
+ * Projetos de que o usuário é membro ativo no workspace. É o recorte de
+ * visibilidade da listagem de chamados do workspace: quem participa do projeto vê
+ * todos os chamados dele, e só dele.
+ */
+export async function findMemberProjectIds(workspaceId: string, userId: string): Promise<string[]> {
+  const membros = await prisma.projectMember.findMany({
+    where: {workspaceId, memberId: userId, isActive: true, deletedAt: null},
+    select: {projectId: true},
+  });
+  return membros.map((m) => m.projectId);
 }
 
-export async function requireWorkspaceWriter(workspaceId: string, userId: string) {
-  const m = await requireWorkspaceMember(workspaceId, userId);
-  if (m.role < 15) throw {status: 403, message: "Você não tem permissão para executar esta ação."};
-  return m;
-}
+// Não há guarda por nível aqui: "pode fazer X" é `requireWorkspaceAction` /
+// `requireProjectAction` (utils/permission-checks.ts), pela matriz de ações.
 
 export async function getProjectOrFail(workspaceId: string, projectId: string, userId: string, options?: {allowInstanceAdmin?: boolean}) {
   const project = await prisma.project.findFirst({
@@ -48,11 +51,15 @@ export async function getProjectOrFail(workspaceId: string, projectId: string, u
   // the admin to projects at role 15) — otherwise admins get spurious 403s on
   // role-gated actions like state transitions. Elevate the effective role to 20.
   const wsAdmin = await prisma.workspaceMember.findFirst({
+    // permissao-estrutural: admin do espaço participa de todo sistema.
     where: {workspaceId, memberId: userId, role: {gte: 20}, isActive: true, deletedAt: null},
   });
   if (wsAdmin) {
     if (member) {
-      member = {...member, role: Math.max(member.role, 20)} as any;
+      // A função vem junto com o nível: manter o `workflowRoleId` da associação
+      // ao sistema fazia resolveRole devolver a função baixa gravada ali (ela tem
+      // prioridade sobre o nível), e o admin tomava 403 no próprio sistema.
+      member = {...member, role: Math.max(member.role, 20), workflowRoleId: wsAdmin.workflowRoleId ?? null} as any;
     } else {
       // Return a synthetic member record granting admin-level access
       member = {

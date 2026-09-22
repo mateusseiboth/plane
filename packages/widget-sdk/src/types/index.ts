@@ -165,4 +165,6 @@ export interface ConfirmConfig {
 export interface SDKInitOptions {
   baseUrl: string;
   widgetId: string;
+  /** Workspace em que o widget está aberto; vai como `workspace_slug` em toda chamada. */
+  workspaceSlug?: string;
 }

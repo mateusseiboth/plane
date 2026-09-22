@@ -123,6 +123,26 @@ apps/
   it revokes every token issued before. The chat backend validates the JWT on its own and does
   not see revocations yet.
 
+**Plugin backend bridge: `PLUGIN_BRIDGE_SECRET` (required for plugins with a backend)**
+
+Plugins that declare `backend.baseUrl` in their manifest talk to their own backend through
+the signed proxy `ALL /api/v1/plugin-sdk/backend/*`. Each request carries identity headers
+(`X-Plugin-User`, `X-Plugin-Workspace`, `X-Plugin-Perms`, ...) signed with a per-plugin key,
+`HMAC(PLUGIN_BRIDGE_SECRET, pluginId)`; the plugin backend must be configured with the same secret.
+
+- Set it on the api-ts service: `PLUGIN_BRIDGE_SECRET=$(openssl rand -hex 32)`
+  (see `apps/api-ts/.env.example` and `docker-compose-local.yml`).
+- There is **no default value**. Without it the proxy answers `503` and api-ts logs
+  `PLUGIN_BRIDGE_SECRET não configurado`. The other plugin SDK routes keep working.
+- Changing it invalidates the key of every plugin backend: update both sides together.
+
+**Plugin / widget SDK gateways** (`/api/v1/plugin-sdk/*`, `/api/v1/widget-sdk/*`): every data
+route requires `workspace_slug` and an active membership in that workspace; work items and
+intakes are limited to the projects the user belongs to (same rule as the workspace issue list).
+The SDKs send the current workspace automatically (`initializeSDK({ ..., workspaceSlug })`,
+wired by the host). Uploading a plugin whose slug already exists updates it when the version is
+higher, re-enables it after a delete, and is rejected with `409` for an equal or lower version.
+
 > **Django is no longer used.** Per project policy, no new code, bug fixes, endpoints,
 > migrations, or model changes are made in `apps/api/`. Treat it as read-only documentation of
 > legacy behavior only.
