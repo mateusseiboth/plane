@@ -67,14 +67,15 @@ export const SidebarItemBase = observer(function SidebarItemBase({
     "denuncias",
     "curriculos",
     "wiki",
+    "pos-atendimento",
     "reports",
     ...(additionalStaticItems || []),
   ];
   const slug = workspaceSlug?.toString() || "";
 
   if (!allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)) return null;
-  // Item ligado a uma ação da matriz (ex.: a wiki) só aparece para quem a tem.
-  if (item.action && !can(item.action)) return null;
+  // Item ligado a ação(ões) da matriz (ex.: a wiki) só aparece para quem tem uma delas.
+  if (item.action && ![item.action].flat().some(can)) return null;
 
   const isPinned = isWorkspaceItemPinned(item.key);
   if (!isPinned && !staticItems.includes(item.key)) return null;

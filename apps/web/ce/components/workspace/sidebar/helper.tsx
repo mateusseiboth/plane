@@ -13,6 +13,7 @@ import {
   MessageSquare,
   MessageSquareWarning,
   Phone,
+  PhoneCall,
   ShieldAlert,
   Wrench,
 } from "lucide-react";
@@ -74,6 +75,8 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <ShieldAlert className={cn("size-4 flex-shrink-0", className)} />;
     case "curriculos":
       return <FileUser className={cn("size-4 flex-shrink-0", className)} />;
+    case "pos-atendimento":
+      return <PhoneCall className={cn("size-4 flex-shrink-0", className)} />;
     case "reports":
       return <FileBarChart className={cn("size-4 flex-shrink-0", className)} />;
     case "wiki":

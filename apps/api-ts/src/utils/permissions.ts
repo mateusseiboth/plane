@@ -51,6 +51,7 @@ const G = {
   CADASTROS: "Cadastros e integrações",
   OUVIDORIA: "Ouvidoria, denúncias e currículos",
   WIKI: "Wiki",
+  POS_ATENDIMENTO: "Pós-atendimento",
 } as const;
 
 // UMA LINHA POR AÇÃO. A ordem é a ordem em que a tela de Funções desenha.
@@ -117,6 +118,8 @@ export const ACTION_CATALOG = {
   CURRICULO_READ: {key: "curriculo.read", label: "Ver e gerenciar currículos", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
   WIKI_VIEW: {key: "wiki.view", label: "Ler a wiki", group: G.WIKI, scope: "workspace", roles: TODOS},
   WIKI_EDIT: {key: "wiki.edit", label: "Escrever e organizar páginas da wiki", group: G.WIKI, scope: "workspace", roles: ESCREVEM},
+  POSATENDIMENTO_RECORD: {key: "posatendimento.record", label: "Registrar pós-atendimento", group: G.POS_ATENDIMENTO, scope: "workspace", roles: ["atendimento", "qualidade", "gestor_projeto"]},
+  POSATENDIMENTO_VERIFY: {key: "posatendimento.verify", label: "Verificar pós-atendimento", group: G.POS_ATENDIMENTO, scope: "workspace", roles: ["qualidade", "gestor_projeto"]},
 } as const satisfies Record<string, ActionDef>;
 
 type Catalog = typeof ACTION_CATALOG;

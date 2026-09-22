@@ -216,8 +216,11 @@ export interface IWorkspaceSidebarNavigationItem {
   href: string;
   access: EUserWorkspaceRoles[];
   highlight: (pathname: string, url: string) => boolean;
-  /** Ação da matriz de permissões exigida para o item aparecer (ex.: "wiki.view"). */
-  action?: string;
+  /**
+   * Ação da matriz de permissões exigida para o item aparecer (ex.: "wiki.view").
+   * Lista = qualquer uma delas libera (ex.: quem registra OU verifica o pós-atendimento).
+   */
+  action?: string | string[];
 }
 
 export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspaceSidebarNavigationItem> = {
@@ -412,6 +415,23 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     action: "curriculo.read",
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Pós-atendimento: aparece para quem registra ou verifica (matriz de ações).
+  "pos-atendimento": {
+    key: "pos-atendimento",
+    labelTranslationKey: "sidebar.pos_atendimento",
+    href: `/pos-atendimento/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: ["posatendimento.record", "posatendimento.verify"],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   analytics: {
     key: "analytics",
     labelTranslationKey: "analytics",
@@ -454,6 +474,7 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["ouvidoria"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["denuncias"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["curriculos"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["pos-atendimento"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["reports"],

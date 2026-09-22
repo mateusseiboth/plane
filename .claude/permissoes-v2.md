@@ -184,6 +184,11 @@ W15: `ouvidoria.read`, `denuncia.read`, `curriculo.read` e `contato.export` (Ges
 `.claude/ouvidoria-denuncia-curriculos.md`). O menu lateral esconde ouvidoria e currículos de quem
 não tem a ação (campo `action` do item em `packages/constants/src/workspace.ts`).
 
+W12: `posatendimento.record` (Atendimento, Qualidade, Gestor, admin) e `posatendimento.verify`
+(Qualidade, Gestor, admin), ver `.claude/pos-atendimento.md`. Helper novo
+`requireWorkspaceAnyAction` (qualquer uma das ações, no escopo do espaço). O campo `action` do
+item da sidebar aceita `string | string[]` (qualquer uma libera).
+
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já
 deixava, por número).

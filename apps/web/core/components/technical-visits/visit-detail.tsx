@@ -11,12 +11,15 @@ import { Ban, Check, ChevronLeft, ClipboardList, Layers, Printer, Save } from "l
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { cn } from "@plane/utils";
 import { EntityDropdown } from "@/components/dropdowns/entity";
+import { PosAtendimentoModal } from "@/components/pos-atendimento/pos-atendimento-modal";
+import { PosAtendimentoPanel } from "@/components/pos-atendimento/pos-atendimento-panel";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { SeletorDeContatos } from "@/components/entity-contacts";
 import { TechnicalVisitPrintDocument, TechnicalVisitTrainingPrintDocument, usePrint } from "@/components/print";
 import { useProject } from "@/hooks/store/use-project";
 import { useUser } from "@/hooks/store/user";
 import { useAuditRecorder } from "@/hooks/use-audit-logs";
+import { usePosPermissions } from "@/hooks/use-pos-atendimento";
 import { useVisitPermissions } from "@/hooks/use-technical-visits";
 import { technicalVisitService } from "@/services/technical-visit.service";
 import type { TTechnicalVisit, TVisitApiError, TVisitPrintTarget } from "./types";
@@ -154,6 +157,8 @@ export const VisitDetail = observer(function VisitDetail({ workspaceSlug, visit,
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [printTarget, setPrintTarget] = useState<TVisitPrintTarget>("relatorio");
+  const [isPosAberto, setPosAberto] = useState(false);
+  const { canRecord: canRecordPos } = usePosPermissions(workspaceSlug);
   const { modules, isLoading: loadingModules } = useVisitModules(workspaceSlug, form.project_ids);
 
   const mode = getVisitEditMode(visit, currentUser?.id, permissoes);
@@ -175,17 +180,24 @@ export const VisitDetail = observer(function VisitDetail({ workspaceSlug, visit,
     setToast({ type: TOAST_TYPE.ERROR, title: titulo, message: (erro as TVisitApiError)?.detail });
   };
 
-  const save = async (extra: Record<string, unknown> = {}, sucesso = "Visita salva.") => {
+  /** Devolve se gravou: "Concluir e fazer pós-atendimento" só abre o formulário depois de concluir. */
+  const save = async (extra: Record<string, unknown> = {}, sucesso = "Visita salva."): Promise<boolean> => {
     setSaving(true);
     try {
       const payload = { ...buildPayload(form, mode, moduloValido), ...extra };
       applySaved(await technicalVisitService.update(workspaceSlug, visit.id, payload));
       setToast({ type: TOAST_TYPE.SUCCESS, title: sucesso });
+      return true;
     } catch (erro) {
       onFalha("Não foi possível salvar a visita.")(erro);
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  const onConcluirComPos = async () => {
+    if (await save({ status: VISIT_STATUS.CONCLUIDA }, "Visita concluída.")) setPosAberto(true);
   };
 
   const onCancel = async () => {
@@ -217,6 +229,8 @@ export const VisitDetail = observer(function VisitDetail({ workspaceSlug, visit,
     );
 
   const transicoes = canReport ? TRANSICOES.filter((t) => t.de.includes(visit.status)) : [];
+  const canConcluirComPos = canRecordPos && transicoes.some((t) => t.para === VISIT_STATUS.CONCLUIDA);
+  const tituloDoPos = `Visita ${visit.visit_number ?? ""} ${visit.entity?.name ?? ""}`.trim();
   const docVisit = {
     ...visit,
     city: form.city,
@@ -278,6 +292,11 @@ export const VisitDetail = observer(function VisitDetail({ workspaceSlug, visit,
               {t.label}
             </button>
           ))}
+          {canConcluirComPos && (
+            <button type="button" disabled={saving} onClick={onConcluirComPos} className={BOTAO}>
+              Concluir e fazer pós-atendimento
+            </button>
+          )}
           {canSchedule && !isVisitaEncerrada(visit.status) && (
             <button
               type="button"
@@ -304,6 +323,14 @@ export const VisitDetail = observer(function VisitDetail({ workspaceSlug, visit,
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
+        <PosAtendimentoPanel
+          workspaceSlug={workspaceSlug}
+          origem="visit"
+          alvoId={visit.id}
+          titulo={tituloDoPos}
+          versao={visit.status}
+          className="mb-6"
+        />
         <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
           <div className="space-y-4 rounded-lg border border-subtle bg-surface-1 p-5">
             <div className="grid grid-cols-2 gap-3">
@@ -515,6 +542,15 @@ export const VisitDetail = observer(function VisitDetail({ workspaceSlug, visit,
           </div>
         </div>
       </div>
+      {isPosAberto && (
+        <PosAtendimentoModal
+          workspaceSlug={workspaceSlug}
+          origem="visit"
+          alvoId={visit.id}
+          titulo={tituloDoPos}
+          onClose={() => setPosAberto(false)}
+        />
+      )}
     </div>
   );
 });

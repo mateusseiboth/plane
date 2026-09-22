@@ -54,6 +54,7 @@ import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 import { buildErrorBody, type HttpError } from "@utils/field-error";
 import { muralModule } from "@modules/mural";
+import { posAtendimentoModule } from "@modules/pos-atendimento";
 import { ouvidoriaModule } from "@modules/ouvidoria";
 import { denunciaModule } from "@modules/denuncia";
 import { curriculoModule, scheduleExpurgoDeCurriculos } from "@modules/curriculo";
@@ -228,6 +229,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // onto the SSE stream (see the rolesModule note above).
   .use(realtimeModule)
   .use(muralModule)
+  .use(posAtendimentoModule)
   // Ouvidoria, denúncia interna, currículos e lista de e-mails (W15).
   .use(ouvidoriaModule)
   .use(denunciaModule)
