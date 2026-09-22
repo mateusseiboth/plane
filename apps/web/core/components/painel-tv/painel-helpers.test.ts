@@ -13,6 +13,8 @@ import {
   readFaixaDoVolume,
   readOpcoesDaUrl,
   readUrgenciaDaEspera,
+  buildOrigemDoChamado,
+  readUrgenteDaVez,
 } from "./painel-helpers";
 
 describe("opções da URL", () => {
@@ -84,6 +86,23 @@ describe("rotação das abas", () => {
     expect(proximaAba(0, 3)).toBe(1);
     expect(proximaAba(2, 3)).toBe(0);
     expect(proximaAba(0, 0)).toBe(0);
+  });
+});
+
+describe("banner do cliente parado", () => {
+  it("a origem do chamado é sistema e entidade, só o que existir", () => {
+    expect(buildOrigemDoChamado("Siart", "PREFEITURA DE NIOAQUE")).toBe("Siart · PREFEITURA DE NIOAQUE");
+    expect(buildOrigemDoChamado(null, "PREFEITURA DE NIOAQUE")).toBe("PREFEITURA DE NIOAQUE");
+    expect(buildOrigemDoChamado("Siart", null)).toBe("Siart");
+    expect(buildOrigemDoChamado(null, null)).toBe("");
+  });
+
+  it("o urgente da vez segue o índice da rotação e nunca sai da lista", () => {
+    const urgentes = [{ id: "a" }, { id: "b" }, { id: "c" }];
+    expect(readUrgenteDaVez(urgentes, 0)?.id).toBe("a");
+    expect(readUrgenteDaVez(urgentes, 2)?.id).toBe("c");
+    expect(readUrgenteDaVez(urgentes, 5)?.id).toBe("c");
+    expect(readUrgenteDaVez([], 0)).toBeNull();
   });
 });
 

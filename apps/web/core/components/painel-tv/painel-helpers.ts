@@ -86,6 +86,19 @@ export const formatData = (iso: string | null | undefined): string => {
   return Number.isNaN(data.getTime()) ? "—" : data.toLocaleDateString("pt-BR");
 };
 
+/** "Sistema · Entidade", só com o que existir. */
+export const buildOrigemDoChamado = (sistema: string | null, entidade: string | null): string =>
+  [sistema, entidade].filter(Boolean).join(" · ");
+
+/**
+ * O urgente que o banner mostra nesta volta da rotação. Índice além da lista
+ * (a lista encolheu entre duas atualizações) cai no último em vez de sumir.
+ */
+export function readUrgenteDaVez<T>(urgentes: T[], indice: number): T | null {
+  if (urgentes.length === 0) return null;
+  return urgentes[Math.min(Math.max(indice, 0), urgentes.length - 1)] ?? null;
+}
+
 /** Próxima aba da rotação; volta ao começo no fim da lista. */
 export const proximaAba = (atual: number, total: number): number => (total <= 0 ? 0 : (atual + 1) % total);
 
