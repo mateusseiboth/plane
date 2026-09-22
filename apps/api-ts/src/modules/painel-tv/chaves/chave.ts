@@ -89,3 +89,15 @@ export function parseChaveInput(body: Record<string, unknown>): { data: ChaveInp
   const finais = escopos.includes(ESCOPO_TODOS) ? [ESCOPO_TODOS] : escopos;
   return { data: { name: name.slice(0, 120), scopes: finais as EscopoDaChave[] }, erros };
 }
+
+/**
+ * Título de cada painel, para quem só precisa citá-lo (ex.: os cartões de
+ * "Links úteis"). O painel em si desenha o próprio cabeçalho; aqui é só o nome.
+ */
+export const TITULO_DO_PAINEL: Record<PainelDaChave, string> = {
+  ti: "Painel do TI",
+  qualidade: "Painel da Qualidade",
+  atendimento: "Painel do Atendimento",
+  mapa: "Mapa de chamados",
+  backups: "Painel de Backups",
+};

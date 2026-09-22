@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "bun:test";
 import { buildLinksUteis, type TContextoDosLinks } from "@modules/links-uteis/links-uteis";
-import { SETORES_DO_PAINEL } from "@modules/reports/painel-tv/painel-tv";
+import { PAINEIS_DA_CHAVE } from "@modules/painel-tv/chaves/chave";
 
 const CONTEXTO: TContextoDosLinks = {
   slug: "quality",
@@ -140,14 +140,17 @@ describe("buildLinksUteis: quem vê o quê", () => {
 describe("buildLinksUteis: painéis de TV", () => {
   it("um cartão por painel que EXISTE, lido do catálogo do painel", () => {
     expect(grupo(CONTEXTO, "paineis")?.cartoes.map((c) => c.caminho)).toEqual(
-      SETORES_DO_PAINEL.map((setor) => `/quality/painel/${setor}`)
+      PAINEIS_DA_CHAVE.map((painel) => `/quality/painel/${painel}`)
     );
   });
 
-  it("os painéis de hoje são o do TI e o da Qualidade, com o título do próprio painel", () => {
+  it("os painéis de hoje são os cinco da TV, com o título de cada um", () => {
     expect(grupo(CONTEXTO, "paineis")?.cartoes.map((c) => [c.chave, c.titulo])).toEqual([
       ["painel-ti", "Painel do TI"],
       ["painel-qualidade", "Painel da Qualidade"],
+      ["painel-atendimento", "Painel do Atendimento"],
+      ["painel-mapa", "Mapa de chamados"],
+      ["painel-backups", "Painel de Backups"],
     ]);
   });
 });

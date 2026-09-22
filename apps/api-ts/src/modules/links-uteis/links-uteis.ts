@@ -8,7 +8,7 @@
  * Um assunto = uma strategy. Assunto novo é uma entrada a mais em `GRUPOS`.
  * Puro: quem descobre a configuração é `links-uteis.service.ts`.
  */
-import { SETORES_DO_PAINEL, createPainelStrategy } from "@modules/reports/painel-tv/painel-tv";
+import { PAINEIS_DA_CHAVE, TITULO_DO_PAINEL } from "@modules/painel-tv/chaves/chave";
 
 /** Trecho que a pessoa preenche (ou escolhe) antes de copiar o link. */
 export type TCampoDoLink = {
@@ -148,15 +148,15 @@ const buildTrabalheConosco = (contexto: Contexto): TCartaoDeLink =>
  * vira link.
  */
 const buildPaineis = (contexto: Contexto): TCartaoDeLink[] =>
-  SETORES_DO_PAINEL.map((setor) =>
+  PAINEIS_DA_CHAVE.map((painel) =>
     cartaoComLink(
       {
-        chave: `painel-${setor}`,
-        titulo: createPainelStrategy(setor).titulo,
-        descricao: "Quadro dos chamados do setor para deixar aberto na TV da sala.",
+        chave: `painel-${painel}`,
+        titulo: TITULO_DO_PAINEL[painel],
+        descricao: "Para deixar aberto na TV da sala. Abre com a sua conta, ou com a chave de painel.",
         quemUsa: "Quem está logado no Plane.",
       },
-      `/${contexto.slug}/painel/${setor}`
+      `/${contexto.slug}/painel/${painel}`
     )
   );
 
