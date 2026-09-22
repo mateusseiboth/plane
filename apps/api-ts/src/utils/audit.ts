@@ -35,6 +35,10 @@ export const AUDIT_ACTIONS = {
   LOGIN_FAILED: "login_failed",
   LOGOUT: "logout",
   PERMISSION_CHANGE: "permission_change",
+  FREEZE: "freeze",
+  UNFREEZE: "unfreeze",
+  PASSWORD_CHANGE: "password_change",
+  PASSWORD_RESET_REQUEST: "password_reset_request",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -140,9 +144,7 @@ export function recordAudit(input: AuditInput): Promise<void> {
 }
 
 /** Açúcar para leituras (o caso mais comum e mais fácil de esquecer). */
-export function recordView(
-  args: Omit<AuditInput, "action" | "changes"> & { changes?: never }
-): Promise<void> {
+export function recordView(args: Omit<AuditInput, "action" | "changes"> & { changes?: never }): Promise<void> {
   return recordAudit({ ...args, action: AUDIT_ACTIONS.VIEW });
 }
 

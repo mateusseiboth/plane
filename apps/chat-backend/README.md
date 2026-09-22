@@ -67,12 +67,19 @@ refaz é o encerramento.
 
 ### Cadastro no encerramento
 
-`agent.close` aceita, além de `session_id`:
+O encerramento vai por `POST /workspaces/:slug/sessions/:id/close/` (a tela usa
+este, porque a recusa volta com o motivo em `detail`) ou por `agent.close` no
+socket (a recusa volta como `{ type: "error", action: "session.close" }`). Os dois
+passam por `closeWithEncerramento` e aceitam:
 
 ```jsonc
 {
   "type": "agent.close",
   "session_id": "uuid",
+  "entity_id": "uuid", // OBRIGATÓRIA (ou já conhecida pelo contato/sessão): sem ela, 422
+  "motivo": "Dúvida", // rótulo do catálogo BotConfig.closeReasons
+  "module_id": "uuid", // funcionalidade: módulo do sistema atendido
+  "note": "texto livre", // observação
   "project_id": "uuid", // sistema atendido (classificação)
   "contact": {
     "contact_id": "uuid", // contato já existente escolhido na busca
@@ -98,6 +105,28 @@ O `Contact` do chat (`chat_contacts`) **continua existindo**: ele é o históric
 conversa por telefone, não o cadastro do cliente. Ao encerrar, ele acompanha o
 nome, o e-mail e a entidade do contato gravado.
 
+## Ciclo de vida da conversa
+
+Detalhes, decisões e o mapa do legado em `.claude/chat-ciclo-de-vida.md`. Resumo:
+
+- **Um caminho de encerramento** (`src/ciclo-de-vida/encerrar.ts`): grava como a
+  conversa terminou (`end_kind`) e, quando o cliente foi embora, o tipo de abandono
+  do SAC (`abandon_type`, 1 a 5).
+- **Timers** (`src/timers.ts` chama `src/ciclo-de-vida/*`): inatividade no robô,
+  na fila e em atendimento (pergunta 1 continua / 99 encerra), pausa vencida em
+  3 dias e fim do dia do WhatsApp. Ligação (`channel = "phone"`) fica de fora.
+- **Webhook Z-API** (`src/webhook/zapi.ts`): token opcional por espaço
+  (`chat_provider_config.webhook_token`, no cabeçalho `Client-Token` ou em
+  `?token=`), descarte de mensagem com 2 dias ou mais, reação, figurinha, contato e
+  chamada perdida.
+- **Falha de envio**: a mensagem fica `status = "failed"` com `send_error`, o
+  atendente recebe `message.status` e reenvia por
+  `POST /workspaces/:slug/messages/:id/resend/`.
+- **Rotas** (`chat.atender`): `POST .../sessions/:id/close|pause|resume|chamado/`,
+  `GET .../close-reasons/`. **Relatórios** (`chat.gerenciar`):
+  `GET .../reports/atendimentos/` e `GET .../registros/` (filtros `from`, `to`,
+  `entity_id`, `project_id`, `motivo`, `attendant_id`).
+
 ## Quem atende, quem escolhe e quem lê a avaliação
 
 **O cliente não escolhe atendente.** O pré-chat do widget pergunta nome e sistema;
@@ -105,8 +134,9 @@ a conversa entra na fila e a distribuição por peso decide. Escolher deixava a
 conversa parada na caixa de quem estava ocupado (ou fora do horário) com o resto
 da equipe livre.
 
-**Quem aparece como atendente** sai de `papeis.ts`, e são três perguntas
-diferentes que antes usavam o mesmo número (`role >= 15`):
+**Quem aparece como atendente** sai de `src/permissoes.ts` (matriz de ações,
+`chat.atender` / `chat.gerenciar` / `chat.administrar`). Antes eram três perguntas
+diferentes que usavam o número do papel:
 
 | Pergunta        | Papel mínimo    | Onde vale                                                   |
 | --------------- | --------------- | ----------------------------------------------------------- |
@@ -128,7 +158,43 @@ assumido não abre pesquisa de satisfação — não há atendimento a avaliar. 
 decide é o servidor (`rating.request`); a página do cliente nunca abre o
 formulário por conta própria.
 
+## Ligações (FreePBX)
+
+Substitui o módulo "tickets" da intranet: o PBX registra cada ligação e ela entra
+na **mesma caixa** do atendimento. Contrato completo e exemplo de dialplan em
+`.claude/ligacoes-freepbx.md`.
+
+- A ligação é uma `chat_sessions` com `channel = "phone"` mais a linha de
+  `chat_ligacoes` (call_id, origem, ramal, início, fim, duração, gravação,
+  descrição, quem concluiu, chamado vinculado). Protocolo, histórico e relatórios
+  valem sem tela nova.
+- **Entrada:** `POST /workspaces/:slug/telefonia/ligacoes/` com o token de serviço
+  (`Authorization: Bearer` ou `X-Api-Token`). Idempotente pelo `call_id`: 201 no
+  primeiro envio, 200 no reenvio (atualiza fim, duração e gravação).
+- Quem ligou é identificado pelo telefone (`buscarResponsavelPorTelefone`, a mesma
+  busca do bot); o ramal (`chat_ramais`) diz de quem é a ligação e o atendente é
+  avisado pelo WS (`session.assigned`). Não atendida já entra encerrada; sem
+  ramal conhecido, espera alguém assumir.
+- **Atendente** (`chat.atender`): `GET /ligacoes/:id/`, `POST .../assumir/`,
+  `POST .../concluir/` (sistema + descrição, e o contato quando o telefone não
+  identificou), `POST .../chamado/` (o front cria a solicitação no api-ts e informa
+  qual foi).
+- **Configuração** (`chat.administrar`): `/config/telefonia/` (token: só o hash e os
+  4 últimos caracteres ficam gravados; ramais).
+- **Relatório** (`chat.gerenciar`): `GET /reports/ligacoes/?days=N`, por atendente,
+  entidade e sistema.
+- Histórico do cliente (conversas + ligações): `GET /sessions/:id/historico-do-cliente/`.
+  Lista filtrável por tipo: `GET /sessions/?channel=phone` ou `?channel=whatsapp,native`.
+- Ligação fica **fora** do SLA de primeira resposta, do timer de inatividade e da
+  fila automática (`WITHOUT_PHONE` / `isPhoneSession` em `src/canais.ts`).
+
+Código em `src/ligacoes/` (rotas finas → service → DAO) e migração
+`prisma/sql/0012_ligacoes.sql`.
+
 ## Testes
+
+Rode **arquivo por arquivo**: o `mock.module("@db")` de
+`tests/horario-atendimento.test.ts` vaza quando a pasta roda inteira.
 
 Os testes e2e batem numa instância **em execução** (`CHAT_URL`) ligada ao **mesmo
 banco** que a suíte, e a identificação por telefone exige as tabelas do Plane

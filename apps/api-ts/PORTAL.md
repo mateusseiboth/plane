@@ -68,11 +68,13 @@ a lista inteira, omiti-lo mantém a que já está lá.
 ## Rotas do cliente
 
 Todas sob `/portal/api`, autenticadas pelo token do portal (`Authorization:
-Bearer`), exceto `entrar` e `espaco`.
+Bearer`), exceto `entrar`, `espaco`, `esqueci-senha` e `redefinir-senha`.
 
 | Rota                                    | O que faz                                                  |
 | --------------------------------------- | ---------------------------------------------------------- |
 | `POST /entrar`                          | e-mail + senha → token (10 tentativas por IP a cada 5 min) |
+| `POST /esqueci-senha`                   | `{ workspace, email }` → manda o link de nova senha        |
+| `POST /redefinir-senha`                 | `{ workspace, conta, token, senha }` → troca a senha       |
 | `GET /eu`                               | retoma a sessão guardada no navegador                      |
 | `GET /sistemas`                         | os projetos liberados para a conta                         |
 | `GET /solicitacoes`                     | o que a conta abriu, da mais recente para a mais antiga    |
@@ -84,6 +86,17 @@ Bearer`), exceto `entrar` e `espaco`.
 `GET /solicitacoes` e `GET /solicitacoes/:id` trazem `resposta` (`{ texto,
 respondida_por, respondida_em }`) quando a equipe já respondeu, e `null`
 enquanto não, mais `anexos[]` (`{ id, nome, tipo, tamanho, enviado_em }`).
+
+## Esqueci minha senha e sessão
+
+O link vai por e-mail (configuração em _Configurações > E-mail (SMTP)_ ou nas
+variáveis `SMTP_*`) e abre a própria página: `/portal/?workspace=&conta=&redefinir=`.
+Vale uma vez, por 60 minutos, e só o hash fica gravado (`password_reset_tokens`,
+`kind = portal`: o token do Plane não serve aqui, nem o contrário). A resposta do
+pedido é a mesma para e-mail cadastrado ou não.
+
+O token do portal leva a versão da sessão (`portal_accounts.token_updated_at`).
+Senha trocada pelo link ou pelo administrador derruba os tokens emitidos antes.
 
 ## Texto com formatação
 

@@ -8,8 +8,9 @@ import { deliverOutbound } from "@/outbound";
 import { buscarResponsavelPorTelefone } from "@/responsaveis";
 import { isWithinBusinessHours } from "@/presence";
 import { routeQueuedSession } from "@/queue/router";
-import { requestRating } from "@/rating";
-import { sendToSession, sendToWorkspace } from "@/ws/hub";
+import { sendToWorkspace } from "@/ws/hub";
+import { CAUSA_DO_FIM } from "@/ciclo-de-vida/abandono";
+import { closeAtendimento } from "@/ciclo-de-vida/encerrar";
 
 type FlowStep =
   | { type: "message"; text: string }
@@ -161,12 +162,10 @@ async function runFlowFrom(session: any, flow: any, startIndex: number) {
   await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "done" } });
 }
 
+/** Fluxo que termina em "close": mesmo caminho de encerramento de todo o chat. */
 async function closeByBot(session: any) {
-  const cfg = await getConfig(session.workspaceId);
-  await prisma.chatSession.update({ where: { id: session.id }, data: { status: "closed", botState: "done", closedAt: new Date() } });
-  sendToSession(session.id, { type: "session.closed", session_id: session.id, protocol: session.protocol });
-  await deliverOutbound(session, { sender: "system", type: "event", text: render(cfg.closedMessage, { protocol: session.protocol }) });
-  await requestRating(session).catch((e) => console.error("[requestRating]", e));
+  await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "done" } });
+  await closeAtendimento({ sessionId: session.id, causa: CAUSA_DO_FIM.ROBO });
 }
 
 /** Process a client message. No-op if an attendant is already active. */

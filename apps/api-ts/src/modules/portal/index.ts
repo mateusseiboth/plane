@@ -10,7 +10,7 @@
  *    sim vale o crachá do Plane, restrito ao administrador do espaço.
  */
 
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
@@ -28,11 +28,11 @@ import {
   TETO_DO_CORPO,
 } from "@modules/portal/anexos";
 import {
-  autenticar,
+  authenticate,
   contaAtiva,
   espacoPeloSlug,
-  gerarHashDeSenha,
-  normalizarEmail,
+  hashSenha,
+  normalizeEmail,
   sistemaLiberado,
   sistemasDaConta,
   type ContaDoPortal,
@@ -52,7 +52,9 @@ import {
   solicitacaoDaConta,
   solicitacoesDaConta,
 } from "@modules/portal/solicitacoes";
-import { assinarTokenDoPortal, lerTokenDoPortal } from "@modules/portal/token";
+import { applyPortalReset, requestPortalReset } from "@modules/portal/senha";
+import { signTokenDoPortal, readTokenDoPortal } from "@modules/portal/token";
+import { isEmailEnabled } from "@utils/email";
 
 /** Mesma frase para e-mail inexistente e senha errada: a tela não entrega quem existe. */
 const CREDENCIAL_INVALIDA = "E-mail ou senha inválidos.";
@@ -71,9 +73,9 @@ function contaDto(conta: ContaDoPortal) {
 /** O crachá do portal já resolvido em conta ativa; `null` manda a página pedir login de novo. */
 async function contaDoPedido(headers: Record<string, string | undefined>): Promise<ContaDoPortal | null> {
   const bruto = headers["authorization"]?.startsWith("Bearer ") ? headers["authorization"].slice(7) : null;
-  const cracha = await lerTokenDoPortal(bruto);
+  const cracha = await readTokenDoPortal(bruto);
   if (!cracha) return null;
-  return contaAtiva(cracha.contaId, cracha.workspaceId);
+  return contaAtiva(cracha.contaId, cracha.workspaceId, cracha.versao);
 }
 
 const naoAutenticado = (set: any) => {
@@ -122,14 +124,14 @@ export const portalModule = new Elysia({ prefix: "/portal" })
       set.status = 403;
       return { detail: CREDENCIAL_INVALIDA };
     }
-    const conta = await autenticar(espaco.id, b.email, b.senha);
+    const conta = await authenticate(espaco.id, b.email, b.senha);
     if (!conta) {
       recordAudit({
         workspaceId: espaco.id,
         entity: AUDIT_ENTITIES.USER,
-        entityId: normalizarEmail(b.email) || "desconhecido",
+        entityId: normalizeEmail(b.email) || "desconhecido",
         action: AUDIT_ACTIONS.LOGIN_FAILED,
-        actor: { email: normalizarEmail(b.email) },
+        actor: { email: normalizeEmail(b.email) },
         headers: headers as any,
         metadata: { origem: "portal" },
       });
@@ -145,7 +147,45 @@ export const portalModule = new Elysia({ prefix: "/portal" })
       headers: headers as any,
       metadata: { origem: "portal" },
     });
-    return { token: await assinarTokenDoPortal(conta.id, conta.workspaceId), conta: contaDto(conta) };
+    return { token: await signTokenDoPortal(conta.id, conta.workspaceId, conta.tokenUpdatedAt), conta: contaDto(conta) };
+  })
+
+  // ── Esqueci minha senha ───────────────────────────────────────────────────
+  // A resposta é a mesma para e-mail cadastrado ou não: dizer qual existe
+  // entregaria a lista de clientes a quem tentasse adivinhar.
+  .post("/api/esqueci-senha", async ({ body, headers, set }) => {
+    const b = (body ?? {}) as any;
+    const ip = ipDaRequisicao(headers as any);
+    const email = normalizeEmail(b.email);
+    if (!checkRateLimit(`portal-esqueci:${ip}`, 10) || !checkRateLimit(`portal-esqueci:${email}`, 5)) {
+      set.status = 429;
+      return { detail: "Muitos pedidos seguidos. Aguarde um minuto e tente de novo." };
+    }
+    if (!(await isEmailEnabled())) {
+      set.status = 400;
+      return { detail: "A recuperação de senha por e-mail não está disponível. Fale com o suporte." };
+    }
+    try {
+      await requestPortalReset(String(b.workspace ?? ""), email, ip);
+    } catch (e) {
+      // Falha de envio não muda a resposta: ela diria que o e-mail existe.
+      console.error("[portal] falha ao enviar o link de nova senha:", e);
+    }
+    return { detail: "Se o e-mail estiver cadastrado, você vai receber o link para criar uma nova senha." };
+  })
+
+  .post("/api/redefinir-senha", async ({ body, headers }) => {
+    const conta = await applyPortalReset((body ?? {}) as any);
+    recordAudit({
+      workspaceId: conta.workspaceId,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: conta.id,
+      action: AUDIT_ACTIONS.PASSWORD_CHANGE,
+      actor: { id: conta.id, email: conta.email },
+      headers: headers as any,
+      metadata: { origem: "portal", por_email: true },
+    });
+    return { detail: "Senha alterada. Entre com a senha nova." };
   })
 
   // ── Quem sou eu (retomada de sessão) ──────────────────────────────────────
@@ -339,7 +379,7 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
     const b = (body ?? {}) as any;
-    const email = normalizarEmail(b.email);
+    const email = normalizeEmail(b.email);
     const senha = String(b.password ?? "");
     if (!email || !String(b.name ?? "").trim()) {
       set.status = 400;
@@ -358,7 +398,7 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
       data: {
         workspaceId: ws.id,
         email,
-        password: await gerarHashDeSenha(senha),
+        password: await hashSenha(senha),
         name: String(b.name).trim(),
         entityId: b.entity_id ?? null,
       },
@@ -392,7 +432,7 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
     }
     const dados: any = {};
     if (b.name !== undefined) dados.name = String(b.name).trim();
-    if (b.email !== undefined) dados.email = normalizarEmail(b.email);
+    if (b.email !== undefined) dados.email = normalizeEmail(b.email);
     if (b.entity_id !== undefined) dados.entityId = b.entity_id || null;
     if (b.is_active !== undefined) dados.isActive = Boolean(b.is_active);
     if (b.password) {
@@ -400,7 +440,8 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
         set.status = 400;
         return { detail: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.` };
       }
-      dados.password = await gerarHashDeSenha(String(b.password));
+      dados.password = await hashSenha(String(b.password));
+      dados.tokenUpdatedAt = new Date();
     }
     await prisma.portalAccount.update({ where: { id }, data: dados });
     await definirSistemas(id, b.project_ids);

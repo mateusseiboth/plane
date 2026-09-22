@@ -55,7 +55,7 @@ We have evolved Plane Community Edition in two major directions:
 | **Mobile app** | — | **New "Avião" app** built with Expo (latest SDK): a data-rich home (assigned/urgent/open stats), work items, **real intake approval flow**, entities, notifications, wiki, technical visits, global search, rich text editor, offline-first sync, push notifications, light/dark themes. |
 | **Service desk (SAC)** | — | **Entities** (clients) and **Technical Visits** as first-class, workspace-scoped models. |
 | **Legacy ticket numbers** | — | `legacy_ticket_number` field preserved on issues and shown across all views. |
-| **Technical visits** | — | Dedicated screen + API: schedule visits, two technicians, motivation flags, link to issues, write visit reports, list & **calendar** views. |
+| **Technical visits** | — | Dedicated screen + API: schedule visits with technician and 2nd technician, server-generated number `N-YYYY` (restarts every year), city filled from the entity, visit opened **from an issue** (already linked, entity and system inherited), linked issues with search, closing lock (no open linked issue; dates, summary, conclusion and a motive required), functionalities = project **modules**, report attachment (upload/download; attaching the signed report concludes a visit "Awaiting signature"), printable report with signature fields and a **training attendance list** (one sheet per system), list filters (technician, entity, period, overdue) with pagination. Who does what comes from the action matrix: `visit.manage` registers, `visit.manage.all` changes technician/date, cancels and deletes, and the visit's own technician fills the report. See [`.claude/visitas-tecnicas.md`](./.claude/visitas-tecnicas.md). |
 | **Managerial reports** | Basic analytics only | **Reports module**: tickets, productivity & people, technical visits, SLA, and temporal/managerial breakdowns, with PDF/print export. |
 | **Widget marketplace** | — | **Developer widget system**: upload/host widget assets, an SDK gateway API, dynamic widget loader, and a `@empresa/widget-sdk` package for third-party widgets. |
 | **Home widgets** | Static home | Configurable, useful home widgets. |
@@ -70,8 +70,11 @@ We have evolved Plane Community Edition in two major directions:
 | **Paywalls / "Pro" gating** | Upgrade modals, badges & feature flags gate features | **All paywalls removed** — upgrade UI renders nothing and gated CE features (bulk operations, page move/share, issue embeds) are enabled for everyone. |
 | **Whitelabel branding** | Hardcoded "Plane" | **Single switch point** (`APP_NAME` / `VITE_APP_NAME`) — defaults to **"Avião"**; titles, metadata and chrome derive from it. |
 | **Developer docs** | — | In-app **Widgets & Custom Integrations** docs page (`/<workspace>/developers/widgets`), linked from the home "Manage widgets" dialog. |
+| **Message board (Mural)** | — | **Announcements on the user's home**: rich text, optional attachment, pinned, expiry and "must read" (opens in a modal on entry until confirmed). Unread first, per-person read tracking, "who read / who didn't" for publishers, history page with period filter, live via SSE and a bell notification. Publishing requires the `mural.publish` action (Gestor and admin by default). See [`.claude/mural.md`](./.claude/mural.md). |
 | **Workspace wiki** | Paid ("Wiki" in the plan table) | **Wiki at `/<workspace>/wiki`**: nested pages (create child, move, reorder, archive with the subtree), the same collaborative editor and version history as project pages, **file attachment block** in the editor, wiki search plus wiki pages in ⌘K and global search. Access by the permission matrix (`wiki.view`, `wiki.edit`). Legacy import: `apps/api-ts/scripts/import-wiki-legado.ts`. See [`.claude/wiki.md`](./.claude/wiki.md). |
 | **Client portal** | — | **Public request portal** (`/portal?workspace=<slug>`) with its own login: the client picks a system, opens a request and follows its status. Own account model (no Plane seat), requests land in the project's **intake/triage**. |
+| **Accounts & sessions** | Forgot-password needs Django's SMTP setup | **Forgot password by e-mail** for Plane users and **client-portal accounts** (single-use, expiring, hashed token), **session revocation** in the API, the chat and the portal (changing or resetting the password, freezing the account or "sign out everywhere" drops every open session), **sign-in by username** as well as e-mail, **admin creates a user with password, role and systems** (no invite), **freeze** a member in one workspace (only that workspace) or the whole account (instance admin), extra profile fields (phone, mobile, birthday, nickname), a **phone book** of active colleagues, and an audit trail for member creation, role changes, removal, password changes and freezes. SMTP is set in workspace settings or via `SMTP_*` env vars. |
+| **Entity registry** | — | Full entity record (address, state registration, website, sales representative, **responsible entity** for third-party CNPJ) with audited create/update/delete, **freeze/unfreeze** (action `entity.freeze`) that also switches off the entity's contacts and portal accounts and restores exactly those, **contacts linked to systems** (projects) with a system filter, a **duplicate phone/e-mail warning** and a screen for **contact types**. |
 
 > A living backlog of these features lives in [`ToDo.md`](./ToDo.md),
 > [`RELATORIOS_TODO.md`](./RELATORIOS_TODO.md) and
@@ -113,6 +116,14 @@ apps/
   entity, technical-visit, asset, invite, analytics, reports, webhook, notification, ai,
   premium, intake-work-item, work-item, widget / widget-sdk-gateway / custom-widget, plugin,
   and integrations (Git, Slack).
+- **E-mail:** SMTP config lives on the instance (`configurations.smtp`, edited in
+  *Settings → E-mail*); when absent, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+  `SMTP_FROM`, `SMTP_FROM_NAME` and `SMTP_SECURITY` (`none` | `starttls` | `ssl`) are used.
+  `EMAIL_TRANSPORT=fake` writes messages to `EMAIL_OUTBOX_DIR` instead of sending (tests).
+  Links in e-mails point to `APP_BASE_URL`.
+- **Sessions:** the JWT carries the user's session version (`users.token_updated_at`); bumping
+  it revokes every token issued before. The chat backend applies the same rule (checked against
+  api-ts by a test), and client-portal tokens carry `portal_accounts.token_updated_at`.
 
 **Plugin backend bridge: `PLUGIN_BRIDGE_SECRET` (required for plugins with a backend)**
 

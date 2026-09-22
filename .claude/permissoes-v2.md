@@ -134,7 +134,7 @@ Permissão efetiva de uma pessoa =
 | `estimate`                                                                                 | `role < 15`                                       | `estimate.manage`                                                                                                      |
 | `intake-work-item` PATCH                                                                   | `role < 5` (qualquer um)                          | `intake.review` ou `intake.create` + `issue.priority` se mudar prioridade. **Visualizador perdeu.**                    |
 | `issue` PATCH                                                                              | `issue.edit.*`                                    | + `issue.priority` quando a prioridade MUDA (`isPriorityChange`); transição agora usa a função com exceções            |
-| `technical-visit` POST/PATCH/DELETE e vínculos                                             | **só ser do espaço**                              | `visit.manage` (todos menos Visualizador)                                                                              |
+| `technical-visit` POST/PATCH/DELETE e vínculos                                             | **só ser do espaço**                              | `visit.manage` (todos menos Visualizador); W08: `visit.manage.all` (Gestor, admin) troca técnico e data, cancela e exclui, o técnico da visita preenche o relatório. Ver `.claude/visitas-tecnicas.md` |
 | `audit` consulta/exportação                                                                | `role < 20`                                       | `audit.view` (admin) ou admin da instância                                                                             |
 | `plugin` instalar/remover                                                                  | `role < 20`                                       | `plugin.manage`                                                                                                        |
 | `portal` contas                                                                            | `requireWorkspaceAdmin`                           | `portal.manage`                                                                                                        |
@@ -176,6 +176,8 @@ do banco compartilhado).
 `report.view`, `workspace.invite`, `workspace.members`, `workspace.settings`, `role.manage`,
 `audit.view`, `page.manage.all`, `label.sla`, `entity.manage`, `visit.manage`, `issue.type.manage`,
 `import.manage`, `integration.manage`, `ai.config`, `plugin.manage`, `portal.manage`.
+
+Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`).
 
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já

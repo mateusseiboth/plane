@@ -12,6 +12,7 @@
  */
 
 import prisma from "@db";
+import { isSessionRevoked } from "@utils/session-rules";
 
 /** Mesmo custo do login do Plane (`modules/auth`) — senha fraca não é opção. */
 const BCRYPT = { algorithm: "bcrypt", cost: 12 } as const;
@@ -22,17 +23,26 @@ export type ContaDoPortal = {
   email: string;
   name: string;
   entityId: string | null;
+  /** Versão da sessão: trocar a senha derruba os crachás anteriores. */
+  tokenUpdatedAt: Date | null;
 };
 
-const CAMPOS = { id: true, workspaceId: true, email: true, name: true, entityId: true } as const;
+const CAMPOS = {
+  id: true,
+  workspaceId: true,
+  email: true,
+  name: true,
+  entityId: true,
+  tokenUpdatedAt: true,
+} as const;
 
-export function normalizarEmail(email: unknown): string {
+export function normalizeEmail(email: unknown): string {
   return String(email ?? "")
     .toLowerCase()
     .trim();
 }
 
-export function gerarHashDeSenha(senha: string): Promise<string> {
+export function hashSenha(senha: string): Promise<string> {
   return Bun.password.hash(senha, BCRYPT);
 }
 
@@ -53,9 +63,9 @@ export async function espacoPeloSlug(slug: string): Promise<{ id: string; name: 
  * ou senha errada — a tela mostra a mesma frase para os quatro casos, porque
  * dizer "esse e-mail existe" já é contar demais a quem tenta adivinhar.
  */
-export async function autenticar(workspaceId: string, email: unknown, senha: unknown): Promise<ContaDoPortal | null> {
+export async function authenticate(workspaceId: string, email: unknown, senha: unknown): Promise<ContaDoPortal | null> {
   const conta = await prisma.portalAccount.findFirst({
-    where: { workspaceId, email: normalizarEmail(email), isActive: true, deletedAt: null },
+    where: { workspaceId, email: normalizeEmail(email), isActive: true, deletedAt: null },
   });
   if (!conta) return null;
   if (typeof senha !== "string" || !senha) return null;
@@ -68,19 +78,21 @@ export async function autenticar(workspaceId: string, email: unknown, senha: unk
     email: conta.email,
     name: conta.name,
     entityId: conta.entityId,
+    tokenUpdatedAt: conta.tokenUpdatedAt,
   };
 }
 
 /**
- * A conta por trás do crachá, revalidada a cada pedido: desativar uma conta
- * precisa valer agora, e não só quando o token de sete dias vencer.
+ * A conta por trás do crachá, revalidada a cada pedido: desativar uma conta ou
+ * trocar a senha precisa valer agora, e não só quando o token de sete dias vencer.
  */
-export async function contaAtiva(contaId: string, workspaceId: string): Promise<ContaDoPortal | null> {
+export async function contaAtiva(contaId: string, workspaceId: string, versao: unknown): Promise<ContaDoPortal | null> {
   const conta = await prisma.portalAccount.findFirst({
     where: { id: contaId, workspaceId, isActive: true, deletedAt: null },
     select: CAMPOS,
   });
-  return conta ?? null;
+  if (!conta || isSessionRevoked(versao, conta.tokenUpdatedAt)) return null;
+  return conta;
 }
 
 /** Os sistemas que a conta enxerga, em ordem alfabética. */
@@ -101,13 +113,13 @@ export async function sistemasDaConta(conta: ContaDoPortal) {
  * stack do driver no log, que ainda conta o formato da coluna. Filtrando aqui,
  * id malformado segue o MESMO caminho de id inexistente, que é o que ele é.
  */
-export function ehUuid(valor: string): boolean {
+export function isUuid(valor: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
 }
 
 /** O projeto pedido, se a conta tiver acesso a ele. */
 export async function sistemaLiberado(conta: ContaDoPortal, projectId: string) {
-  if (!ehUuid(projectId)) return null;
+  if (!isUuid(projectId)) return null;
   const vinculo = await prisma.portalAccountProject.findFirst({
     where: { accountId: conta.id, projectId, project: { deletedAt: null } },
     select: { project: { select: { id: true, name: true, identifier: true, workspaceId: true } } },

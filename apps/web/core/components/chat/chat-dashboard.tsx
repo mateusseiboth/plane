@@ -10,7 +10,10 @@ import { observer } from "mobx-react";
 import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { useMember } from "@/hooks/store/use-member";
+import { useProject } from "@/hooks/store/use-project";
+import { RelatoriosDeAtendimento } from "@/components/chat/relatorios-de-atendimento";
 import { chatApi, type RatingsReport, type SlaReport } from "@/services/chat.service";
+import { RelatorioDeLigacoes } from "@/components/chat/ligacoes/relatorio-de-ligacoes";
 
 type Stats = Awaited<ReturnType<ReturnType<typeof chatApi>["dashboard"]>>;
 
@@ -51,6 +54,8 @@ export const ChatDashboard = observer(function ChatDashboard({ slug, apiUrl }: {
   const {
     workspace: { getWorkspaceMemberDetails },
   } = useMember();
+  const { joinedProjectIds, getProjectById } = useProject();
+  const projetos = (joinedProjectIds ?? []).map((pid) => ({ value: pid, label: getProjectById(pid)?.name ?? pid }));
 
   useEffect(() => {
     let alive = true;
@@ -274,6 +279,14 @@ export const ChatDashboard = observer(function ChatDashboard({ slug, apiUrl }: {
           </div>
         </div>
       )}
+
+      {/* ── Relatórios de atendimento e registros (legado relatorio/chat*) ── */}
+      <div>
+        <h3 className="mb-2 text-sm font-semibold">Relatórios de atendimento</h3>
+        <RelatoriosDeAtendimento slug={slug} apiUrl={apiUrl} projetos={projetos} />
+      </div>
+
+      <RelatorioDeLigacoes slug={slug} apiUrl={apiUrl} />
     </div>
   );
 });

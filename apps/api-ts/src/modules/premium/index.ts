@@ -20,6 +20,7 @@ import { serializeIssue, serializeTimeLog, TIME_LOG_INCLUDE } from "@utils/seria
 import { inicioRecebido, vencimentoRecebido } from "@utils/prazo";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
+import { recordActivities } from "@utils/activity";
 
 
 /**
@@ -599,6 +600,15 @@ export const premiumModule = new Elysia()
     if (b.priority !== undefined) data.priority = b.priority;
     if (b.target_date !== undefined) data.targetDate = vencimentoRecebido(b.target_date);
 
+    // Etapa de antes, para a mudança em massa entrar no histórico como a do PATCH:
+    // os marcos dos relatórios e a data de conclusão leem esse histórico.
+    const antes = b.state !== undefined
+      ? await prisma.issue.findMany({
+          where: { id: { in: issueIds }, projectId: project_id },
+          select: { id: true, stateId: true, state: { select: { name: true } } },
+        })
+      : [];
+
     const result = await prisma.issue.updateMany({
       where: { id: { in: issueIds }, projectId: project_id },
       data,
@@ -607,9 +617,17 @@ export const premiumModule = new Elysia()
     // Um chamado por vez, pela sincronização idempotente (@utils/vinculos-do-chamado):
     // carimbar em lote com o mesmo deleted_at colidia com a chave única.
     // Mudar o estado em massa também fecha (ou reabre) as solicitações de origem.
-    const grupoNovo = b.state !== undefined
-      ? (await prisma.state.findFirst({ where: { id: b.state }, select: { group: true } }))?.group
-      : undefined;
+    const etapaNova = b.state !== undefined
+      ? await prisma.state.findFirst({ where: { id: b.state }, select: { group: true, name: true } })
+      : null;
+    const grupoNovo = etapaNova?.group;
+
+    for (const chamado of antes.filter((c) => c.stateId !== b.state)) {
+      await recordActivities(
+        { issueId: chamado.id, workspaceId: ws.id, projectId: project_id, actorId: user.id },
+        [{ field: "state", oldValue: chamado.state?.name ?? null, newValue: etapaNova?.name ?? null, comment: "updated the state" }],
+      );
+    }
 
     for (const issueId of issueIds) {
       const escopo = { issueId, workspaceId: ws.id, projectId: project_id };

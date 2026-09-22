@@ -76,6 +76,31 @@ export function mapSessionStatus(atendido: number | null | undefined): SessionSt
   return { status: "closed", closedReason: CLOSED_REASON_BY_ATENDIDO[atendido as number] ?? "unknown" };
 }
 
+// ── Classificação do encerramento (0013_ciclo_de_vida.sql) ─────────────────────
+// `chat_tipo_atendimento` (opEscolhida do popChatAt_fimchatmot.php): os rótulos
+// são os do catálogo padrão de BotConfig.closeReasons, para o relatório por
+// motivo juntar o histórico com o que for encerrado daqui em diante.
+const MOTIVO_POR_TIPO_DE_ATENDIMENTO: Record<number, string> = {
+  1: "Acesso",
+  2: "Dúvida",
+  3: "Correção",
+  4: "Melhoria",
+  5: "Senha",
+};
+
+// O SAC não guardou o tipo do abandono: "abandono" marca abandono sem tipo.
+const END_KIND_POR_FIM: Partial<Record<ClosedReason, string>> = { finished: "atendente", abandoned: "abandono" };
+
+export function mapClassificacaoDoSac(
+  tipoDeAtendimento: number | null | undefined,
+  fim: ClosedReason
+): { closeReason: string | null; endKind: string | null } {
+  return {
+    closeReason: MOTIVO_POR_TIPO_DE_ATENDIMENTO[tipoDeAtendimento as number] ?? null,
+    endKind: END_KIND_POR_FIM[fim] ?? null,
+  };
+}
+
 export function mapChannel(chatZap: number | null | undefined): ChatChannel {
   return Number(chatZap) === 1 ? "whatsapp" : "native";
 }

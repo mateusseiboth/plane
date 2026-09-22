@@ -103,21 +103,73 @@ export class ZapiProvider implements WhatsAppProvider {
     if (this.parseWebhookMutation(body)) return null;
     const phone: string | undefined = body.phone || body.participantPhone;
     if (!phone) return null;
-    const base = {externalId: body.messageId, phone, senderName: body.senderName || body.chatName};
-    if (body.text?.message) return {...base, type: "text", text: body.text.message};
-    if (body.image)
-      return {...base, type: "image", mediaUrl: body.image.imageUrl, mediaMime: body.image.mimeType, text: body.image.caption};
-    if (body.audio) return {...base, type: "audio", mediaUrl: body.audio.audioUrl, mediaMime: body.audio.mimeType};
-    if (body.video)
-      return {...base, type: "video", mediaUrl: body.video.videoUrl, mediaMime: body.video.mimeType, text: body.video.caption};
-    if (body.document)
-      return {
-        ...base,
-        type: "file",
-        mediaUrl: body.document.documentUrl,
-        mediaMime: body.document.mimeType,
-        mediaName: body.document.fileName,
-      };
-    return null;
+    const base: Base = {
+      externalId: body.messageId,
+      phone,
+      senderName: body.senderName || body.chatName,
+      ...(typeof body.momment === "number" ? {momentMs: body.momment} : {}),
+    };
+    const leitor = LEITORES.find(([aplica]) => aplica(body));
+    return leitor ? leitor[1](body, base) : null;
   }
 }
+
+type Base = Pick<InboundMessage, "externalId" | "phone" | "senderName" | "momentMs">;
+type Leitor = [aplica: (body: any) => boolean, ler: (body: any, base: Base) => InboundMessage];
+
+const CHAMADA_PERDIDA = new Set(["CALL_MISSED_VOICE", "CALL_MISSED_VIDEO"]);
+
+const describeContato = (contato: any): string => {
+  const telefones = Array.isArray(contato.phones) ? contato.phones.filter(Boolean).join(", ") : "";
+  return ["Contato compartilhado:", contato.displayName || "sem nome", telefones ? `(${telefones})` : ""]
+    .filter(Boolean)
+    .join(" ");
+};
+
+/**
+ * Um leitor por formato de mensagem da Z-API. Formato novo = uma linha aqui,
+ * nenhum `if` mexido. A legenda da imagem vem em `image.caption`, não em
+ * `text`, então a ordem só importa para a chamada perdida, que vem primeiro.
+ */
+const LEITORES: Leitor[] = [
+  [(b) => CHAMADA_PERDIDA.has(b.notification), (_b, base) => ({...base, type: "call_missed"})],
+  [(b) => Boolean(b.text?.message), (b, base) => ({...base, type: "text", text: b.text.message})],
+  [
+    (b) => Boolean(b.reaction),
+    (b, base) => ({
+      ...base,
+      type: "reaction",
+      reaction: {emoji: String(b.reaction.value ?? ""), externalId: b.reaction.referencedMessage?.messageId ?? null},
+    }),
+  ],
+  [
+    (b) => Boolean(b.image),
+    (b, base) => ({...base, type: "image", mediaUrl: b.image.imageUrl, mediaMime: b.image.mimeType, text: b.image.caption}),
+  ],
+  [
+    (b) => Boolean(b.sticker),
+    (b, base) => ({
+      ...base,
+      type: "image",
+      mediaUrl: b.sticker.stickerUrl,
+      mediaMime: b.sticker.mimeType ?? "image/webp",
+      mediaName: "Figurinha",
+    }),
+  ],
+  [(b) => Boolean(b.audio), (b, base) => ({...base, type: "audio", mediaUrl: b.audio.audioUrl, mediaMime: b.audio.mimeType})],
+  [
+    (b) => Boolean(b.video),
+    (b, base) => ({...base, type: "video", mediaUrl: b.video.videoUrl, mediaMime: b.video.mimeType, text: b.video.caption}),
+  ],
+  [
+    (b) => Boolean(b.document),
+    (b, base) => ({
+      ...base,
+      type: "file",
+      mediaUrl: b.document.documentUrl,
+      mediaMime: b.document.mimeType,
+      mediaName: b.document.fileName,
+    }),
+  ],
+  [(b) => Boolean(b.contact), (b, base) => ({...base, type: "text", text: describeContato(b.contact)})],
+];

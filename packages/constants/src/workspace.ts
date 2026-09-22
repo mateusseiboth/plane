@@ -4,8 +4,8 @@
  * See the LICENSE file for details.
  */
 
-import type {IWorkspaceSearchResults, TStaticViewTypes} from "@plane/types";
-import {EUserWorkspaceRoles} from "@plane/types";
+import type { IWorkspaceSearchResults, TStaticViewTypes } from "@plane/types";
+import { EUserWorkspaceRoles } from "@plane/types";
 
 export const ORGANIZATION_SIZE: string[] = ["Just myself", "2-10", "11-50", "51-200", "201-500", "500+"];
 
@@ -135,7 +135,7 @@ export const USER_ROLES = [
     value: "Freelancer / Consultant",
     i18n_label: "user_roles.freelancer_or_consultant",
   },
-  {value: "Marketing / Growth", i18n_label: "user_roles.marketing_or_growth"},
+  { value: "Marketing / Growth", i18n_label: "user_roles.marketing_or_growth" },
   {
     value: "Sales / Business Development",
     i18n_label: "user_roles.sales_or_business_development",
@@ -148,8 +148,8 @@ export const USER_ROLES = [
     value: "Student / Professor",
     i18n_label: "user_roles.student_or_professor",
   },
-  {value: "Human Resources", i18n_label: "user_roles.human_resources"},
-  {value: "Other", i18n_label: "user_roles.other"},
+  { value: "Human Resources", i18n_label: "user_roles.human_resources" },
+  { value: "Other", i18n_label: "user_roles.other" },
 ];
 
 export const IMPORTERS_LIST = [
@@ -311,6 +311,39 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Agenda dos colegas (legado intra_telefones.php): todo membro vê.
+  telefones: {
+    key: "telefones",
+    labelTranslationKey: "sidebar.telefones",
+    href: `/telefones/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  // Mural de recados: todo membro lê. Quem publica é decidido pela ação
+  // `mural.publish` dentro da tela, não por este acesso.
+  mural: {
+    key: "mural",
+    labelTranslationKey: "sidebar.mural",
+    href: `/mural/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   // Wiki do espaço: quem enxerga é decidido pela ação `wiki.view` da matriz,
   // não pelo nível; por isso `access` lista todas as funções.
   wiki: {
@@ -365,6 +398,8 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["visits"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["chat"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["contatos"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["telefones"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["mural"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["wiki"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
