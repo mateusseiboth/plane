@@ -8,7 +8,9 @@
     "removed_start_date": "removeu a data de início",
     "set_name_to": "definiu o nome como",
     "for": "em",
-    "from": "de"
+    "from": "de",
+    "created_work_item": "criou",
+    "commented": "comentou"
   },
   "draft": {
     "save_title": "Salvar este rascunho?",

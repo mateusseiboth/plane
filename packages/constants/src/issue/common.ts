@@ -91,10 +91,19 @@ export const ISSUE_PRIORITIES: {
   },
   {
     key: "none",
+    // `common.none` é "Nenhum": prioridade é substantivo feminino, e a coluna
+    // do gráfico e o cabeçalho do quadro saíam com a concordância errada.
     title: "None",
-    titleTranslationKey: "common.none",
+    titleTranslationKey: "issue.priority.none",
   },
 ];
+
+/**
+ * Chave de tradução do rótulo da prioridade. A trilha e a API guardam o valor
+ * cru ("low", "high"), e era ele que aparecia na tela em inglês.
+ */
+export const readPriorityTranslationKey = (priority: string | null | undefined): string =>
+  ISSUE_PRIORITIES.find((p) => p.key === (priority || "none"))?.titleTranslationKey ?? "issue.priority.none";
 
 export const DRAG_ALLOWED_GROUPS: TIssueGroupByOptions[] = [
   "state",

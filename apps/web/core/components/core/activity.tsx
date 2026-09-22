@@ -23,6 +23,8 @@ import {
   MessageSquareIcon,
   UsersIcon,
 } from "lucide-react";
+import { readPriorityTranslationKey } from "@plane/constants";
+import { useTranslation } from "@plane/i18n";
 import {
   BlockedIcon,
   BlockerIcon,
@@ -35,8 +37,9 @@ import {
 } from "@plane/propel/icons";
 import { Tooltip } from "@plane/propel/tooltip";
 import type { IIssueActivity } from "@plane/types";
-import { renderFormattedDate, generateWorkItemLink, capitalizeFirstLetter } from "@plane/utils";
+import { renderFormattedDate, generateWorkItemLink } from "@plane/utils";
 // helpers
+import { hasFraseDoCampo, readActivityField } from "@/components/core/activity-fields";
 import { useLabel } from "@/hooks/store/use-label";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // types
@@ -95,6 +98,15 @@ function UserLink({ activity }: { activity: IIssueActivity }) {
       {activity.new_value && activity.new_value !== "" ? activity.new_value : activity.old_value}
     </a>
   );
+}
+
+/**
+ * Rótulo traduzido da prioridade. A trilha guarda o valor cru da API ("low"),
+ * e era ele que a frase mostrava: "definiu a prioridade como Low".
+ */
+function PriorityLabel({ priority }: { priority: string | null }) {
+  const { t } = useTranslation();
+  return <>{t(readPriorityTranslationKey(priority))}</>;
 }
 
 const LabelPill = observer(function LabelPill({ labelId, workspaceSlug }: { labelId: string; workspaceSlug: string }) {
@@ -158,6 +170,20 @@ const activityDetails: {
 } = {
   assignees: {
     message: (activity, showIssue) => {
+      // A trilha registra que a lista mudou, não quem entrou ou saiu: sem nome,
+      // a frase "removeu o responsável" terminava no vazio.
+      if (!activity.old_value && !activity.new_value)
+        return (
+          <>
+            atualizou os responsáveis
+            {showIssue && (
+              <>
+                {" "}
+                de <IssueLink activity={activity} />
+              </>
+            )}
+          </>
+        );
       if (activity.old_value === "")
         return (
           <>
@@ -170,18 +196,17 @@ const activityDetails: {
             )}
           </>
         );
-      else
-        return (
-          <>
-            removeu o responsável <UserLink activity={activity} />
-            {showIssue && (
-              <>
-                {" "}
-                de <IssueLink activity={activity} />
-              </>
-            )}
-          </>
-        );
+      return (
+        <>
+          removeu o responsável <UserLink activity={activity} />
+          {showIssue && (
+            <>
+              {" "}
+              de <IssueLink activity={activity} />
+            </>
+          )}
+        </>
+      );
     },
     icon: <Users2Icon size={12} className="text-secondary" aria-hidden="true" />,
   },
@@ -322,6 +347,20 @@ const activityDetails: {
   },
   labels: {
     message: (activity, showIssue, workspaceSlug) => {
+      // Mesmo caso dos responsáveis: a trilha guarda só que as etiquetas
+      // mudaram, e a pílula saía vazia ao lado de "removeu a etiqueta".
+      if (!activity.old_value && !activity.new_value)
+        return (
+          <>
+            atualizou as etiquetas
+            {showIssue && (
+              <>
+                {" "}
+                de <IssueLink activity={activity} />
+              </>
+            )}
+          </>
+        );
       if (activity.old_value === "")
         return (
           <span className="overflow-hidden">
@@ -522,11 +561,11 @@ const activityDetails: {
   name: {
     message: (activity, showIssue) => (
       <>
-        definiu o título como <span className="break-all">{activity.new_value}</span>
+        definiu o título como <span className="font-medium break-all text-primary">{activity.new_value}</span>
         {showIssue && (
           <>
             {" "}
-            de <IssueLink activity={activity} />
+            em <IssueLink activity={activity} />
           </>
         )}
       </>
@@ -550,7 +589,8 @@ const activityDetails: {
       else
         return (
           <>
-            definiu o item pai como <span className="font-medium whitespace-nowrap text-primary">{activity.new_value}</span>
+            definiu o item pai como{" "}
+            <span className="font-medium whitespace-nowrap text-primary">{activity.new_value}</span>
             {showIssue && (
               <>
                 {" "}
@@ -567,7 +607,7 @@ const activityDetails: {
       <>
         definiu a prioridade como{" "}
         <span className="font-medium text-primary">
-          {activity.new_value ? capitalizeFirstLetter(activity.new_value) : "Nenhuma"}
+          <PriorityLabel priority={activity.new_value} />
         </span>
         {showIssue && (
           <>
@@ -724,7 +764,8 @@ const activityDetails: {
             </span>
             {showIssue && (
               <>
-                <IssueLink activity={activity} />
+                {" "}
+                em <IssueLink activity={activity} />
               </>
             )}
           </>
@@ -749,8 +790,18 @@ const activityDetails: {
   },
 };
 
+const CAMPOS_NARRADOS: ReadonlySet<string> = new Set(Object.keys(activityDetails));
+
+/**
+ * A trilha tem frase para esta atividade? Marcador interno do sistema e campo
+ * ainda sem texto viravam uma linha só com o avatar, sem dizer nada.
+ */
+export function hasActivityMessage(activity: Pick<IIssueActivity, "field">): boolean {
+  return hasFraseDoCampo(activity.field, CAMPOS_NARRADOS);
+}
+
 export function ActivityIcon({ activity }: { activity: IIssueActivity }) {
-  return <>{activityDetails[activity.field as keyof typeof activityDetails]?.icon}</>;
+  return <>{activityDetails[readActivityField(activity.field) as keyof typeof activityDetails]?.icon}</>;
 }
 
 type ActivityMessageProps = {
@@ -761,7 +812,7 @@ type ActivityMessageProps = {
 export function ActivityMessage({ activity, showIssue = false }: ActivityMessageProps) {
   // router params
   const { workspaceSlug } = useParams();
-  const activityField = activity.field ?? "issue";
+  const activityField = readActivityField(activity.field);
 
   return (
     <>

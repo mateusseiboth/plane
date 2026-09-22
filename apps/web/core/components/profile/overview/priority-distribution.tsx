@@ -5,12 +5,12 @@
  */
 
 // plane imports
+import { readPriorityTranslationKey } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { BarChart } from "@plane/propel/charts/bar-chart";
 import { EmptyStateCompact } from "@plane/propel/empty-state";
 import type { IUserProfileData } from "@plane/types";
 import { Loader, Card } from "@plane/ui";
-import { capitalizeFirstLetter } from "@plane/utils";
 
 type Props = {
   userProfile: IUserProfileData | undefined;
@@ -36,8 +36,8 @@ export function ProfilePriorityDistribution({ userProfile }: Props) {
               className="h-[300px] w-full"
               margin={{ top: 20, right: 30, bottom: 5, left: 0 }}
               data={userProfile.priority_distribution.map((priority) => ({
-                key: priority.priority ?? "None",
-                name: capitalizeFirstLetter(priority.priority ?? "None"),
+                key: priority.priority ?? "none",
+                name: t(readPriorityTranslationKey(priority.priority)),
                 count: priority.priority_count,
               }))}
               bars={[

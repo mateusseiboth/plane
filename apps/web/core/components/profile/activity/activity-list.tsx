@@ -9,10 +9,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { History, MessageSquare } from "lucide-react";
 // plane imports
+import { useTranslation } from "@plane/i18n";
 import type { IUserActivityResponse } from "@plane/types";
 import { calculateTimeAgo, getFileURL } from "@plane/utils";
 // components
-import { ActivityIcon, ActivityMessage, IssueLink } from "@/components/core/activity";
+import { ActivityIcon, ActivityMessage, IssueLink, hasActivityMessage } from "@/components/core/activity";
 import { RichTextEditor } from "@/components/editor/rich-text";
 import { ActivitySettingsLoader } from "@/components/ui/loader/settings/activity";
 // hooks
@@ -30,15 +31,19 @@ export const ActivityList = observer(function ActivityList(props: Props) {
   // store hooks
   const { data: currentUser } = useUser();
   const { getWorkspaceBySlug } = useWorkspace();
+  const { t } = useTranslation();
   // derived values
   const workspaceId = getWorkspaceBySlug(workspaceSlug?.toString() ?? "")?.id ?? "";
+  // Atividade sem frase sairia como uma linha só com o ícone (ver
+  // `hasActivityMessage`): é melhor não listar do que listar em branco.
+  const atividades = (activity?.results ?? []).filter((item) => item.field === "comment" || hasActivityMessage(item));
 
   // TODO: refactor this component
   return (
     <>
       {activity ? (
         <ul role="list">
-          {activity.results.map((activityItem) => {
+          {atividades.map((activityItem) => {
             if (activityItem.field === "comment")
               return (
                 <div key={activityItem.id} className="mt-2">
@@ -46,17 +51,17 @@ export const ActivityList = observer(function ActivityList(props: Props) {
                     <div className="relative px-1">
                       {activityItem.field ? (
                         activityItem.new_value === "restore" && <History className="h-3.5 w-3.5 text-secondary" />
-                      ) : activityItem.actor_detail.avatar_url && activityItem.actor_detail.avatar_url !== "" ? (
+                      ) : activityItem.actor_detail?.avatar_url && activityItem.actor_detail?.avatar_url !== "" ? (
                         <img
-                          src={getFileURL(activityItem.actor_detail.avatar_url)}
-                          alt={activityItem.actor_detail.display_name}
+                          src={getFileURL(activityItem.actor_detail?.avatar_url)}
+                          alt={activityItem.actor_detail?.display_name}
                           height={30}
                           width={30}
                           className="bg-gray-500 grid h-7 w-7 place-items-center rounded-full border-2 border-white text-on-color"
                         />
                       ) : (
                         <div className="bg-gray-500 grid h-7 w-7 place-items-center rounded-full border-2 border-white text-on-color capitalize">
-                          {activityItem.actor_detail.display_name?.[0]}
+                          {activityItem.actor_detail?.display_name?.[0]}
                         </div>
                       )}
 
@@ -67,12 +72,12 @@ export const ActivityList = observer(function ActivityList(props: Props) {
                     <div className="min-w-0 flex-1">
                       <div>
                         <div className="text-11">
-                          {activityItem.actor_detail.is_bot
-                            ? activityItem.actor_detail.first_name + " Bot"
-                            : activityItem.actor_detail.display_name}
+                          {activityItem.actor_detail?.is_bot
+                            ? activityItem.actor_detail?.first_name + " Bot"
+                            : activityItem.actor_detail?.display_name}
                         </div>
                         <p className="mt-0.5 text-11 text-secondary">
-                          Commented {calculateTimeAgo(activityItem.created_at)}
+                          {t("activity.commented")} {calculateTimeAgo(activityItem.created_at)}
                         </p>
                       </div>
                       <div className="issue-comments-section p-0">
@@ -102,7 +107,7 @@ export const ActivityList = observer(function ActivityList(props: Props) {
               ) &&
               !activityItem.field ? (
                 <span>
-                  created <IssueLink activity={activityItem} />
+                  {t("activity.created_work_item")} <IssueLink activity={activityItem} />
                 </span>
               ) : (
                 <ActivityMessage activity={activityItem} showIssue />
@@ -124,18 +129,18 @@ export const ActivityList = observer(function ActivityList(props: Props) {
                                   ) : (
                                     <ActivityIcon activity={activityItem} />
                                   )
-                                ) : activityItem.actor_detail.avatar_url &&
-                                  activityItem.actor_detail.avatar_url !== "" ? (
+                                ) : activityItem.actor_detail?.avatar_url &&
+                                  activityItem.actor_detail?.avatar_url !== "" ? (
                                   <img
-                                    src={getFileURL(activityItem.actor_detail.avatar_url)}
-                                    alt={activityItem.actor_detail.display_name}
+                                    src={getFileURL(activityItem.actor_detail?.avatar_url)}
+                                    alt={activityItem.actor_detail?.display_name}
                                     height={24}
                                     width={24}
                                     className="h-full w-full rounded-full object-cover"
                                   />
                                 ) : (
                                   <div className="bg-gray-700 grid h-6 w-6 place-items-center rounded-full border-2 border-white text-11 text-on-color capitalize">
-                                    {activityItem.actor_detail.display_name?.[0]}
+                                    {activityItem.actor_detail?.display_name?.[0]}
                                   </div>
                                 )}
                               </div>
@@ -146,17 +151,17 @@ export const ActivityList = observer(function ActivityList(props: Props) {
                           <div className="text-13 break-words text-secondary">
                             {activityItem.field === "archived_at" && activityItem.new_value !== "restore" ? (
                               <span className="text-gray font-medium">Avião</span>
-                            ) : activityItem.actor_detail.is_bot ? (
-                              <span className="text-gray font-medium">{activityItem.actor_detail.first_name} Bot</span>
+                            ) : activityItem.actor_detail?.is_bot ? (
+                              <span className="text-gray font-medium">{activityItem.actor_detail?.first_name} Bot</span>
                             ) : (
                               <Link
-                                href={`/${activityItem.workspace_detail?.slug}/profile/${activityItem.actor_detail.id}`}
+                                href={`/${activityItem.workspace_detail?.slug}/profile/${activityItem.actor_detail?.id}`}
                                 className="inline"
                               >
                                 <span className="text-gray font-medium">
-                                  {currentUser?.id === activityItem.actor_detail.id
-                                    ? "You"
-                                    : activityItem.actor_detail.display_name}
+                                  {currentUser?.id === activityItem.actor_detail?.id
+                                    ? t("common.you")
+                                    : activityItem.actor_detail?.display_name}
                                 </span>
                               </Link>
                             )}{" "}
