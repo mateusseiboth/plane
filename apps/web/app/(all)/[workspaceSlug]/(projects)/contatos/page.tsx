@@ -14,6 +14,7 @@ import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { PageHead } from "@/components/core/page-title";
 import { ContatoFormModal, mensagemDeErro } from "@/components/entity-contacts";
 import { TiposDeResponsavelModal } from "@/components/entity-contacts/tipos-de-responsavel-modal";
+import { LinkListaDeEmails } from "@/components/ouvidoria/link-lista-de-emails";
 // hooks
 import useDebounce from "@/hooks/use-debounce";
 import { useEntities } from "@/hooks/use-entities";
@@ -206,6 +207,7 @@ function ContatosPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <LinkListaDeEmails slug={slug} />
           <button
             type="button"
             onClick={() => setTiposAbertos(true)}

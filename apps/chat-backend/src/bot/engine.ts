@@ -5,18 +5,24 @@
 
 import prisma from "@db";
 import { deliverOutbound } from "@/outbound";
-import { buscarResponsavelPorTelefone } from "@/responsaveis";
+import { findResponsavelPorTelefone } from "@/responsaveis";
 import { isWithinBusinessHours } from "@/presence";
 import { routeQueuedSession } from "@/queue/router";
 import { sendToWorkspace } from "@/ws/hub";
 import { CAUSA_DO_FIM } from "@/ciclo-de-vida/abandono";
 import { closeAtendimento } from "@/ciclo-de-vida/encerrar";
+import { apiTsClient } from "@/bot/acao/api-ts";
+import { findArquivoDoCliente, readArquivoDaMensagem } from "@/bot/acao/arquivo";
+import { createDestinos } from "@/bot/acao/destinos";
+import { createAcaoRunner } from "@/bot/acao/executar";
+import type { AcaoStep } from "@/bot/acao/tipos";
 
 type FlowStep =
   | { type: "message"; text: string }
   | { type: "ask"; text: string; saveAs: string }
   | { type: "queue"; queueId: string }
-  | { type: "close"; text?: string };
+  | { type: "close"; text?: string }
+  | AcaoStep;
 
 async function getConfig(workspaceId: string) {
   return (
@@ -44,9 +50,9 @@ async function findContact(session: any) {
  * nome de perfil que o WhatsApp mandou ("Zé Celular"). É pelo nome do
  * responsável que o bot pergunta "Você é {name}?".
  */
-async function identificarPessoa(session: any) {
+async function identifyPessoa(session: any) {
   const [responsavel, contato] = await Promise.all([
-    buscarResponsavelPorTelefone(session.workspaceId, session.clientPhone),
+    findResponsavelPorTelefone(session.workspaceId, session.clientPhone),
     findContact(session),
   ]);
   return { responsavel, contato, nome: responsavel?.name ?? contato?.name ?? null };
@@ -74,7 +80,7 @@ export async function startBot(sessionId: string) {
   const cfg = await getConfig(session.workspaceId);
   await sendBot(session, cfg.welcomeMessage);
 
-  const { responsavel, contato, nome } = await identificarPessoa(session);
+  const { responsavel, contato, nome } = await identifyPessoa(session);
   if (!nome) {
     await sendBot(session, cfg.askNameMessage);
     await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "awaiting_name" } });
@@ -131,35 +137,77 @@ async function enqueue(session: any, queueId: string) {
   }
 }
 
+/** Destinos do passo "ação" (ouvidoria, currículo, e-mail do responsável). */
+export const DESTINOS_DO_ROBO = createDestinos({ api: apiTsClient, readArquivo: readArquivoDaMensagem });
+
+const acao = createAcaoRunner({
+  destinos: DESTINOS_DO_ROBO,
+  send: (session, text) => sendBot(session, text),
+  saveEstado: async (session, flowId, estado) => {
+    await prisma.chatSession.update({
+      where: { id: session.id },
+      data: { botState: "in_flow", currentFlowId: flowId, flowState: estado as any },
+    });
+  },
+  findArquivo: findArquivoDoCliente,
+});
+
+type Estado = Record<string, unknown>;
+
+/** "seguir" passa ao próximo passo; "parar" encerra a rodada (espera resposta, fila ou fim). */
+type Seguimento = { next: "seguir" | "parar"; state: Estado };
+type StepCtx = { session: any; flow: any; index: number; state: Estado };
+
+const seguir = (state: Estado): Seguimento => ({ next: "seguir", state });
+const PARAR: Seguimento = { next: "parar", state: {} };
+
+/** O que cada tipo de passo faz (strategy map). Tipo desconhecido é pulado. */
+const STEP_RUNNERS: Record<string, (step: any, ctx: StepCtx) => Promise<Seguimento>> = {
+  message: async (step, { session, state }) => {
+    await sendBot(session, render(step.text, state as Record<string, string>));
+    return seguir(state);
+  },
+  ask: async (step, { session, flow, index, state }) => {
+    await sendBot(session, render(step.text, state as Record<string, string>));
+    await prisma.chatSession.update({
+      where: { id: session.id },
+      data: {
+        botState: "in_flow",
+        currentFlowId: flow.id,
+        flowState: { ...state, __step: index, __saveAs: step.saveAs } as any,
+      },
+    });
+    return PARAR; // wait for the client's answer
+  },
+  queue: async (step, { session }) => {
+    await enqueue(session, step.queueId);
+    return PARAR;
+  },
+  close: async (step, { session, state }) => {
+    if (step.text) await sendBot(session, render(step.text, state as Record<string, string>));
+    await closeByBot(session);
+    return PARAR;
+  },
+  action: async (step, { session, flow, index, state }) => {
+    const r = await acao.start({ session, flow, index, state, step });
+    return { next: r.status === "concluida" ? "seguir" : "parar", state: r.state };
+  },
+};
+
 async function runFlowFrom(session: any, flow: any, startIndex: number) {
   const steps = (flow.steps as FlowStep[]) ?? [];
-  let i = startIndex;
-  const state = (session.flowState as Record<string, unknown>) ?? {};
-  while (i < steps.length) {
-    const step = steps[i];
-    if (step.type === "message") {
-      await sendBot(session, render(step.text, state as Record<string, string>));
-      i++;
-    } else if (step.type === "ask") {
-      await sendBot(session, render(step.text, state as Record<string, string>));
-      await prisma.chatSession.update({
-        where: { id: session.id },
-        data: { botState: "in_flow", currentFlowId: flow.id, flowState: { ...state, __step: i, __saveAs: step.saveAs } },
-      });
-      return; // wait for the client's answer
-    } else if (step.type === "queue") {
-      await enqueue(session, step.queueId);
-      return;
-    } else if (step.type === "close") {
-      if (step.text) await sendBot(session, render(step.text, state as Record<string, string>));
-      await closeByBot(session);
-      return;
-    } else {
-      i++;
-    }
+  let state = (session.flowState as Estado) ?? {};
+  for (let i = startIndex; i < steps.length; i++) {
+    const runner = STEP_RUNNERS[steps[i]!.type];
+    if (!runner) continue;
+    // Em série de propósito: cada passo depende do que o anterior mandou e gravou.
+    // oxlint-disable-next-line no-await-in-loop
+    const r = await runner(steps[i], { session: { ...session, flowState: state }, flow, index: i, state });
+    if (r.next === "parar") return;
+    state = r.state;
   }
   // Flow ended without an explicit close.
-  await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "done" } });
+  await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "done", flowState: state as any } });
 }
 
 /** Fluxo que termina em "close": mesmo caminho de encerramento de todo o chat. */
@@ -234,14 +282,22 @@ export async function handleInboundClient(sessionId: string, text: string) {
     }
 
     case "in_flow": {
-      const flow = session.currentFlowId ? await prisma.botFlow.findUnique({ where: { id: session.currentFlowId } }) : null;
+      const flow = session.currentFlowId
+        ? await prisma.botFlow.findUnique({ where: { id: session.currentFlowId } })
+        : null;
       if (!flow) {
         await presentMenu(session);
         return;
       }
       const state = (session.flowState as Record<string, unknown>) ?? {};
-      const saveAs = state.__saveAs as string | undefined;
       const stepIdx = (state.__step as number) ?? 0;
+      if (state.__acao) {
+        const step = ((flow.steps as FlowStep[]) ?? [])[stepIdx] as AcaoStep;
+        const r = await acao.answer({ session, flow, state, step }, body);
+        if (r.status === "concluida") await runFlowFrom({ ...session, flowState: r.state }, flow, stepIdx + 1);
+        return;
+      }
+      const saveAs = state.__saveAs as string | undefined;
       const newState = { ...state };
       if (saveAs) newState[saveAs] = body;
       delete newState.__saveAs;

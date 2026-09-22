@@ -150,13 +150,6 @@ export async function findResponsavelPorTelefone(slug: string, telefone?: string
   }
 }
 
-/**
- * Nome antigo, mantido só porque `src/bot/engine.ts` está sendo alterado em
- * paralelo (W15) e não pode ser tocado agora. Remova e troque o import do
- * engine para `findResponsavelPorTelefone` quando os dois estiverem no preview.
- */
-export const buscarResponsavelPorTelefone = findResponsavelPorTelefone;
-
 async function createResponsavel(
   slug: string,
   dados: DadosDoResponsavel,

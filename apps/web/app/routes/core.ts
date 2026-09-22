@@ -143,6 +143,13 @@ export const coreRoutes: RouteConfigEntry[] = [
 
         // Contatos (responsáveis das entidades)
         route(":workspaceSlug/contatos", "./(all)/[workspaceSlug]/(projects)/contatos/page.tsx"),
+        // Lista de e-mails dos responsáveis para disparo (contato.export)
+        route(":workspaceSlug/contatos/emails", "./(all)/[workspaceSlug]/(projects)/contatos/emails/page.tsx"),
+
+        // Ouvidoria (ouvidoria.read), denúncia interna e currículos (curriculo.read)
+        route(":workspaceSlug/ouvidoria", "./(all)/[workspaceSlug]/(projects)/ouvidoria/page.tsx"),
+        route(":workspaceSlug/denuncias", "./(all)/[workspaceSlug]/(projects)/denuncias/page.tsx"),
+        route(":workspaceSlug/curriculos", "./(all)/[workspaceSlug]/(projects)/curriculos/page.tsx"),
 
         // Telefones (agenda dos colegas)
         route(":workspaceSlug/telefones", "./(all)/[workspaceSlug]/(projects)/telefones/page.tsx"),

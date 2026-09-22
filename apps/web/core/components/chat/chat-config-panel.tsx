@@ -17,6 +17,8 @@ import { chatApi } from "@/services/chat.service";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { AbaDeEncerramento } from "@/components/chat/aba-de-encerramento";
 import { ConfigDeTelefonia } from "@/components/chat/ligacoes/config-de-telefonia";
+import { PassoDeAcao } from "@/components/chat/passo-de-acao";
+import { useDestinosDoRobo } from "@/hooks/use-destinos-do-robo";
 import { AbaDeFrases } from "@/components/chat/atendente/aba-de-frases";
 import { CalendarioDeFeriados } from "@/components/chat/atendente/calendario-de-feriados";
 import { Search } from "lucide-react";
@@ -335,10 +337,12 @@ const STEP_LABELS: Record<string, string> = {
   ask: "Perguntar e guardar resposta",
   queue: "Encaminhar para fila",
   close: "Agradecer e encerrar",
+  action: "Executar ação (ouvidoria, currículo, e-mail)",
 };
 function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi> }) {
   const [flows, setFlows] = useState<any[]>([]);
   const [queues, setQueues] = useState<any[]>([]);
+  const { destinos } = useDestinosDoRobo(api, slug);
   const load = useCallback(() => {
     api.listFlows(slug).then((fs: any[]) => setFlows(fs.map((f) => ({ ...f, steps: Array.isArray(f.steps) ? f.steps : [] })))).catch(err);
     api.listQueues(slug).then(setQueues).catch(() => {});
@@ -382,6 +386,13 @@ function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi>
                     placeholder="Salvar como (ex.: texto)"
                     value={step.saveAs ?? ""}
                     onChange={(e) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? { ...s, saveAs: e.target.value } : s)))}
+                  />
+                )}
+                {step.type === "action" && (
+                  <PassoDeAcao
+                    passo={step}
+                    destinos={destinos}
+                    onChange={(passo) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? passo : s)))}
                   />
                 )}
                 {step.type === "queue" && (

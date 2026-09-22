@@ -180,6 +180,10 @@ model Workspace {
   portalAccounts     PortalAccount[]
   freezeEvents       FreezeEvent[]
   muralRecados       MuralRecado[]
+  ouvidorias         Ouvidoria[]
+  denuncias          Denuncia[]
+  curriculos         Curriculo[]
+  curriculoConfig    CurriculoConfig?
 
   @@map("workspaces")
 }
@@ -1666,6 +1670,7 @@ model Entity {
   technicalVisits    TechnicalVisit[]
   contacts           EntityContact[]
   portalAccounts     PortalAccount[]
+  ouvidorias         Ouvidoria[]
 
   @@map("entities")
 }
@@ -2158,4 +2163,84 @@ model MuralLeitura {
   @@id([recadoId, userId])
   @@index([userId])
   @@map("mural_leituras")
+}
+
+// ── Ouvidoria, denúncia interna e currículos (W15) ────────────────────────────
+// Ver .claude/ouvidoria-denuncia-curriculos.md.
+
+/// Sugestão ou reclamação que o cliente deixou pelo robô do WhatsApp
+/// (legado `chat_ouvidoria`). O CNPJ informado identifica a entidade.
+model Ouvidoria {
+  id            String    @id @default(uuid()) @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at")
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId   String    @map("workspace_id") @db.Uuid
+  kind          String    @db.VarChar(20) // sugestao | reclamacao
+  entity        Entity?   @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  entityId      String?   @map("entity_id") @db.Uuid
+  cnpj          String?   @db.VarChar(20)
+  name          String
+  phone         String?   @db.VarChar(30)
+  message       String
+  chatSessionId String?   @map("chat_session_id") @db.Uuid
+  protocol      String?   @db.VarChar(30)
+  readAt        DateTime? @map("read_at")
+  readById      String?   @map("read_by_id") @db.Uuid
+
+  @@index([workspaceId, readAt])
+  @@index([workspaceId, createdAt])
+  @@map("ouvidorias")
+}
+
+/// Denúncia interna (legado `denuncia`). Quando anônima, NADA liga o registro
+/// a quem escreveu: sem autor, sem hora (só o dia em `reported_on`) e id v4
+/// aleatório, que não carrega instante como o v7. Não existe `created_at` de
+/// propósito.
+model Denuncia {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String    @map("workspace_id") @db.Uuid
+  title       String    @db.VarChar(200)
+  description String
+  isAnonymous Boolean   @map("is_anonymous")
+  authorId    String?   @map("author_id") @db.Uuid
+  reportedOn  DateTime  @map("reported_on") @db.Date
+
+  @@index([workspaceId, reportedOn])
+  @@map("denuncias")
+}
+
+/// Currículo recebido pelo robô ("trabalhe conosco"). O PDF fica no storage de
+/// arquivos (`file_key`); excluir apaga o arquivo e a linha, sem lixeira.
+model Curriculo {
+  id              String    @id @default(uuid()) @db.Uuid
+  receivedAt      DateTime  @default(now()) @map("received_at")
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId     String    @map("workspace_id") @db.Uuid
+  name            String
+  phone           String?   @db.VarChar(30)
+  position        String    @db.VarChar(120)
+  message         String?
+  fileKey         String    @map("file_key")
+  fileName        String    @map("file_name")
+  fileSize        Int       @map("file_size")
+  chatSessionId   String?   @map("chat_session_id") @db.Uuid
+  readAt          DateTime? @map("read_at")
+  readById        String?   @map("read_by_id") @db.Uuid
+  interviewedAt   DateTime? @map("interviewed_at")
+  interviewedById String?   @map("interviewed_by_id") @db.Uuid
+
+  @@index([workspaceId, receivedAt])
+  @@map("curriculos")
+}
+
+/// Prazo de guarda dos currículos (LGPD). Vencido o prazo, a rotina diária
+/// apaga arquivo e registro.
+model CurriculoConfig {
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId   String    @id @map("workspace_id") @db.Uuid
+  retentionDays Int       @default(365) @map("retention_days")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("curriculo_config")
 }

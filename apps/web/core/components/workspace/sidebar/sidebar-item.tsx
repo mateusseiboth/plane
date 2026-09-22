@@ -15,6 +15,7 @@ import { useTranslation } from "@plane/i18n";
 import { joinUrlPath } from "@plane/utils";
 // components
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
+import { SidebarBadge } from "@/components/workspace/sidebar/sidebar-badge";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
@@ -62,6 +63,9 @@ export const SidebarItemBase = observer(function SidebarItemBase({
     "contatos",
     "telefones",
     "mural",
+    "ouvidoria",
+    "denuncias",
+    "curriculos",
     "wiki",
     "reports",
     ...(additionalStaticItems || []),
@@ -85,6 +89,7 @@ export const SidebarItemBase = observer(function SidebarItemBase({
         <div className="flex items-center gap-1.5 py-[1px]">
           {icon}
           <p className="text-13 leading-5 font-medium">{t(item.labelTranslationKey)}</p>
+          <SidebarBadge itemKey={item.key} slug={slug} />
         </div>
         {additionalRender?.(item.key, slug)}
       </SidebarNavItem>

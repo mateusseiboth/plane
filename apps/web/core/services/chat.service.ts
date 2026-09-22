@@ -81,6 +81,14 @@ export type ChatMessage = {
   created_at: string;
 };
 
+/** Destino do passo "ação" do fluxo do robô: campos que o cliente responde e parâmetros do passo. */
+export type ChatDestino = {
+  key: string;
+  label: string;
+  params: { key: string; label: string; options: { value: string; label: string }[] }[];
+  campos: { key: string; label: string; prompt: string; kind: "text" | "file" }[];
+};
+
 /** Item do catálogo de tipos de motivo do encerramento (configurável). */
 export type ChatMotivo = { key: string; label: string };
 
@@ -319,6 +327,8 @@ export function chatApi(apiUrl: string) {
     createFlow: (slug: string, data: any) => req(`/workspaces/${slug}/config/flows/`, jsonPost(data)),
     updateFlow: (slug: string, id: string, data: any) => req(`/workspaces/${slug}/config/flows/${id}/`, jsonPatch(data)),
     deleteFlow: (slug: string, id: string) => req(`/workspaces/${slug}/config/flows/${id}/`, { method: "DELETE" }),
+    /** Destinos do passo "ação" do robô (ouvidoria, currículo, e-mail do responsável). */
+    listDestinos: (slug: string): Promise<ChatDestino[]> => req(`/workspaces/${slug}/config/bot/destinos/`),
     listQueues: (slug: string) => req(`/workspaces/${slug}/config/queues/`),
     createQueue: (slug: string, name: string) => req(`/workspaces/${slug}/config/queues/`, jsonPost({ name })),
     deleteQueue: (slug: string, id: string) => req(`/workspaces/${slug}/config/queues/${id}/`, { method: "DELETE" }),

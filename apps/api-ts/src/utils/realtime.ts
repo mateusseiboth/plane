@@ -18,7 +18,8 @@ export type RealtimeEntity =
   | "module"
   | "state"
   | "notification"
-  | "mural";
+  | "mural"
+  | "ouvidoria";
 
 export type RealtimeAction = "create" | "update" | "delete";
 

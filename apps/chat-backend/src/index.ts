@@ -41,6 +41,7 @@ import { clientPage } from "@/client-page";
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
 import { ligacoesModule } from "@/ligacoes/routes";
+import { destinosModule } from "@/bot/acao/rotas";
 import { parseChannelFilter } from "@/canais";
 import { atendenteModule } from "@/atendente/rotas";
 import { mergeClientInfo, parseClientInfo } from "@/atendente/client-info";
@@ -690,6 +691,9 @@ const app = new Elysia()
 
   // ── Ligações do FreePBX (entrada do PBX, atendente, telefonia, relatório) ──
   .use(ligacoesModule)
+
+  // ── Destinos do passo "ação" do robô (ouvidoria, currículo, e-mail) ──
+  .use(destinosModule)
 
   // ── Ferramentas do atendente e gestão: frases, chave, alerta, cadastro,
   //    feriados, gerenciador e monitor (src/atendente/rotas.ts) ──
