@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import prisma from "@db";
+import { isRotaSemRastro } from "@utils/rota-sem-rastro";
 import { isSessionRevoked, readSessionClaims, readSessionVersion } from "@utils/session";
 
 export type AuthUser = {
@@ -18,7 +19,7 @@ const AUTH_USER_SELECT = {
   isSuperuser: true,
 } as const;
 
-async function resolveApiKey(apiKey: string): Promise<AuthUser | null> {
+async function resolveApiKey(apiKey: string, isSemRastro = false): Promise<AuthUser | null> {
   const token = await prisma.apiToken.findUnique({
     where: { token: apiKey, isActive: true },
     include: {
@@ -29,7 +30,8 @@ async function resolveApiKey(apiKey: string): Promise<AuthUser | null> {
   if (token.expiredAt && token.expiredAt < new Date()) return null;
   // Usuário congelado ou desativado perde também o acesso por chave de API.
   if (token.user.isActive === false) return null;
-  prisma.apiToken.update({ where: { id: token.id }, data: { lastUsed: new Date() } }).catch(() => {});
+  // Rota sem rastro (denúncia): o "último uso" seria a hora exata da denúncia.
+  if (!isSemRastro) prisma.apiToken.update({ where: { id: token.id }, data: { lastUsed: new Date() } }).catch(() => {});
   const { isActive: _isActive, ...user } = token.user;
   return user;
 }
@@ -69,7 +71,8 @@ export const authPlugin = new Elysia({ name: "auth" }).derive({ as: "global" }, 
 
   // 1. X-Api-Key header
   const apiKey = ctx.headers["x-api-key"];
-  if (apiKey) tentativas.push(() => resolveApiKey(apiKey));
+  const isSemRastro = isRotaSemRastro(ctx.request.method, new URL(ctx.request.url).pathname);
+  if (apiKey) tentativas.push(() => resolveApiKey(apiKey, isSemRastro));
 
   // 2. Bearer token from Authorization header
   const authHeader = ctx.headers["authorization"];

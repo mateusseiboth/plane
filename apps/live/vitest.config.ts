@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    // `src/env.ts` valida as variáveis no import e encerra o processo sem elas.
+    env: { API_BASE_URL: "http://localhost:8000", LIVE_SERVER_SECRET_KEY: "teste" },
     include: ["tests/**/*.test.ts", "tests/**/*.spec.ts"],
     coverage: {
       provider: "v8",

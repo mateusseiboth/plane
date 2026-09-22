@@ -4,21 +4,27 @@ import { randomUUID } from "crypto";
 import prisma from "@db";
 import { resolveAttendant, signClientToken, verifyClientToken, signWsTicket, verifyWsTicket } from "@/auth";
 import { nextProtocol } from "@/protocol";
-import { handleInboundClient, startBot, startNativeSession } from "@/bot/engine";
-import { registrarEncerramento } from "@/encerramento";
+import { handleInboundClient, startNativeSession } from "@/bot/engine";
+import { EncerramentoError, closeWithEncerramento } from "@/encerramento";
+import { CAUSA_DO_FIM } from "@/ciclo-de-vida/abandono";
+import { closeAtendimento } from "@/ciclo-de-vida/encerrar";
+import { handleRespostaDeInatividade } from "@/ciclo-de-vida/inatividade";
+import { resumeAtendimento } from "@/ciclo-de-vida/pausa";
+import { cicloDeVidaModule } from "@/ciclo-de-vida/rotas";
+import { relatoriosModule } from "@/relatorios/rotas";
+import { zapiWebhookModule } from "@/webhook/zapi";
 import { inicioDoDiaNoFuso } from "@/presence";
 import { deliverOutbound } from "@/outbound";
 import { persistAndBroadcast, serializeMessage } from "@/messages";
-import { applyProviderMutation, deleteMessage, editMessage } from "@/message-actions";
+import { deleteMessage, editMessage } from "@/message-actions";
 import { drainQueuesForWorkspace, assignSessionToAttendant } from "@/queue/router";
-import { getProvider } from "@/providers/provider";
 import { saveMedia, serveMedia } from "@/storage";
 import { startTimers } from "@/timers";
-import { requestRating, handleRatingReply, submitRating, randomDog } from "@/rating";
+import { submitRating, randomDog } from "@/rating";
 import { attendantName } from "@/users";
 import { ratingsReport, slaReport } from "@/reports";
 import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
-import { semAvaliacao, serializeSession } from "@/sessoes";
+import { withoutAvaliacao, serializeSession } from "@/sessoes";
 import {
   register,
   unregister,
@@ -35,7 +41,12 @@ import { clientPage } from "@/client-page";
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
 import { ligacoesModule } from "@/ligacoes/routes";
+import { destinosModule } from "@/bot/acao/rotas";
+import { disparoModule } from "@/disparo/routes";
+import { startDisparoWorker } from "@/disparo/worker";
 import { parseChannelFilter } from "@/canais";
+import { atendenteModule } from "@/atendente/rotas";
+import { mergeClientInfo, parseClientInfo } from "@/atendente/client-info";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
 
@@ -63,43 +74,19 @@ async function resolveProject(
   }
 }
 
-async function closeSession(sessionId: string, closedById?: string | null) {
-  // A sessão pode ter sumido entre o agendamento do fechamento e a execução —
-  // timer de inatividade que dispara depois de o registro ser removido, por
-  // exemplo. `update` lança P2025 nesse caso e, sem tratamento, a rejeição não
-  // capturada derruba o processo: uma conversa faltando tirava o chat do ar
-  // para todo mundo. `updateMany` não lança; zero linhas é só um encerramento
-  // que não tem mais o que encerrar.
-  const alteradas = await prisma.chatSession.updateMany({
-    where: { id: sessionId },
-    data: { status: "closed", closedAt: new Date(), closedById: closedById ?? null },
-  });
-  if (alteradas.count === 0) return null;
-  const s = await prisma.chatSession.findUniqueOrThrow({ where: { id: sessionId } });
-  sendToSession(sessionId, { type: "session.closed", session_id: sessionId, protocol: s.protocol });
-  sendToWorkspace(s.workspaceId, { type: "session.activity", session_id: sessionId });
-  recordChatAudit({
-    workspaceSlug: s.workspaceId,
-    sessionId,
-    action: CHAT_AUDIT_ACTIONS.CLOSE,
-    userId: closedById ?? null,
-    metadata: { protocolo: s.protocol, canal: s.channel },
-  });
-  const cfg = await prisma.botConfig.findUnique({ where: { workspaceId: s.workspaceId } });
-  await deliverOutbound(s as any, {
-    sender: "system",
-    type: "event",
-    text: (cfg?.closedMessage ?? "Atendimento encerrado. Protocolo: {protocol}").replace("{protocol}", s.protocol),
-  });
-  // Ask the client to rate the service (WhatsApp message / native form).
-  await requestRating(s).catch((e) => console.error("[requestRating]", e));
-  return s;
-}
-
 /** Transfere atendimento e lê relatórios. `slug` é o slug do workspace do Plane. */
 async function isWorkspaceManager(slug: string, userId: string): Promise<boolean> {
   return hasChatAction(slug, userId, CHAT_ACTION.GERENCIAR);
 }
+
+/**
+ * Depois de gravar a mensagem do cliente do site: em atendimento, pode ser a
+ * resposta à pergunta de inatividade; em pausa, retoma. Nos demais, é o robô.
+ */
+const SEGUIMENTO_DO_CLIENTE: Record<string, (sessionId: string, texto: string) => Promise<unknown>> = {
+  active: handleRespostaDeInatividade,
+  paused: (sessionId) => resumeAtendimento(sessionId),
+};
 
 // ── WebSocket dispatch ──────────────────────────────────────────────────────────
 async function onWsMessage(
@@ -131,7 +118,7 @@ async function onWsMessage(
       mediaName: msg.media_name ?? null,
       replyToId: msg.reply_to_id ?? null,
     });
-    if (session.status !== "active") await handleInboundClient(ctx.sessionId, msg.text ?? "");
+    await (SEGUIMENTO_DO_CLIENTE[session.status] ?? handleInboundClient)(ctx.sessionId, msg.text ?? "");
     return;
   }
   if (type === "client.typing" && ctx.sessionId) {
@@ -158,7 +145,7 @@ async function onWsMessage(
     return;
   }
   if (type === "client.end" && ctx.sessionId) {
-    return void closeSession(ctx.sessionId, null);
+    return void closeAtendimento({ sessionId: ctx.sessionId, causa: CAUSA_DO_FIM.CLIENTE_SAIU });
   }
 
   // ── attendant → server ──
@@ -185,6 +172,8 @@ async function onWsMessage(
       mediaMime: msg.media_mime ?? null,
       mediaName: msg.media_name ?? null,
       replyToId: msg.reply_to_id ?? null,
+      // "Enviar sem o nome" (src/atendente/whatsapp-texto.ts): desligado por padrão.
+      withoutSenderName: msg.without_sender_name === true,
     });
     return;
   }
@@ -210,16 +199,10 @@ async function onWsMessage(
     return;
   }
   if (type === "agent.close" && sessionId) {
-    // O encerramento pode trazer a classificação e o cadastro feitos na hora:
-    // para qual sistema era o suporte e quem é o Responsável do cliente.
-    return void (async () => {
-      await registrarEncerramento(
-        sessionId,
-        { project_id: msg.project_id ?? null, contact: msg.contact ?? null },
-        ctx.userId
-      ).catch((e) => console.error("[agent.close] falha ao gravar classificação/cadastro", e));
-      await closeSession(sessionId, ctx.userId);
-    })();
+    // Mesmo caminho do `POST .../close/`: sem entidade, não encerra e o atendente é avisado.
+    return void closeWithEncerramento(sessionId, msg, ctx.userId).catch((e) =>
+      reply({ type: "error", action: "session.close", session_id: sessionId, detail: e instanceof EncerramentoError ? e.message : "Não foi possível encerrar." })
+    );
   }
 }
 
@@ -322,15 +305,22 @@ const app = new Elysia()
     }
     const browserId = b.browser_id || randomUUID();
 
+    // Dados técnicos que o sistema que embute o widget mandou (versão, computador...).
+    const clientInfo = parseClientInfo(b.client_info);
     // Reuse an open session for this browser (reload returns to the same chat).
     let session = await prisma.chatSession.findFirst({
       where: { workspaceId: b.workspace_id, clientBrowserId: browserId, status: { not: "closed" } },
       orderBy: { createdAt: "desc" },
     });
+    if (session && Object.keys(clientInfo).length)
+      session = await prisma.chatSession.update({
+        where: { id: session.id },
+        data: { clientInfo: mergeClientInfo(session.clientInfo, clientInfo) },
+      });
     if (!session) {
       // Resolve the chosen "system" → a Plane project (by id or identifier).
       const project = await resolveProject(b.workspace_id, b.project_id, b.system);
-      const protocol = await nextProtocol(b.workspace_id);
+      const protocol = await nextProtocol();
       session = await prisma.chatSession.create({
         data: {
           workspaceId: b.workspace_id,
@@ -343,6 +333,7 @@ const app = new Elysia()
           protocol,
           status: "bot",
           botState: "done",
+          clientInfo,
         },
       });
       // Native pre-chat: greet + enqueue. Quem atende é a fila que decide.
@@ -367,7 +358,7 @@ const app = new Elysia()
     const podeVerAvaliacao = role === "client" || (await ehAdminDaConversa(session, headers));
     const serializada = serializeSession(session);
     return {
-      session: podeVerAvaliacao ? serializada : semAvaliacao(serializada),
+      session: podeVerAvaliacao ? serializada : withoutAvaliacao(serializada),
       results: messages.map((m) => serializeMessage(m, { full })),
     };
   })
@@ -391,7 +382,7 @@ const app = new Elysia()
     const serializada = serializeSession(session);
     const podeVerAvaliacao = viewer ? await hasChatAction(session.workspaceId, viewer.id, CHAT_ACTION.ADMINISTRAR) : false;
     return {
-      session: podeVerAvaliacao ? serializada : semAvaliacao(serializada),
+      session: podeVerAvaliacao ? serializada : withoutAvaliacao(serializada),
       results: messages.map((m) => serializeMessage(m, { full: true })),
     };
   })
@@ -480,7 +471,7 @@ const app = new Elysia()
           prisma.chatMessage.findFirst({ where: { sessionId: s.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { text: true, type: true, sender: true, createdAt: true } }),
         ]);
         const preview = last ? (last.text || (last.type === "image" ? "📷 Imagem" : last.type === "audio" ? "🎤 Áudio" : last.type === "video" ? "🎬 Vídeo" : last.type === "file" ? "📎 Arquivo" : "")) : "";
-        const serializada = isAdmin ? serializeSession(s) : semAvaliacao(serializeSession(s));
+        const serializada = isAdmin ? serializeSession(s) : withoutAvaliacao(serializeSession(s));
         return { ...serializada, unread, last_message: preview, last_message_at: last?.createdAt ?? s.lastClientMessageAt ?? s.createdAt };
       })
     );
@@ -568,7 +559,7 @@ const app = new Elysia()
       set.status = 400;
       return { detail: "Contato sem telefone." };
     }
-    const protocol = await nextProtocol(slug);
+    const protocol = await nextProtocol();
     const session = await prisma.chatSession.create({
       data: {
         workspaceId: slug,
@@ -688,95 +679,29 @@ const app = new Elysia()
   // ── Random dog (delightful little touch for the rating screen) ──
   .get("/random-dog/", async () => (await randomDog()) ?? { url: null })
 
-  // ── Z-API webhook ──
-  .post("/providers/zapi/webhook/:slug/", async ({ params: { slug }, body }) => {
-    const resolved = await getProvider(slug);
-    if (!resolved) return { ok: true };
+  // ── Z-API webhook (src/webhook/zapi.ts) ──
+  .use(zapiWebhookModule)
 
-    // Edição/remoção feita pelo cliente no WhatsApp: aplica na mensagem existente
-    // (não cria mensagem nova) e propaga aos sockets.
-    const mutation = resolved.provider.parseWebhookMutation(body);
-    if (mutation) {
-      if (mutation.kind === "edit") await applyProviderMutation(mutation.externalId, { text: mutation.text });
-      else for (const id of mutation.externalIds) await applyProviderMutation(id, { deleted: true });
-      return { ok: true };
-    }
+  // ── Ciclo de vida: encerrar, pausar, reenviar, chamado (src/ciclo-de-vida/rotas.ts) ──
+  .use(cicloDeVidaModule)
 
-    const inbound = resolved.provider.parseWebhook(body);
-    if (!inbound) return { ok: true };
-
-    // dedup
-    if (inbound.externalId) {
-      const dup = await prisma.chatMessage.findFirst({ where: { externalId: inbound.externalId } });
-      if (dup) return { ok: true };
-    }
-
-    // find/create contact + open session by phone
-    let contact = await prisma.contact.findFirst({ where: { workspaceId: slug, phone: inbound.phone } });
-    if (!contact) contact = await prisma.contact.create({ data: { workspaceId: slug, phone: inbound.phone, name: inbound.senderName ?? null } });
-
-    // Match an open session, OR a just-closed one still awaiting a satisfaction
-    // rating (so the client's "5"/comment reply continues the survey instead of
-    // spawning a fresh bot conversation).
-    let session = await prisma.chatSession.findFirst({
-      where: {
-        workspaceId: slug,
-        clientPhone: inbound.phone,
-        OR: [
-          { status: { not: "closed" } },
-          { status: "closed", ratingState: { in: ["awaiting_score", "awaiting_comment"] } },
-        ],
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    let isNew = false;
-    if (!session) {
-      isNew = true;
-      const protocol = await nextProtocol(slug);
-      session = await prisma.chatSession.create({
-        data: {
-          workspaceId: slug,
-          channel: "whatsapp",
-          contactId: contact.id,
-          clientPhone: inbound.phone,
-          clientName: contact.name,
-          protocol,
-          status: "bot",
-          botState: "new",
-        },
-      });
-    }
-
-    await persistAndBroadcast({
-      sessionId: session.id,
-      sender: "client",
-      type: inbound.type,
-      text: inbound.text ?? null,
-      senderName: inbound.senderName ?? contact.name ?? null,
-      mediaMime: inbound.mediaMime ?? null,
-      mediaName: inbound.mediaName ?? null,
-      externalId: inbound.externalId ?? null,
-      // Note: WhatsApp media URLs are external; the attendant UI renders them directly.
-      mediaKey: inbound.mediaUrl ? `ext:${inbound.mediaUrl}` : null,
-    });
-    // A closed session awaiting a satisfaction rating: feed the reply to the
-    // survey state machine instead of restarting the bot.
-    if (session.status === "closed" && session.ratingState && session.ratingState !== "done") {
-      await handleRatingReply(session, inbound.text ?? "");
-      return { ok: true };
-    }
-    if (session.status !== "active") {
-      if (isNew) await startBot(session.id);
-      else await handleInboundClient(session.id, inbound.text ?? "");
-    }
-    return { ok: true };
-  })
+  // ── Relatórios de atendimento e registros (src/relatorios/rotas.ts) ──
+  .use(relatoriosModule)
 
   // ── Config & registries (bot, menu, flows, queues, schedules, contacts, provider) ──
   .use(configModule)
 
   // ── Ligações do FreePBX (entrada do PBX, atendente, telefonia, relatório) ──
   .use(ligacoesModule)
+
+  // ── Destinos do passo "ação" do robô (ouvidoria, currículo, e-mail) ──
+  .use(destinosModule)
+  // ── Disparo em massa (chat.disparo; o worker envia no ritmo configurado) ──
+  .use(disparoModule)
+
+  // ── Ferramentas do atendente e gestão: frases, chave, alerta, cadastro,
+  //    feriados, gerenciador e monitor (src/atendente/rotas.ts) ──
+  .use(atendenteModule)
 
   // ── WebSocket hub ──
   .ws("/ws", {
@@ -889,6 +814,7 @@ const app = new Elysia()
 
 startHeartbeat();
 startTimers();
+startDisparoWorker();
 console.log(`💬 chat-backend listening on :${PORT}`);
 
 /** A avaliação do cliente é leitura de gestão: só o administrador do espaço. */

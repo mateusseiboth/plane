@@ -11,6 +11,7 @@ import {
   cleanWorkspace,
   configureWorkspace,
   connectAttendant,
+  criarEntidade,
   prisma,
   resolveTestAttendant,
   sendWhatsAppText,
@@ -31,6 +32,7 @@ let zapi: FakeZapi;
 let attendant: AttendantSocket;
 let attendantId: string;
 let sessionId: string;
+let entidadeId: string;
 
 type AuditRow = { action: string; entity: string; entity_id: string; actor_id: string | null; metadata: any };
 
@@ -53,6 +55,7 @@ beforeAll(async () => {
     VALUES (gen_random_uuid(), NOW(), NOW(), ${"Auditoria " + workspace}, ${workspace}, 'UTC')
     RETURNING id::text AS id`) as Array<{ id: string }>;
   workspaceId = created[0]!.id;
+  entidadeId = await criarEntidade(workspaceId, "Entidade da Auditoria");
 
   zapi = startFakeZapi();
   await configureWorkspace(workspace, zapi.baseUrl);
@@ -107,7 +110,7 @@ describe("trilha de auditoria do chat", () => {
   }, 25000);
 
   test("encerrar o atendimento registra o encerramento com o autor", async () => {
-    attendant.send({ type: "agent.close", session_id: sessionId });
+    attendant.send({ type: "agent.close", session_id: sessionId, entity_id: entidadeId });
     await waitUntil(async () => {
       const s = await prisma.chatSession.findUnique({ where: { id: sessionId } });
       return s?.status === "closed" ? s : null;

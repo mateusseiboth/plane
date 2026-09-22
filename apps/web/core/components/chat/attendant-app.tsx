@@ -7,7 +7,7 @@
 "use client";
 
 import { observer } from "mobx-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
   Mail,
   MessageSquare,
   History,
+  ListFilter,
   Mic,
   Paperclip,
   Pencil,
@@ -42,13 +43,21 @@ import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-butt
 // services
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
+import { BotaoDoDisparo } from "@/components/chat/disparo/botao-do-disparo";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
-import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
 import {ModalDeEncerramento, type DadosDoEncerramento} from "@/components/chat/modal-de-encerramento";
+import {AcoesDaConversa, FalhaDeEnvio} from "@/components/chat/acoes-da-conversa";
 import { FiltroDeCanal, MarcaDeLigacao } from "@/components/chat/ligacoes/filtro-de-canal";
 import { HistoricoDoCliente } from "@/components/chat/ligacoes/historico-do-cliente";
 import { isLigacao } from "@/components/chat/ligacoes/ligacao-helpers";
 import { PainelDaLigacao } from "@/components/chat/ligacoes/painel-da-ligacao";
+// Ferramentas do atendente e gestão (W05): ver .claude/chat-atendente.md.
+import { AlertaSemResposta, MensagemDaChave } from "@/components/chat/atendente/alerta-sem-resposta";
+import { insertFrase, readSessaoDaUrl } from "@/components/chat/atendente/atendente-helpers";
+import { FerramentasDoCompositor } from "@/components/chat/atendente/ferramentas-do-compositor";
+import { GerenciadorDeConversas } from "@/components/chat/atendente/gerenciador-de-conversas";
+import { PainelDoCadastro } from "@/components/chat/atendente/painel-do-cadastro";
+import { IniciarPeloResponsavel } from "@/components/chat/atendente/whatsapp-do-responsavel";
 
 const chatService = new ChatService();
 
@@ -130,9 +139,15 @@ function formatDate(ts: string | undefined) {
   }
 }
 
+/** A aba "Ativos" mostra também a conversa em pausa: ela continua sendo do atendente. */
+const STATUS_DA_ABA: Record<string, string[]> = { active: ["active", "paused"] };
+/** Já tem dono (ou acabou): não há o que assumir. */
+const SEM_ASSUMIR = ["active", "paused", "closed"];
+
 function statusLabel(status: string) {
   const map: Record<string, string> = {
     active: "Ativo",
+    paused: "Em pausa",
     queued: "Na fila",
     bot: "Bot",
     closed: "Encerrado",
@@ -143,6 +158,7 @@ function statusLabel(status: string) {
 function statusBadgeCls(status: string) {
   const map: Record<string, string> = {
     active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    paused: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     queued: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     bot: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     closed: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
@@ -249,6 +265,8 @@ function NewChatModal({
         </div>
 
         <div className="p-5 flex flex-col gap-4">
+          <IniciarPeloResponsavel slug={slug} apiUrl={api.base} mensagem={firstMessage} onCreated={onCreated} />
+
           {/* Search contacts */}
           <div>
             <label className="mb-1.5 block text-12 font-medium text-secondary">Buscar contato</label>
@@ -433,7 +451,6 @@ function TransferModal({
 
 export const AttendantChatApp = observer(function AttendantChatApp() {
   const { workspaceSlug } = useParams();
-  const router = useRouter();
   const slug = workspaceSlug?.toString() ?? "";
   const { data: currentUser } = useUser();
   const { joinedProjectIds, getProjectById } = useProject();
@@ -448,10 +465,13 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [showConfig, setShowConfig] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showGerenciador, setShowGerenciador] = useState(false);
+  // "Sem meu nome": a próxima mensagem vai sem o nome do atendente.
+  const [semNome, setSemNome] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
-  const [intakeProjectId, setIntakeProjectId] = useState("");
   // Encerramento: classificar o atendimento e, se faltar, cadastrar o contato.
   const [encerrando, setEncerrando] = useState(false);
+  const [enviandoEncerramento, setEnviandoEncerramento] = useState(false);
   const [search, setSearch] = useState("");
   // Which status tab is selected (always one — clear visual indication of where you are).
   const [listFilter, setListFilter] = useState<string>("active");
@@ -534,6 +554,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const searchRef = useRef<string>("");
   const canalRef = useRef<string>("");
   const refreshSessionsRef = useRef<typeof refreshSessions>();
+  const openSessionRef = useRef<typeof openSession>();
   const sessionsRef = useRef<ChatSession[]>([]);
   useEffect(() => {
     activeRef.current = activeId;
@@ -541,6 +562,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   useEffect(() => {
     refreshSessionsRef.current = refreshSessions;
   }, [refreshSessions]);
+  useEffect(() => {
+    openSessionRef.current = openSession;
+  }, [openSession]);
   useEffect(() => {
     sessionsRef.current = sessions;
   }, [sessions]);
@@ -625,6 +649,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
         const a = chatApi(cfg.api_url);
         const { results } = await a.listSessions(slug);
         if (!stop) setSessions(results);
+        // Vindo da tela de contatos (`?sessao=`): abre a conversa recém-iniciada.
+        const pedida = readSessaoDaUrl(window.location.search);
+        if (pedida && !stop) void openSessionRef.current?.(pedida);
 
         // Fetch a short-lived WS ticket via REST (cookies work fine for REST).
         // This avoids depending on cookies being forwarded to Bun's WS upgrade path.
@@ -730,6 +757,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               return;
             }
 
+            // Falha de envio ao WhatsApp (ou o reenvio que deu certo).
+            if (msg.type === "message.status")
+              return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
             if (msg.type === "message.edit")
               return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
             if (msg.type === "message.delete")
@@ -836,8 +866,10 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
         created_at: new Date().toISOString(),
       } as ChatMessage,
     ]);
-    send({ type: "agent.message", session_id: activeId, text });
+    send({ type: "agent.message", session_id: activeId, text, without_sender_name: semNome });
     setDraft("");
+    // Vale por mensagem: a seguinte volta a levar o nome.
+    setSemNome(false);
     setSlaSessions((prev) => {
       const n = new Set(prev);
       n.delete(activeId);
@@ -870,17 +902,35 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
    * por sistema fica cego — e o contato aproveita o único momento em que o
    * atendente tem a informação fresca na cabeça.
    */
-  const encerrarAtendimento = (dados: DadosDoEncerramento) => {
-    if (!activeId) return;
-    send({ type: "agent.close", session_id: activeId, ...dados });
-    setSessions((prev) => prev.map((s) => (s.id === activeId ? { ...s, status: "closed" } : s)));
-    setEncerrando(false);
+  const encerrarAtendimento = async (dados: DadosDoEncerramento) => {
+    if (!activeId || !api) return;
+    setEnviandoEncerramento(true);
+    try {
+      // Pelo REST, não pelo socket: sem entidade o servidor recusa, e a recusa
+      // precisa voltar para o atendente com o motivo.
+      const fechada = await api.closeSession(slug, activeId, dados);
+      replaceSession(fechada);
+      setEncerrando(false);
+    } catch (e: any) {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Não encerrado", message: e?.detail ?? "Tente de novo." });
+    } finally {
+      setEnviandoEncerramento(false);
+    }
   };
+
+  /** A conversa voltou do servidor (encerrada, pausada, com chamado): troca na lista. */
+  const replaceSession = (atualizada: ChatSession) =>
+    setSessions((prev) => prev.map((s) => (s.id === atualizada.id ? { ...s, ...atualizada } : s)));
+
+  const replaceMessage = (atualizada: ChatMessage) =>
+    setMessages((prev) => prev.map((m) => (m.id === atualizada.id ? atualizada : m)));
 
   const closeChat = () => {
     if (!activeId) return;
     setEncerrando(true);
   };
+
+  const projetos = (joinedProjectIds ?? []).map((pid) => ({ value: pid, label: getProjectById(pid)?.name ?? pid }));
 
   const chatUrl = activeSession
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${slug}/chat-view/${activeSession.protocol}`
@@ -890,34 +940,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     if (!chatUrl) return;
     await navigator.clipboard.writeText(chatUrl).catch(() => {});
     setToast({ type: TOAST_TYPE.SUCCESS, title: "Link copiado", message: chatUrl });
-  };
-
-  const createIntake = async () => {
-    if (!activeSession || !intakeProjectId) {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Selecione um projeto", message: "Escolha o projeto para a solicitação." });
-      return;
-    }
-    const who = activeSession.client_name || activeSession.client_phone || "Visitante";
-    try {
-      const res = await fetch(`/api/workspaces/${slug}/projects/${intakeProjectId}/inbox-issues/`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: `Chat #${activeSession.protocol} — ${who}`,
-          description_html: `<p><strong>Atendimento via chat</strong> — ${who} (protocolo ${activeSession.protocol}).</p><p><a href="${chatUrl}">Ver conversa completa</a></p>`,
-        }),
-      });
-      if (!res.ok) throw await res.json().catch(() => ({}));
-      const data = await res.json().catch(() => ({}));
-      const inboxIssueId = data?.id ?? data?.issue?.id;
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Solicitação criada", message: "Abrindo o chamado para você complementar…" });
-      // Redirect to the created intake so the attendant can complete + dispatch it.
-      if (inboxIssueId)
-        router.push(`/${slug}/projects/${intakeProjectId}/intake?currentTab=open&inboxIssueId=${inboxIssueId}`);
-    } catch (e: any) {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Não foi possível criar a solicitação." });
-    }
   };
 
   const uploadFile = async (file: File) => {
@@ -958,7 +980,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
   const filteredSessions = useMemo(() => {
     // Exactly the selected tab's status (closed chats live only under "Encerrados").
-    const base = sessions.filter((s) => s.status === listFilter);
+    const base = sessions.filter((s) => (STATUS_DA_ABA[listFilter] ?? [listFilter]).includes(s.status));
     if (!search.trim()) return base;
     // Na aba de encerrados quem procura é o servidor: `refreshSessions` manda o
     // termo justamente para furar o recorte do dia corrente. Filtrar de novo aqui
@@ -993,6 +1015,25 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     );
 
   // Full-page config / dashboard overlay
+  if (showGerenciador)
+    return (
+      <div className="flex h-full w-full flex-col">
+        <div className="flex items-center gap-3 border-b border-subtle bg-surface-1 px-4 py-3">
+          <button
+            onClick={() => setShowGerenciador(false)}
+            className="flex items-center gap-1.5 rounded-md border border-subtle px-3 py-1.5 text-13 text-secondary hover:bg-layer-1 hover:text-primary"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar
+          </button>
+          <span className="text-sm font-semibold">Gerenciador de conversas</span>
+        </div>
+        <div className="min-h-0 flex-1">
+          <GerenciadorDeConversas slug={slug} apiUrl={config.api_url} projetos={projetos} />
+        </div>
+      </div>
+    );
+
   if (showConfig || showDashboard) {
     const isDash = showDashboard;
     return (
@@ -1044,7 +1085,17 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             >
               <Plus className="h-4 w-4" />
             </button>
-            {isAdmin && (
+            <BotaoDoDisparo slug={slug} />
+            {isManager && (
+              <button
+                onClick={() => setShowGerenciador(true)}
+                className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
+                title="Gerenciador de conversas"
+              >
+                <ListFilter className="h-4 w-4" />
+              </button>
+            )}
+            {isManager && (
               <button
                 onClick={() => setShowDashboard(true)}
                 className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
@@ -1093,7 +1144,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
         {/* Stats row — click a tab to filter; click again to clear (back to abertos). */}
         <div className="flex border-b border-subtle">
           {[
-            { label: "Ativas", count: sessions.filter((s) => s.status === "active").length, status: "active" },
+            { label: "Ativas", count: sessions.filter((s) => STATUS_DA_ABA.active!.includes(s.status)).length, status: "active" },
             // "Na fila" and "Bot" are admin-only — regular attendants never see them.
             ...(isAdmin
               ? [
@@ -1200,9 +1251,11 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
         <ModalDeEncerramento
           sessao={activeSession}
           workspaceSlug={slug}
-          projetos={(joinedProjectIds ?? []).map((pid) => ({value: pid, label: getProjectById(pid)?.name ?? pid}))}
-          onConfirmar={encerrarAtendimento}
+          apiUrl={config.api_url}
+          projetos={projetos}
+          onConfirmar={(dados) => void encerrarAtendimento(dados)}
           onCancelar={() => setEncerrando(false)}
+          enviando={enviandoEncerramento}
         />
       )}
 
@@ -1255,7 +1308,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5 ml-3">
-                {activeSession.status !== "active" && activeSession.status !== "closed" && !isLigacao(activeSession) && (
+                {!SEM_ASSUMIR.includes(activeSession.status) && !isLigacao(activeSession) && (
                   <button
                     onClick={assign}
                     className="rounded-md bg-primary px-3 py-1.5 text-12 font-medium text-on-color hover:bg-primary/90 transition-colors"
@@ -1270,23 +1323,27 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 >
                   Link
                 </button>
-                <SelectPesquisavel
-                  value={intakeProjectId}
-                  onChange={setIntakeProjectId}
-                  opcoes={(joinedProjectIds ?? []).map((pid) => ({value: pid, label: getProjectById(pid)?.name ?? pid}))}
-                  opcaoVazia={{value: "", label: "Solicitação…"}}
-                  searchPlaceholder="Buscar sistema"
-                  className="w-44"
-                  buttonClassName="h-8 border-subtle bg-transparent text-12 hover:bg-layer-1"
-                />
-                {intakeProjectId && (
-                  <button
-                    onClick={createIntake}
-                    className="rounded-md border border-subtle px-2.5 py-1.5 text-12 text-secondary hover:bg-layer-1 transition-colors"
-                  >
-                    Criar
-                  </button>
+                {/* Ligação tem o próprio painel, com chamado (W06). */}
+                {!isLigacao(activeSession) && (
+                  <AcoesDaConversa
+                    sessao={activeSession}
+                    slug={slug}
+                    apiUrl={config.api_url}
+                    projetos={projetos}
+                    chatUrl={chatUrl}
+                    onAtualizada={replaceSession}
+                  />
                 )}
+                <AlertaSemResposta
+                  sessao={activeSession}
+                  slug={slug}
+                  apiUrl={config.api_url}
+                  onAtualizada={(atualizada) => {
+                    replaceSession(atualizada);
+                    // Pausado: some a borda vermelha desta conversa.
+                    setSlaSessions((prev) => new Set([...prev].filter((id) => id !== atualizada.id)));
+                  }}
+                />
                 {isManager && activeSession.status !== "closed" && activeSession.status !== "bot" && (
                   <button
                     onClick={() => setShowTransfer(true)}
@@ -1297,7 +1354,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                     Transferir
                   </button>
                 )}
-                {activeSession.status === "active" && !isLigacao(activeSession) && (
+                {(activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
                   <button
                     onClick={closeChat}
                     className="flex items-center gap-1 rounded-md border border-red-300 px-2.5 py-1.5 text-12 text-red-600 hover:bg-red-50 transition-colors dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
@@ -1510,7 +1567,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                               {m.media_name || "Arquivo"}
                             </a>
                           )}
-                          {m.text && (
+                          {m.type === "chave" && <MensagemDaChave chave={m.text ?? ""} />}
+                          {m.text && m.type !== "chave" && (
                             <span className="whitespace-pre-wrap text-sm wrap-break-word">{m.text}</span>
                           )}
                         </div>
@@ -1521,6 +1579,10 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                           <CheckCheck className={`h-3 w-3 ${readByClient ? "text-blue-500" : ""}`} />
                         )}
                         {m.edited_at && <span className="italic">· editado</span>}
+                        {mine && m.without_sender_name && <span className="italic">· sem nome</span>}
+                        {mine && (
+                          <FalhaDeEnvio mensagem={m} slug={slug} apiUrl={config.api_url} onReenviada={replaceMessage} />
+                        )}
                         {isManager && (m.edit_history?.length ?? 0) > 0 && (
                           <button
                             onClick={() => setHistoryFor(historyFor === m.id ? null : m.id)}
@@ -1589,6 +1651,15 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 >
                   <Mic className="h-5 w-5" />
                 </button>
+                <FerramentasDoCompositor
+                  slug={slug}
+                  apiUrl={config.api_url}
+                  sessionId={activeSession.id}
+                  semNome={semNome}
+                  onSemNomeChange={setSemNome}
+                  onFrase={(frase) => setDraft((atual) => insertFrase(atual, frase))}
+                  onChaveEnviada={() => setSemNome(false)}
+                />
                 <textarea
                   value={draft}
                   onChange={(e) => {
@@ -1722,6 +1793,16 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
           )}
 
+          {!isLigacao(activeSession) && (
+            <PainelDoCadastro
+              slug={slug}
+              apiUrl={config.api_url}
+              sessao={activeSession}
+              projetos={projetos}
+              onAtualizada={replaceSession}
+            />
+          )}
+
           <HistoricoDoCliente
             slug={slug}
             apiUrl={config.api_url}
@@ -1733,7 +1814,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
           <div className="p-4">
             <div className="mb-2 text-11 font-semibold uppercase tracking-wider text-tertiary">Ações rápidas</div>
             <div className="flex flex-col gap-1.5">
-              {activeSession.status !== "active" && activeSession.status !== "closed" && !isLigacao(activeSession) && (
+              {!SEM_ASSUMIR.includes(activeSession.status) && !isLigacao(activeSession) && (
                 <button
                   onClick={assign}
                   className="flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-13 text-secondary hover:bg-layer-1 transition-colors text-left"
@@ -1749,7 +1830,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 Copiar link do chat
               </button>
-              {activeSession.status === "active" && !isLigacao(activeSession) && (
+              {(activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
                 <button
                   onClick={closeChat}
                   className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-13 text-red-600 hover:bg-red-50 transition-colors text-left dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"

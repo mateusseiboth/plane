@@ -217,10 +217,10 @@ export interface IWorkspaceSidebarNavigationItem {
   access: EUserWorkspaceRoles[];
   highlight: (pathname: string, url: string) => boolean;
   /**
-   * Ações da matriz (qualquer uma basta) exigidas além do `access`. Para itens
-   * decididos pela função configurável, não pelo nível.
+   * Ação da matriz de permissões exigida para o item aparecer (ex.: "wiki.view").
+   * Lista = qualquer uma delas libera (ex.: quem registra OU verifica o pós-atendimento).
    */
-  requiredActions?: string[];
+  action?: string | string[];
 }
 
 export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspaceSidebarNavigationItem> = {
@@ -347,6 +347,74 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Wiki do espaço: quem enxerga é decidido pela ação `wiki.view` da matriz,
+  // não pelo nível; por isso `access` lista todas as funções.
+  wiki: {
+    key: "wiki",
+    labelTranslationKey: "sidebar.wiki",
+    href: `/wiki/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: "wiki.view",
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  // Ouvidoria (sugestões e reclamações do robô do WhatsApp): só com `ouvidoria.read`.
+  ouvidoria: {
+    key: "ouvidoria",
+    labelTranslationKey: "sidebar.ouvidoria",
+    href: `/ouvidoria/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: "ouvidoria.read",
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  // Denúncia interna: todo membro denuncia; a lista dentro da tela exige `denuncia.read`.
+  denuncias: {
+    key: "denuncias",
+    labelTranslationKey: "sidebar.denuncias",
+    href: `/denuncias/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  // Currículos recebidos pelo robô ("trabalhe conosco"): só com `curriculo.read`.
+  curriculos: {
+    key: "curriculos",
+    labelTranslationKey: "sidebar.curriculos",
+    href: `/curriculos/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: "curriculo.read",
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   // Pós-atendimento: aparece para quem registra ou verifica (matriz de ações).
   "pos-atendimento": {
     key: "pos-atendimento",
@@ -361,7 +429,7 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
       EUserWorkspaceRoles.ATENDIMENTO,
       EUserWorkspaceRoles.GUEST,
     ],
-    requiredActions: ["posatendimento.record", "posatendimento.verify"],
+    action: ["posatendimento.record", "posatendimento.verify"],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
   analytics: {
@@ -402,6 +470,10 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["contatos"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["telefones"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["mural"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["wiki"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["ouvidoria"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["denuncias"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["curriculos"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["pos-atendimento"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],

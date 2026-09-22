@@ -9,10 +9,12 @@ import { Tooltip } from "@plane/propel/tooltip";
 import type { TEntityContact } from "@plane/types";
 import { cn } from "@plane/utils";
 // components
+import { BotaoDeWhatsapp } from "@/components/chat/atendente/whatsapp-do-responsavel";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { PageHead } from "@/components/core/page-title";
 import { ContatoFormModal, mensagemDeErro } from "@/components/entity-contacts";
 import { TiposDeResponsavelModal } from "@/components/entity-contacts/tipos-de-responsavel-modal";
+import { LinkListaDeEmails } from "@/components/ouvidoria/link-lista-de-emails";
 // hooks
 import useDebounce from "@/hooks/use-debounce";
 import { useEntities } from "@/hooks/use-entities";
@@ -75,10 +77,12 @@ function CelulaTruncada({ texto, className }: { texto?: string | null; className
  * todas as linhas da página — foi o que travava a tela com a lista inteira.
  */
 const LinhaDeContato = memo(function LinhaDeContato({
+  slug,
   contact,
   onEditar,
   onAlternar,
 }: {
+  slug: string;
   contact: TEntityContact;
   onEditar: (contact: TEntityContact) => void;
   onAlternar: (contact: TEntityContact) => void;
@@ -96,6 +100,7 @@ const LinhaDeContato = memo(function LinhaDeContato({
       </td>
       <td className="px-4 py-2.5">
         <div className="flex items-center justify-end gap-1">
+          <BotaoDeWhatsapp slug={slug} contato={contact} />
           <button
             type="button"
             onClick={() => onEditar(contact)}
@@ -202,6 +207,7 @@ function ContatosPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <LinkListaDeEmails slug={slug} />
           <button
             type="button"
             onClick={() => setTiposAbertos(true)}
@@ -310,6 +316,7 @@ function ContatosPage() {
                   <LinhaDeContato
                     key={contact.id}
                     contact={contact}
+                    slug={slug}
                     onEditar={abrirEdicao}
                     onAlternar={alternarSituacao}
                   />

@@ -33,6 +33,7 @@ import {
   externalMediaKey,
   legacyProtocol,
   mapChannel,
+  mapClassificacaoDoSac,
   mapMessageType,
   mapSender,
   mapSessionStatus,
@@ -405,6 +406,9 @@ async function upsertSessions(chats: LegacyChat[], deps: SessionDeps): Promise<M
       // Conversa histórica: o bot nunca deve reprocessá-la.
       botState: "done",
       flowState: { legacy: legacyMetadata(chat, closedReason) },
+      // Colunas do ciclo de vida: o relatório por motivo lê daqui, não do JSON.
+      ...mapClassificacaoDoSac(chat.chat_tipo_atendimento, closedReason),
+      closeNote: sanitizeLegacyText(chat.chat_fim_motivo).slice(0, 500) || null,
       createdAt: startedAt,
       closedAt: safeDate(chat.chat_fim) ?? startedAt,
       closedById: attendantId,

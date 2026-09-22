@@ -15,16 +15,32 @@ import { useMember } from "@/hooks/store/use-member";
 // services
 import { chatApi } from "@/services/chat.service";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
+import { AbaDeEncerramento } from "@/components/chat/aba-de-encerramento";
 import { ConfigDeTelefonia } from "@/components/chat/ligacoes/config-de-telefonia";
+import { PassoDeAcao } from "@/components/chat/passo-de-acao";
+import { useDestinosDoRobo } from "@/hooks/use-destinos-do-robo";
+import { AbaDeFrases } from "@/components/chat/atendente/aba-de-frases";
+import { CalendarioDeFeriados } from "@/components/chat/atendente/calendario-de-feriados";
 import { Search } from "lucide-react";
 
-type Tab = "messages" | "menu" | "queues" | "flows" | "schedules" | "attendants" | "provider" | "telefonia";
+type Tab =
+  | "messages"
+  | "menu"
+  | "queues"
+  | "flows"
+  | "schedules"
+  | "encerramento"
+  | "frases"
+  | "attendants"
+  | "provider"
+  | "telefonia";
 const BASE_TABS: { key: Tab; label: string }[] = [
   { key: "messages", label: "Mensagens" },
   { key: "menu", label: "Menu" },
   { key: "queues", label: "Filas" },
   { key: "flows", label: "Fluxos" },
   { key: "schedules", label: "Horários" },
+  { key: "encerramento", label: "Encerramento" },
   { key: "provider", label: "WhatsApp (Z-API)" },
 ];
 
@@ -40,9 +56,10 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl,
   const api = chatApi(apiUrl);
   const TABS = isAdmin
     ? [
-        ...BASE_TABS.slice(0, 5),
+        ...BASE_TABS.slice(0, 6),
+        { key: "frases" as Tab, label: "Frases" },
         { key: "attendants" as Tab, label: "Atendentes" },
-        BASE_TABS[5],
+        BASE_TABS[6],
         { key: "telefonia" as Tab, label: "Telefonia" },
       ]
     : BASE_TABS;
@@ -74,7 +91,9 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl,
         {tab === "menu" && <MenuTab slug={slug} api={api} />}
         {tab === "queues" && <QueuesTab slug={slug} api={api} members={members} />}
         {tab === "flows" && <FlowsTab slug={slug} api={api} />}
-        {tab === "schedules" && <SchedulesTab slug={slug} api={api} />}
+        {tab === "schedules" && <SchedulesTab slug={slug} api={api} apiUrl={apiUrl} />}
+        {tab === "frases" && <AbaDeFrases slug={slug} apiUrl={apiUrl} />}
+        {tab === "encerramento" && <AbaDeEncerramento slug={slug} apiUrl={apiUrl} />}
         {tab === "attendants" && <AttendantsTab slug={slug} api={api} members={members} />}
         {tab === "provider" && <ProviderTab slug={slug} api={api} />}
         {tab === "telefonia" && <ConfigDeTelefonia slug={slug} apiUrl={apiUrl} />}
@@ -318,10 +337,12 @@ const STEP_LABELS: Record<string, string> = {
   ask: "Perguntar e guardar resposta",
   queue: "Encaminhar para fila",
   close: "Agradecer e encerrar",
+  action: "Executar ação (ouvidoria, currículo, e-mail)",
 };
 function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi> }) {
   const [flows, setFlows] = useState<any[]>([]);
   const [queues, setQueues] = useState<any[]>([]);
+  const { destinos } = useDestinosDoRobo(api, slug);
   const load = useCallback(() => {
     api.listFlows(slug).then((fs: any[]) => setFlows(fs.map((f) => ({ ...f, steps: Array.isArray(f.steps) ? f.steps : [] })))).catch(err);
     api.listQueues(slug).then(setQueues).catch(() => {});
@@ -367,6 +388,13 @@ function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi>
                     onChange={(e) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? { ...s, saveAs: e.target.value } : s)))}
                   />
                 )}
+                {step.type === "action" && (
+                  <PassoDeAcao
+                    passo={step}
+                    destinos={destinos}
+                    onChange={(passo) => setSteps(fi, f.steps.map((s: any, i: number) => (i === si ? passo : s)))}
+                  />
+                )}
                 {step.type === "queue" && (
                   <SelectPesquisavel
                     value={step.queueId ?? ""}
@@ -394,7 +422,7 @@ function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi>
 
 // ── Company-wide business hours (not per attendant) ───────────────────────────
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-function SchedulesTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi> }) {
+function SchedulesTab({ slug, api, apiUrl }: { slug: string; api: ReturnType<typeof chatApi>; apiUrl: string }) {
   const [hours, setHours] = useState<any[]>([]);
   const [breaks, setBreaks] = useState<any[]>([]);
   const [outsideMsg, setOutsideMsg] = useState("");
@@ -423,6 +451,7 @@ function SchedulesTab({ slug, api }: { slug: string; api: ReturnType<typeof chat
       >
         Salvar
       </button>
+      <CalendarioDeFeriados slug={slug} apiUrl={apiUrl} />
     </div>
   );
 }
@@ -519,7 +548,7 @@ function AttendantsTab({ slug, api, members }: { slug: string; api: ReturnType<t
 function ProviderTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi> }) {
   const [cfg, setCfg] = useState<any>({ provider: "zapi", is_active: false });
   useEffect(() => {
-    api.getProvider(slug).then((r: any) => setCfg({ ...r, token: "", client_token: "" })).catch(err);
+    api.getProvider(slug).then((r: any) => setCfg({ ...r, token: "", client_token: "", webhook_token: undefined })).catch(err);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
   return (
@@ -528,9 +557,11 @@ function ProviderTab({ slug, api }: { slug: string; api: ReturnType<typeof chatA
       <Field label="Instance ID"><input className={inputCls} value={cfg.instance_id ?? ""} onChange={(e) => setCfg({ ...cfg, instance_id: e.target.value })} /></Field>
       <Field label="Token"><input className={inputCls} value={cfg.token ?? ""} onChange={(e) => setCfg({ ...cfg, token: e.target.value })} placeholder={cfg.has_token ? "•••• (mantém se vazio)" : ""} /></Field>
       <Field label="Client-Token"><input className={inputCls} value={cfg.client_token ?? ""} onChange={(e) => setCfg({ ...cfg, client_token: e.target.value })} placeholder={cfg.client_token === true ? "•••• (mantém se vazio)" : ""} /></Field>
+      {/* Opcional: com ele preenchido, o webhook só aceita quem mandar o mesmo valor. */}
+      <Field label="Token do webhook"><input className={inputCls} value={cfg.webhook_token ?? ""} onChange={(e) => setCfg({ ...cfg, webhook_token: e.target.value })} placeholder={cfg.has_webhook_token ? "•••• (mantém se vazio)" : "Opcional"} /></Field>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!cfg.is_active} onChange={(e) => setCfg({ ...cfg, is_active: e.target.checked })} /> Ativo</label>
-      <p className="text-12 text-secondary">Webhook Z-API → <code>/chat-api/providers/zapi/webhook/{slug}</code></p>
-      <button className={btn + " self-start"} onClick={() => api.saveProvider(slug, { provider: "zapi", base_url: cfg.base_url, instance_id: cfg.instance_id, ...(cfg.token ? { token: cfg.token } : {}), ...(cfg.client_token ? { client_token: cfg.client_token } : {}), is_active: cfg.is_active }).then(() => ok("Provider salvo.")).catch(err)}>Salvar</button>
+      <p className="text-12 text-secondary">Webhook Z-API: <code>/chat-api/providers/zapi/webhook/{slug}/</code>. Com token, envie no cabeçalho Client-Token ou acrescente <code>?token=</code> ao endereço.</p>
+      <button className={btn + " self-start"} onClick={() => api.saveProvider(slug, { provider: "zapi", base_url: cfg.base_url, instance_id: cfg.instance_id, ...(cfg.token ? { token: cfg.token } : {}), ...(cfg.client_token ? { client_token: cfg.client_token } : {}), ...(cfg.webhook_token ? { webhook_token: cfg.webhook_token } : {}), is_active: cfg.is_active }).then(() => ok("Provider salvo.")).catch(err)}>Salvar</button>
     </div>
   );
 }

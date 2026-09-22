@@ -34,7 +34,7 @@ outra.
   `IWorkspaceSidebarNavigationItem`, `@plane/constants`); `SidebarItemBase` esconde o item
   quando nenhuma das ações está em `useMyWorkspaceActions().can`.
 
-## 3. Modelo (migração `20260922190000_pos_atendimento`)
+## 3. Modelo (migração `20260922195000_pos_atendimento`)
 
 `pos_atendimentos` (`PosAtendimento`):
 
@@ -74,8 +74,9 @@ outra.
 ### Regras
 
 - **Concluído**: chamado na etapa do grupo `completed`; visita com `status` Concluída (4).
-  Na fila, "concluído em" = `completed_at` do chamado (ou a última alteração, quando o
-  chamado foi concluído sem gravar a data) e `finished_at` da visita (ou a última alteração).
+  Na fila, "concluído em" = `completed_at` do chamado (gravado por gatilho desde a migração
+  `20260923090000_data_de_conclusao`; antes dela, só o importador gravava, por isso a
+  última alteração vale como reserva) e `finished_at` da visita (ou a última alteração).
 - **Abas**: pendente de pós = concluído e sem registro; pendente de verificação e verificado
   = registro com e sem `verified_at`, mesmo que o chamado tenha sido reaberto depois.
 - **Ordem**: mais recente primeiro (o legado mostrava o mais antigo primeiro, o que com o

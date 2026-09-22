@@ -67,12 +67,19 @@ refaz é o encerramento.
 
 ### Cadastro no encerramento
 
-`agent.close` aceita, além de `session_id`:
+O encerramento vai por `POST /workspaces/:slug/sessions/:id/close/` (a tela usa
+este, porque a recusa volta com o motivo em `detail`) ou por `agent.close` no
+socket (a recusa volta como `{ type: "error", action: "session.close" }`). Os dois
+passam por `closeWithEncerramento` e aceitam:
 
 ```jsonc
 {
   "type": "agent.close",
   "session_id": "uuid",
+  "entity_id": "uuid", // OBRIGATÓRIA (ou já conhecida pelo contato/sessão): sem ela, 422
+  "motivo": "Dúvida", // rótulo do catálogo BotConfig.closeReasons
+  "module_id": "uuid", // funcionalidade: módulo do sistema atendido
+  "note": "texto livre", // observação
   "project_id": "uuid", // sistema atendido (classificação)
   "contact": {
     "contact_id": "uuid", // contato já existente escolhido na busca
@@ -98,6 +105,28 @@ O `Contact` do chat (`chat_contacts`) **continua existindo**: ele é o históric
 conversa por telefone, não o cadastro do cliente. Ao encerrar, ele acompanha o
 nome, o e-mail e a entidade do contato gravado.
 
+## Ciclo de vida da conversa
+
+Detalhes, decisões e o mapa do legado em `.claude/chat-ciclo-de-vida.md`. Resumo:
+
+- **Um caminho de encerramento** (`src/ciclo-de-vida/encerrar.ts`): grava como a
+  conversa terminou (`end_kind`) e, quando o cliente foi embora, o tipo de abandono
+  do SAC (`abandon_type`, 1 a 5).
+- **Timers** (`src/timers.ts` chama `src/ciclo-de-vida/*`): inatividade no robô,
+  na fila e em atendimento (pergunta 1 continua / 99 encerra), pausa vencida em
+  3 dias e fim do dia do WhatsApp. Ligação (`channel = "phone"`) fica de fora.
+- **Webhook Z-API** (`src/webhook/zapi.ts`): token opcional por espaço
+  (`chat_provider_config.webhook_token`, no cabeçalho `Client-Token` ou em
+  `?token=`), descarte de mensagem com 2 dias ou mais, reação, figurinha, contato e
+  chamada perdida.
+- **Falha de envio**: a mensagem fica `status = "failed"` com `send_error`, o
+  atendente recebe `message.status` e reenvia por
+  `POST /workspaces/:slug/messages/:id/resend/`.
+- **Rotas** (`chat.atender`): `POST .../sessions/:id/close|pause|resume|chamado/`,
+  `GET .../close-reasons/`. **Relatórios** (`chat.gerenciar`):
+  `GET .../reports/atendimentos/` e `GET .../registros/` (filtros `from`, `to`,
+  `entity_id`, `project_id`, `motivo`, `attendant_id`).
+
 ## Quem atende, quem escolhe e quem lê a avaliação
 
 **O cliente não escolhe atendente.** O pré-chat do widget pergunta nome e sistema;
@@ -105,8 +134,9 @@ a conversa entra na fila e a distribuição por peso decide. Escolher deixava a
 conversa parada na caixa de quem estava ocupado (ou fora do horário) com o resto
 da equipe livre.
 
-**Quem aparece como atendente** sai de `papeis.ts`, e são três perguntas
-diferentes que antes usavam o mesmo número (`role >= 15`):
+**Quem aparece como atendente** sai de `src/permissoes.ts` (matriz de ações,
+`chat.atender` / `chat.gerenciar` / `chat.administrar`). Antes eram três perguntas
+diferentes que usavam o número do papel:
 
 | Pergunta        | Papel mínimo    | Onde vale                                                   |
 | --------------- | --------------- | ----------------------------------------------------------- |
@@ -141,7 +171,7 @@ na **mesma caixa** do atendimento. Contrato completo e exemplo de dialplan em
 - **Entrada:** `POST /workspaces/:slug/telefonia/ligacoes/` com o token de serviço
   (`Authorization: Bearer` ou `X-Api-Token`). Idempotente pelo `call_id`: 201 no
   primeiro envio, 200 no reenvio (atualiza fim, duração e gravação).
-- Quem ligou é identificado pelo telefone (`buscarResponsavelPorTelefone`, a mesma
+- Quem ligou é identificado pelo telefone (`findResponsavelPorTelefone`, a mesma
   busca do bot); o ramal (`chat_ramais`) diz de quem é a ligação e o atendente é
   avisado pelo WS (`session.assigned`). Não atendida já entra encerrada; sem
   ramal conhecido, espera alguém assumir.
@@ -160,6 +190,55 @@ na **mesma caixa** do atendimento. Contrato completo e exemplo de dialplan em
 
 Código em `src/ligacoes/` (rotas finas → service → DAO) e migração
 `prisma/sql/0012_ligacoes.sql`.
+
+## Ferramentas do atendente e gestão
+
+Contrato, regras e decisões em `.claude/chat-atendente.md`. Código em
+`src/atendente/` (regras puras em `*-regras.ts`/arquivos sem `.service`, rotas
+finas em `rotas.ts`) e migração `prisma/sql/0014_atendente.sql`.
+
+- **Frases prontas** por espaço: `GET /workspaces/:slug/frases/` (`chat.atender`);
+  cadastro em `/config/frases/` e `POST /config/frases/padrao/` (`chat.administrar`).
+- **Chave de acesso remoto**: `POST /sessions/:id/chave/` grava mensagem do tipo
+  `chave` (negrito no WhatsApp, botão de copiar no widget).
+- **Sem o nome do atendente**: `without_sender_name: true` no `agent.message` do WS
+  ou na chave. Desligado por padrão; a equipe continua vendo quem enviou.
+- **Alerta de cliente sem resposta**: `POST /sessions/:id/sla-alert/pause|resume/`.
+  A pausa vence em 40 minutos; o `alert.sla` vai só ao atendente.
+- **Cadastro durante o atendimento**: `GET|PATCH /sessions/:id/cadastro/`
+  (entidade, sistema e responsável; erros voltam em `errors[].path`).
+- **Dados técnicos do cliente** (`client_info`): o widget aceita `?versao=`,
+  `?computador=`, `?navegador=`, `?so=`, `?resolucao=`, `?motivo=` ou
+  `?info={json}` e manda no `POST /sessions/`.
+- **WhatsApp a partir do responsável**: `POST /sessions/whatsapp/responsavel/`
+  (`409` com `session_id` quando o número já tem conversa aberta).
+- **Foto de perfil**: o webhook copia a foto do WhatsApp para o storage
+  (`responsaveis/<id>.jpg`) e grava o endereço em `entity_contacts.photo`, a cada
+  30 dias. A base do endereço é `CHAT_PUBLIC_URL` (padrão `/chat-api`).
+- **Feriados**: `GET|PUT /config/feriados/`; no feriado `isWithinBusinessHours` é falso.
+- **Gerenciador** (`chat.gerenciar`): `GET /gerenciador/` com `attendant_id`,
+  `entity_id`, `project_id`, `from`, `to`, `q`, `channel`, `status`, `page`, `per_page`.
+- **Monitor ao vivo** (`chat.gerenciar`): `GET /monitor/`.
+
+## Disparo em massa
+
+Contrato, regras e decisões em `.claude/chat-disparo.md`. Código em `src/disparo/`
+(`regras.ts` puro, `dao.ts`, `service.ts`, `worker.ts`, `routes.ts`) e migração
+`prisma/sql/0016_disparo.sql`. Toda rota exige `chat.disparo` (Gestor e admin por padrão).
+
+- **Mensagens**: `GET|POST /workspaces/:slug/disparo/mensagens/`, `PATCH|DELETE .../mensagens/:id/`
+  (multipart: `titulo`, `texto`, `arquivo` imagem ou PDF até 10 MB, `remover_arquivo`).
+- **Prévia**: `POST .../disparo/previa/` com `entity_type`, `entity_id`, `project_id`
+  (todos opcionais) devolve `{ total, without_telefone, repetidos }`.
+- **Envio**: `POST .../mensagens/:id/enviar/` cria a execução e um item por telefone e
+  responde na hora (201). Quem envia é o worker, dentro do processo.
+- **Histórico**: `GET .../disparo/execucoes/[?mensagem_id=]`, `GET .../execucoes/:id/[?status=]`
+  (detalhe por telefone) e `POST .../execucoes/:id/cancelar/`.
+- **Status do WhatsApp**: `POST .../mensagens/:id/status/` (só mensagem com imagem).
+- **Fila da Z-API**: `GET .../disparo/fila-zapi/`.
+- **Ritmo**: `GET|PUT .../disparo/config/` (`mensagens_por_minuto`, 1 a 60, padrão 20).
+
+Sem `CHAT_PUBLIC_URL`, o arquivo vai à Z-API em base64; com ela, pela URL pública.
 
 ## Testes
 

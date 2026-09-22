@@ -12,6 +12,15 @@ export type ReportFilters = {
   entity_id?: string;
   date_from?: string;
   date_to?: string;
+  user_id?: string;
+  uf?: string;
+  city?: string;
+  perfil?: string;
+  situacao?: string;
+  granularidade?: string;
+  etapa?: string;
+  funcao?: string;
+  setor?: string;
 };
 
 export class ReportsService extends APIService {
@@ -67,6 +76,15 @@ export class ReportsService extends APIService {
 
   byReportId(slug: string, reportId: string, params?: ReportFilters) {
     return this.fetch<any>(slug, reportId, params);
+  }
+
+  /** Igual a `byReportId`, mas deixa o erro subir: a tela mostra o motivo (sem permissão, filtro inválido). */
+  load<T = any>(slug: string, reportId: string, params?: ReportFilters): Promise<T> {
+    return this.get(`/api/workspaces/${slug}/reports/${reportId}/`, { params })
+      .then((res) => res?.data as T)
+      .catch((error) => {
+        throw error?.response?.data ?? error;
+      });
   }
 }
 

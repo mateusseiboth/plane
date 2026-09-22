@@ -10,8 +10,11 @@ import { observer } from "mobx-react";
 import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { useMember } from "@/hooks/store/use-member";
+import { useProject } from "@/hooks/store/use-project";
+import { RelatoriosDeAtendimento } from "@/components/chat/relatorios-de-atendimento";
 import { chatApi, type RatingsReport, type SlaReport } from "@/services/chat.service";
 import { RelatorioDeLigacoes } from "@/components/chat/ligacoes/relatorio-de-ligacoes";
+import { MonitorAoVivo } from "@/components/chat/atendente/monitor-ao-vivo";
 
 type Stats = Awaited<ReturnType<ReturnType<typeof chatApi>["dashboard"]>>;
 
@@ -52,6 +55,8 @@ export const ChatDashboard = observer(function ChatDashboard({ slug, apiUrl }: {
   const {
     workspace: { getWorkspaceMemberDetails },
   } = useMember();
+  const { joinedProjectIds, getProjectById } = useProject();
+  const projetos = (joinedProjectIds ?? []).map((pid) => ({ value: pid, label: getProjectById(pid)?.name ?? pid }));
 
   useEffect(() => {
     let alive = true;
@@ -84,6 +89,10 @@ export const ChatDashboard = observer(function ChatDashboard({ slug, apiUrl }: {
 
   return (
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-5">
+      <div>
+        <h3 className="mb-2 text-sm font-semibold">Monitor ao vivo</h3>
+        <MonitorAoVivo slug={slug} apiUrl={apiUrl} />
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Em atendimento" value={stats.totals.active} tone="bg-success-subtle/40" />
         <Stat label="Na fila" value={stats.totals.queued} tone="bg-warning-subtle/40" />
@@ -275,6 +284,12 @@ export const ChatDashboard = observer(function ChatDashboard({ slug, apiUrl }: {
           </div>
         </div>
       )}
+
+      {/* ── Relatórios de atendimento e registros (legado relatorio/chat*) ── */}
+      <div>
+        <h3 className="mb-2 text-sm font-semibold">Relatórios de atendimento</h3>
+        <RelatoriosDeAtendimento slug={slug} apiUrl={apiUrl} projetos={projetos} />
+      </div>
 
       <RelatorioDeLigacoes slug={slug} apiUrl={apiUrl} />
     </div>

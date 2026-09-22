@@ -13,6 +13,7 @@ import {
   fixMojibake,
   legacyProtocol,
   mapChannel,
+  mapClassificacaoDoSac,
   mapMessageType,
   mapSender,
   mapSessionStatus,
@@ -239,5 +240,17 @@ describe("anexos", () => {
     expect(externalMediaKey("https://tempstorage.download/a.jpeg")).toBe("ext:https://tempstorage.download/a.jpeg");
     expect(externalMediaKey("BEGIN:VCARD\nVERSION:3.0")).toBeNull();
     expect(externalMediaKey(null)).toBeNull();
+  });
+});
+
+describe("classificação do encerramento (colunas do ciclo de vida)", () => {
+  test("tipo de atendimento 1..5 vira o rótulo do catálogo; abandono vira end_kind", () => {
+    expect(mapClassificacaoDoSac(2, "finished")).toEqual({ closeReason: "Dúvida", endKind: "atendente" });
+    expect(mapClassificacaoDoSac(5, "abandoned")).toEqual({ closeReason: "Senha", endKind: "abandono" });
+  });
+
+  test("sem tipo ou encerramento incompleto: nulos", () => {
+    expect(mapClassificacaoDoSac(null, "unfinished")).toEqual({ closeReason: null, endKind: null });
+    expect(mapClassificacaoDoSac(9, "unknown")).toEqual({ closeReason: null, endKind: null });
   });
 });

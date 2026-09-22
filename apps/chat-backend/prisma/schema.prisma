@@ -79,6 +79,35 @@ model ChatSession {
   // Origem no chat antigo (SAC): `chat.chat_id`. Só é preenchido pela migração
   // scripts/migrate-sac-chat.ts e é o que a torna idempotente.
   legacyId           Int?          @unique @map("legacy_id")
+  // ── Ciclo de vida (0013_ciclo_de_vida.sql) ──
+  // Entidade (o cliente) do atendimento. Obrigatória para o atendente encerrar.
+  // Sem FK: `entities` é da API principal (ver src/responsaveis.ts).
+  entityId           String?       @map("entity_id") @db.Uuid
+  // Classificação do encerramento: tipo do motivo (rótulo do catálogo em
+  // BotConfig.closeReasons, gravado como texto para o histórico não mudar
+  // quando o catálogo mudar), funcionalidade (módulo do sistema) e observação.
+  closeReason        String?       @map("close_reason")
+  closeModuleId      String?       @map("close_module_id") @db.Uuid
+  closeModuleName    String?       @map("close_module_name")
+  closeNote          String?       @map("close_note")
+  // Como terminou: atendente | cliente | inatividade | fim_do_dia | robo | abandono
+  // (abandono = histórico do SAC sem o tipo gravado).
+  endKind            String?       @map("end_kind")
+  // Tipo de abandono 1..5 do SAC (ver src/ciclo-de-vida/abandono.ts). Nulo = finalizado.
+  abandonType        Int?          @map("abandon_type") @db.SmallInt
+  // Chat do site em pausa: o cliente pode voltar em até 3 dias.
+  pausedAt           DateTime?     @map("paused_at")
+  // Chamado aberto a partir desta conversa (issues.external_id = id da sessão).
+  issueId            String?       @map("issue_id") @db.Uuid
+  issueProjectId     String?       @map("issue_project_id") @db.Uuid
+  issueLabel         String?       @map("issue_label")
+  // ── Ferramentas do atendente (0014_atendente.sql) ──
+  // Alerta de cliente sem resposta pausado pelo atendente; vence em 40 min
+  // (src/atendente/alerta.ts).
+  slaAlertPausedAt   DateTime?     @map("sla_alert_paused_at")
+  // Dados técnicos mandados pelo sistema que embute o widget (versão,
+  // computador, navegador, SO, resolução, motivo). Ver src/atendente/client-info.ts.
+  clientInfo         Json          @default("{}") @map("client_info")
   messages           ChatMessage[]
   readStates         ChatReadState[]
   ligacao            ChatLigacao?
@@ -89,6 +118,10 @@ model ChatSession {
   @@index([clientBrowserId])
   @@index([clientPhone])
   @@index([entityContactId])
+  @@index([workspaceId, closedAt])
+  @@index([entityId])
+  @@index([issueId])
+  @@index([workspaceId, createdAt])
   @@map("chat_sessions")
 }
 
@@ -110,7 +143,11 @@ model ChatMessage {
   editHistory  Json        @default("[]") @map("edit_history")
   deletedAt    DateTime?   @map("deleted_at")
   externalId   String?     @map("external_id") // provider message id (dedup)
-  status       String      @default("sent") // sent | delivered | read
+  status       String      @default("sent") // sent | delivered | read | failed
+  // Motivo da falha de envio ao WhatsApp (status = failed). O atendente reenvia.
+  sendError    String?     @map("send_error")
+  // "Enviar sem o nome": sem o `*Nome*:` no WhatsApp e sem o rótulo no widget.
+  withoutSenderName Boolean  @default(false) @map("without_sender_name")
   createdAt    DateTime    @default(now()) @map("created_at")
   // Origem no chat antigo (SAC): `chat_mensagens.chat_mensagens_id`.
   legacyId     Int?        @unique @map("legacy_id")
@@ -210,6 +247,16 @@ model BotConfig {
   //   businessHours: [{ weekday: 0-6, start: "HH:MM", end: "HH:MM" }]
   businessHours        Json     @default("[]") @map("business_hours")
   businessBreaks       Json     @default("[]") @map("business_breaks")
+  // Catálogo do tipo de motivo do encerramento: [{ key, label }].
+  closeReasons         Json     @default("[{\"key\":\"acesso\",\"label\":\"Acesso\"},{\"key\":\"duvida\",\"label\":\"Dúvida\"},{\"key\":\"correcao\",\"label\":\"Correção\"},{\"key\":\"melhoria\",\"label\":\"Melhoria\"},{\"key\":\"senha\",\"label\":\"Senha\"}]") @map("close_reasons")
+  // Pergunta ao cliente que ficou 10 min sem responder o atendente.
+  activeIdlePromptMessage String @default("Você não responde há mais de 10 minutos. Digite *1* para continuar o atendimento ou *99* para encerrar.") @map("active_idle_prompt_message")
+  // Fim do dia: encerra as conversas de WhatsApp abertas no horário informado.
+  endOfDayEnabled      Boolean  @default(false) @map("end_of_day_enabled")
+  endOfDayTime         String?  @map("end_of_day_time") // "HH:MM"; vazio = fim do expediente do dia
+  endOfDayMessage      String   @default("Agradecemos seu contato. O atendimento foi encerrado e estamos à disposição sempre que precisar.") @map("end_of_day_message")
+  // Feriados: fora do horário o dia inteiro. [{ date: "AAAA-MM-DD", label, recorrente }]
+  holidays             Json     @default("[]")
   routingAlpha         Float    @default(1) @map("routing_alpha") // weight of active chats
   routingBeta          Float    @default(0.5) @map("routing_beta") // weight of today's count
   updatedAt            DateTime @updatedAt @map("updated_at")
@@ -254,11 +301,27 @@ model ProviderConfig {
   instanceId   String?  @map("instance_id")
   token        String?
   clientToken  String?  @map("client_token")
+  // Token que a Z-API manda no webhook (cabeçalho Client-Token ou ?token=).
+  // Só é exigido quando configurado.
+  webhookToken String?  @map("webhook_token")
   baseUrl      String?  @map("base_url")
   isActive     Boolean  @default(false) @map("is_active")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("chat_provider_config")
+}
+
+// Frases prontas do atendente, por espaço (src/atendente/frases.ts).
+model ChatFrasePronta {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id")
+  texto       String
+  ordem       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([workspaceId, ordem])
+  @@map("chat_frases_prontas")
 }
 
 // Daily counter used both for protocol numbering and routing stats.
@@ -328,4 +391,83 @@ model ChatRamal {
 
   @@unique([workspaceId, extension])
   @@map("chat_ramais")
+}
+
+// ── Disparo em massa (src/disparo/, migration 0016) ──────────────────────────
+// Só quem tem `chat.disparo`. A mensagem é o cadastro; cada envio é uma
+// execução com a cópia do texto e do arquivo daquele momento, e um item por
+// telefone (sem repetir número) que o worker processa no ritmo configurado.
+
+model ChatDisparoMensagem {
+  id          String                @id @default(uuid()) @db.Uuid
+  workspaceId String                @map("workspace_id")
+  titulo      String
+  texto       String?
+  mediaKey    String?               @map("media_key")
+  mediaMime   String?               @map("media_mime")
+  mediaName   String?               @map("media_name")
+  createdById String                @map("created_by_id")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  deletedAt   DateTime?             @map("deleted_at")
+  execucoes   ChatDisparoExecucao[]
+
+  @@index([workspaceId, deletedAt])
+  @@map("chat_disparo_mensagens")
+}
+
+model ChatDisparoExecucao {
+  id          String              @id @default(uuid()) @db.Uuid
+  workspaceId String              @map("workspace_id")
+  mensagemId  String              @map("mensagem_id") @db.Uuid
+  mensagem    ChatDisparoMensagem @relation(fields: [mensagemId], references: [id], onDelete: Cascade)
+  titulo      String
+  texto       String?
+  mediaKey    String?             @map("media_key")
+  mediaMime   String?             @map("media_mime")
+  mediaName   String?             @map("media_name")
+  // {entity_type, entity_id, project_id} como foram escolhidos na tela.
+  filtros     Json                @default("{}")
+  total       Int                 @default(0)
+  withoutTelefone Int                 @default(0) @map("without_telefone")
+  repetidos   Int                 @default(0)
+  status      String              @default("em_andamento") // em_andamento | concluida | cancelada
+  createdById String              @map("created_by_id")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  finishedAt  DateTime?           @map("finished_at")
+  itens       ChatDisparoItem[]
+
+  @@index([workspaceId, createdAt])
+  @@index([status])
+  @@map("chat_disparo_execucoes")
+}
+
+model ChatDisparoItem {
+  id          String              @id @default(uuid()) @db.Uuid
+  execucaoId  String              @map("execucao_id") @db.Uuid
+  execucao    ChatDisparoExecucao @relation(fields: [execucaoId], references: [id], onDelete: Cascade)
+  workspaceId String              @map("workspace_id")
+  telefone    String
+  contactId   String?             @map("contact_id")
+  contactName String?             @map("contact_name")
+  entityName  String?             @map("entity_name")
+  status      String              @default("pendente") // pendente | processando | enviado | falhou | cancelado
+  erro        String?
+  externalId  String?             @map("external_id")
+  tentadoEm   DateTime?           @map("tentado_em")
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  @@unique([execucaoId, telefone])
+  @@index([workspaceId, status])
+  @@index([workspaceId, tentadoEm])
+  @@map("chat_disparo_itens")
+}
+
+model ChatDisparoConfig {
+  workspaceId        String   @id @map("workspace_id")
+  mensagensPorMinuto Int      @default(20) @map("mensagens_por_minuto")
+  updatedById        String?  @map("updated_by_id")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("chat_disparo_config")
 }

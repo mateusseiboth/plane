@@ -14,6 +14,7 @@ import type {
   IWorkspaceProjectSearchResult,
   IWorkspaceSearchResult,
 } from "@plane/types";
+import { getPaginaPath } from "@plane/utils";
 // components
 import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
 import type { TPowerKSearchResultsKeys } from "@/components/power-k/core/types";
@@ -92,13 +93,13 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
         <span className="text-11 text-tertiary">{page.project__identifiers?.[0]}</span> {page.name}
       </p>
     ),
-    path: (page: IWorkspacePageSearchResult, projectId: string | undefined) => {
-      let redirectProjectId = page?.project_ids?.[0];
-      if (!!projectId && page?.project_ids?.includes(projectId)) redirectProjectId = projectId;
-      return redirectProjectId
-        ? `/${page?.workspace__slug}/projects/${redirectProjectId}/pages/${page?.id}`
-        : `/${page?.workspace__slug}/wiki/${page?.id}`;
-    },
+    path: (page: IWorkspacePageSearchResult, projectId: string | undefined) =>
+      getPaginaPath({
+        workspaceSlug: page?.workspace__slug,
+        pageId: page?.id,
+        projectIds: page?.project_ids,
+        currentProjectId: projectId,
+      }),
     title: "Páginas",
   },
   project: {

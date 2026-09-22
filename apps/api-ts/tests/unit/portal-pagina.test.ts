@@ -37,6 +37,35 @@ describe("página do portal", () => {
     expect(contem('id="descricao"')).toBe(true);
   });
 
+  it("no detalhe, conversa com a equipe: responder, encerrar, reabrir e avaliar", () => {
+    expect(contem('id="d-conversa"')).toBe(true);
+    expect(contem('id="form-resposta"')).toBe(true);
+    expect(contem('id="area-resposta"')).toBe(true);
+    expect(contem('id="form-encerrar"')).toBe(true);
+    expect(contem('id="form-reabrir"')).toBe(true);
+    expect(contem('id="form-avaliacao"')).toBe(true);
+    for (const rota of ["/interacoes", "/encerrar", "/reabrir", "/avaliacao"]) expect(contem(rota)).toBe(true);
+  });
+
+  it("a avaliação pergunta o mesmo que o suporte antigo", () => {
+    for (const opcao of ["Não era o que eu precisava", "Parcialmente", "Ótimo", "Bom", "Ruim"]) {
+      expect(contem(opcao)).toBe(true);
+    }
+  });
+
+  it("mostra as visitas técnicas da entidade, por situação, com o relatório", () => {
+    expect(contem('id="tela-visitas"')).toBe(true);
+    expect(contem('id="tela-visita"')).toBe(true);
+    expect(contem("/visitas")).toBe(true);
+    for (const situacao of ["abertas", "efetivadas", "vencidas"])
+      expect(contem(`data-situacao="${situacao}"`)).toBe(true);
+  });
+
+  it("texto de tela sem travessão", () => {
+    const textoVisivel = html.replace(/<script[\s\S]*<\/script>/, "").replace(/<style[\s\S]*<\/style>/, "");
+    expect(textoVisivel.includes("—")).toBe(false);
+  });
+
   it("é autocontida: nenhum script ou folha de estilo de fora", () => {
     expect(/<script[^>]+src=/i.test(html)).toBe(false);
     expect(/<link[^>]+stylesheet/i.test(html)).toBe(false);

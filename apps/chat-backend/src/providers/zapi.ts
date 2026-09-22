@@ -4,7 +4,13 @@
 // Webhook (on-message-received): { phone, senderName, text:{message}, image:{...},
 //        audio:{...}, video:{...}, document:{...}, messageId, fromMe, ... }
 
-import type {InboundMessage, InboundMutation, WhatsAppProvider} from "@/providers/provider";
+import type {
+  InboundMessage,
+  InboundMutation,
+  ItemDaFilaDeSaida,
+  MidiaDeSaida,
+  WhatsAppProvider,
+} from "@/providers/provider";
 
 export class ZapiProvider implements WhatsAppProvider {
   private baseUrl: string;
@@ -23,21 +29,25 @@ export class ZapiProvider implements WhatsAppProvider {
     return `${this.baseUrl}/instances/${this.instanceId}/token/${this.token}/${action}`;
   }
 
-  private async request(
-    method: "POST" | "DELETE",
-    action: string,
-    body?: Record<string, unknown>
-  ): Promise<string | null> {
+  private async call(method: "GET" | "POST" | "DELETE", action: string, body?: Record<string, unknown>): Promise<unknown> {
     const res = await fetch(this.url(action), {
       method,
       headers: {"Content-Type": "application/json", "Client-Token": this.clientToken},
-      body: body ? JSON.stringify(body) : undefined,
+      ...(body ? {body: JSON.stringify(body)} : {}),
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       throw new Error(`Z-API ${action} failed: ${res.status} ${txt}`);
     }
-    const data = (await res.json().catch(() => null)) as {messageId?: string; id?: string} | null;
+    return await res.json().catch(() => null);
+  }
+
+  private async request(
+    method: "POST" | "DELETE",
+    action: string,
+    body?: Record<string, unknown>
+  ): Promise<string | null> {
+    const data = (await this.call(method, action, body)) as {messageId?: string; id?: string} | null;
     return data?.messageId ?? data?.id ?? null;
   }
 
@@ -49,12 +59,27 @@ export class ZapiProvider implements WhatsAppProvider {
     return await this.post("send-text", {phone, message: text});
   }
 
-  async sendMedia(phone: string, media: {url?: string; base64?: string; mime: string; name?: string; type: string}): Promise<string | null> {
+  async sendMedia(phone: string, media: MidiaDeSaida): Promise<string | null> {
     const payload = media.url ?? media.base64 ?? "";
-    if (media.type === "image") return await this.post("send-image", {phone, image: payload});
-    if (media.type === "video") return await this.post("send-video", {phone, video: payload});
+    const legenda = media.caption ? {caption: media.caption} : {};
+    if (media.type === "image") return await this.post("send-image", {phone, image: payload, ...legenda});
+    if (media.type === "video") return await this.post("send-video", {phone, video: payload, ...legenda});
     if (media.type === "audio") return await this.post("send-audio", {phone, audio: payload});
-    return await this.post("send-document/" + (media.name?.split(".").pop() || "bin"), {phone, document: payload, fileName: media.name});
+    return await this.post("send-document/" + (media.name?.split(".").pop() || "bin"), {
+      phone,
+      document: payload,
+      fileName: media.name,
+      ...legenda,
+    });
+  }
+
+  async sendImageStatus(image: string): Promise<string | null> {
+    return await this.post("send-image-status", {image});
+  }
+
+  async getFilaDeSaida(): Promise<ItemDaFilaDeSaida[]> {
+    const data = await this.call("GET", "queue");
+    return Array.isArray(data) ? data.map(readItemDaFila) : [];
   }
 
   async editText(phone: string, externalId: string, text: string): Promise<void> {
@@ -103,21 +128,93 @@ export class ZapiProvider implements WhatsAppProvider {
     if (this.parseWebhookMutation(body)) return null;
     const phone: string | undefined = body.phone || body.participantPhone;
     if (!phone) return null;
-    const base = {externalId: body.messageId, phone, senderName: body.senderName || body.chatName};
-    if (body.text?.message) return {...base, type: "text", text: body.text.message};
-    if (body.image)
-      return {...base, type: "image", mediaUrl: body.image.imageUrl, mediaMime: body.image.mimeType, text: body.image.caption};
-    if (body.audio) return {...base, type: "audio", mediaUrl: body.audio.audioUrl, mediaMime: body.audio.mimeType};
-    if (body.video)
-      return {...base, type: "video", mediaUrl: body.video.videoUrl, mediaMime: body.video.mimeType, text: body.video.caption};
-    if (body.document)
-      return {
-        ...base,
-        type: "file",
-        mediaUrl: body.document.documentUrl,
-        mediaMime: body.document.mimeType,
-        mediaName: body.document.fileName,
-      };
-    return null;
+    const base: Base = {
+      externalId: body.messageId,
+      phone,
+      senderName: body.senderName || body.chatName,
+      ...(typeof body.momment === "number" ? {momentMs: body.momment} : {}),
+      ...readFoto(body),
+    };
+    const leitor = LEITORES.find(([aplica]) => aplica(body));
+    return leitor ? leitor[1](body, base) : null;
   }
 }
+
+const textOrNull = (valor: unknown): string | null => (valor === undefined || valor === null ? null : String(valor));
+
+/** `Created` vem em milissegundos na Z-API; texto é aceito como veio. */
+const readCriadaEm = (valor: unknown): string | null =>
+  typeof valor === "number" ? new Date(valor).toISOString() : textOrNull(valor);
+
+const readItemDaFila = (item: any): ItemDaFilaDeSaida => ({
+  criadaEm: readCriadaEm(item?.Created ?? item?.created),
+  telefone: textOrNull(item?.Phone ?? item?.phone),
+  mensagem: textOrNull(item?.Message ?? item?.message),
+  id: textOrNull(item?.ZaapId ?? item?.zaapId ?? item?.MessageId ?? item?._id),
+});
+
+type Base = Pick<InboundMessage, "externalId" | "phone" | "senderName" | "momentMs" | "photoUrl">;
+
+/** A Z-API manda a foto de perfil em `photo` (ou `senderPhoto`, conforme a versão). */
+const readFoto = (body: any): {photoUrl?: string} => {
+  const url = [body.photo, body.senderPhoto].find((v) => typeof v === "string" && v.startsWith("https://"));
+  return url ? {photoUrl: url} : {};
+};
+type Leitor = [aplica: (body: any) => boolean, ler: (body: any, base: Base) => InboundMessage];
+
+const CHAMADA_PERDIDA = new Set(["CALL_MISSED_VOICE", "CALL_MISSED_VIDEO"]);
+
+const describeContato = (contato: any): string => {
+  const telefones = Array.isArray(contato.phones) ? contato.phones.filter(Boolean).join(", ") : "";
+  return ["Contato compartilhado:", contato.displayName || "sem nome", telefones ? `(${telefones})` : ""]
+    .filter(Boolean)
+    .join(" ");
+};
+
+/**
+ * Um leitor por formato de mensagem da Z-API. Formato novo = uma linha aqui,
+ * nenhum `if` mexido. A legenda da imagem vem em `image.caption`, não em
+ * `text`, então a ordem só importa para a chamada perdida, que vem primeiro.
+ */
+const LEITORES: Leitor[] = [
+  [(b) => CHAMADA_PERDIDA.has(b.notification), (_b, base) => ({...base, type: "call_missed"})],
+  [(b) => Boolean(b.text?.message), (b, base) => ({...base, type: "text", text: b.text.message})],
+  [
+    (b) => Boolean(b.reaction),
+    (b, base) => ({
+      ...base,
+      type: "reaction",
+      reaction: {emoji: String(b.reaction.value ?? ""), externalId: b.reaction.referencedMessage?.messageId ?? null},
+    }),
+  ],
+  [
+    (b) => Boolean(b.image),
+    (b, base) => ({...base, type: "image", mediaUrl: b.image.imageUrl, mediaMime: b.image.mimeType, text: b.image.caption}),
+  ],
+  [
+    (b) => Boolean(b.sticker),
+    (b, base) => ({
+      ...base,
+      type: "image",
+      mediaUrl: b.sticker.stickerUrl,
+      mediaMime: b.sticker.mimeType ?? "image/webp",
+      mediaName: "Figurinha",
+    }),
+  ],
+  [(b) => Boolean(b.audio), (b, base) => ({...base, type: "audio", mediaUrl: b.audio.audioUrl, mediaMime: b.audio.mimeType})],
+  [
+    (b) => Boolean(b.video),
+    (b, base) => ({...base, type: "video", mediaUrl: b.video.videoUrl, mediaMime: b.video.mimeType, text: b.video.caption}),
+  ],
+  [
+    (b) => Boolean(b.document),
+    (b, base) => ({
+      ...base,
+      type: "file",
+      mediaUrl: b.document.documentUrl,
+      mediaMime: b.document.mimeType,
+      mediaName: b.document.fileName,
+    }),
+  ],
+  [(b) => Boolean(b.contact), (b, base) => ({...base, type: "text", text: describeContato(b.contact)})],
+];

@@ -1,0 +1,80 @@
+/**
+ * Rotas dos relatórios de chamados sobre os marcos por etapa e do painel de TV.
+ * Finas: checam `report.view`, leem os filtros e chamam o service de cada
+ * relatório. Os relatórios antigos continuam em `index.ts`.
+ *
+ * GET /workspaces/:slug/reports/
+ *   milestones-by-user/  analítico por usuário com os marcos
+ *   returned/            chamados devolvidos (Em Teste de volta para Em Desenvolvimento)
+ *   weekly-summary/      sintético semanal responsável × sistema × tipo
+ *   balance/             balanço mensal ou anual com saldo acumulado
+ *   ticket-log/          log consolidado (atividades e comentários)
+ *   tv-panel/            painel de TV do TI ou da Qualidade
+ */
+import { Elysia } from "elysia";
+import { authPlugin } from "@middleware/auth";
+import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
+import { getWorkspaceOrFail } from "@utils/workspace";
+import {
+  findAnaliticoPorUsuario,
+  readPerfil,
+  readSituacao,
+} from "@modules/reports/analitico-por-usuario/analitico-por-usuario.service";
+import { findBalanco, readGranularidade } from "@modules/reports/balanco/balanco.service";
+import { parseFilters, readTexto } from "@modules/reports/comum/filtros";
+import { findDevolvidos } from "@modules/reports/devolvidos/devolvidos.service";
+import { findLogDeChamados, readLimite } from "@modules/reports/log-chamados/log-chamados.service";
+import { findPainel, requireSetor } from "@modules/reports/painel-tv/painel-tv.service";
+import { findSinteticoSemanal } from "@modules/reports/sintetico-semanal/sintetico-semanal.service";
+
+/** Espaço de trabalho + `report.view`: a porta de todo relatório. */
+async function requireRelatorio(slug: string, userId: string) {
+  const ws = await getWorkspaceOrFail(slug);
+  await requireWorkspaceAction(ws.id, userId, EProjectAction.REPORT_VIEW);
+  return ws;
+}
+
+export const reportsDeChamadosModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
+  .use(authPlugin)
+
+  .get("/milestones-by-user/", async ({ params: { slug }, user, query }) => {
+    const ws = await requireRelatorio(slug, user.id);
+    return findAnaliticoPorUsuario({
+      workspaceId: ws.id,
+      filtros: parseFilters(query),
+      usuarioId: readTexto(query.user_id),
+      perfil: readPerfil(query.perfil),
+      situacao: readSituacao(query.situacao),
+    });
+  })
+
+  .get("/returned/", async ({ params: { slug }, user, query }) => {
+    const ws = await requireRelatorio(slug, user.id);
+    return findDevolvidos(ws.id, parseFilters(query));
+  })
+
+  .get("/weekly-summary/", async ({ params: { slug }, user, query }) => {
+    const ws = await requireRelatorio(slug, user.id);
+    return findSinteticoSemanal(ws.id, parseFilters(query));
+  })
+
+  .get("/balance/", async ({ params: { slug }, user, query }) => {
+    const ws = await requireRelatorio(slug, user.id);
+    return findBalanco(ws.id, parseFilters(query), readGranularidade(query.granularidade));
+  })
+
+  .get("/ticket-log/", async ({ params: { slug }, user, query }) => {
+    const ws = await requireRelatorio(slug, user.id);
+    return findLogDeChamados(ws.id, {
+      filtros: parseFilters(query),
+      etapa: readTexto(query.etapa),
+      funcao: readTexto(query.funcao),
+      usuarioId: readTexto(query.user_id),
+      limite: readLimite(query.limit),
+    });
+  })
+
+  .get("/tv-panel/", async ({ params: { slug }, user, query }) => {
+    const ws = await requireRelatorio(slug, user.id);
+    return findPainel(ws.id, requireSetor(query.setor), parseFilters(query));
+  });

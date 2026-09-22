@@ -4,6 +4,7 @@ import { swagger } from "@elysiajs/swagger";
 
 
 import { projectModule } from "@modules/project";
+import { chatChamadoModule } from "@modules/chat-chamado";
 import { stateModule } from "@modules/state";
 import { labelModule, issueLabelModule } from "@modules/label";
 import { cycleModule } from "@modules/cycle";
@@ -40,6 +41,7 @@ import { assetModule, assetV2Module, userAssetV2Module } from "@modules/asset";
 import { intakeWorkItemModule } from "@modules/intake-work-item";
 import { technicalVisitModule } from "@modules/technical-visit";
 import { reportsModule } from "@modules/reports";
+import { reportsDeChamadosModule } from "@modules/reports/rotas-de-chamados";
 import { customWidgetModule } from "@modules/custom-widget";
 import { customWebhookModule } from "@modules/custom-webhook";
 import { widgetModule } from "@modules/widget";
@@ -47,12 +49,17 @@ import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 import { pluginRegistryModule } from "@modules/plugin-registry";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
 import { auditModule } from "@modules/audit";
-import { portalAdminModule, portalModule, portalRespostaModule } from "@modules/portal";
+import { portalAdminModule, portalChamadoModule, portalModule, portalRespostaModule } from "@modules/portal";
 import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 import { buildErrorBody, type HttpError } from "@utils/field-error";
 import { muralModule } from "@modules/mural";
 import { posAtendimentoModule } from "@modules/pos-atendimento";
+import { ouvidoriaModule } from "@modules/ouvidoria";
+import { denunciaModule } from "@modules/denuncia";
+import { curriculoModule, scheduleExpurgoDeCurriculos } from "@modules/curriculo";
+import { contatoEmailModule } from "@modules/contato-email";
+import { internoChatModule } from "@modules/interno-chat";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -169,6 +176,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(userModule)
   .use(authModule)      // API token management (/users/api-tokens/)
   .use(projectModule)
+  // Chamado aberto a partir de uma conversa do chat (transcrição + arquivos).
+  .use(chatChamadoModule)
   .use(stateModule)
   .use(labelModule)
   .use(issueLabelModule)
@@ -203,6 +212,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(intakeWorkItemModule)
   .use(technicalVisitModule)
   .use(reportsModule)
+  .use(reportsDeChamadosModule)
   // rolesModule MUST be registered before the SDK gateways: those use a
   // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
   // after them, which would make /roles/ demand an X-Widget-Id header.
@@ -213,12 +223,18 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(phoneBookModule)
   .use(portalAdminModule)
   .use(portalRespostaModule)
+  .use(portalChamadoModule)
   .use(rolesModule)
   // Mounted before the SDK gateways so their global widget-auth hook doesn't leak
   // onto the SSE stream (see the rolesModule note above).
   .use(realtimeModule)
   .use(muralModule)
   .use(posAtendimentoModule)
+  // Ouvidoria, denúncia interna, currículos e lista de e-mails (W15).
+  .use(ouvidoriaModule)
+  .use(denunciaModule)
+  .use(curriculoModule)
+  .use(contatoEmailModule)
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)
@@ -251,7 +267,12 @@ for (const evento of ["unhandledRejection", "uncaughtException"] as const) {
 // — não usa o `authPlugin` e não conhece o crachá do Plane.
 const portalApp = new Elysia().use(corsConfig).onError(errorHandler).use(portalModule);
 
-export const app = new Elysia().use(authApp).use(portalApp).use(apiApp);
+// ── Rotas internas do robô do chat: autenticação de serviço, sem usuário ─────
+// Montadas ANTES do apiApp: o `authPlugin` de lá é global e passaria a exigir
+// usuário logado de toda rota registrada depois dele.
+const internoApp = new Elysia().onError(errorHandler).use(internoChatModule);
+
+export const app = new Elysia().use(authApp).use(portalApp).use(internoApp).use(apiApp);
 
 if (import.meta.main) {
   app.listen(PORT);
@@ -259,6 +280,9 @@ if (import.meta.main) {
   console.log(`🔐 Auth endpoints: http://localhost:${PORT}/auth/`);
   console.log(`📖 Swagger: http://localhost:${PORT}/api/v1/schema`);
 }
+
+// Expurgo diário dos currículos que passaram do prazo de guarda (LGPD).
+if (import.meta.main) scheduleExpurgoDeCurriculos();
 
 // Funções de sistema gravadas em todo espaço, e ações novas do catálogo levadas
 // às funções já existentes (idempotente; edições do admin sobrevivem).

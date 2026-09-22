@@ -15,6 +15,7 @@ export * from "./use-print";
 export * from "./use-print-settings";
 export * from "./use-printable-issues";
 // documentos prontos por domínio
+export * from "./documents/audit-logs-print-document";
 export * from "./documents/chat-transcript-print-document";
 export * from "./documents/cycle-print-document";
 export * from "./documents/intake-print-document";

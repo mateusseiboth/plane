@@ -189,6 +189,11 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(donosDe("chat.administrar")).toEqual(["admin"]);
   });
 
+  it("disparar mensagens em massa é de Gestor e admin; os demais recebem por pessoa", () => {
+    expect(donosDe("chat.disparo")).toEqual(["admin", "gestor_projeto"]);
+    expect(ACTION_CATALOG.CHAT_DISPARO).toMatchObject({ label: "Disparar mensagens em massa", scope: "workspace" });
+  });
+
   it("alterar prioridade é de Gestor e admin; os demais recebem por pessoa", () => {
     expect(donosDe("issue.priority")).toEqual(["admin", "gestor_projeto"]);
   });
@@ -215,6 +220,34 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
   it("publicar no mural é de Gestor e admin; os demais recebem por pessoa", () => {
     expect(donosDe("mural.publish")).toEqual(["admin", "gestor_projeto"]);
     expect(ACTION_CATALOG.MURAL_PUBLISH).toMatchObject({ label: "Publicar recados no mural", scope: "workspace" });
+  });
+
+  it("ouvidoria, denúncias, currículos e lista de e-mails são de Gestor e admin", () => {
+    for (const acao of ["ouvidoria.read", "denuncia.read", "curriculo.read", "contato.export"]) {
+      expect(donosDe(acao)).toEqual(["admin", "gestor_projeto"]);
+    }
+    expect(ACTION_CATALOG.OUVIDORIA_READ).toMatchObject({ label: "Ler a ouvidoria", scope: "workspace" });
+    expect(ACTION_CATALOG.DENUNCIA_READ).toMatchObject({ label: "Ler as denúncias", scope: "workspace" });
+    expect(ACTION_CATALOG.CURRICULO_READ).toMatchObject({ label: "Ver e gerenciar currículos", scope: "workspace" });
+    expect(ACTION_CATALOG.CONTATO_EXPORT).toMatchObject({
+      label: "Gerar e exportar a lista de e-mails dos responsáveis",
+      scope: "workspace",
+    });
+  });
+
+  it("a wiki é lida por todas as funções e escrita por quem escreve chamado", () => {
+    expect(donosDe("wiki.view")).toEqual([
+      "admin",
+      "atendimento",
+      "gestor_projeto",
+      "guest",
+      "member",
+      "qualidade",
+      "ti",
+    ]);
+    expect(donosDe("wiki.edit")).toEqual(["admin", "gestor_projeto", "member", "qualidade", "ti"]);
+    expect(ACTION_CATALOG.WIKI_VIEW.scope).toBe("workspace");
+    expect(ACTION_CATALOG.WIKI_EDIT.scope).toBe("workspace");
   });
 
   it("funções e SLA de etiqueta, que eram papel >= 18, ficam com Gestor e admin", () => {

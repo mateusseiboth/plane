@@ -139,6 +139,7 @@ Permissão efetiva de uma pessoa =
 | `plugin` instalar/remover                                                                  | `role < 20`                                       | `plugin.manage`                                                                                                        |
 | `portal` contas                                                                            | `requireWorkspaceAdmin`                           | `portal.manage`                                                                                                        |
 | `page` travar/arquivar/apagar de outros                                                    | `role >= 20`                                      | `page.manage.all`                                                                                                      |
+| `page` árvore do espaço (wiki, W11)                                                        | só ser do espaço                                  | `wiki.view` para ler, `wiki.edit` para escrever (ver `.claude/wiki.md`)                                                |
 | `utils/workspace.ts`                                                                       | `requireWorkspaceWriter`, `requireWorkspaceAdmin` | removidos                                                                                                              |
 | `utils/workspace.ts` `getProjectOrFail`                                                    | admin mantinha a função baixa do sistema          | admin usa a função do espaço                                                                                           |
 | `utils/notifications.ts` (avisa Qualidade)                                                 | `role === 8`                                      | estrutural: escolhe quem é avisado                                                                                     |
@@ -176,10 +177,17 @@ do banco compartilhado).
 `audit.view`, `page.manage.all`, `label.sla`, `entity.manage`, `visit.manage`, `issue.type.manage`,
 `import.manage`, `integration.manage`, `ai.config`, `plugin.manage`, `portal.manage`.
 
-Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`).
-`posatendimento.record` (Atendimento, Qualidade, Gestor, admin) e `posatendimento.verify`
+Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`) e
+`chat.disparo` (Gestor, admin; disparo em massa no chat, ver `.claude/chat-disparo.md`).
+
+W15: `ouvidoria.read`, `denuncia.read`, `curriculo.read` e `contato.export` (Gestor, admin; ver
+`.claude/ouvidoria-denuncia-curriculos.md`). O menu lateral esconde ouvidoria e currículos de quem
+não tem a ação (campo `action` do item em `packages/constants/src/workspace.ts`).
+
+W12: `posatendimento.record` (Atendimento, Qualidade, Gestor, admin) e `posatendimento.verify`
 (Qualidade, Gestor, admin), ver `.claude/pos-atendimento.md`. Helper novo
-`requireWorkspaceAnyAction` (qualquer uma das ações, no escopo do espaço).
+`requireWorkspaceAnyAction` (qualquer uma das ações, no escopo do espaço). O campo `action` do
+item da sidebar aceita `string | string[]` (qualquer uma libera).
 
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já

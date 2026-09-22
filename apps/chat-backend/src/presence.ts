@@ -6,6 +6,8 @@
 
 import {connectedUserIds} from "@/ws/hub";
 import prisma from "@db";
+import {isFeriado, readFeriadosGravados} from "@/atendente/feriados";
+import {readDataLocal, readInicioDoDia} from "@/atendente/fuso";
 
 type Window = {weekday: number | string; start_time: string; end_time: string};
 
@@ -21,7 +23,7 @@ const fusoPorWorkspace = new Map<string, string>();
  * O valor muda de ano em ano, na prática nunca — guardar em memória evita uma
  * ida ao banco em cada mensagem que o robô processa.
  */
-async function fusoDoWorkspace(workspaceId: string): Promise<string> {
+export async function readFusoDoWorkspace(workspaceId: string): Promise<string> {
   const emCache = fusoPorWorkspace.get(workspaceId);
   if (emCache) return emCache;
   let fuso = FUSO_PADRAO;
@@ -68,15 +70,8 @@ function agoraNoFuso(fuso: string): {weekday: number; minutes: number} {
  * virar às 21h locais, no meio do expediente de quem trabalha até mais tarde.
  */
 export async function inicioDoDiaNoFuso(workspaceId: string): Promise<Date> {
-  const fuso = await fusoDoWorkspace(workspaceId);
-  const agora = new Date();
-  // Diferença entre o relógio do servidor e o do fuso, no instante de agora.
-  const deslocamento =
-    new Date(agora.toLocaleString("en-US", {timeZone: "UTC"})).getTime() -
-    new Date(agora.toLocaleString("en-US", {timeZone: fuso})).getTime();
-  const dataLocal = new Intl.DateTimeFormat("en-CA", {timeZone: fuso, year: "numeric", month: "2-digit", day: "2-digit"})
-    .format(agora);
-  return new Date(Date.parse(`${dataLocal}T00:00:00Z`) + deslocamento);
+  const fuso = await readFusoDoWorkspace(workspaceId);
+  return readInicioDoDia(readDataLocal(new Date(), fuso), fuso);
 }
 
 function toMinutes(hhmm: string): number {
@@ -84,13 +79,19 @@ function toMinutes(hhmm: string): number {
   return (h || 0) * 60 + (m || 0);
 }
 
-/** Is the company currently open (within a business-hours window, not on a break)? */
+/**
+ * Is the company currently open (within a business-hours window, not on a break)?
+ * Feriado do calendário (src/atendente/feriados.ts) fecha o dia inteiro, mesmo
+ * sem expediente cadastrado.
+ */
 export async function isWithinBusinessHours(workspaceId: string): Promise<boolean> {
   const cfg = await prisma.botConfig.findUnique({where: {workspaceId}});
+  const fuso = await readFusoDoWorkspace(workspaceId);
+  if (isFeriado(readFeriadosGravados(cfg?.holidays), readDataLocal(new Date(), fuso))) return false;
   const hours = ((cfg?.businessHours as Window[]) ?? []).filter(Boolean);
   // Not configured → always open.
   if (hours.length === 0) return true;
-  const {weekday, minutes} = agoraNoFuso(await fusoDoWorkspace(workspaceId));
+  const {weekday, minutes} = agoraNoFuso(fuso);
   const todays = hours.filter((h) => Number(h.weekday) === weekday);
   if (todays.length === 0) return false;
   const open = todays.some((h) => minutes >= toMinutes(h.start_time) && minutes < toMinutes(h.end_time));

@@ -5,7 +5,7 @@
 
 import prisma from "@db";
 import {existsSync, mkdirSync} from "fs";
-import {mkdir, readFile, writeFile} from "fs/promises";
+import {mkdir, readFile, rm, writeFile} from "fs/promises";
 import path from "path";
 
 const MEDIA_ROOT = process.env.MEDIA_ROOT || path.join(process.cwd(), "media");
@@ -109,6 +109,17 @@ export async function serveAsset(key: string, mimeType?: string | null): Promise
     return serveLocal(key, mimeType);
   }
   return serveLocal(key, mimeType);
+}
+
+/**
+ * Exclusão definitiva: apaga no S3 (quando ligado) E no disco, porque o
+ * arquivo pode ter sido gravado antes de o S3 ser configurado. Não reclama do
+ * que já não existe.
+ */
+export async function deleteAsset(key: string): Promise<void> {
+  const client = await getClient();
+  if (client) await client.delete(key).catch((e: unknown) => console.error("[storage] S3 delete failed:", e));
+  await rm(localPath(key), {force: true});
 }
 
 export async function copyAsset(srcKey: string, destKey: string): Promise<void> {

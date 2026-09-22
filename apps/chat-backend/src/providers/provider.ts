@@ -7,11 +7,18 @@ export type InboundMessage = {
   externalId?: string;
   phone: string;
   senderName?: string;
-  type: "text" | "image" | "video" | "audio" | "file";
+  /** `reaction` e `call_missed` não viram mensagem comum: ver src/webhook/zapi.ts. */
+  type: "text" | "image" | "video" | "audio" | "file" | "reaction" | "call_missed";
   text?: string;
   mediaUrl?: string;
   mediaMime?: string;
   mediaName?: string;
+  /** Reação do cliente a uma mensagem (id do provedor da mensagem reagida). */
+  reaction?: { emoji: string; externalId: string | null };
+  /** Instante da mensagem no WhatsApp (ms). Usado para descartar o que é velho. */
+  momentMs?: number;
+  /** Foto de perfil do WhatsApp (link temporário do CDN). Ver src/atendente/foto.ts. */
+  photoUrl?: string;
 };
 
 /** Edição/remoção feita pelo CLIENTE e notificada pelo provedor. */
@@ -19,10 +26,20 @@ export type InboundMutation =
   | { kind: "edit"; phone: string; externalId: string; text: string }
   | { kind: "delete"; phone?: string; externalIds: string[] };
 
+/** Mídia de saída. `caption` é a legenda (imagem, vídeo e documento). */
+export type MidiaDeSaida = { url?: string; base64?: string; mime: string; name?: string; type: string; caption?: string };
+
+/** Uma mensagem parada na fila de saída do provedor (diagnóstico do disparo). */
+export type ItemDaFilaDeSaida = { id: string | null; telefone: string | null; mensagem: string | null; criadaEm: string | null };
+
 export interface WhatsAppProvider {
   /** Retorna o id da mensagem no provedor (necessário para editar/apagar depois). */
   sendText(phone: string, text: string): Promise<string | null>;
-  sendMedia(phone: string, media: { url?: string; base64?: string; mime: string; name?: string; type: string }): Promise<string | null>;
+  sendMedia(phone: string, media: MidiaDeSaida): Promise<string | null>;
+  /** Publica uma imagem no Status do WhatsApp da conta. */
+  sendImageStatus(image: string): Promise<string | null>;
+  /** O que o provedor ainda não entregou. */
+  getFilaDeSaida(): Promise<ItemDaFilaDeSaida[]>;
   /** Edita uma mensagem já enviada por nós (id do provedor). */
   editText(phone: string, externalId: string, text: string): Promise<void>;
   /** Apaga uma mensagem já enviada por nós (id do provedor). */

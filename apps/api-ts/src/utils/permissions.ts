@@ -49,6 +49,8 @@ const G = {
   CHAT: "Atendimento (chat)",
   ESPACO: "Espaço de trabalho",
   CADASTROS: "Cadastros e integrações",
+  OUVIDORIA: "Ouvidoria, denúncias e currículos",
+  WIKI: "Wiki",
   POS_ATENDIMENTO: "Pós-atendimento",
 } as const;
 
@@ -89,6 +91,7 @@ export const ACTION_CATALOG = {
   CHAT_ATENDER: {key: "chat.atender", label: "Atender no chat", group: G.CHAT, scope: "workspace", roles: OPERAM},
   CHAT_GERENCIAR: {key: "chat.gerenciar", label: "Transferir atendimentos e ver relatórios do chat", group: G.CHAT, scope: "workspace", roles: MEMBRO_E_GESTOR},
   CHAT_ADMINISTRAR: {key: "chat.administrar", label: "Ver fila, robô e avaliações e configurar o chat", group: G.CHAT, scope: "workspace", roles: SO_ADMIN},
+  CHAT_DISPARO: {key: "chat.disparo", label: "Disparar mensagens em massa", group: G.CHAT, scope: "workspace", roles: GESTOR},
   PROJECT_CREATE: {key: "project.create", label: "Criar sistemas", group: G.ESPACO, scope: "workspace", roles: GESTOR},
   REPORT_VIEW: {key: "report.view", label: "Ver relatórios e análises", group: G.ESPACO, scope: "workspace", roles: MEMBRO_E_GESTOR},
   WORKSPACE_INVITE: {key: "workspace.invite", label: "Convidar pessoas", group: G.ESPACO, scope: "workspace", roles: MEMBRO_E_GESTOR},
@@ -109,6 +112,12 @@ export const ACTION_CATALOG = {
   AI_CONFIG: {key: "ai.config", label: "Configurar provedores de IA", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   PLUGIN_MANAGE: {key: "plugin.manage", label: "Instalar e remover plugins", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
   PORTAL_MANAGE: {key: "portal.manage", label: "Gerenciar contas do portal do cliente", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
+  CONTATO_EXPORT: {key: "contato.export", label: "Gerar e exportar a lista de e-mails dos responsáveis", group: G.CADASTROS, scope: "workspace", roles: GESTOR},
+  OUVIDORIA_READ: {key: "ouvidoria.read", label: "Ler a ouvidoria", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
+  DENUNCIA_READ: {key: "denuncia.read", label: "Ler as denúncias", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
+  CURRICULO_READ: {key: "curriculo.read", label: "Ver e gerenciar currículos", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
+  WIKI_VIEW: {key: "wiki.view", label: "Ler a wiki", group: G.WIKI, scope: "workspace", roles: TODOS},
+  WIKI_EDIT: {key: "wiki.edit", label: "Escrever e organizar páginas da wiki", group: G.WIKI, scope: "workspace", roles: ESCREVEM},
   POSATENDIMENTO_RECORD: {key: "posatendimento.record", label: "Registrar pós-atendimento", group: G.POS_ATENDIMENTO, scope: "workspace", roles: ["atendimento", "qualidade", "gestor_projeto"]},
   POSATENDIMENTO_VERIFY: {key: "posatendimento.verify", label: "Verificar pós-atendimento", group: G.POS_ATENDIMENTO, scope: "workspace", roles: ["qualidade", "gestor_projeto"]},
 } as const satisfies Record<string, ActionDef>;

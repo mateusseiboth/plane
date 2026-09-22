@@ -42,6 +42,11 @@ describe("fonte única com o api-ts", () => {
     for (const acao of Object.values(CHAT_ACTION)) expect(ALL_ACTIONS).toContain(acao);
   });
 
+  it("o disparo em massa é uma ação do chat, com a mesma chave do catálogo", () => {
+    expect(CHAT_ACTION.DISPARO).toBe("chat.disparo");
+    expect(resolveChatActions({ permissions: ["chat.disparo"], granted: [], revoked: [] })).toEqual(["chat.disparo"]);
+  });
+
   it("a regra de exceção por pessoa é a mesma", () => {
     const casos = [
       { base: ["chat.atender"], granted: ["chat.gerenciar"], revoked: [] },

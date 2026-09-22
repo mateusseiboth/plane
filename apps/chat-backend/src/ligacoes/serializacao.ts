@@ -3,7 +3,7 @@
  * banco: a entrada é o registro do Prisma já carregado.
  */
 
-import { semAvaliacao, serializeSession } from "@/sessoes";
+import { withoutAvaliacao, serializeSession } from "@/sessoes";
 
 export function serializeLigacao(l: any) {
   return {
@@ -32,6 +32,6 @@ export type LigacaoSerializada = ReturnType<typeof serializeLigacao>;
 
 /** Sessão + ligação, sem a avaliação do cliente (ligação não tem pesquisa). */
 export const serializeSessaoComLigacao = (s: any) => ({
-  session: semAvaliacao(serializeSession(s)),
+  session: withoutAvaliacao(serializeSession(s)),
   ligacao: s.ligacao ? serializeLigacao(s.ligacao) : null,
 });
