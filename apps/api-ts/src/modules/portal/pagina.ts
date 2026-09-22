@@ -47,8 +47,10 @@ export function paginaDoPortal(): string {
   --fundo:#f2f5f8;
   --papel:#ffffff;
   --linha:#dde5ec;
-  --marca:#0f6b5c;
-  --marca-clara:#e2f3ef;
+  --marca:#0f4c81;
+  --marca-clara:#e4eff8;
+  --marca-viva:#1f86c8;
+  --dourado:#c9a227;
   --alerta:#b4451f;
   --raio:14px;
   --sombra:0 1px 2px rgba(18,33,46,.06),0 8px 24px rgba(18,33,46,.06);
@@ -57,7 +59,7 @@ export function paginaDoPortal(): string {
   :root{
     --tinta:#e9eef2;--tinta2:#a3b1bd;--tinta3:#7d8b97;
     --fundo:#0e1519;--papel:#16212a;--linha:#26343f;
-    --marca:#3fbfa4;--marca-clara:#12312c;
+    --marca:#2f8ccd;--marca-clara:#122b3d;--marca-viva:#5cb6e8;--dourado:#d8b652;
     --alerta:#e08363;
     --sombra:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
   }
@@ -68,16 +70,15 @@ body{
   font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;
 }
+/* Faixa da marca: fundo escuro porque a logo da Quality é branca. */
 .topo{
-  background:var(--papel);border-bottom:1px solid var(--linha);
-  padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  background:linear-gradient(120deg,#0b3d68 0%,#0f4c81 45%,#1f86c8 100%);
+  padding:16px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
 }
-.marca{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
-.selo{
-  width:34px;height:34px;border-radius:10px;background:var(--marca);color:#fff;
-  display:grid;place-items:center;font-size:17px;flex-shrink:0;
-}
-.topo .quem{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--tinta2)}
+.topo img.logo{height:34px;width:auto;display:block}
+.marca{display:flex;align-items:center;gap:12px;font-weight:600;font-size:15px;color:rgba(255,255,255,.88)}
+.topo .quem{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:14px;color:rgba(255,255,255,.82)}
+.topo .quem .link{color:#fff}
 .env{max-width:820px;margin:0 auto;padding:24px 20px 64px}
 h1{font-size:24px;line-height:1.25;letter-spacing:-.01em}
 h2{font-size:18px;letter-spacing:-.01em}
@@ -216,7 +217,8 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
 <body>
 
 <header class="topo">
-  <span class="marca"><span class="selo">◎</span><span id="nome-espaco">Central de Solicitações</span></span>
+  <img class="logo" src="/portal/marca.png" alt="Quality Sistemas" />
+  <span class="marca"><span id="nome-espaco">Central de Solicitações</span></span>
   <span class="quem escondido" id="quem">
     <span id="nome-cliente"></span>
     <button class="link" id="sair">Sair</button>

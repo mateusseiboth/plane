@@ -13,8 +13,9 @@
 import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
+import { respostaDaMarca } from "@utils/marca";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
-import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
+import { EProjectAction, requireProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { publishRealtime } from "@utils/realtime";
 import { checkRateLimit } from "@utils/rate-limiter";
 import { getWorkspaceOrFail } from "@utils/workspace";
@@ -38,7 +39,13 @@ import {
   type ContaDoPortal,
 } from "@modules/portal/conta";
 import { serializeAvaliacaoParaEquipe } from "@modules/portal/avaliacao";
-import { createConta, deleteConta, listContas, resetSenhaDaConta, updateConta } from "@modules/portal/contas-admin.service";
+import {
+  createConta,
+  deleteConta,
+  listContas,
+  resetSenhaDaConta,
+  updateConta,
+} from "@modules/portal/contas-admin.service";
 import { isInteracaoDoChamado } from "@modules/portal/conversa";
 import { closeSolicitacao, createInteracao, reopenSolicitacao, saveAvaliacao } from "@modules/portal/interacoes";
 import { findVisitasDaConta, readVisitaDaConta } from "@modules/portal/visitas-do-cliente";
@@ -111,6 +118,9 @@ export const portalModule = new Elysia({ prefix: "/portal" })
   })
 
   // ── Nome do espaço, para o cabeçalho da página ─────────────────────────────
+  // A marca, servida daqui porque a página é HTML da própria API.
+  .get("/marca.png", () => respostaDaMarca())
+
   .get("/api/espaco", async ({ query }) => {
     const espaco = await espacoPeloSlug(String((query as any).workspace ?? ""));
     return { nome: espaco?.name ?? "Central de Solicitações" };
@@ -151,7 +161,10 @@ export const portalModule = new Elysia({ prefix: "/portal" })
       headers: headers as any,
       metadata: { origem: "portal" },
     });
-    return { token: await signTokenDoPortal(conta.id, conta.workspaceId, conta.tokenUpdatedAt), conta: contaDto(conta) };
+    return {
+      token: await signTokenDoPortal(conta.id, conta.workspaceId, conta.tokenUpdatedAt),
+      conta: contaDto(conta),
+    };
   })
 
   // ── Esqueci minha senha ───────────────────────────────────────────────────

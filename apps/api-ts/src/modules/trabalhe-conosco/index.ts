@@ -14,6 +14,7 @@ import { curriculoService } from "@modules/curriculo";
 import { isRoboNaIsca } from "@modules/curriculo/curriculo.rules";
 import { espacoPeloSlug } from "@modules/portal/conta";
 import { paginaTrabalheConosco } from "@modules/trabalhe-conosco/pagina";
+import { respostaDaMarca } from "@utils/marca";
 import { checkRateLimit } from "@utils/rate-limiter";
 
 /** Envios por IP a cada hora. O currículo é um por pessoa; 5 já é folga. */
@@ -63,6 +64,9 @@ export const trabalheConoscoModule = new Elysia({ prefix: "/trabalhe-conosco" })
       retencaoDias: espaco?.retention_days ?? 365,
     });
   })
+
+  // ── A marca, servida daqui porque a página é HTML da própria API ───────────
+  .get("/marca.png", () => respostaDaMarca())
 
   // ── Situação, para quem quiser montar o link em outro lugar ────────────────
   .get("/api/config", async ({ query }) => {
