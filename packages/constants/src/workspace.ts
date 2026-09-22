@@ -215,6 +215,11 @@ export interface IWorkspaceSidebarNavigationItem {
   labelTranslationKey: string;
   href: string;
   access: EUserWorkspaceRoles[];
+  /**
+   * Ação da matriz (`ACTION_CATALOG` do api-ts) exigida para o item aparecer.
+   * Vale junto com `access`; a API continua sendo quem barra de fato.
+   */
+  action?: string;
   highlight: (pathname: string, url: string) => boolean;
 }
 
@@ -342,6 +347,56 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Ouvidoria (sugestões e reclamações do robô do WhatsApp): só com `ouvidoria.read`.
+  ouvidoria: {
+    key: "ouvidoria",
+    labelTranslationKey: "sidebar.ouvidoria",
+    href: `/ouvidoria/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: "ouvidoria.read",
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  // Denúncia interna: todo membro denuncia; a lista dentro da tela exige `denuncia.read`.
+  denuncias: {
+    key: "denuncias",
+    labelTranslationKey: "sidebar.denuncias",
+    href: `/denuncias/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  // Currículos recebidos pelo robô ("trabalhe conosco"): só com `curriculo.read`.
+  curriculos: {
+    key: "curriculos",
+    labelTranslationKey: "sidebar.curriculos",
+    href: `/curriculos/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: "curriculo.read",
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   analytics: {
     key: "analytics",
     labelTranslationKey: "analytics",
@@ -380,6 +435,9 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["contatos"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["telefones"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["mural"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["ouvidoria"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["denuncias"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["curriculos"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["reports"],

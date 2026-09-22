@@ -37,6 +37,9 @@
     "chat": "Chat",
     "contatos": "Contacts",
     "telefones": "Phone book",
-    "mural": "Board"
+    "mural": "Board",
+    "ouvidoria": "Ombudsman",
+    "denuncias": "Report misconduct",
+    "curriculos": "Résumés"
   }
 }

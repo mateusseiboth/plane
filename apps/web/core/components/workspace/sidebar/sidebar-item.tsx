@@ -15,10 +15,12 @@ import { useTranslation } from "@plane/i18n";
 import { joinUrlPath } from "@plane/utils";
 // components
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
+import { SidebarBadge } from "@/components/workspace/sidebar/sidebar-badge";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web imports
 import { getSidebarNavigationItemIcon } from "@/plane-web/components/workspace/sidebar/helper";
 
@@ -39,6 +41,8 @@ export const SidebarItemBase = observer(function SidebarItemBase({
   const { allowPermissions } = useUserPermissions();
   const { isWorkspaceItemPinned } = useWorkspaceNavigationPreferences();
   const { data } = useUser();
+  // Item que exige ação da matriz (ouvidoria, currículos) some para quem não a tem.
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const { toggleSidebar, isExtendedSidebarOpened, toggleExtendedSidebar } = useAppTheme();
 
@@ -60,12 +64,16 @@ export const SidebarItemBase = observer(function SidebarItemBase({
     "contatos",
     "telefones",
     "mural",
+    "ouvidoria",
+    "denuncias",
+    "curriculos",
     "reports",
     ...(additionalStaticItems || []),
   ];
   const slug = workspaceSlug?.toString() || "";
 
   if (!allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)) return null;
+  if (item.action && !can(item.action)) return null;
 
   const isPinned = isWorkspaceItemPinned(item.key);
   if (!isPinned && !staticItems.includes(item.key)) return null;
@@ -80,6 +88,7 @@ export const SidebarItemBase = observer(function SidebarItemBase({
         <div className="flex items-center gap-1.5 py-[1px]">
           {icon}
           <p className="text-13 leading-5 font-medium">{t(item.labelTranslationKey)}</p>
+          <SidebarBadge itemKey={item.key} slug={slug} />
         </div>
         {additionalRender?.(item.key, slug)}
       </SidebarNavItem>
