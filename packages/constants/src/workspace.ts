@@ -416,6 +416,23 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     action: ["posatendimento.record", "posatendimento.verify"],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Links úteis: a página só REÚNE endereços, e cada cartão já é recortado no
+  // servidor pelo que a pessoa pode ver. Por isso é leitura para todo membro.
+  "links-uteis": {
+    key: "links-uteis",
+    labelTranslationKey: "sidebar.links_uteis",
+    href: `/links-uteis/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   analytics: {
     key: "analytics",
     labelTranslationKey: "analytics",
@@ -458,6 +475,7 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["denuncias"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["curriculos"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["pos-atendimento"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["links-uteis"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["reports"],

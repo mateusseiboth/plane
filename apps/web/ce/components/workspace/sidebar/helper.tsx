@@ -9,6 +9,7 @@ import {
   Contact,
   FileBarChart,
   FileUser,
+  Link2,
   Megaphone,
   MessageSquare,
   MessageSquareWarning,
@@ -78,5 +79,7 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <FileBarChart className={cn("size-4 flex-shrink-0", className)} />;
     case "wiki":
       return <BookOpen className={cn("size-4 flex-shrink-0", className)} />;
+    case "links-uteis":
+      return <Link2 className={cn("size-4 flex-shrink-0", className)} />;
   }
 };

@@ -2,6 +2,7 @@ import prisma from "@db";
 import {revokeUserSessions} from "@utils/session";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit} from "@utils/audit";
 import {authPlugin} from "@middleware/auth";
+import {readChatConfig} from "@utils/chat-config";
 import {serializarCiclos} from "@modules/cycle";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
 import {resolverOrdenacao} from "@utils/issue-order";
@@ -1095,13 +1096,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/chat-config/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const instance = await prisma.instance.findFirst({select: {configurations: true}});
-    const cfg = ((instance?.configurations as any)?.chat ?? {}) as any;
-    return {
-      enabled: Boolean(cfg.enabled),
-      api_url: cfg.api_url ?? "",
-      ws_url: cfg.ws_url ?? "",
-    };
+    return readChatConfig();
   })
   .patch("/:slug/chat-config/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);

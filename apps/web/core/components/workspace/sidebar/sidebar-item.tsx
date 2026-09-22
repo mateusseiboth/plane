@@ -67,6 +67,7 @@ export const SidebarItemBase = observer(function SidebarItemBase({
     "curriculos",
     "wiki",
     "pos-atendimento",
+    "links-uteis",
     "reports",
     ...(additionalStaticItems || []),
   ];
