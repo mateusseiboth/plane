@@ -36,6 +36,19 @@ export function Logo({ logo, size = 16, type = "material" }: Props) {
   // Early returns for loading/empty states
   if (!logo || !logo.in_use) return loadingSkeleton;
 
+  // Ícone em imagem (o do sistema, importado do SAC).
+  if (logo.in_use === "image") {
+    if (!logo.image?.url) return loadingSkeleton;
+    return (
+      <img
+        src={logo.image.url}
+        alt=""
+        className="flex-shrink-0 rounded-sm object-contain"
+        style={{ height: size, width: size }}
+      />
+    );
+  }
+
   const { in_use, emoji, icon } = logo;
   const value = in_use === "emoji" ? emoji?.value : icon?.name;
 
