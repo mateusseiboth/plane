@@ -16,6 +16,8 @@
 import prisma from "@db";
 import { Prisma } from "@prisma/client";
 import { parseNumeroDoChamado } from "@utils/numero-do-chamado";
+import { EProjectAction, hasWorkspaceAction } from "@utils/permission-checks";
+import { findMemberProjectIds } from "@utils/workspace";
 
 /** Name of the custom text-search configuration (portuguese + unaccent). */
 export const PT_FTS_CONFIG = "pt_unaccent";
@@ -88,7 +90,7 @@ export function chaveDoChamado(termo: string): { identificador: string; sequenci
   return { identificador: casou[1], sequencial: Number(casou[2]) };
 }
 
-/** Uma linha de chamado devolvida por {@link buscarChamados}. */
+/** Uma linha de chamado devolvida por {@link findChamados}. */
 export type ChamadoEncontrado = {
   id: string;
   name: string;
@@ -140,7 +142,7 @@ export type ChamadoEncontrado = {
  * @param termo o que a pessoa digitou, já sem o "#" decorativo.
  * @param limite teto de linhas; a ordenação é a do servidor e deve ser mantida.
  */
-export async function buscarChamados(workspaceId: string, termo: string, limite: number): Promise<ChamadoEncontrado[]> {
+export async function findChamados(workspaceId: string, termo: string, limite: number): Promise<ChamadoEncontrado[]> {
   const q = termo.trim().replace(/^#/, "");
   if (!q) return [];
 
@@ -238,6 +240,103 @@ export async function buscarChamados(workspaceId: string, termo: string, limite:
     `);
 }
 
+/**
+ * Documento pesquisável de uma página (alias `p`): título + texto. Precisa ser
+ * idêntico, byte a byte, à expressão de `idx_pages_fts` para o índice valer.
+ */
+export const PAGE_FTS_DOC_P = `to_tsvector('${PT_FTS_CONFIG}', coalesce(p.name,'') || ' ' || coalesce(p.description_stripped,''))`;
+
+/** A mesma expressão sem alias, usada na criação do índice. */
+const PAGE_FTS_DOC = PAGE_FTS_DOC_P.replace(/p\./g, "");
+
+/** Tamanho do trecho do texto devolvido junto de cada página encontrada. */
+const TAMANHO_DO_TRECHO = 160;
+
+/** Uma página devolvida por {@link findPaginas}. */
+export type PaginaEncontrada = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  excerpt: string;
+  project_ids: string[];
+  project_identifiers: string[];
+};
+
+/**
+ * Busca de páginas do espaço de trabalho: a wiki e as páginas de sistema.
+ *
+ * É a fonte única da busca dentro da wiki, da paleta ⌘K (`/search/`) e da busca
+ * global (`/global-search/`). Quem chama diz o que a pessoa enxerga:
+ *  - `includeWiki`: páginas sem sistema vinculado (quem tem `wiki.view`);
+ *  - `projectIds`: páginas vinculadas a estes sistemas (os de que ela participa).
+ * Página privada de outra pessoa, arquivada ou excluída nunca aparece.
+ *
+ * Braços, como na busca de chamados: texto com radical e sem acento (FTS) e
+ * título com tolerância a erro de digitação (trigrama e ILIKE).
+ */
+export async function findPaginas(params: {
+  workspaceId: string;
+  userId: string;
+  termo: string;
+  limite: number;
+  includeWiki: boolean;
+  projectIds: string[];
+}): Promise<PaginaEncontrada[]> {
+  const { workspaceId, userId, termo, limite, includeWiki, projectIds } = params;
+  const q = termo.trim();
+  if (!q) return [];
+
+  const ftsDoc = Prisma.raw(PAGE_FTS_DOC_P);
+  const cfg = Prisma.raw(`'${PT_FTS_CONFIG}'`);
+
+  return prisma.$queryRaw<PaginaEncontrada[]>(Prisma.sql`
+      WITH achados AS (
+        SELECT p.id,
+               ts_rank(to_tsvector(${cfg}, coalesce(p.name,'')), websearch_to_tsquery(${cfg}, ${q})) * 4
+               + ts_rank(${ftsDoc}, websearch_to_tsquery(${cfg}, ${q}))
+               + similarity(p.name, ${q}) * 2
+               + (CASE WHEN p.name ILIKE '%' || ${q} || '%' THEN 1 ELSE 0 END) AS relevancia
+          FROM pages p
+         WHERE p.workspace_id = ${workspaceId}::uuid
+           AND p.deleted_at IS NULL AND p.archived_at IS NULL
+           AND (p.access = 0 OR p.owned_by_id = ${userId}::uuid)
+           AND (${ftsDoc} @@ websearch_to_tsquery(${cfg}, ${q})
+                OR p.name % ${q}
+                OR p.name ILIKE '%' || ${q} || '%')
+      )
+      SELECT p.id, p.name, p.parent_id,
+             left(coalesce(p.description_stripped, ''), ${TAMANHO_DO_TRECHO}) AS excerpt,
+             coalesce(array_agg(pp.project_id::text) FILTER (WHERE pp.project_id IS NOT NULL), '{}') AS project_ids,
+             coalesce(array_agg(pr.identifier) FILTER (WHERE pr.identifier IS NOT NULL), '{}') AS project_identifiers
+        FROM pages p
+        JOIN achados a ON a.id = p.id
+        LEFT JOIN project_pages pp ON pp.page_id = p.id
+        LEFT JOIN projects pr ON pr.id = pp.project_id
+       GROUP BY p.id, p.name, p.parent_id, p.description_stripped, p.updated_at, a.relevancia
+      HAVING (${includeWiki}::boolean AND count(pp.id) = 0)
+          OR bool_or(pp.project_id = ANY(${projectIds}::uuid[]))
+       ORDER BY a.relevancia DESC, p.updated_at DESC
+       LIMIT ${limite}
+    `);
+}
+
+/**
+ * Páginas que ESTA pessoa pode achar: as da wiki, se ela tem `wiki.view`, e as
+ * dos sistemas de que participa. É o recorte da paleta e da busca global.
+ */
+export async function findPaginasDaPessoa(params: {
+  workspaceId: string;
+  userId: string;
+  termo: string;
+  limite: number;
+}): Promise<PaginaEncontrada[]> {
+  const [includeWiki, projectIds] = await Promise.all([
+    hasWorkspaceAction(params.workspaceId, params.userId, EProjectAction.WIKI_VIEW),
+    findMemberProjectIds(params.workspaceId, params.userId),
+  ]);
+  return findPaginas({ ...params, includeWiki, projectIds });
+}
+
 // DDL statements, executed one at a time (CREATE INDEX cannot run inside a tx
 // block alongside other statements, so we keep them separate and idempotent).
 const STATEMENTS: string[] = [
@@ -265,9 +364,12 @@ const STATEMENTS: string[] = [
   // Resolução de "ESIC-150" → chamado (rota /browse/ e busca por identificador).
   // Sem ele, cada link de notificação aberto varre a tabela inteira de chamados.
   `CREATE INDEX IF NOT EXISTS idx_issues_project_sequence ON issues (project_id, sequence_id)`,
+  // Busca de páginas (wiki e sistemas): título + texto, e título com erro de digitação.
+  `CREATE INDEX IF NOT EXISTS idx_pages_fts ON pages USING gin (${PAGE_FTS_DOC}) WHERE deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_pages_name_trgm ON pages USING gin (name gin_trgm_ops)`,
 ];
 
-const ANALYZE_STATEMENTS = [`ANALYZE issues`, `ANALYZE issue_comments`];
+const ANALYZE_STATEMENTS = [`ANALYZE issues`, `ANALYZE issue_comments`, `ANALYZE pages`];
 
 export type EnsureSearchResult = {
   ok: boolean;
