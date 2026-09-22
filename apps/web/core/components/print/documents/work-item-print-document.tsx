@@ -119,10 +119,10 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
               const comment = getCommentById(commentId);
               if (!comment) return null;
               return (
-                <article key={commentId} className="print-avoid-break border-b border-neutral-200 pb-2 last:border-0">
+                <article key={commentId} className="print-avoid-break border-neutral-200 border-b pb-2 last:border-0">
                   <p className="text-[10px] font-semibold">
                     {comment.actor_detail?.display_name ?? getUserDetails(comment.actor)?.display_name ?? "—"}
-                    <span className="ml-2 font-normal text-neutral-500">{formatDateTime(comment.created_at)}</span>
+                    <span className="font-normal text-neutral-500 ml-2">{formatDateTime(comment.created_at)}</span>
                   </p>
                   <PrintHtml html={comment.comment_html} fallback={comment.comment_stripped} />
                 </article>

@@ -34,14 +34,30 @@ function TicketsOverview({ data }: { data: any }) {
         <KpiCard label="Pendentes" value={k.pending ?? 0} accent="amber" />
         <KpiCard label="Cancelados" value={k.cancelled ?? 0} accent="red" />
         <KpiCard label="Taxa de conclusão" value={`${k.completion_rate ?? 0}%`} accent="green" />
-        <KpiCard label="Tempo médio de resolução" value={fmtDays(k.avg_resolution_days)} hint="dias entre abertura e conclusão" />
+        <KpiCard
+          label="Tempo médio de resolução"
+          value={fmtDays(k.avg_resolution_days)}
+          hint="dias entre abertura e conclusão"
+        />
       </KpiGrid>
 
       <SectionTitle>Distribuição por prioridade</SectionTitle>
-      <BarList items={(data.by_priority ?? []).map((p: any): BarItem => ({ label: p.label, value: p.count, color: PRIORITY_COLORS[p.key] }))} />
+      <BarList
+        items={(data.by_priority ?? []).map(
+          (p: any): BarItem => ({ label: p.label, value: p.count, color: PRIORITY_COLORS[p.key] })
+        )}
+      />
 
       <SectionTitle>Distribuição por status</SectionTitle>
-      <BarList items={(data.by_status ?? []).map((s: any, i: number): BarItem => ({ label: s.label, value: s.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_status ?? []).map(
+          (s: any, i: number): BarItem => ({
+            label: s.label,
+            value: s.count,
+            color: CHART_PALETTE[i % CHART_PALETTE.length],
+          })
+        )}
+      />
     </div>
   );
 }
@@ -63,7 +79,18 @@ function BySystem({ data }: { data: any }) {
         <KpiCard label="Sistemas com chamados" value={data.count ?? 0} />
       </KpiGrid>
       <SectionTitle hint="Top 12">Ranking de sistemas</SectionTitle>
-      <BarList items={(data.rows ?? []).slice(0, 12).map((r: any, i: number): BarItem => ({ label: r.name, value: r.total, sub: `${r.percentage}%`, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.rows ?? [])
+          .slice(0, 12)
+          .map(
+            (r: any, i: number): BarItem => ({
+              label: r.name,
+              value: r.total,
+              sub: `${r.percentage}%`,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Detalhamento por sistema</SectionTitle>
       <ReportTable columns={cols} rows={data.rows ?? []} />
     </div>
@@ -88,7 +115,18 @@ function ByEntity({ data }: { data: any }) {
         <KpiCard label="Entidades com chamados" value={data.count ?? 0} />
       </KpiGrid>
       <SectionTitle hint="Top 12">Ranking de entidades</SectionTitle>
-      <BarList items={(data.rows ?? []).slice(0, 12).map((r: any, i: number): BarItem => ({ label: r.name, value: r.total, sub: `${r.percentage}%`, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.rows ?? [])
+          .slice(0, 12)
+          .map(
+            (r: any, i: number): BarItem => ({
+              label: r.name,
+              value: r.total,
+              sub: `${r.percentage}%`,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Detalhamento por entidade</SectionTitle>
       <ReportTable columns={cols} rows={data.rows ?? []} />
     </div>
@@ -115,7 +153,11 @@ function ByPriority({ data }: { data: any }) {
   return (
     <div>
       <SectionTitle>Distribuição por prioridade</SectionTitle>
-      <BarList items={(data.rows ?? []).map((r: any): BarItem => ({ label: r.label, value: r.total, color: PRIORITY_COLORS[r.key] }))} />
+      <BarList
+        items={(data.rows ?? []).map(
+          (r: any): BarItem => ({ label: r.label, value: r.total, color: PRIORITY_COLORS[r.key] })
+        )}
+      />
       <SectionTitle>Desempenho por prioridade</SectionTitle>
       <ReportTable columns={cols} rows={data.rows ?? []} />
       <SectionTitle hint="Urgentes/Altas em aberto há mais tempo">⚠ Lista crítica</SectionTitle>
@@ -150,7 +192,11 @@ function ByType({ data }: { data: any }) {
         <KpiCard label="Tipos distintos" value={(data.rows ?? []).length} />
       </KpiGrid>
       <SectionTitle>Volume por tipo</SectionTitle>
-      <BarList items={(data.rows ?? []).slice(0, 14).map((r: any): BarItem => ({ label: r.name, value: r.total, color: r.color }))} />
+      <BarList
+        items={(data.rows ?? [])
+          .slice(0, 14)
+          .map((r: any): BarItem => ({ label: r.name, value: r.total, color: r.color }))}
+      />
       <SectionTitle>Detalhamento</SectionTitle>
       <ReportTable columns={cols} rows={data.rows ?? []} />
     </div>
@@ -174,7 +220,18 @@ function Productivity({ data }: { data: any }) {
         <KpiCard label="Pessoas com atividade" value={data.count ?? 0} />
       </KpiGrid>
       <SectionTitle hint="Top 12 por chamados atribuídos">Carga por responsável</SectionTitle>
-      <BarList items={(data.rows ?? []).slice(0, 12).map((r: any, i: number): BarItem => ({ label: r.name, value: r.assigned, sub: `${r.completed} resolv.`, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.rows ?? [])
+          .slice(0, 12)
+          .map(
+            (r: any, i: number): BarItem => ({
+              label: r.name,
+              value: r.assigned,
+              sub: `${r.completed} resolv.`,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Detalhamento por responsável</SectionTitle>
       <ReportTable columns={cols} rows={data.rows ?? []} />
     </div>
@@ -198,9 +255,31 @@ function TimeTracking({ data }: { data: any }) {
         <KpiCard label="Média por lançamento" value={`${k.avg_minutes_per_entry ?? 0} min`} />
       </KpiGrid>
       <SectionTitle>Horas por usuário</SectionTitle>
-      <BarList unit="h" items={(data.by_user ?? []).slice(0, 12).map((u: any, i: number): BarItem => ({ label: u.name, value: u.hours, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        unit="h"
+        items={(data.by_user ?? [])
+          .slice(0, 12)
+          .map(
+            (u: any, i: number): BarItem => ({
+              label: u.name,
+              value: u.hours,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Horas por sistema</SectionTitle>
-      <BarList unit="h" items={(data.by_system ?? []).slice(0, 12).map((s: any, i: number): BarItem => ({ label: s.name, value: s.hours, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        unit="h"
+        items={(data.by_system ?? [])
+          .slice(0, 12)
+          .map(
+            (s: any, i: number): BarItem => ({
+              label: s.name,
+              value: s.hours,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Chamados que mais consumiram tempo</SectionTitle>
       <ReportTable columns={issueCols} rows={data.top_issues ?? []} />
     </div>
@@ -227,9 +306,29 @@ function Interactions({ data }: { data: any }) {
       <SectionTitle hint="Possíveis gargalos">Chamados com mais interações</SectionTitle>
       <ReportTable columns={issueCols} rows={data.most_active_issues ?? []} />
       <SectionTitle>Interações por usuário</SectionTitle>
-      <BarList items={(data.by_user ?? []).slice(0, 12).map((u: any, i: number): BarItem => ({ label: u.name, value: u.interactions, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_user ?? [])
+          .slice(0, 12)
+          .map(
+            (u: any, i: number): BarItem => ({
+              label: u.name,
+              value: u.interactions,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Interações por sistema</SectionTitle>
-      <BarList items={(data.by_system ?? []).slice(0, 12).map((s: any, i: number): BarItem => ({ label: s.name, value: s.interactions, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_system ?? [])
+          .slice(0, 12)
+          .map(
+            (s: any, i: number): BarItem => ({
+              label: s.name,
+              value: s.interactions,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
     </div>
   );
 }
@@ -247,15 +346,61 @@ function VisitsOverview({ data }: { data: any }) {
         <KpiCard label="Duração média" value={fmtHours(k.avg_duration_hours)} />
       </KpiGrid>
       <SectionTitle>Por status</SectionTitle>
-      <BarList items={(data.by_status ?? []).map((s: any, i: number): BarItem => ({ label: s.label, value: s.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_status ?? []).map(
+          (s: any, i: number): BarItem => ({
+            label: s.label,
+            value: s.count,
+            color: CHART_PALETTE[i % CHART_PALETTE.length],
+          })
+        )}
+      />
       <SectionTitle>Por motivo</SectionTitle>
-      <BarList items={(data.by_motive ?? []).map((m: any, i: number): BarItem => ({ label: m.label, value: m.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_motive ?? []).map(
+          (m: any, i: number): BarItem => ({
+            label: m.label,
+            value: m.count,
+            color: CHART_PALETTE[i % CHART_PALETTE.length],
+          })
+        )}
+      />
       <SectionTitle>Por técnico</SectionTitle>
-      <BarList items={(data.by_technician ?? []).slice(0, 12).map((t: any, i: number): BarItem => ({ label: t.name, value: t.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_technician ?? [])
+          .slice(0, 12)
+          .map(
+            (t: any, i: number): BarItem => ({
+              label: t.name,
+              value: t.count,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Por entidade</SectionTitle>
-      <BarList items={(data.by_entity ?? []).slice(0, 12).map((e: any, i: number): BarItem => ({ label: e.name, value: e.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_entity ?? [])
+          .slice(0, 12)
+          .map(
+            (e: any, i: number): BarItem => ({
+              label: e.name,
+              value: e.count,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
       <SectionTitle>Por cidade</SectionTitle>
-      <BarList items={(data.by_city ?? []).slice(0, 12).map((c: any, i: number): BarItem => ({ label: c.name, value: c.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.by_city ?? [])
+          .slice(0, 12)
+          .map(
+            (c: any, i: number): BarItem => ({
+              label: c.name,
+              value: c.count,
+              color: CHART_PALETTE[i % CHART_PALETTE.length],
+            })
+          )}
+      />
     </div>
   );
 }
@@ -267,7 +412,14 @@ function Trends({ data }: { data: any }) {
     { key: "month", header: "Mês", render: (r) => <span className="font-medium text-primary">{r.month}</span> },
     { key: "created", header: "Criados", align: "right" },
     { key: "completed", header: "Concluídos", align: "right" },
-    { key: "net", header: "Saldo (backlog)", align: "right", render: (r) => <span className={r.net > 0 ? "text-red-600" : "text-green-600"}>{r.net > 0 ? `+${r.net}` : r.net}</span> },
+    {
+      key: "net",
+      header: "Saldo (backlog)",
+      align: "right",
+      render: (r) => (
+        <span className={r.net > 0 ? "text-red-600" : "text-green-600"}>{r.net > 0 ? `+${r.net}` : r.net}</span>
+      ),
+    },
   ];
   return (
     <div>
@@ -280,20 +432,23 @@ function Trends({ data }: { data: any }) {
               <div className="w-20 shrink-0 text-12 text-secondary">{s.month}</div>
               <div className="flex-1 space-y-1">
                 <div className="relative h-3 overflow-hidden rounded bg-surface-2">
-                  <div className="h-full rounded bg-blue-500" style={{ width: `${(s.created / max) * 100}%` }} />
+                  <div className="bg-blue-500 h-full rounded" style={{ width: `${(s.created / max) * 100}%` }} />
                 </div>
                 <div className="relative h-3 overflow-hidden rounded bg-surface-2">
-                  <div className="h-full rounded bg-green-500" style={{ width: `${(s.completed / max) * 100}%` }} />
+                  <div className="bg-green-500 h-full rounded" style={{ width: `${(s.completed / max) * 100}%` }} />
                 </div>
               </div>
               <div className="w-24 shrink-0 text-right text-11 tabular-nums">
-                <span className="text-blue-600">{s.created}</span> / <span className="text-green-600">{s.completed}</span>
+                <span className="text-blue-600">{s.created}</span> /{" "}
+                <span className="text-green-600">{s.completed}</span>
               </div>
             </div>
           );
         })}
       </div>
-      <p className="mt-2 text-11 text-tertiary"><span className="text-blue-600">■</span> Criados &nbsp; <span className="text-green-600">■</span> Concluídos</p>
+      <p className="mt-2 text-11 text-tertiary">
+        <span className="text-blue-600">■</span> Criados &nbsp; <span className="text-green-600">■</span> Concluídos
+      </p>
       <SectionTitle>Tabela mensal</SectionTitle>
       <ReportTable columns={cols} rows={series} />
     </div>
@@ -317,7 +472,15 @@ function BacklogAging({ data }: { data: any }) {
         <KpiCard label="Chamados em aberto" value={data.total_open ?? 0} accent="amber" />
       </KpiGrid>
       <SectionTitle>Distribuição por idade</SectionTitle>
-      <BarList items={(data.buckets ?? []).map((b: any, i: number): BarItem => ({ label: b.range, value: b.count, color: bucketColors[i % bucketColors.length] }))} />
+      <BarList
+        items={(data.buckets ?? []).map(
+          (b: any, i: number): BarItem => ({
+            label: b.range,
+            value: b.count,
+            color: bucketColors[i % bucketColors.length],
+          })
+        )}
+      />
       <SectionTitle hint="Top 25 mais antigos">Chamados envelhecidos</SectionTitle>
       <ReportTable columns={oldCols} rows={data.oldest ?? []} emptyLabel="Nenhum chamado em aberto." />
     </div>
@@ -341,7 +504,15 @@ function Sla({ data }: { data: any }) {
         <KpiCard label="Resolvidos em ≤ 72h" value={`${k.pct_within_72h ?? 0}%`} accent="green" />
       </KpiGrid>
       <SectionTitle>Distribuição dos tempos de resolução</SectionTitle>
-      <BarList items={(data.bands ?? []).map((b: any, i: number): BarItem => ({ label: b.range, value: b.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.bands ?? []).map(
+          (b: any, i: number): BarItem => ({
+            label: b.range,
+            value: b.count,
+            color: CHART_PALETTE[i % CHART_PALETTE.length],
+          })
+        )}
+      />
       <SectionTitle>Tempo médio por prioridade</SectionTitle>
       <ReportTable columns={cols} rows={data.by_priority ?? []} />
     </div>
@@ -358,15 +529,36 @@ function Executive({ data }: { data: any }) {
         <KpiCard label="Concluídos" value={k.completed ?? 0} accent="green" />
         <KpiCard label="Taxa de conclusão" value={`${k.completion_rate ?? 0}%`} accent="green" />
         <KpiCard label="Em aberto" value={k.open_total ?? 0} accent="amber" />
-        <KpiCard label="Urgentes/Altas em aberto" value={k.open_high_priority ?? 0} accent="red" hint="atenção da gerência" />
+        <KpiCard
+          label="Urgentes/Altas em aberto"
+          value={k.open_high_priority ?? 0}
+          accent="red"
+          hint="atenção da gerência"
+        />
         <KpiCard label="Tempo médio de resolução" value={fmtDays(k.avg_resolution_days)} />
         <KpiCard label="Horas registradas" value={fmtHours(k.total_logged_hours)} />
         <KpiCard label="Visitas técnicas" value={k.total_visits ?? 0} accent="blue" />
       </KpiGrid>
       <SectionTitle hint="Top 5">Sistemas com mais chamados</SectionTitle>
-      <BarList items={(data.top_systems ?? []).map((s: any, i: number): BarItem => ({ label: s.name, value: s.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.top_systems ?? []).map(
+          (s: any, i: number): BarItem => ({
+            label: s.name,
+            value: s.count,
+            color: CHART_PALETTE[i % CHART_PALETTE.length],
+          })
+        )}
+      />
       <SectionTitle hint="Top 5">Entidades com mais chamados</SectionTitle>
-      <BarList items={(data.top_entities ?? []).map((e: any, i: number): BarItem => ({ label: e.name, value: e.count, color: CHART_PALETTE[i % CHART_PALETTE.length] }))} />
+      <BarList
+        items={(data.top_entities ?? []).map(
+          (e: any, i: number): BarItem => ({
+            label: e.name,
+            value: e.count,
+            color: CHART_PALETTE[i % CHART_PALETTE.length],
+          })
+        )}
+      />
     </div>
   );
 }

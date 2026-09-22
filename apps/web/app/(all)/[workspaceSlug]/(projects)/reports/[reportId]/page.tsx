@@ -13,7 +13,7 @@ import { ReportRenderer } from "@/components/reports/renderers";
 import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import reportsService, { type ReportFilters } from "@/services/reports.service";
-import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
+import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 
 function ReportDetailPage() {
   const { workspaceSlug, reportId } = useParams() as { workspaceSlug: string; reportId: string };
@@ -57,7 +57,10 @@ function ReportDetailPage() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-secondary">
         <p className="text-sm">Relatório não encontrado.</p>
-        <button onClick={() => router.push(`/${workspaceSlug}/reports`)} className="text-sm text-accent-primary hover:underline">
+        <button
+          onClick={() => router.push(`/${workspaceSlug}/reports`)}
+          className="text-sm text-accent-primary hover:underline"
+        >
           Voltar aos relatórios
         </button>
       </div>
@@ -121,7 +124,7 @@ function ReportDetailPage() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="rounded border border-subtle bg-surface-2 px-2 py-1.5 text-12 outline-none focus:border-accent-primary"
+                  className="focus:border-accent-primary rounded border border-subtle bg-surface-2 px-2 py-1.5 text-12 outline-none"
                 />
               </div>
               <div>
@@ -130,7 +133,7 @@ function ReportDetailPage() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="rounded border border-subtle bg-surface-2 px-2 py-1.5 text-12 outline-none focus:border-accent-primary"
+                  className="focus:border-accent-primary rounded border border-subtle bg-surface-2 px-2 py-1.5 text-12 outline-none"
                 />
               </div>
             </>
@@ -141,8 +144,8 @@ function ReportDetailPage() {
               <SelectPesquisavel
                 value={projectId}
                 onChange={setProjectId}
-                opcoes={(workspaceProjectIds ?? []).map((id) => ({value: id, label: getProjectById(id)?.name ?? id}))}
-                opcaoVazia={{value: "", label: "Todos os sistemas"}}
+                opcoes={(workspaceProjectIds ?? []).map((id) => ({ value: id, label: getProjectById(id)?.name ?? id }))}
+                opcaoVazia={{ value: "", label: "Todos os sistemas" }}
                 className="min-w-[180px]"
                 buttonClassName="h-8 text-12"
               />
@@ -162,7 +165,12 @@ function ReportDetailPage() {
           )}
           {(dateFrom || dateTo || projectId || entityId) && (
             <button
-              onClick={() => { setDateFrom(""); setDateTo(""); setProjectId(""); setEntityId(null); }}
+              onClick={() => {
+                setDateFrom("");
+                setDateTo("");
+                setProjectId("");
+                setEntityId(null);
+              }}
               className="text-12 text-accent-primary hover:underline"
             >
               Limpar filtros
@@ -187,7 +195,9 @@ function ReportDetailPage() {
           </div>
 
           {loading && <p className="py-10 text-center text-13 text-secondary">Carregando relatório...</p>}
-          {!loading && !data && <p className="py-10 text-center text-13 text-tertiary">Não foi possível carregar o relatório.</p>}
+          {!loading && !data && (
+            <p className="py-10 text-center text-13 text-tertiary">Não foi possível carregar o relatório.</p>
+          )}
           {!loading && data && <ReportRenderer reportId={reportId} data={data} />}
 
           <div data-print-only>
