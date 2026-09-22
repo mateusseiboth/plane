@@ -59,6 +59,7 @@ export const SidebarItemBase = observer(function SidebarItemBase({
     "visits",
     "contatos",
     "telefones",
+    "mural",
     "reports",
     ...(additionalStaticItems || []),
   ];

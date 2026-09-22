@@ -17,11 +17,17 @@ import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 // local imports
 import { NotificationContent } from "./content";
+import { NotificationMuralItem } from "./mural-item";
 import { NotificationOption } from "./options";
 
 type TNotificationItem = {
   workspaceSlug: string;
   notificationId: string;
+};
+
+// Notificação que não é de chamado tem cartão próprio, escolhido pela entidade.
+const ITEM_POR_ENTIDADE: Record<string, (props: TNotificationItem) => React.ReactNode> = {
+  mural: (props) => <NotificationMuralItem {...props} />,
 };
 
 export const NotificationItem = observer(function NotificationItem(props: TNotificationItem) {
@@ -64,6 +70,9 @@ export const NotificationItem = observer(function NotificationItem(props: TNotif
       }
     }
   };
+
+  const ItemDaEntidade = ITEM_POR_ENTIDADE[notification?.entity_name ?? ""];
+  if (ItemDaEntidade && workspaceSlug && notification?.id) return ItemDaEntidade(props);
 
   if (!workspaceSlug || !notificationId || !notification?.id || !notificationField || !workspace?.id || !projectId)
     return <></>;

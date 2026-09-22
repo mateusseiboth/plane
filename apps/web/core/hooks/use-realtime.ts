@@ -11,7 +11,16 @@ import { useEffect, useRef } from "react";
 // affected data when a matching event arrives. See use-realtime usage in the
 // workspace wrapper (channel) and the layout/intake/activity roots (refetch).
 
-export type RealtimeEntity = "issue" | "comment" | "intake" | "reaction" | "cycle" | "module" | "state" | "notification";
+export type RealtimeEntity =
+  | "issue"
+  | "comment"
+  | "intake"
+  | "reaction"
+  | "cycle"
+  | "module"
+  | "state"
+  | "notification"
+  | "mural";
 export type RealtimeAction = "create" | "update" | "delete";
 
 export type RealtimeEvent = {

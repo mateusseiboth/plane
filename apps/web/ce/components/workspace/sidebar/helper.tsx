@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { Contact, FileBarChart, MessageSquare, Phone, Wrench } from "lucide-react";
+import { Contact, FileBarChart, Megaphone, MessageSquare, Phone, Wrench } from "lucide-react";
 import {
   AnalyticsIcon,
   ArchiveIcon,
@@ -55,6 +55,8 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <Contact className={cn("size-4 flex-shrink-0", className)} />;
     case "telefones":
       return <Phone className={cn("size-4 flex-shrink-0", className)} />;
+    case "mural":
+      return <Megaphone className={cn("size-4 flex-shrink-0", className)} />;
     case "reports":
       return <FileBarChart className={cn("size-4 flex-shrink-0", className)} />;
   }

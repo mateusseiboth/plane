@@ -325,6 +325,23 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Mural de recados: todo membro lê. Quem publica é decidido pela ação
+  // `mural.publish` dentro da tela, não por este acesso.
+  mural: {
+    key: "mural",
+    labelTranslationKey: "sidebar.mural",
+    href: `/mural/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   analytics: {
     key: "analytics",
     labelTranslationKey: "analytics",
@@ -362,6 +379,7 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["chat"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["contatos"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["telefones"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["mural"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["reports"],

@@ -176,6 +176,8 @@ do banco compartilhado).
 `audit.view`, `page.manage.all`, `label.sla`, `entity.manage`, `visit.manage`, `issue.type.manage`,
 `import.manage`, `integration.manage`, `ai.config`, `plugin.manage`, `portal.manage`.
 
+Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`).
+
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já
 deixava, por número).

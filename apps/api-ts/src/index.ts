@@ -51,6 +51,7 @@ import { portalAdminModule, portalModule, portalRespostaModule } from "@modules/
 import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 import { buildErrorBody, type HttpError } from "@utils/field-error";
+import { muralModule } from "@modules/mural";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -215,6 +216,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // Mounted before the SDK gateways so their global widget-auth hook doesn't leak
   // onto the SSE stream (see the rolesModule note above).
   .use(realtimeModule)
+  .use(muralModule)
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)

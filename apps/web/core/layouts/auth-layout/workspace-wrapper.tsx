@@ -44,6 +44,7 @@ import {useRealtimeChannel} from "@/hooks/use-realtime";
 import {useAvisoDeChamado} from "@/hooks/use-aviso-de-chamado";
 // components
 import {RespostaAoClienteModal} from "@/components/portal/resposta-ao-cliente-modal";
+import {MuralAvisoObrigatorio} from "@/components/mural/aviso-obrigatorio";
 
 interface IWorkspaceAuthWrapper {
   children: ReactNode;
@@ -259,6 +260,7 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
     <>
       {children}
       <RespostaAoClienteModal />
+      <MuralAvisoObrigatorio workspaceSlug={workspaceSlug?.toString()} />
     </>
   );
 });
