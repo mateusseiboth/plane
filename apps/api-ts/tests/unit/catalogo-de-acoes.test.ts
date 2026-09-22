@@ -222,6 +222,21 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(ACTION_CATALOG.MURAL_PUBLISH).toMatchObject({ label: "Publicar recados no mural", scope: "workspace" });
   });
 
+  it("a wiki é lida por todas as funções e escrita por quem escreve chamado", () => {
+    expect(donosDe("wiki.view")).toEqual([
+      "admin",
+      "atendimento",
+      "gestor_projeto",
+      "guest",
+      "member",
+      "qualidade",
+      "ti",
+    ]);
+    expect(donosDe("wiki.edit")).toEqual(["admin", "gestor_projeto", "member", "qualidade", "ti"]);
+    expect(ACTION_CATALOG.WIKI_VIEW.scope).toBe("workspace");
+    expect(ACTION_CATALOG.WIKI_EDIT.scope).toBe("workspace");
+  });
+
   it("funções e SLA de etiqueta, que eram papel >= 18, ficam com Gestor e admin", () => {
     expect(donosDe("role.manage")).toEqual(["admin", "gestor_projeto"]);
     expect(donosDe("label.sla")).toEqual(["admin", "gestor_projeto"]);

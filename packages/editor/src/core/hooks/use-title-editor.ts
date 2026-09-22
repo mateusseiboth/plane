@@ -64,7 +64,7 @@ export const useTitleEditor = (props: TUseTitleEditorProps) => {
         ...TitleExtensions,
         ...(extensions ?? []),
         Placeholder.configure({
-          placeholder: () => "Untitled",
+          placeholder: () => "Sem título",
           includeChildren: true,
           showOnlyWhenEditable: false,
         }),

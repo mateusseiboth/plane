@@ -21,7 +21,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const asCorpo = (body: unknown): Corpo => (body && typeof body === "object" ? (body as Corpo) : {});
 
-export const isBlank = (valor: unknown): boolean => valor === undefined || valor === null || String(valor).trim() === "";
+export const isBlank = (valor: unknown): boolean =>
+  valor === undefined || valor === null || String(valor).trim() === "";
 
 export const readText = (valor: unknown, max: number): string | null =>
   isBlank(valor) ? null : String(valor).trim().slice(0, max);

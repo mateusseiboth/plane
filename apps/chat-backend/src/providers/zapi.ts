@@ -133,6 +133,7 @@ export class ZapiProvider implements WhatsAppProvider {
       phone,
       senderName: body.senderName || body.chatName,
       ...(typeof body.momment === "number" ? {momentMs: body.momment} : {}),
+      ...readFoto(body),
     };
     const leitor = LEITORES.find(([aplica]) => aplica(body));
     return leitor ? leitor[1](body, base) : null;
@@ -152,7 +153,13 @@ const readItemDaFila = (item: any): ItemDaFilaDeSaida => ({
   id: textOrNull(item?.ZaapId ?? item?.zaapId ?? item?.MessageId ?? item?._id),
 });
 
-type Base = Pick<InboundMessage, "externalId" | "phone" | "senderName" | "momentMs">;
+type Base = Pick<InboundMessage, "externalId" | "phone" | "senderName" | "momentMs" | "photoUrl">;
+
+/** A Z-API manda a foto de perfil em `photo` (ou `senderPhoto`, conforme a versão). */
+const readFoto = (body: any): {photoUrl?: string} => {
+  const url = [body.photo, body.senderPhoto].find((v) => typeof v === "string" && v.startsWith("https://"));
+  return url ? {photoUrl: url} : {};
+};
 type Leitor = [aplica: (body: any) => boolean, ler: (body: any, base: Base) => InboundMessage];
 
 const CHAMADA_PERDIDA = new Set(["CALL_MISSED_VOICE", "CALL_MISSED_VIDEO"]);

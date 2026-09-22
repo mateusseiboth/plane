@@ -11,6 +11,26 @@
  * carrega script de terceiro nenhum.
  */
 
+/**
+ * A barra do editor, igual na abertura e na resposta. Os botões são achados
+ * pela classe dentro de cada editor, não por id: são duas barras na página.
+ */
+function barraDoEditor(): string {
+  return `          <div class="barra" role="toolbar" aria-label="Formatação">
+            <button type="button" data-comando="bold" title="Negrito"><strong>N</strong></button>
+            <button type="button" data-comando="italic" title="Itálico"><em>I</em></button>
+            <button type="button" data-comando="underline" title="Sublinhado"><u>S</u></button>
+            <span class="risco"></span>
+            <button type="button" data-comando="insertUnorderedList" title="Lista">• Lista</button>
+            <button type="button" data-comando="insertOrderedList" title="Lista numerada">1. Lista</button>
+            <span class="risco"></span>
+            <button type="button" class="por-link" title="Inserir link">🔗</button>
+            <button type="button" data-comando="removeFormat" title="Limpar formatação">✕</button>
+            <span class="risco"></span>
+            <button type="button" class="escolher" title="Anexar arquivo">📎 Anexar</button>
+          </div>`;
+}
+
 export function paginaDoPortal(): string {
   return `<!doctype html>
 <html lang="pt-BR">
@@ -167,7 +187,30 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
 }
 .anexo .tirar:hover{color:var(--alerta)}
 .anexo.falhou{border-color:var(--alerta);color:var(--alerta)}
-.anexo button.nome{text-align:left;cursor:pointer;color:var(--marca);text-decoration:underline}
+.anexo button.nome{text-align:left;cursor:pointer;color:var(--marca);text-decoration:underline;background:none;border:none;font:inherit;padding:0}
+/* ── Conversa, ações e avaliação ──────────────────────────────────────────── */
+.conversa{margin-top:22px;display:flex;flex-direction:column;gap:12px}
+.conversa .titulo-secao{font-size:14px;font-weight:700;color:var(--tinta2)}
+.msg{border:1px solid var(--linha);border-radius:12px;padding:12px 16px;background:var(--fundo)}
+.msg.equipe{border:1.5px solid var(--marca);background:var(--marca-clara)}
+.msg .de{font-size:13px;font-weight:700;color:var(--tinta2)}
+.msg.equipe .de{color:var(--marca)}
+.msg .texto{margin-top:6px;line-height:1.7;overflow-wrap:anywhere}
+.msg .texto p{margin-bottom:8px}
+.painel{margin-top:18px;border-top:1px solid var(--linha);padding-top:18px}
+.painel h3{font-size:16px;margin-bottom:10px}
+.opcoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.opcoes label{
+  display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;
+  border:1.5px solid var(--linha);border-radius:999px;padding:7px 14px;background:var(--papel);
+}
+.opcoes input{width:auto;accent-color:var(--marca)}
+.avaliada{margin-top:18px;font-size:14px;color:var(--tinta2)}
+/* ── Visitas ──────────────────────────────────────────────────────────────── */
+.dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.dados .rotulo{font-size:12px;font-weight:700;color:var(--tinta3);text-transform:uppercase;letter-spacing:.04em}
+.dados .valor{margin-top:2px;font-size:15px}
+@media print{.topo,.abas,.rodape,.nao-imprime{display:none!important}.cartao{box-shadow:none;border:none}}
 </style>
 </head>
 <body>
@@ -251,8 +294,9 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
     <h1>Minhas solicitações</h1>
     <p class="sub">O que você abriu e em que ponto está.</p>
     <div class="abas">
-      <button class="aba ativa" id="aba-lista">Minhas solicitações</button>
-      <button class="aba" id="aba-nova">Abrir solicitação</button>
+      <button class="aba ativa" data-ir="tela-lista">Minhas solicitações</button>
+      <button class="aba" data-ir="tela-nova">Abrir solicitação</button>
+      <button class="aba" data-ir="tela-visitas">Visitas técnicas</button>
     </div>
     <div id="pedidos"></div>
   </section>
@@ -262,8 +306,9 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
     <h1>Abrir solicitação</h1>
     <p class="sub">Conte o que você precisa. Nossa equipe recebe e dá andamento.</p>
     <div class="abas">
-      <button class="aba" id="aba-lista2">Minhas solicitações</button>
-      <button class="aba ativa">Abrir solicitação</button>
+      <button class="aba" data-ir="tela-lista">Minhas solicitações</button>
+      <button class="aba ativa" data-ir="tela-nova">Abrir solicitação</button>
+      <button class="aba" data-ir="tela-visitas">Visitas técnicas</button>
     </div>
     <div id="erro-nova" class="aviso erro escondido"></div>
     <form id="form-nova" class="cartao" style="padding:22px">
@@ -278,19 +323,7 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
       <div class="campo">
         <label for="descricao">O que está acontecendo</label>
         <div class="editor" id="editor">
-          <div class="barra" role="toolbar" aria-label="Formatação">
-            <button type="button" data-comando="bold" title="Negrito"><strong>N</strong></button>
-            <button type="button" data-comando="italic" title="Itálico"><em>I</em></button>
-            <button type="button" data-comando="underline" title="Sublinhado"><u>S</u></button>
-            <span class="risco"></span>
-            <button type="button" data-comando="insertUnorderedList" title="Lista">•—</button>
-            <button type="button" data-comando="insertOrderedList" title="Lista numerada">1—</button>
-            <span class="risco"></span>
-            <button type="button" id="por-link" title="Inserir link">🔗</button>
-            <button type="button" data-comando="removeFormat" title="Limpar formatação">✕</button>
-            <span class="risco"></span>
-            <button type="button" id="escolher" title="Anexar arquivo">📎 Anexar</button>
-          </div>
+${barraDoEditor()}
           <div id="descricao" class="area" contenteditable="true" role="textbox" aria-multiline="true"
                data-vazio="Descreva com as suas palavras: o que você tentou fazer, o que apareceu na tela e desde quando acontece."></div>
         </div>
@@ -316,13 +349,120 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
         <label style="font-size:14px;font-weight:600;color:var(--tinta2)">Anexos</label>
         <ul class="anexos" id="d-anexos"></ul>
       </div>
-      <div class="resposta escondido" id="d-resposta">
-        <div class="rotulo">Resposta da equipe</div>
-        <div class="texto" id="d-resposta-texto"></div>
-        <div class="assina" id="d-resposta-assina"></div>
-      </div>
-      <div class="rodape">
+      <!-- A conversa: o que o cliente escreveu e o que a equipe respondeu. -->
+      <div class="conversa" id="d-conversa"></div>
+      <div id="d-avaliada" class="avaliada escondido"></div>
+      <div id="erro-detalhe" class="aviso erro escondido" style="margin-top:16px"></div>
+      <div id="ok-detalhe" class="aviso escondido" style="margin-top:16px"></div>
+
+      <div class="rodape" id="d-acoes">
+        <button class="botao escondido" id="d-responder">Responder</button>
+        <button class="botao escondido" id="d-avaliar">Avaliar o atendimento</button>
+        <button class="botao vazado escondido" id="d-encerrar">Já resolvi, encerrar</button>
+        <button class="botao vazado escondido" id="d-reabrir">Reabrir</button>
         <button class="botao vazado" id="d-voltar">Voltar</button>
+      </div>
+
+      <form id="form-resposta" class="painel escondido">
+        <h3>Sua resposta</h3>
+        <div class="editor" id="editor-resposta">
+${barraDoEditor()}
+          <div id="area-resposta" class="area" contenteditable="true" role="textbox" aria-multiline="true"
+               data-vazio="Escreva a sua resposta para a equipe."></div>
+        </div>
+        <input type="file" id="arquivos-resposta" multiple class="escondido" />
+        <ul class="anexos" id="anexos-resposta"></ul>
+        <div class="rodape">
+          <button class="botao" id="enviar-resposta">Enviar resposta</button>
+          <button type="button" class="botao vazado" data-fechar>Cancelar</button>
+        </div>
+      </form>
+
+      <form id="form-encerrar" class="painel escondido">
+        <h3>Encerrar a solicitação</h3>
+        <div class="campo">
+          <label for="motivo-encerrar">Quer deixar um recado? (opcional)</label>
+          <textarea id="motivo-encerrar" maxlength="2000" style="min-height:90px"></textarea>
+        </div>
+        <div class="rodape">
+          <button class="botao" id="enviar-encerrar">Encerrar</button>
+          <button type="button" class="botao vazado" data-fechar>Cancelar</button>
+        </div>
+      </form>
+
+      <form id="form-reabrir" class="painel escondido">
+        <h3>Reabrir a solicitação</h3>
+        <div class="campo">
+          <label for="motivo-reabrir">Por que precisa reabrir?</label>
+          <textarea id="motivo-reabrir" maxlength="2000" style="min-height:90px" required></textarea>
+        </div>
+        <div class="rodape">
+          <button class="botao" id="enviar-reabrir">Reabrir</button>
+          <button type="button" class="botao vazado" data-fechar>Cancelar</button>
+        </div>
+      </form>
+
+      <form id="form-avaliacao" class="painel escondido">
+        <h3>Avalie o atendimento</h3>
+        <div class="campo">
+          <label>O atendimento resolveu o que você precisava?</label>
+          <div class="opcoes">
+            <label><input type="radio" name="expectativa" value="4" /> Sim</label>
+            <label><input type="radio" name="expectativa" value="3" /> Parcialmente</label>
+            <label><input type="radio" name="expectativa" value="2" /> Não</label>
+            <label><input type="radio" name="expectativa" value="1" /> Não era o que eu precisava</label>
+          </div>
+        </div>
+        <div class="campo">
+          <label>Como você classifica o atendimento?</label>
+          <div class="opcoes">
+            <label><input type="radio" name="nota_atendimento" value="3" /> Ótimo</label>
+            <label><input type="radio" name="nota_atendimento" value="2" /> Bom</label>
+            <label><input type="radio" name="nota_atendimento" value="1" /> Ruim</label>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="comentario-avaliacao">Comentário (opcional)</label>
+          <textarea id="comentario-avaliacao" maxlength="2000" style="min-height:80px"></textarea>
+        </div>
+        <div class="rodape">
+          <button class="botao" id="enviar-avaliacao">Enviar avaliação</button>
+          <button type="button" class="botao vazado" data-fechar>Agora não</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── Visitas técnicas ───────────────────────────────────────────────── -->
+  <section id="tela-visitas" class="escondido">
+    <h1>Visitas técnicas</h1>
+    <p class="sub">As visitas da nossa equipe à sua entidade.</p>
+    <div class="abas">
+      <button class="aba" data-ir="tela-lista">Minhas solicitações</button>
+      <button class="aba" data-ir="tela-nova">Abrir solicitação</button>
+      <button class="aba ativa" data-ir="tela-visitas">Visitas técnicas</button>
+    </div>
+    <div class="abas" style="margin-top:0">
+      <button class="aba ativa" data-situacao="abertas">Em aberto</button>
+      <button class="aba" data-situacao="efetivadas">Efetivadas</button>
+      <button class="aba" data-situacao="vencidas">Vencidas</button>
+    </div>
+    <div id="visitas"></div>
+  </section>
+
+  <!-- ── Relatório da visita ────────────────────────────────────────────── -->
+  <section id="tela-visita" class="escondido">
+    <div class="cartao detalhe">
+      <div class="cabeca" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="codigo" id="v-numero"></span>
+        <span class="chip" id="v-situacao"></span>
+      </div>
+      <h2 style="margin-top:8px">Relatório da visita técnica</h2>
+      <div class="dados" id="v-dados"></div>
+      <div id="v-relatorio"></div>
+      <div class="rodape">
+        <button class="botao vazado" id="v-voltar">Voltar</button>
+        <button class="botao vazado" id="v-imprimir">Imprimir</button>
       </div>
     </div>
   </section>
@@ -376,7 +516,7 @@ function limparHtml(bruto) {
 }
 
 function mostrar(tela) {
-  ["tela-entrada", "tela-esqueci", "tela-redefinir", "tela-lista", "tela-nova", "tela-detalhe"].forEach(function (id) {
+  ["tela-entrada", "tela-esqueci", "tela-redefinir", "tela-lista", "tela-nova", "tela-detalhe", "tela-visitas", "tela-visita"].forEach(function (id) {
     $(id).classList.toggle("escondido", id !== tela);
   });
   window.scrollTo(0, 0);
@@ -502,7 +642,8 @@ function cartaoDoPedido(p) {
   botao.innerHTML =
     '<span class="cabeca"><span class="codigo">' + esc(p.codigo) + '</span>' +
     '<span class="chip" data-grupo="' + esc(p.grupo) + '">' + esc(p.situacao) + "</span>" +
-    (p.resposta ? '<span class="chip" data-grupo="completed">✓ Respondida</span>' : "") + "</span>" +
+    (p.resposta ? '<span class="chip" data-grupo="completed">✓ Respondida</span>' : "") +
+    (p.acoes && p.acoes.avaliar ? '<span class="chip" data-grupo="triage">Avalie o atendimento</span>' : "") + "</span>" +
     '<span class="titulo" style="display:block">' + esc(p.titulo) + "</span>" +
     '<span class="pe"><span>' + esc(p.sistema) + "</span><span>Aberta em " + esc(dataCurta(p.aberta_em)) + "</span></span>";
   botao.onclick = function () { verDetalhe(p); };
@@ -528,7 +669,85 @@ async function carregarPedidos() {
   }
 }
 
+// ── Detalhe e conversa ───────────────────────────────────────────────────
+/** A solicitação aberta no detalhe: as ações do rodapé agem sobre ela. */
+var atual = null;
+
+var ROTULO_DA_MENSAGEM = {
+  interacao: "respondeu",
+  reabertura: "reabriu a solicitação",
+  encerramento: "encerrou a solicitação",
+  resposta: "respondeu",
+};
+
+function desenharConversa(p) {
+  var alvo = $("d-conversa");
+  alvo.innerHTML = "";
+  var itens = p.interacoes || [];
+  if (!itens.length) return;
+  var titulo = document.createElement("div");
+  titulo.className = "titulo-secao";
+  titulo.textContent = "Conversa";
+  alvo.appendChild(titulo);
+  itens.forEach(function (m) {
+    var caixa = document.createElement("div");
+    caixa.className = "msg " + (m.autor === "equipe" ? "equipe" : "cliente");
+    var de = document.createElement("div");
+    de.className = "de";
+    de.textContent =
+      (m.autor === "equipe" ? m.nome || "Equipe" : "Você") + " " + (ROTULO_DA_MENSAGEM[m.tipo] || "escreveu") +
+      (m.enviada_em ? " em " + dataCurta(m.enviada_em) : "");
+    var texto = document.createElement("div");
+    texto.className = "texto";
+    // O texto passa pela peneira de novo: a resposta da equipe e o que o cliente
+    // escreveu viram HTML aqui, e só a lista curta de tags sobrevive.
+    texto.innerHTML = limparHtml(m.texto_html);
+    caixa.appendChild(de);
+    caixa.appendChild(texto);
+    alvo.appendChild(caixa);
+  });
+}
+
+/** Depois de avaliar com "não resolveu", o caminho é reabrir ou abrir outra. */
+var DICA_DA_AVALIACAO = {
+  1: "Se precisa de outra coisa, abra uma nova solicitação.",
+  2: "Se o problema continua, use Reabrir.",
+  3: "Se o problema continua, use Reabrir.",
+};
+
+function desenharAvaliacao(p) {
+  var a = p.avaliacao;
+  $("d-avaliada").classList.toggle("escondido", !a);
+  if (!a) return;
+  $("d-avaliada").textContent =
+    "Sua avaliação: " + a.expectativa_rotulo + ", atendimento " + a.nota_atendimento_rotulo.toLowerCase() + ". " +
+    (DICA_DA_AVALIACAO[a.expectativa] || "Obrigado pela avaliação.");
+}
+
+var FORMULARIOS = ["form-resposta", "form-encerrar", "form-reabrir", "form-avaliacao"];
+
+function abrirFormulario(id) {
+  FORMULARIOS.forEach(function (f) { $(f).classList.toggle("escondido", f !== id); });
+  erro("erro-detalhe", "");
+  $("ok-detalhe").classList.add("escondido");
+  if (id) $(id).scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-fechar]"), function (botao) {
+  botao.onclick = function () { abrirFormulario(null); };
+});
+
+var BOTAO_DA_ACAO = { responder: "d-responder", avaliar: "d-avaliar", encerrar: "d-encerrar", reabrir: "d-reabrir" };
+
+function desenharAcoes(p) {
+  var acoes = p.acoes || {};
+  Object.keys(BOTAO_DA_ACAO).forEach(function (acao) {
+    $(BOTAO_DA_ACAO[acao]).classList.toggle("escondido", !acoes[acao]);
+  });
+}
+
 function verDetalhe(p) {
+  atual = p;
   $("d-codigo").textContent = p.codigo;
   $("d-situacao").textContent = p.situacao;
   $("d-situacao").dataset.grupo = p.grupo;
@@ -539,76 +758,146 @@ function verDetalhe(p) {
   // também edita esse campo, com um editor que aceita muito mais coisa.
   $("d-corpo").innerHTML = limparHtml(p.descricao_html);
   desenharAnexosDoDetalhe(p);
-  // A resposta da equipe só existe depois que o chamado é concluído.
-  var r = p.resposta;
-  $("d-resposta").classList.toggle("escondido", !r);
-  if (r) {
-    $("d-resposta-texto").textContent = r.texto || "";
-    $("d-resposta-assina").textContent =
-      (r.respondida_por || "Equipe") + (r.respondida_em ? " · " + dataCurta(r.respondida_em) : "");
-  }
+  desenharConversa(p);
+  desenharAvaliacao(p);
+  desenharAcoes(p);
+  abrirFormulario(null);
   mostrar("tela-detalhe");
 }
 
-$("d-voltar").onclick = function () { mostrar("tela-lista"); };
+/** Relê a solicitação depois de uma ação e redesenha o detalhe. */
+async function recarregarDetalhe(mensagem) {
+  var p = await api("/solicitacoes/" + atual.id);
+  verDetalhe(p);
+  if (!mensagem) return;
+  $("ok-detalhe").textContent = mensagem;
+  $("ok-detalhe").classList.remove("escondido");
+}
+
+$("d-voltar").onclick = function () { irPara("tela-lista"); };
+$("d-responder").onclick = function () { abrirFormulario("form-resposta"); $("area-resposta").focus(); };
+$("d-encerrar").onclick = function () { abrirFormulario("form-encerrar"); };
+$("d-reabrir").onclick = function () { abrirFormulario("form-reabrir"); $("motivo-reabrir").focus(); };
+$("d-avaliar").onclick = function () { abrirFormulario("form-avaliacao"); };
+
+/** Toda ação do detalhe: trava o botão, mostra o erro no lugar e redesenha. */
+async function executarAcao(botaoId, acao, sucesso) {
+  erro("erro-detalhe", "");
+  $(botaoId).disabled = true;
+  try {
+    var p = await acao();
+    verDetalhe(p);
+    $("ok-detalhe").textContent = sucesso;
+    $("ok-detalhe").classList.remove("escondido");
+  } catch (e) {
+    erro("erro-detalhe", e.message);
+  } finally {
+    $(botaoId).disabled = false;
+  }
+}
+
+$("form-encerrar").onsubmit = function (e) {
+  e.preventDefault();
+  executarAcao("enviar-encerrar", function () {
+    return api("/solicitacoes/" + atual.id + "/encerrar", { method: "POST", body: { motivo: $("motivo-encerrar").value } });
+  }, "Solicitação encerrada. Conte como foi o atendimento.").then(function () { $("motivo-encerrar").value = ""; });
+};
+
+$("form-reabrir").onsubmit = function (e) {
+  e.preventDefault();
+  executarAcao("enviar-reabrir", function () {
+    return api("/solicitacoes/" + atual.id + "/reabrir", { method: "POST", body: { motivo: $("motivo-reabrir").value } });
+  }, "Solicitação reaberta. Nossa equipe vai olhar de novo.").then(function () { $("motivo-reabrir").value = ""; });
+};
+
+function valorMarcado(nome) {
+  var marcado = document.querySelector('input[name="' + nome + '"]:checked');
+  return marcado ? Number(marcado.value) : null;
+}
+
+$("form-avaliacao").onsubmit = function (e) {
+  e.preventDefault();
+  executarAcao("enviar-avaliacao", function () {
+    return api("/solicitacoes/" + atual.id + "/avaliacao", {
+      method: "POST",
+      body: {
+        expectativa: valorMarcado("expectativa"),
+        nota_atendimento: valorMarcado("nota_atendimento"),
+        comentario: $("comentario-avaliacao").value,
+      },
+    });
+  }, "Obrigado pela avaliação.");
+};
 
 // ── Editor de texto ──────────────────────────────────────────────────────
 // Um contenteditable com barra de botões, e nada além disso. O editor do
 // produto é React + TipTap: traria bundle, build e o peso do app inteiro para
 // uma página pública que o cliente abre duas vezes por mês. Aqui o que importa
-// é negrito, lista, link e anexo — o resto é ruído.
+// é negrito, lista, link e anexo; o resto é ruído.
 //
 // O HTML que sai daqui NÃO é confiável: quem limpa é o servidor
 // (modules/portal/texto-rico). Isto é conveniência de digitação, não segurança.
-var editor = $("descricao");
 
 // Enter cria parágrafo em vez de div (o que o resto do sistema guarda).
 try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (e) {}
 
-Array.prototype.forEach.call(document.querySelectorAll(".barra [data-comando]"), function (botao) {
-  botao.onmousedown = function (e) { e.preventDefault(); };
-  botao.onclick = function () {
-    editor.focus();
-    document.execCommand(botao.dataset.comando, false, null);
-  };
-});
-
-$("por-link").onmousedown = function (e) { e.preventDefault(); };
-$("por-link").onclick = function () {
-  editor.focus();
-  var endereco = window.prompt("Endereço do link (começando com https://)", "https://");
-  if (!endereco) return;
-  if (!/^(https?:\\/\\/|mailto:)/i.test(endereco)) {
-    erro("erro-nova", "O link precisa começar com https:// ou mailto:.");
-    return;
-  }
-  document.execCommand("createLink", false, endereco);
-};
-
-// Colar de Word/e-mail traz um monte de marcação inútil; entra só o texto.
-// Imagem no clipboard (print de tela) vira anexo, que é onde a equipe procura.
-editor.addEventListener("paste", function (e) {
-  var dados = e.clipboardData;
-  if (!dados) return;
-  e.preventDefault();
-  if (dados.files && dados.files.length) { adicionarArquivos(dados.files); return; }
-  document.execCommand("insertText", false, dados.getData("text/plain"));
-});
-
-["dragenter", "dragover"].forEach(function (evento) {
-  $("editor").addEventListener(evento, function (e) {
-    e.preventDefault();
-    $("editor").classList.add("soltando");
+/**
+ * Liga a barra, o colar e o arrastar de um editor. São dois na página (abrir e
+ * responder); cada um acha os próprios botões dentro da caixa dele.
+ */
+function montarEditor(caixa, area, entradaDeArquivo, erroId, aoArquivos) {
+  Array.prototype.forEach.call(caixa.querySelectorAll(".barra [data-comando]"), function (botao) {
+    botao.onmousedown = function (e) { e.preventDefault(); };
+    botao.onclick = function () {
+      area.focus();
+      document.execCommand(botao.dataset.comando, false, null);
+    };
   });
-});
-["dragleave", "drop"].forEach(function (evento) {
-  $("editor").addEventListener(evento, function () { $("editor").classList.remove("soltando"); });
-});
-$("editor").addEventListener("drop", function (e) {
-  if (!e.dataTransfer || !e.dataTransfer.files.length) return;
-  e.preventDefault();
-  adicionarArquivos(e.dataTransfer.files);
-});
+
+  var porLink = caixa.querySelector(".por-link");
+  porLink.onmousedown = function (e) { e.preventDefault(); };
+  porLink.onclick = function () {
+    area.focus();
+    var endereco = window.prompt("Endereço do link (começando com https://)", "https://");
+    if (!endereco) return;
+    if (!/^(https?:\\/\\/|mailto:)/i.test(endereco)) {
+      erro(erroId, "O link precisa começar com https:// ou mailto:.");
+      return;
+    }
+    document.execCommand("createLink", false, endereco);
+  };
+
+  caixa.querySelector(".escolher").onclick = function () { entradaDeArquivo.click(); };
+  entradaDeArquivo.onchange = function () {
+    aoArquivos(entradaDeArquivo.files);
+    entradaDeArquivo.value = "";
+  };
+
+  // Colar de Word/e-mail traz um monte de marcação inútil; entra só o texto.
+  // Imagem no clipboard (print de tela) vira anexo, que é onde a equipe procura.
+  area.addEventListener("paste", function (e) {
+    var dados = e.clipboardData;
+    if (!dados) return;
+    e.preventDefault();
+    if (dados.files && dados.files.length) { aoArquivos(dados.files); return; }
+    document.execCommand("insertText", false, dados.getData("text/plain"));
+  });
+
+  ["dragenter", "dragover"].forEach(function (evento) {
+    caixa.addEventListener(evento, function (e) {
+      e.preventDefault();
+      caixa.classList.add("soltando");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (evento) {
+    caixa.addEventListener(evento, function () { caixa.classList.remove("soltando"); });
+  });
+  caixa.addEventListener("drop", function (e) {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    aoArquivos(e.dataTransfer.files);
+  });
+}
 
 // ── Anexos ───────────────────────────────────────────────────────────────
 var MAX_ARQUIVOS = 5;
@@ -616,8 +905,6 @@ var TETO_PADRAO = 25 * 1024 * 1024;
 var TETO_VIDEO = 100 * 1024 * 1024;
 var EXTENSOES_OK = "png jpg jpeg gif webp heic heif bmp mp4 m4v mov webm mkv 3gp mp3 ogg oga wav m4a pdf txt log csv docx xlsx".split(" ");
 var EXTENSOES_DE_VIDEO = "mp4 m4v mov webm mkv 3gp".split(" ");
-/** Arquivos escolhidos e ainda não enviados — sobem depois que a solicitação nasce. */
-var pendentes = [];
 
 $("dica-anexos").textContent =
   "Até " + MAX_ARQUIVOS + " arquivos: imagem, vídeo, áudio, PDF, texto ou planilha. " +
@@ -644,21 +931,6 @@ function recusa(arquivo) {
   return "";
 }
 
-function adicionarArquivos(lista) {
-  var problemas = [];
-  Array.prototype.forEach.call(lista, function (arquivo) {
-    if (pendentes.length >= MAX_ARQUIVOS) {
-      problemas.push("Cada solicitação aceita até " + MAX_ARQUIVOS + " arquivos.");
-      return;
-    }
-    var motivo = recusa(arquivo);
-    if (motivo) { problemas.push(motivo); return; }
-    pendentes.push(arquivo);
-  });
-  erro("erro-nova", problemas.length ? problemas[0] : "");
-  desenharPendentes();
-}
-
 function linhaDeAnexo(nome, tamanho, aoTirar) {
   var linha = document.createElement("li");
   linha.className = "anexo";
@@ -682,29 +954,49 @@ function linhaDeAnexo(nome, tamanho, aoTirar) {
   return linha;
 }
 
-function desenharPendentes() {
-  var alvo = $("anexos-novos");
-  alvo.innerHTML = "";
-  pendentes.forEach(function (arquivo, posicao) {
-    alvo.appendChild(
-      linhaDeAnexo(arquivo.name, arquivo.size, function () {
-        pendentes.splice(posicao, 1);
-        desenharPendentes();
-      })
-    );
-  });
+/**
+ * Arquivos escolhidos e ainda não enviados. Sobem depois que a solicitação
+ * (ou a resposta) nasce: é isso que permite conferir dono antes de gravar.
+ */
+function criarPendentes(listaId, erroId) {
+  var itens = [];
+  function desenhar() {
+    var alvo = $(listaId);
+    alvo.innerHTML = "";
+    itens.forEach(function (arquivo, posicao) {
+      alvo.appendChild(
+        linhaDeAnexo(arquivo.name, arquivo.size, function () {
+          itens.splice(posicao, 1);
+          desenhar();
+        })
+      );
+    });
+  }
+  return {
+    itens: itens,
+    adicionar: function (lista) {
+      var problemas = [];
+      Array.prototype.forEach.call(lista, function (arquivo) {
+        if (itens.length >= MAX_ARQUIVOS) {
+          problemas.push("Cada envio aceita até " + MAX_ARQUIVOS + " arquivos.");
+          return;
+        }
+        var motivo = recusa(arquivo);
+        if (motivo) { problemas.push(motivo); return; }
+        itens.push(arquivo);
+      });
+      erro(erroId, problemas.length ? problemas[0] : "");
+      desenhar();
+    },
+    limpar: function () { itens.splice(0, itens.length); desenhar(); },
+  };
 }
 
-$("escolher").onclick = function () { $("arquivos").click(); };
-$("arquivos").onchange = function () {
-  adicionarArquivos($("arquivos").files);
-  $("arquivos").value = "";
-};
-
 /** Sobe um arquivo já com a solicitação criada. Devolve o erro, ou "" se deu certo. */
-async function subirAnexo(solicitacaoId, arquivo) {
+async function subirAnexo(solicitacaoId, arquivo, interacaoId) {
   var formulario = new FormData();
   formulario.append("arquivo", arquivo, arquivo.name);
+  if (interacaoId) formulario.append("interacao", interacaoId);
   var res = await fetch(API + "/solicitacoes/" + solicitacaoId + "/anexos", {
     method: "POST",
     headers: token ? { Authorization: "Bearer " + token } : {},
@@ -713,6 +1005,18 @@ async function subirAnexo(solicitacaoId, arquivo) {
   if (res.ok) return "";
   var dados = await res.json().catch(function () { return {}; });
   return "“" + arquivo.name + "”: " + (dados.detail || "não foi possível anexar.");
+}
+
+/** Sobe a lista inteira, contando o andamento no botão. Devolve as falhas. */
+async function subirPendentes(pendentes, solicitacaoId, interacaoId, botao) {
+  var falhas = [];
+  for (var i = 0; i < pendentes.itens.length; i++) {
+    botao.textContent = "Enviando anexo " + (i + 1) + " de " + pendentes.itens.length + "…";
+    var falha = await subirAnexo(solicitacaoId, pendentes.itens[i], interacaoId);
+    if (falha) falhas.push(falha);
+  }
+  pendentes.limpar();
+  return falhas;
 }
 
 /**
@@ -752,6 +1056,10 @@ function desenharAnexosDoDetalhe(p) {
 }
 
 // ── Nova ─────────────────────────────────────────────────────────────────
+var editor = $("descricao");
+var pendentesDaAbertura = criarPendentes("anexos-novos", "erro-nova");
+montarEditor($("editor"), editor, $("arquivos"), "erro-nova", pendentesDaAbertura.adicionar);
+
 async function carregarSistemas() {
   var dados = await api("/sistemas");
   sistemas = dados.results;
@@ -785,18 +1093,10 @@ $("form-nova").onsubmit = async function (e) {
     });
     // O anexo só sobe depois: ele pertence a uma solicitação que já existe, e
     // é isso que permite conferir dono antes de gravar arquivo nenhum.
-    var falhas = [];
-    for (var i = 0; i < pendentes.length; i++) {
-      $("enviar").textContent = "Enviando anexo " + (i + 1) + " de " + pendentes.length + "…";
-      var falha = await subirAnexo(criada.id, pendentes[i]);
-      if (falha) falhas.push(falha);
-    }
+    var falhas = await subirPendentes(pendentesDaAbertura, criada.id, null, $("enviar"));
     $("titulo").value = "";
     editor.innerHTML = "";
-    pendentes = [];
-    desenharPendentes();
-    mostrar("tela-lista");
-    await carregarPedidos();
+    await irPara("tela-lista");
     // A solicitação foi aberta de qualquer jeito; o que faltou foi o arquivo.
     if (falhas.length) window.alert("Solicitação aberta, mas um anexo não subiu:\\n" + falhas.join("\\n"));
   } catch (e2) {
@@ -807,9 +1107,141 @@ $("form-nova").onsubmit = async function (e) {
   }
 };
 
-$("aba-nova").onclick = function () { mostrar("tela-nova"); };
-$("aba-lista").onclick = function () { mostrar("tela-lista"); };
-$("aba-lista2").onclick = function () { mostrar("tela-lista"); carregarPedidos(); };
+// ── Responder ────────────────────────────────────────────────────────────
+var areaResposta = $("area-resposta");
+var pendentesDaResposta = criarPendentes("anexos-resposta", "erro-detalhe");
+montarEditor($("editor-resposta"), areaResposta, $("arquivos-resposta"), "erro-detalhe", pendentesDaResposta.adicionar);
+
+$("form-resposta").onsubmit = async function (e) {
+  e.preventDefault();
+  erro("erro-detalhe", "");
+  $("enviar-resposta").disabled = true;
+  try {
+    var interacao = await api("/solicitacoes/" + atual.id + "/interacoes", {
+      method: "POST",
+      body: { texto_html: areaResposta.innerHTML },
+    });
+    var falhas = await subirPendentes(pendentesDaResposta, atual.id, interacao.id, $("enviar-resposta"));
+    areaResposta.innerHTML = "";
+    await recarregarDetalhe("Resposta enviada. Nossa equipe foi avisada.");
+    if (falhas.length) erro("erro-detalhe", "Resposta enviada, mas um anexo não subiu. " + falhas[0]);
+  } catch (e2) {
+    erro("erro-detalhe", e2.message);
+  } finally {
+    $("enviar-resposta").textContent = "Enviar resposta";
+    $("enviar-resposta").disabled = false;
+  }
+};
+
+// ── Visitas técnicas ─────────────────────────────────────────────────────
+var situacaoDeVisita = "abertas";
+
+var VAZIO_DE_VISITAS = {
+  abertas: "Nenhuma visita marcada.",
+  efetivadas: "Nenhuma visita efetivada ainda.",
+  vencidas: "Nenhuma visita vencida.",
+};
+
+function cartaoDaVisita(v) {
+  var botao = document.createElement("button");
+  botao.className = "cartao pedido";
+  botao.innerHTML =
+    '<span class="cabeca"><span class="codigo">' + esc(v.numero ? "Visita " + v.numero : "Visita") + "</span>" +
+    '<span class="chip">' + esc(v.situacao) + "</span></span>" +
+    '<span class="titulo" style="display:block">' + esc(v.sistemas.join(", ") || v.entidade || "Visita técnica") + "</span>" +
+    '<span class="pe"><span>' + esc(v.data_programada ? "Marcada para " + dataCurta(v.data_programada) : "Sem data marcada") +
+    "</span><span>" + esc(v.tecnicos.join(", ")) + "</span></span>";
+  botao.onclick = function () { verVisita(v.id); };
+  return botao;
+}
+
+async function carregarVisitas() {
+  var alvo = $("visitas");
+  alvo.innerHTML = '<div class="cartao vazio">Carregando…</div>';
+  Array.prototype.forEach.call(document.querySelectorAll("[data-situacao]"), function (b) {
+    b.classList.toggle("ativa", b.dataset.situacao === situacaoDeVisita);
+  });
+  try {
+    var dados = await api("/visitas?situacao=" + situacaoDeVisita);
+    alvo.innerHTML = "";
+    if (!dados.results.length) {
+      alvo.innerHTML = '<div class="cartao vazio">' + esc(VAZIO_DE_VISITAS[situacaoDeVisita]) + "</div>";
+      return;
+    }
+    dados.results.forEach(function (v) { alvo.appendChild(cartaoDaVisita(v)); });
+  } catch (e) {
+    alvo.innerHTML = '<div class="cartao vazio">' + esc(e.message) + "</div>";
+  }
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-situacao]"), function (botao) {
+  botao.onclick = function () {
+    situacaoDeVisita = botao.dataset.situacao;
+    carregarVisitas();
+  };
+});
+
+function campoDaVisita(rotulo, valor) {
+  if (!valor) return "";
+  return '<div><div class="rotulo">' + esc(rotulo) + '</div><div class="valor">' + esc(valor) + "</div></div>";
+}
+
+function blocoDoRelatorio(titulo, html) {
+  if (!html) return "";
+  return '<div class="painel"><h3>' + esc(titulo) + '</h3><div class="corpo">' + limparHtml(html) + "</div></div>";
+}
+
+async function verVisita(id) {
+  try {
+    var v = await api("/visitas/" + id);
+    $("v-numero").textContent = v.numero ? "Visita " + v.numero : "Visita";
+    $("v-situacao").textContent = v.situacao;
+    $("v-dados").innerHTML =
+      campoDaVisita("Entidade", v.entidade) +
+      campoDaVisita("Cidade", v.cidade) +
+      campoDaVisita("Data marcada", dataCurta(v.data_programada)) +
+      campoDaVisita("Período", v.periodo) +
+      campoDaVisita("Técnicos", v.tecnicos.join(", ")) +
+      campoDaVisita("Sistemas", v.sistemas.join(", ")) +
+      campoDaVisita("Funcionalidades", v.funcionalidades.join(", ")) +
+      campoDaVisita("Motivos", v.motivos.join(", "));
+    var chamados = v.chamados.length
+      ? '<div class="painel"><h3>Chamados tratados</h3><ul class="anexos">' +
+        v.chamados.map(function (c) {
+          return '<li class="anexo"><span class="codigo">' + esc(c.codigo) + '</span><span class="nome">' +
+            esc(c.titulo) + '</span><span class="peso">' + esc(c.situacao) + "</span></li>";
+        }).join("") + "</ul></div>"
+      : "";
+    var semRelatorio = !v.resumo_html && !v.conclusao_html
+      ? '<p class="dica" style="margin-top:16px">O relatório aparece aqui quando a visita for concluída.</p>'
+      : "";
+    $("v-relatorio").innerHTML =
+      blocoDoRelatorio("Resumo", v.resumo_html) + blocoDoRelatorio("Conclusão", v.conclusao_html) + chamados + semRelatorio;
+    mostrar("tela-visita");
+  } catch (e) {
+    window.alert(e.message);
+  }
+}
+
+$("v-voltar").onclick = function () { mostrar("tela-visitas"); };
+$("v-imprimir").onclick = function () { window.print(); };
+
+// ── Navegação entre as abas ──────────────────────────────────────────────
+/** O que cada tela carrega ao entrar. */
+var AO_ENTRAR = {
+  "tela-lista": carregarPedidos,
+  "tela-visitas": carregarVisitas,
+};
+
+async function irPara(tela) {
+  mostrar(tela);
+  var carregar = AO_ENTRAR[tela];
+  if (carregar) await carregar();
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-ir]"), function (botao) {
+  botao.onclick = function () { irPara(botao.dataset.ir); };
+});
 
 // ── Abertura ─────────────────────────────────────────────────────────────
 async function abrirPortal(conta) {

@@ -8,7 +8,7 @@ import prisma from "@db";
 import {cleanDb} from "@tests/helpers/setup";
 import {createIssue, createProject, createUser, createWorkspace} from "@tests/helpers/factory";
 import {
-  buscarChamados,
+  findChamados,
   chaveDoChamado,
   COMMENT_FTS_DOC_C,
   ISSUE_FTS_DOC,
@@ -119,7 +119,7 @@ describe("chaveDoChamado", () => {
   });
 });
 
-describe("buscarChamados", () => {
+describe("findChamados", () => {
   // O chamado do defeito: ALMOXA-954 "Cálculo IPTU", sem número legado. Procurar
   // pela chave composta não achava nada, porque a busca da paleta só olhava
   // título e número legado.
@@ -144,31 +144,31 @@ describe("buscarChamados", () => {
   afterAll(() => cleanDb());
 
   it("acha pela chave composta que a pessoa copia da tela", async () => {
-    const achados = await buscarChamados(workspaceId, "ALMOXA-954", 10);
+    const achados = await findChamados(workspaceId, "ALMOXA-954", 10);
     expect(achados[0]?.id).toBe(chamadoId);
   });
 
   it("acha nas grafias que gente digita", async () => {
     for (const digitado of ["almoxa-954", "ALMOXA 954", "#ALMOXA-954"]) {
-      const achados = await buscarChamados(workspaceId, digitado, 10);
+      const achados = await findChamados(workspaceId, digitado, 10);
       expect(achados[0]?.id).toBe(chamadoId);
     }
   });
 
   it("continua achando pelo número do chamado legado", async () => {
     for (const digitado of ["500-2026", "500/2026", "#500-2026"]) {
-      const achados = await buscarChamados(workspaceId, digitado, 10);
+      const achados = await findChamados(workspaceId, digitado, 10);
       expect(achados[0]?.id).toBe(legadoId);
     }
   });
 
   it("o número solto continua achando os números legados que o contêm", async () => {
-    const achados = await buscarChamados(workspaceId, "954", 10);
+    const achados = await findChamados(workspaceId, "954", 10);
     expect(achados.map((c) => c.legacy_ticket_number)).toContain("954-2025");
   });
 
   it("devolve o projeto e o estado junto, que é o que as duas rotas serializam", async () => {
-    const [achado] = await buscarChamados(workspaceId, "ALMOXA-954", 10);
+    const [achado] = await findChamados(workspaceId, "ALMOXA-954", 10);
     expect(achado.project_identifier).toBe("ALMOXA");
     expect(achado.sequence_id).toBe(954);
     expect(achado.name).toBe("Cálculo IPTU");
@@ -178,13 +178,13 @@ describe("buscarChamados", () => {
     const chamado = await prisma.issue.findUniqueOrThrow({where: {id: chamadoId}});
     const numero = `${chamado.ticketSequence}-${chamado.ticketYear}`;
     for (const digitado of [numero, `#${numero}`, numero.replace("-", "/")]) {
-      const achados = await buscarChamados(workspaceId, digitado, 10);
+      const achados = await findChamados(workspaceId, digitado, 10);
       expect(achados[0]?.id).toBe(chamadoId);
       expect(achados[0]?.ticket_number).toBe(numero);
     }
   });
 
   it("termo vazio não busca nada", async () => {
-    expect(await buscarChamados(workspaceId, "   ", 10)).toEqual([]);
+    expect(await findChamados(workspaceId, "   ", 10)).toEqual([]);
   });
 });

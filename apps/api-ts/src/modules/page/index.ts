@@ -3,8 +3,17 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getProjectOrFail, getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
-import {EProjectAction, hasWorkspaceAction} from "@utils/permission-checks";
-
+import { EProjectAction, hasWorkspaceAction, requireWorkspaceAction } from "@utils/permission-checks";
+import {
+  detachFilhas,
+  detachFromParentArquivado,
+  findSubarvore,
+  getNextSortOrder,
+  requireParentValido,
+  setArchivedSubarvore,
+} from "@utils/arvore-de-paginas";
+import { savePageVersion } from "@utils/versoes-da-pagina";
+import { findPaginas } from "@utils/search";
 
 /**
  * Contexto mínimo que os handlers de página consomem. Tipar só o que é usado
@@ -63,6 +72,7 @@ function serializePage(p: any, favoritas: ReadonlySet<string> = SEM_FAVORITOS) {
     workspace: p.workspaceId,
     parent: p.parentId ?? null,
     parent_id: p.parentId ?? null,
+    sort_order: p.sortOrder ?? 0,
     logo_props: p.logoProps ?? undefined,
     label_ids: (p.labels ?? []).map((l: any) => l.labelId ?? l.label?.id).filter(Boolean),
     project_ids: (p.projectPages ?? p.projects ?? []).map((pp: any) => pp.projectId).filter(Boolean),
@@ -93,38 +103,81 @@ function serializePageVersion(v: any) {
   };
 }
 
-/**
- * Autoriza a requisição no escopo em que ela chegou. Quando a URL traz
- * `project_id` o acesso ao projeto também precisa valer — senão qualquer membro
- * do workspace editaria páginas de projetos dos quais não participa.
- * Devolve `isAdmin` porque a UI libera travar/arquivar/apagar para o dono OU
- * para administradores; sem isso o admin veria o botão e levaria 403.
- */
-async function resolveScope(params: Record<string, string>, userId: string) {
-  const ws = await getWorkspaceOrFail(params.slug);
-  await requireWorkspaceMember(ws.id, userId);
-  if (params.project_id) await getProjectOrFail(ws.id, params.project_id, userId, { allowInstanceAdmin: true });
-  return { ws, isAdmin: await hasWorkspaceAction(ws.id, userId, EProjectAction.PAGE_MANAGE_ALL) };
-}
-
-/** Carrega a página com as relações da serialização, presa ao workspace da URL. */
-function loadPageOrFail(workspaceId: string, pageId: string) {
-  return prisma.page.findFirstOrThrow({
-    where: { id: pageId, workspaceId, deletedAt: null },
-    include: PAGE_RELATIONS,
-  });
-}
+/** O que a rota faz com a página: ler ou escrever. Decide a ação exigida na wiki. */
+type Acesso = "read" | "write";
 
 /**
- * Filtro base das páginas vivas do workspace. Quando a URL traz `project_id` a
- * consulta só enxerga páginas vinculadas àquele projeto.
+ * As duas árvores de rota das páginas, como estratégias. Diferem em três pontos:
+ *  - quem pode (`authorize`): no sistema, participar dele; na wiki, a ação da
+ *    matriz (`wiki.view` para ler, `wiki.edit` para escrever);
+ *  - o que se enxerga (`filtro`): no sistema, as páginas vinculadas a ele; na
+ *    wiki, as SEM vínculo com sistema e, entre elas, as públicas ou da pessoa;
+ *  - a que sistemas uma página nova se vincula (`vinculos`).
+ * O escopo vem só da URL: o corpo não escolhe sistema (antes, `project_ids` no
+ * corpo vinculava a página a qualquer sistema, sem conferir participação).
  */
-function escopoDePaginas(workspaceId: string, projectId?: string) {
-  return {
+type EscopoStrategy = {
+  authorize: (workspaceId: string, params: Record<string, string>, userId: string, acesso: Acesso) => Promise<unknown>;
+  filtro: (workspaceId: string, params: Record<string, string>, userId: string) => Record<string, unknown>;
+  vinculos: (params: Record<string, string>) => string[];
+};
+
+const ACAO_DA_WIKI: Record<Acesso, EProjectAction> = {
+  read: EProjectAction.WIKI_VIEW,
+  write: EProjectAction.WIKI_EDIT,
+};
+
+const ESCOPO_DO_SISTEMA: EscopoStrategy = {
+  authorize: (workspaceId, params, userId) =>
+    getProjectOrFail(workspaceId, params.project_id, userId, { allowInstanceAdmin: true }),
+  filtro: (workspaceId, params) => ({
     workspaceId,
     deletedAt: null,
-    ...(projectId ? { projects: { some: { projectId } } } : {}),
+    projects: { some: { projectId: params.project_id } },
+  }),
+  vinculos: (params) => [params.project_id],
+};
+
+const ESCOPO_DA_WIKI: EscopoStrategy = {
+  authorize: (workspaceId, _params, userId, acesso) =>
+    requireWorkspaceAction(workspaceId, userId, ACAO_DA_WIKI[acesso]),
+  filtro: (workspaceId, _params, userId) => ({
+    workspaceId,
+    deletedAt: null,
+    projects: { none: {} },
+    OR: [{ access: 0 }, { ownedById: userId }],
+  }),
+  vinculos: () => [],
+};
+
+const pickEscopo = (params: Record<string, string>): EscopoStrategy =>
+  params.project_id ? ESCOPO_DO_SISTEMA : ESCOPO_DA_WIKI;
+
+/**
+ * Autoriza a requisição no escopo em que ela chegou e devolve o filtro das
+ * páginas que ela enxerga. Devolve `isAdmin` porque a UI libera travar/arquivar/
+ * apagar para o dono OU para quem tem `page.manage.all`; sem isso o admin veria
+ * o botão e levaria 403.
+ */
+async function resolveScope(params: Record<string, string>, userId: string, acesso: Acesso) {
+  const ws = await getWorkspaceOrFail(params.slug);
+  await requireWorkspaceMember(ws.id, userId);
+  const escopo = pickEscopo(params);
+  await escopo.authorize(ws.id, params, userId, acesso);
+  return {
+    ws,
+    filtro: escopo.filtro(ws.id, params, userId),
+    vinculos: escopo.vinculos(params),
+    isAdmin: await hasWorkspaceAction(ws.id, userId, EProjectAction.PAGE_MANAGE_ALL),
   };
+}
+
+/** Carrega a página com as relações da serialização, presa ao escopo da URL. */
+function loadPageOrFail(filtro: Record<string, unknown>, pageId: string) {
+  return prisma.page.findFirstOrThrow({
+    where: { ...filtro, id: pageId },
+    include: PAGE_RELATIONS,
+  });
 }
 
 /** Chave do favorito de página: um registro por (usuário, página). */
@@ -146,63 +199,77 @@ async function favoritasDoUsuario(userId: string, pageIds: string[]): Promise<Re
 }
 
 /** Serializa uma página resolvendo antes se ela é favorita do usuário. */
-async function serializarPagina(page: any, userId: string) {
+async function serializePageForUser(page: any, userId: string) {
   return serializePage(page, await favoritasDoUsuario(userId, [page.id]));
 }
 
 /** Serializa uma lista com uma única consulta de favoritos para todas. */
-async function serializarPaginas(pages: any[], userId: string) {
-  const favoritas = await favoritasDoUsuario(userId, pages.map((p) => p.id));
+async function serializePagesForUser(pages: any[], userId: string) {
+  const favoritas = await favoritasDoUsuario(
+    userId,
+    pages.map((p) => p.id)
+  );
   return pages.map((p) => serializePage(p, favoritas));
 }
 
 /** Aplica um patch e já devolve a página no formato do frontend. */
 async function savePage(pageId: string, data: any, userId: string) {
   const page = await prisma.page.update({ where: { id: pageId }, data, include: PAGE_RELATIONS });
-  return serializarPagina(page, userId);
-}
-
-/**
- * Guarda o conteúdo anterior antes de sobrescrever. O histórico é acessório:
- * uma falha aqui não pode derrubar a edição do usuário.
- */
-function snapshotVersion(page: any, userId: string) {
-  if (!page.descriptionHtml) return Promise.resolve();
-  return prisma.pageVersion
-    .create({
-      data: {
-        pageId: page.id,
-        workspaceId: page.workspaceId,
-        ownedById: userId,
-        lastSavedAt: new Date(),
-        descriptionJson: page.descriptionJson ?? undefined,
-        descriptionHtml: page.descriptionHtml,
-        descriptionStripped: page.descriptionStripped,
-      },
-    })
-    .then(() => undefined)
-    .catch(() => undefined);
+  return serializePageForUser(page, userId);
 }
 
 const HTML_TAGS = /<[^>]+>/g;
 
-/** Só o dono ou um administrador do workspace mexe no ciclo de vida da página. */
+/** Só o dono ou quem tem `page.manage.all` mexe no ciclo de vida da página. */
 function canManage(page: { ownedById: string }, userId: string, isAdmin: boolean) {
   return page.ownedById === userId || isAdmin;
 }
 
+/** Filtro de "arquivadas ou não" das listagens. */
+const filtroDeArquivo = (arquivadas: boolean) => ({ archivedAt: arquivadas ? { not: null } : null });
+
+/** Ordem da árvore: a posição entre as irmãs, e a mais antiga primeiro no empate. */
+const ORDEM_DA_ARVORE = [{ sortOrder: "asc" as const }, { createdAt: "asc" as const }];
+
+/**
+ * Campos do PATCH da página e como cada um vira coluna. `parent_id` e
+ * `sort_order` são o mover e o reordenar da árvore.
+ */
+const CAMPOS_DO_PATCH: Record<string, (valor: any) => Record<string, unknown>> = {
+  name: (valor) => ({ name: valor }),
+  description_html: (valor) => ({
+    descriptionHtml: valor,
+    descriptionStripped: String(valor).replace(HTML_TAGS, ""),
+  }),
+  description: (valor) => ({ descriptionJson: valor }),
+  access: (valor) => ({ access: valor }),
+  color: (valor) => ({ color: valor }),
+  sort_order: (valor) => ({ sortOrder: Number(valor) }),
+  parent_id: (valor) => ({ parentId: valor ?? null }),
+};
+
+function buildPatchData(corpo: Record<string, unknown>, userId: string) {
+  const colunas = Object.entries(CAMPOS_DO_PATCH)
+    .filter(([campo]) => corpo[campo] !== undefined)
+    .map(([campo, paraColuna]) => paraColuna(corpo[campo]));
+  return Object.assign({ updatedById: userId }, ...colunas);
+}
+
+/** O frontend manda o pai como `parent_id`; chamadas antigas, como `parent`. */
+const readParentId = (corpo: Record<string, any>): string | null => corpo.parent_id ?? corpo.parent ?? null;
+
 // ── Handlers ────────────────────────────────────────────────────────────────
-// Cada handler é registrado nas DUAS árvores de rota (workspace e projeto).
+// Cada handler é registrado nas DUAS árvores de rota (wiki do espaço e sistema).
 
 async function listWorkspacePages({ params, query, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
-  const where: any = { ...escopoDePaginas(ws.id), archivedAt: query.archived === "true" ? { not: null } : null };
+  const { filtro } = await resolveScope(params, user.id, "read");
+  const where: any = { ...filtro, ...filtroDeArquivo(query.archived === "true") };
   return paginate({
     query: (skip, take) =>
       prisma.page.findMany({ where, skip, take, include: PAGE_RELATIONS, orderBy: { updatedAt: "desc" } }),
     count: () => prisma.page.count({ where }),
     cursor: query.cursor,
-    transform: (items) => serializarPaginas(items, user.id),
+    transform: (items) => serializePagesForUser(items, user.id),
   });
 }
 
@@ -212,31 +279,57 @@ async function listWorkspacePages({ params, query, user }: PageContext) {
  * envelope paginado (que a UI não consegue percorrer).
  */
 async function listProjectPages({ params, query, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
+  const { filtro } = await resolveScope(params, user.id, "read");
   const pages = await prisma.page.findMany({
-    where: {
-      ...escopoDePaginas(ws.id, params.project_id),
-      archivedAt: query.archived === "true" ? { not: null } : null,
-    },
+    where: { ...filtro, ...filtroDeArquivo(query.archived === "true") },
     include: PAGE_RELATIONS,
     orderBy: { updatedAt: "desc" },
   });
-  return serializarPaginas(pages, user.id);
+  return serializePagesForUser(pages, user.id);
 }
 
 /**
- * `ProjectPageService.fetchArchived` alimenta a aba "Arquivadas" do wiki e tipa
- * o retorno como `TPage[]` — a chamada não passa `?archived=true`, o filtro é a
+ * Árvore da wiki: TODAS as páginas ativas que a pessoa enxerga, em lista simples
+ * com `parent_id` e `sort_order`. A tela monta a hierarquia; uma lista só evita
+ * uma requisição por nível ao abrir a barra lateral.
+ */
+async function listWikiTree({ params, user }: PageContext) {
+  const { filtro } = await resolveScope(params, user.id, "read");
+  const pages = await prisma.page.findMany({
+    where: { ...filtro, archivedAt: null },
+    include: PAGE_RELATIONS,
+    orderBy: ORDEM_DA_ARVORE,
+  });
+  return serializePagesForUser(pages, user.id);
+}
+
+/** Busca dentro da wiki: título e texto das páginas que a pessoa enxerga. */
+async function searchWiki({ params, query, user }: PageContext) {
+  const { ws } = await resolveScope(params, user.id, "read");
+  const achadas = await findPaginas({
+    workspaceId: ws.id,
+    userId: user.id,
+    termo: query.search ?? query.q ?? "",
+    limite: 50,
+    includeWiki: true,
+    projectIds: [],
+  });
+  return achadas.map(({ id, name, parent_id, excerpt }) => ({ id, name, parent_id, excerpt }));
+}
+
+/**
+ * `ProjectPageService.fetchArchived` alimenta a aba "Arquivadas" e tipa o
+ * retorno como `TPage[]`: a chamada não passa `?archived=true`, o filtro é a
  * própria rota. Envelope paginado aqui deixaria a aba vazia.
  */
 async function listArchivedPages({ params, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
+  const { filtro } = await resolveScope(params, user.id, "read");
   const pages = await prisma.page.findMany({
-    where: { ...escopoDePaginas(ws.id, params.project_id), archivedAt: { not: null } },
+    where: { ...filtro, ...filtroDeArquivo(true) },
     include: PAGE_RELATIONS,
     orderBy: { archivedAt: "desc" },
   });
-  return serializarPaginas(pages, user.id);
+  return serializePagesForUser(pages, user.id);
 }
 
 /**
@@ -244,7 +337,7 @@ async function listArchivedPages({ params, user }: PageContext) {
  * ativas: arquivar remove o favorito, como no Django.
  */
 async function listFavoritePages({ params, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
+  const { ws, filtro } = await resolveScope(params, user.id, "read");
   const favoritos = await prisma.userFavorite.findMany({
     where: { workspaceId: ws.id, userId: user.id, entityType: TIPO_FAVORITO_PAGINA, deletedAt: null },
     select: { entityId: true },
@@ -254,7 +347,7 @@ async function listFavoritePages({ params, user }: PageContext) {
   if (!ids.length) return [];
 
   const pages = await prisma.page.findMany({
-    where: { ...escopoDePaginas(ws.id, params.project_id), id: { in: ids }, archivedAt: null },
+    where: { ...filtro, id: { in: ids }, archivedAt: null },
     include: PAGE_RELATIONS,
     orderBy: { updatedAt: "desc" },
   });
@@ -264,23 +357,25 @@ async function listFavoritePages({ params, user }: PageContext) {
 
 /**
  * Marca/desmarca a página como favorita. Fábrica porque as duas pontas só
- * diferem pelo estado final — o frontend chama POST e DELETE na mesma URL e
+ * diferem pelo estado final: o frontend chama POST e DELETE na mesma URL e
  * ignora o corpo da resposta.
  */
-const favoriteHandler = (favoritar: boolean) => async ({ params, user, set }: PageContext) => {
-  const { ws } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
-  await (favoritar ? marcarFavorita(ws.id, page, user.id) : desmarcarFavorita(ws.id, page.id, user.id));
-  set.status = 204;
-  return null;
-};
+const favoriteHandler =
+  (favoritar: boolean) =>
+  async ({ params, user, set }: PageContext) => {
+    const { ws, filtro } = await resolveScope(params, user.id, "read");
+    const page = await loadPageOrFail(filtro, params.page_id);
+    await (favoritar ? markFavorita(ws.id, page, user.id) : unmarkFavorita(ws.id, page.id, user.id));
+    set.status = 204;
+    return null;
+  };
 
 /**
  * Idempotente e sem lixo: favoritar duas vezes não duplica a linha, e ligar a
  * estrela de novo reaproveita o registro que o DELETE apenas marcou como
  * excluído (senão cada clique deixaria uma linha morta em `user_favorites`).
  */
-async function marcarFavorita(workspaceId: string, page: { id: string; name: string }, userId: string) {
+async function markFavorita(workspaceId: string, page: { id: string; name: string }, userId: string) {
   const chave = chaveFavorita(workspaceId, page.id, userId);
   const existente = await prisma.userFavorite.findFirst({ where: chave, orderBy: { createdAt: "desc" } });
   if (existente?.deletedAt === null) return;
@@ -292,7 +387,7 @@ async function marcarFavorita(workspaceId: string, page: { id: string; name: str
 }
 
 /** Exclusão lógica, como no resto do módulo de favoritos do workspace. */
-function desmarcarFavorita(workspaceId: string, pageId: string, userId: string) {
+function unmarkFavorita(workspaceId: string, pageId: string, userId: string) {
   return prisma.userFavorite.updateMany({
     where: { ...chaveFavorita(workspaceId, pageId, userId), deletedAt: null },
     data: { deletedAt: new Date() },
@@ -300,10 +395,13 @@ function desmarcarFavorita(workspaceId: string, pageId: string, userId: string) 
 }
 
 async function createPage({ params, body, user, set }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
+  const { ws, filtro, vinculos } = await resolveScope(params, user.id, "write");
   const b = (body ?? {}) as any;
-  // A página nasce SEM nome e ganha um ao ser digitado no título do editor — é
-  // assim que o botão "Nova página" funciona: ele manda só o `access`. Exigir
+  const parentId = readParentId(b);
+  await requireParentValido({ escopo: filtro, parentId });
+
+  // A página nasce SEM nome e ganha um ao ser digitado no título do editor: é
+  // assim que o botão "Nova página" funciona, ele manda só o `access`. Exigir
   // nome aqui devolvia 400 e nenhuma página era criada.
   const page = await prisma.page.create({
     data: {
@@ -316,95 +414,101 @@ async function createPage({ params, body, user, set }: PageContext) {
       access: b.access ?? 0,
       color: b.color ?? "",
       isGlobal: b.is_global ?? false,
-      parentId: b.parent ?? null,
+      parentId,
+      sortOrder: b.sort_order ?? (await getNextSortOrder(ws.id, parentId)),
       createdById: user.id,
     },
   });
 
-  // Na árvore de projeto o vínculo vem da URL: o frontend cria a página sem
-  // mandar `project_ids` no corpo, e sem o vínculo ela some da listagem.
-  const projectIds: string[] = b.project_ids?.length ? b.project_ids : params.project_id ? [params.project_id] : [];
-  if (projectIds.length) {
+  // Na árvore de sistema o vínculo vem da URL: sem ele a página some da
+  // listagem. Na wiki não há vínculo nenhum.
+  if (vinculos.length) {
     await prisma.projectPage.createMany({
-      data: projectIds.map((pid) => ({ projectId: pid, pageId: page.id, workspaceId: ws.id })),
+      data: vinculos.map((pid) => ({ projectId: pid, pageId: page.id, workspaceId: ws.id })),
       skipDuplicates: true,
     });
   }
 
   set.status = 201;
-  return serializarPagina(await loadPageOrFail(ws.id, page.id), user.id);
+  return serializePageForUser(await loadPageOrFail(filtro, page.id), user.id);
 }
 
 async function getPage({ params, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
-  return serializarPagina(await loadPageOrFail(ws.id, params.page_id), user.id);
+  const { filtro } = await resolveScope(params, user.id, "read");
+  return serializePageForUser(await loadPageOrFail(filtro, params.page_id), user.id);
 }
 
 async function updatePage({ params, body, user, set }: PageContext) {
-  const { ws, isAdmin } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
+  const { filtro, isAdmin } = await resolveScope(params, user.id, "write");
+  const page = await loadPageOrFail(filtro, params.page_id);
   if (page.isLocked && !canManage(page, user.id, isAdmin)) {
     set.status = 403;
     return { detail: "A página está bloqueada." };
   }
 
-  const b = (body ?? {}) as any;
-  const data: any = { updatedById: user.id };
-  if (b.name !== undefined) data.name = b.name;
-  if (b.description_html !== undefined) {
-    data.descriptionHtml = b.description_html;
-    data.descriptionStripped = String(b.description_html).replace(HTML_TAGS, "");
-  }
-  if (b.description !== undefined) data.descriptionJson = b.description;
-  if (b.access !== undefined) data.access = b.access;
-  if (b.color !== undefined) data.color = b.color;
-  if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
-  if (b.parent_id !== undefined) data.parentId = b.parent_id;
+  const b = (body ?? {}) as Record<string, any>;
+  if (b.parent_id !== undefined) await requireParentValido({ escopo: filtro, parentId: b.parent_id, pageId: page.id });
 
-  await snapshotVersion(page, user.id);
-  return savePage(page.id, data, user.id);
+  await savePageVersion({ antes: page, htmlNovo: b.description_html, autorId: user.id });
+  return savePage(page.id, buildPatchData(b, user.id), user.id);
 }
 
+/** Excluir não leva as filhas junto: elas sobem para a raiz (como no Django). */
 async function deletePage({ params, user, set }: PageContext) {
-  const { ws, isAdmin } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
+  const { filtro, isAdmin } = await resolveScope(params, user.id, "write");
+  const page = await loadPageOrFail(filtro, params.page_id);
   if (!canManage(page, user.id, isAdmin)) {
     set.status = 403;
     return { detail: "Apenas o dono da página pode excluí-la." };
   }
+  await detachFilhas(page.id);
   await prisma.page.update({ where: { id: page.id }, data: { deletedAt: new Date() } });
   set.status = 204;
   return null;
 }
 
 /** Fábrica dos handlers de trava: muda só o valor gravado e a mensagem de erro. */
-const lockHandler = (locked: boolean) => async ({ params, user, set }: PageContext) => {
-  const { ws, isAdmin } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
-  if (!canManage(page, user.id, isAdmin)) {
-    set.status = 403;
-    return { detail: locked ? "Apenas o dono da página pode bloqueá-la." : "Apenas o dono da página pode desbloqueá-la." };
-  }
-  return savePage(page.id, { isLocked: locked }, user.id);
-};
+const lockHandler =
+  (locked: boolean) =>
+  async ({ params, user, set }: PageContext) => {
+    const { filtro, isAdmin } = await resolveScope(params, user.id, "write");
+    const page = await loadPageOrFail(filtro, params.page_id);
+    if (!canManage(page, user.id, isAdmin)) {
+      set.status = 403;
+      return {
+        detail: locked ? "Apenas o dono da página pode bloqueá-la." : "Apenas o dono da página pode desbloqueá-la.",
+      };
+    }
+    return savePage(page.id, { isLocked: locked }, user.id);
+  };
 
-/** Mesma ideia da trava: arquivar e desarquivar diferem só pelo `archivedAt`. */
-const archiveHandler = (archived: boolean) => async ({ params, user, set }: PageContext) => {
-  const { ws, isAdmin } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
-  if (!canManage(page, user.id, isAdmin)) {
-    set.status = 403;
-    return { detail: archived ? "Apenas o dono da página pode arquivá-la." : "Apenas o dono da página pode restaurá-la." };
-  }
-  // Página arquivada sai dos favoritos (mesma regra do Django): senão ela
-  // continuaria listada na barra lateral apontando para um item invisível.
-  if (archived) await desmarcarFavorita(ws.id, page.id, user.id);
-  return savePage(page.id, { archivedAt: archived ? new Date() : null }, user.id);
-};
+/**
+ * Arquivar e restaurar levam a subárvore inteira: uma filha ativa sob um pai
+ * arquivado ficaria fora da árvore (nenhum ancestral dela aparece). Restaurar a
+ * filha de um pai que continua arquivado a solta do pai.
+ */
+const archiveHandler =
+  (archived: boolean) =>
+  async ({ params, user, set }: PageContext) => {
+    const { ws, filtro, isAdmin } = await resolveScope(params, user.id, "write");
+    const page = await loadPageOrFail(filtro, params.page_id);
+    if (!canManage(page, user.id, isAdmin)) {
+      set.status = 403;
+      return {
+        detail: archived ? "Apenas o dono da página pode arquivá-la." : "Apenas o dono da página pode restaurá-la.",
+      };
+    }
+    // Página arquivada sai dos favoritos (mesma regra do Django): senão ela
+    // continuaria listada na barra lateral apontando para um item invisível.
+    if (archived) await unmarkFavorita(ws.id, page.id, user.id);
+    if (!archived) await detachFromParentArquivado(page);
+    await setArchivedSubarvore(page.id, archived ? new Date() : null);
+    return serializePageForUser(await loadPageOrFail(filtro, page.id), user.id);
+  };
 
 async function updatePageAccess({ params, body, user, set }: PageContext) {
-  const { ws, isAdmin } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
+  const { filtro, isAdmin } = await resolveScope(params, user.id, "write");
+  const page = await loadPageOrFail(filtro, params.page_id);
   if (!canManage(page, user.id, isAdmin)) {
     set.status = 403;
     return { detail: "Apenas o dono da página pode alterar o acesso." };
@@ -414,11 +518,11 @@ async function updatePageAccess({ params, body, user, set }: PageContext) {
 }
 
 async function listPageVersions({ params, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
-  await loadPageOrFail(ws.id, params.page_id);
+  const { ws, filtro } = await resolveScope(params, user.id, "read");
+  await loadPageOrFail(filtro, params.page_id);
   const versions = await prisma.pageVersion.findMany({
     where: { pageId: params.page_id, workspaceId: ws.id },
-    orderBy: { createdAt: "desc" },
+    orderBy: { lastSavedAt: "desc" },
   });
   // `fetchAllVersions` tipa o retorno como `TPageVersion[]`; o envelope paginado
   // quebraria o `.map` da linha do tempo do histórico.
@@ -426,7 +530,8 @@ async function listPageVersions({ params, user }: PageContext) {
 }
 
 async function getPageVersion({ params, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
+  const { ws, filtro } = await resolveScope(params, user.id, "read");
+  await loadPageOrFail(filtro, params.page_id);
   return serializePageVersion(
     await prisma.pageVersion.findFirstOrThrow({
       where: { id: params.version_id, pageId: params.page_id, workspaceId: ws.id },
@@ -441,8 +546,8 @@ async function getPageVersion({ params, user }: PageContext) {
  * reconstruindo o Yjs a partir de `description_html` e regravando aqui.
  */
 async function getPageDescription({ params, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
+  const { filtro } = await resolveScope(params, user.id, "read");
+  const page = await loadPageOrFail(filtro, params.page_id);
   return new Response(page.descriptionBinary ?? new Uint8Array(), {
     headers: {
       "Content-Type": "application/octet-stream",
@@ -456,14 +561,18 @@ async function getPageDescription({ params, user }: PageContext) {
  * `convertBinaryDataToBase64String`); a coluna guarda os bytes decodificados.
  * Gravar a string crua faria o `Y.applyUpdate` do próximo fetch estourar.
  */
-function decodificarBinario(valor: unknown): Uint8Array<ArrayBuffer> | undefined {
+function decodeBinario(valor: unknown): Uint8Array<ArrayBuffer> | undefined {
   if (typeof valor !== "string") return undefined;
   return Uint8Array.from(Buffer.from(valor, "base64"));
 }
 
+/**
+ * Gravação do conteúdo, feita quase sempre pelo `live`. O conteúdo anterior vira
+ * versão (por sessão de edição, ver `@utils/versoes-da-pagina`).
+ */
 async function updatePageDescription({ params, body, user, set }: PageContext) {
-  const { ws, isAdmin } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
+  const { filtro, isAdmin } = await resolveScope(params, user.id, "write");
+  const page = await loadPageOrFail(filtro, params.page_id);
   if (page.isLocked && !canManage(page, user.id, isAdmin)) {
     set.status = 403;
     return { detail: "A página está bloqueada." };
@@ -471,13 +580,14 @@ async function updatePageDescription({ params, body, user, set }: PageContext) {
 
   const b = (body ?? {}) as any;
   const html: string = b.description_html ?? page.descriptionHtml;
+  await savePageVersion({ antes: page, htmlNovo: b.description_html, autorId: user.id });
   await prisma.page.update({
     where: { id: page.id },
     data: {
       descriptionHtml: html,
       descriptionStripped: String(html).replace(HTML_TAGS, ""),
       descriptionJson: b.description_json ?? undefined,
-      descriptionBinary: decodificarBinario(b.description_binary),
+      descriptionBinary: decodeBinario(b.description_binary),
       updatedById: user.id,
     },
   });
@@ -514,8 +624,8 @@ function idsMencionados(html: string, tipo: string): string[] {
  * no `recoverWithDefault([])` e o PDF saía com o UUID cru no lugar do nome.
  */
 async function listPageMentions({ params, query, user }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
+  const { filtro } = await resolveScope(params, user.id, "read");
+  const page = await loadPageOrFail(filtro, params.page_id);
 
   const ids = idsMencionados(page.descriptionHtml ?? "", query.mention_type ?? "user_mention");
   if (!ids.length) return [];
@@ -534,33 +644,17 @@ async function listPageMentions({ params, query, user }: PageContext) {
 }
 
 /**
- * Ids da página e de toda a sua descendência. A subárvore precisa acompanhar o
- * move: uma sub-página deixada para trás apontaria para um pai de outro projeto
- * e sumiria das duas listagens.
- */
-async function subarvoreDePaginas(pageId: string): Promise<string[]> {
-  const linhas = await prisma.$queryRaw<{ id: string }[]>`
-    WITH RECURSIVE descendentes AS (
-      SELECT id FROM pages WHERE id = ${pageId}::uuid
-      UNION ALL
-      SELECT p.id FROM pages p JOIN descendentes d ON p.parent_id = d.id WHERE p.deleted_at IS NULL
-    )
-    SELECT id FROM descendentes
-  `;
-  return linhas.map((l) => l.id);
-}
-
-/**
- * Move a página para outro projeto (`ProjectPageService.move`). Regras:
- * - a página passa a valer só no destino — `project_ids[0]` monta toda URL da
+ * Move a página para um sistema (`ProjectPageService.move`). Vale também para
+ * tirar uma página da wiki e levá-la a um sistema. Regras:
+ * - a página passa a valer só no destino: `project_ids[0]` monta toda URL da
  *   UI, e um vínculo remanescente no projeto antigo levaria de volta para lá;
  * - a subárvore vai junto, preservando a hierarquia interna;
  * - o vínculo com um pai que ficou para trás é desfeito, como o Django faz ao
  *   desarquivar uma página cujo pai continua arquivado.
  */
 async function movePage({ params, body, user, set }: PageContext) {
-  const { ws, isAdmin } = await resolveScope(params, user.id);
-  const page = await loadPageOrFail(ws.id, params.page_id);
+  const { ws, filtro, isAdmin } = await resolveScope(params, user.id, "write");
+  const page = await loadPageOrFail(filtro, params.page_id);
   if (!canManage(page, user.id, isAdmin)) {
     set.status = 403;
     return { detail: "Apenas o dono da página pode movê-la." };
@@ -573,7 +667,7 @@ async function movePage({ params, body, user, set }: PageContext) {
   }
   await getProjectOrFail(ws.id, destino, user.id, { allowInstanceAdmin: true });
 
-  const movidas = await subarvoreDePaginas(page.id);
+  const movidas = await findSubarvore(page.id);
   const soltarDoPai = page.parentId ? { parentId: null } : {};
 
   await prisma.$transaction([
@@ -585,12 +679,13 @@ async function movePage({ params, body, user, set }: PageContext) {
     prisma.page.update({ where: { id: page.id }, data: { ...soltarDoPai, updatedById: user.id } }),
   ]);
 
-  return serializarPagina(await loadPageOrFail(ws.id, page.id), user.id);
+  const noDestino = ESCOPO_DO_SISTEMA.filtro(ws.id, { project_id: destino }, user.id);
+  return serializePageForUser(await loadPageOrFail(noDestino, page.id), user.id);
 }
 
 async function duplicatePage({ params, user, set }: PageContext) {
-  const { ws } = await resolveScope(params, user.id);
-  const original = await loadPageOrFail(ws.id, params.page_id);
+  const { ws, filtro } = await resolveScope(params, user.id, "write");
+  const original = await loadPageOrFail(filtro, params.page_id);
   // `descriptionBinary` NÃO é copiado de propósito (mesma decisão do Django): o
   // documento Yjs carrega o histórico de edição do original, e o `live` remonta
   // um estado limpo a partir do HTML na primeira abertura da cópia.
@@ -607,6 +702,7 @@ async function duplicatePage({ params, user, set }: PageContext) {
       color: original.color,
       isGlobal: original.isGlobal,
       parentId: original.parentId,
+      sortOrder: original.sortOrder + 1,
     },
   });
 
@@ -624,14 +720,18 @@ async function duplicatePage({ params, user, set }: PageContext) {
   }
 
   set.status = 201;
-  return serializarPagina(await loadPageOrFail(ws.id, copy.id), user.id);
+  return serializePageForUser(await loadPageOrFail(filtro, copy.id), user.id);
 }
 
 export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
 
-  // ── Global pages (wiki) ───────────────────────────────────────────────────
+  // ── Wiki do espaço (páginas sem sistema) ──────────────────────────────────
+  // A árvore `/pages/` sem projeto É a wiki: o servidor `live` e o editor falam
+  // por ela. As rotas `/wiki/` são as que só a wiki tem (árvore e busca).
 
+  .get("/wiki/pages/", listWikiTree)
+  .get("/wiki/search/", searchWiki)
   .get("/pages/", listWorkspacePages)
   .post("/pages/", createPage)
   .get("/archived-pages/", listArchivedPages)
@@ -657,9 +757,9 @@ export const pageModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   // ── Project-scoped pages ───────────────────────────────────────────────────
   // O frontend (ProjectPageService / ProjectPageVersionService) e o servidor
-  // `live` falam sempre por esta árvore. São os MESMOS handlers das rotas de
-  // workspace: o `project_id` extra em `params` já é validado em `resolveScope`
-  // e a listagem é a única que precisa de consulta própria.
+  // `live` falam sempre por esta árvore. São os MESMOS handlers das rotas da
+  // wiki: o `project_id` extra em `params` escolhe a estratégia de escopo em
+  // `resolveScope`, e a listagem é a única que precisa de consulta própria.
 
   .get("/projects/:project_id/pages/", listProjectPages)
   .post("/projects/:project_id/pages/", createPage)

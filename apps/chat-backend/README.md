@@ -171,7 +171,7 @@ na **mesma caixa** do atendimento. Contrato completo e exemplo de dialplan em
 - **Entrada:** `POST /workspaces/:slug/telefonia/ligacoes/` com o token de serviço
   (`Authorization: Bearer` ou `X-Api-Token`). Idempotente pelo `call_id`: 201 no
   primeiro envio, 200 no reenvio (atualiza fim, duração e gravação).
-- Quem ligou é identificado pelo telefone (`buscarResponsavelPorTelefone`, a mesma
+- Quem ligou é identificado pelo telefone (`findResponsavelPorTelefone`, a mesma
   busca do bot); o ramal (`chat_ramais`) diz de quem é a ligação e o atendente é
   avisado pelo WS (`session.assigned`). Não atendida já entra encerrada; sem
   ramal conhecido, espera alguém assumir.
@@ -190,6 +190,35 @@ na **mesma caixa** do atendimento. Contrato completo e exemplo de dialplan em
 
 Código em `src/ligacoes/` (rotas finas → service → DAO) e migração
 `prisma/sql/0012_ligacoes.sql`.
+
+## Ferramentas do atendente e gestão
+
+Contrato, regras e decisões em `.claude/chat-atendente.md`. Código em
+`src/atendente/` (regras puras em `*-regras.ts`/arquivos sem `.service`, rotas
+finas em `rotas.ts`) e migração `prisma/sql/0014_atendente.sql`.
+
+- **Frases prontas** por espaço: `GET /workspaces/:slug/frases/` (`chat.atender`);
+  cadastro em `/config/frases/` e `POST /config/frases/padrao/` (`chat.administrar`).
+- **Chave de acesso remoto**: `POST /sessions/:id/chave/` grava mensagem do tipo
+  `chave` (negrito no WhatsApp, botão de copiar no widget).
+- **Sem o nome do atendente**: `without_sender_name: true` no `agent.message` do WS
+  ou na chave. Desligado por padrão; a equipe continua vendo quem enviou.
+- **Alerta de cliente sem resposta**: `POST /sessions/:id/sla-alert/pause|resume/`.
+  A pausa vence em 40 minutos; o `alert.sla` vai só ao atendente.
+- **Cadastro durante o atendimento**: `GET|PATCH /sessions/:id/cadastro/`
+  (entidade, sistema e responsável; erros voltam em `errors[].path`).
+- **Dados técnicos do cliente** (`client_info`): o widget aceita `?versao=`,
+  `?computador=`, `?navegador=`, `?so=`, `?resolucao=`, `?motivo=` ou
+  `?info={json}` e manda no `POST /sessions/`.
+- **WhatsApp a partir do responsável**: `POST /sessions/whatsapp/responsavel/`
+  (`409` com `session_id` quando o número já tem conversa aberta).
+- **Foto de perfil**: o webhook copia a foto do WhatsApp para o storage
+  (`responsaveis/<id>.jpg`) e grava o endereço em `entity_contacts.photo`, a cada
+  30 dias. A base do endereço é `CHAT_PUBLIC_URL` (padrão `/chat-api`).
+- **Feriados**: `GET|PUT /config/feriados/`; no feriado `isWithinBusinessHours` é falso.
+- **Gerenciador** (`chat.gerenciar`): `GET /gerenciador/` com `attendant_id`,
+  `entity_id`, `project_id`, `from`, `to`, `q`, `channel`, `status`, `page`, `per_page`.
+- **Monitor ao vivo** (`chat.gerenciar`): `GET /monitor/`.
 
 ## Testes
 

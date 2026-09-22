@@ -101,6 +101,13 @@ model ChatSession {
   issueId            String?       @map("issue_id") @db.Uuid
   issueProjectId     String?       @map("issue_project_id") @db.Uuid
   issueLabel         String?       @map("issue_label")
+  // ── Ferramentas do atendente (0014_atendente.sql) ──
+  // Alerta de cliente sem resposta pausado pelo atendente; vence em 40 min
+  // (src/atendente/alerta.ts).
+  slaAlertPausedAt   DateTime?     @map("sla_alert_paused_at")
+  // Dados técnicos mandados pelo sistema que embute o widget (versão,
+  // computador, navegador, SO, resolução, motivo). Ver src/atendente/client-info.ts.
+  clientInfo         Json          @default("{}") @map("client_info")
   messages           ChatMessage[]
   readStates         ChatReadState[]
   ligacao            ChatLigacao?
@@ -114,6 +121,7 @@ model ChatSession {
   @@index([workspaceId, closedAt])
   @@index([entityId])
   @@index([issueId])
+  @@index([workspaceId, createdAt])
   @@map("chat_sessions")
 }
 
@@ -138,6 +146,8 @@ model ChatMessage {
   status       String      @default("sent") // sent | delivered | read | failed
   // Motivo da falha de envio ao WhatsApp (status = failed). O atendente reenvia.
   sendError    String?     @map("send_error")
+  // "Enviar sem o nome": sem o `*Nome*:` no WhatsApp e sem o rótulo no widget.
+  withoutSenderName Boolean  @default(false) @map("without_sender_name")
   createdAt    DateTime    @default(now()) @map("created_at")
   // Origem no chat antigo (SAC): `chat_mensagens.chat_mensagens_id`.
   legacyId     Int?        @unique @map("legacy_id")
@@ -245,6 +255,8 @@ model BotConfig {
   endOfDayEnabled      Boolean  @default(false) @map("end_of_day_enabled")
   endOfDayTime         String?  @map("end_of_day_time") // "HH:MM"; vazio = fim do expediente do dia
   endOfDayMessage      String   @default("Agradecemos seu contato. O atendimento foi encerrado e estamos à disposição sempre que precisar.") @map("end_of_day_message")
+  // Feriados: fora do horário o dia inteiro. [{ date: "AAAA-MM-DD", label, recorrente }]
+  holidays             Json     @default("[]")
   routingAlpha         Float    @default(1) @map("routing_alpha") // weight of active chats
   routingBeta          Float    @default(0.5) @map("routing_beta") // weight of today's count
   updatedAt            DateTime @updatedAt @map("updated_at")
@@ -297,6 +309,19 @@ model ProviderConfig {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("chat_provider_config")
+}
+
+// Frases prontas do atendente, por espaço (src/atendente/frases.ts).
+model ChatFrasePronta {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id")
+  texto       String
+  ordem       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([workspaceId, ordem])
+  @@map("chat_frases_prontas")
 }
 
 // Daily counter used both for protocol numbering and routing stats.

@@ -31,12 +31,17 @@ import {
   authenticate,
   contaAtiva,
   espacoPeloSlug,
-  hashSenha,
+  isUuid,
   normalizeEmail,
   sistemaLiberado,
   sistemasDaConta,
   type ContaDoPortal,
 } from "@modules/portal/conta";
+import { serializeAvaliacaoParaEquipe } from "@modules/portal/avaliacao";
+import { createConta, deleteConta, listContas, resetSenhaDaConta, updateConta } from "@modules/portal/contas-admin.service";
+import { isInteracaoDoChamado } from "@modules/portal/conversa";
+import { closeSolicitacao, createInteracao, reopenSolicitacao, saveAvaliacao } from "@modules/portal/interacoes";
+import { findVisitasDaConta, readVisitaDaConta } from "@modules/portal/visitas-do-cliente";
 import { paginaDoPortal } from "@modules/portal/pagina";
 import {
   dispensarResposta,
@@ -58,7 +63,6 @@ import { isEmailEnabled } from "@utils/email";
 
 /** Mesma frase para e-mail inexistente e senha errada: a tela não entrega quem existe. */
 const CREDENCIAL_INVALIDA = "E-mail ou senha inválidos.";
-const SENHA_MINIMA = 8;
 /** Tentativas de login por IP a cada 5 minutos. */
 const TENTATIVAS = { max: 10, janelaMs: 5 * 60_000 };
 
@@ -220,6 +224,54 @@ export const portalModule = new Elysia({ prefix: "/portal" })
     return solicitacao;
   })
 
+  // ── O cliente age sobre a solicitação ─────────────────────────────────────
+  // Responder, encerrar, reabrir e avaliar. Quem pode o quê está em
+  // `modules/portal/regras-do-cliente`; o erro sai pelo tratador global, com
+  // `errors[].path` quando é de campo.
+  .post("/api/solicitacoes/:id/interacoes", async ({ params: { id }, body, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+    set.status = 201;
+    return createInteracao(conta, id, (body ?? {}) as any, headers as any);
+  })
+
+  .post("/api/solicitacoes/:id/encerrar", async ({ params: { id }, body, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+    return closeSolicitacao(conta, id, (body ?? {}) as any, headers as any);
+  })
+
+  .post("/api/solicitacoes/:id/reabrir", async ({ params: { id }, body, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+    return reopenSolicitacao(conta, id, (body ?? {}) as any, headers as any);
+  })
+
+  .post("/api/solicitacoes/:id/avaliacao", async ({ params: { id }, body, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+    set.status = 201;
+    return saveAvaliacao(conta, id, (body ?? {}) as any, headers as any);
+  })
+
+  // ── Visitas técnicas da entidade do cliente (só leitura) ──────────────────
+  .get("/api/visitas", async ({ query, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+    return { results: await findVisitasDaConta(conta, (query as any).situacao) };
+  })
+
+  .get("/api/visitas/:id", async ({ params: { id }, headers, set }) => {
+    const conta = await contaDoPedido(headers as any);
+    if (!conta) return naoAutenticado(set);
+    const visita = await readVisitaDaConta(conta, id);
+    if (!visita) {
+      set.status = 404;
+      return { detail: "Visita não encontrada." };
+    }
+    return visita;
+  })
+
   // ── Abrir solicitação ─────────────────────────────────────────────────────
   .post("/api/solicitacoes", async ({ body, headers, set }) => {
     const conta = await contaDoPedido(headers as any);
@@ -263,9 +315,17 @@ export const portalModule = new Elysia({ prefix: "/portal" })
       return { detail: "Escolha um arquivo para anexar." };
     }
 
-    if ((await contarAnexos(chamado.issueId)) >= LIMITES_DE_ANEXO.porSolicitacao) {
+    // O anexo pode vir junto de uma resposta do cliente: aí conta no limite
+    // daquela resposta, e não no da abertura.
+    const interacao = String((body as any)?.interacao ?? "") || null;
+    if (interacao && !(isUuid(interacao) && (await isInteracaoDoChamado(chamado.issueId, interacao)))) {
+      set.status = 404;
+      return { detail: "Resposta não encontrada." };
+    }
+
+    if ((await contarAnexos(chamado.issueId, interacao)) >= LIMITES_DE_ANEXO.porSolicitacao) {
       set.status = 400;
-      return { detail: `Cada solicitação aceita até ${LIMITES_DE_ANEXO.porSolicitacao} arquivos.` };
+      return { detail: `Cada envio aceita até ${LIMITES_DE_ANEXO.porSolicitacao} arquivos.` };
     }
 
     const conferencia = conferirArquivo({
@@ -287,6 +347,7 @@ export const portalModule = new Elysia({ prefix: "/portal" })
       nome: conferencia.nome,
       tipo: conferencia.tipo,
       tamanho: arquivo.size,
+      interacao,
     }).catch((erro) => {
       console.error("[portal] falha ao guardar anexo:", erro);
       return null;
@@ -334,155 +395,81 @@ export const portalModule = new Elysia({ prefix: "/portal" })
     return arquivo;
   });
 
-// ── Administração das contas (crachá do Plane, só administrador) ─────────────
+// ── Administração das contas (crachá do Plane, ação `portal.manage`) ─────────
+//
+// Rotas finas: a regra (campos, referências, senha provisória) mora em
+// `modules/portal/contas-admin*`.
 
-function contaAdminDto(conta: any) {
-  return {
-    id: conta.id,
-    name: conta.name,
-    email: conta.email,
-    entity_id: conta.entityId,
-    is_active: conta.isActive,
-    last_login_at: conta.lastLoginAt?.toISOString() ?? null,
-    project_ids: (conta.projects ?? []).map((p: any) => p.projectId),
-    created_at: conta.createdAt?.toISOString() ?? null,
-  };
-}
-
-/** Substitui a lista de sistemas da conta — acesso é concedido por inteiro. */
-async function definirSistemas(accountId: string, projectIds: unknown) {
-  if (!Array.isArray(projectIds)) return;
-  await prisma.portalAccountProject.deleteMany({ where: { accountId } });
-  const ids = projectIds.filter((id): id is string => typeof id === "string" && Boolean(id));
-  if (!ids.length) return;
-  await prisma.portalAccountProject.createMany({
-    data: ids.map((projectId) => ({ accountId, projectId })),
-    skipDuplicates: true,
-  });
+/** O espaço já conferido contra a ação `portal.manage`. */
+async function readEspacoAdministrado(slug: string, userId: string) {
+  const ws = await getWorkspaceOrFail(slug);
+  await requireWorkspaceAction(ws.id, userId, EProjectAction.PORTAL_MANAGE);
+  return ws;
 }
 
 export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-accounts" })
   .use(authPlugin)
 
   .get("/", async ({ params: { slug }, user }: any) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
-    const contas = await prisma.portalAccount.findMany({
-      where: { workspaceId: ws.id, deletedAt: null },
-      include: { projects: { select: { projectId: true } } },
-      orderBy: { name: "asc" },
-    });
-    return { results: contas.map(contaAdminDto) };
+    const ws = await readEspacoAdministrado(slug, user.id);
+    // `email_enabled` diz à tela se o "redefinir senha" pode mandar link.
+    return { results: await listContas(ws.id), email_enabled: await isEmailEnabled() };
   })
 
   .post("/", async ({ params: { slug }, body, user, set, headers }: any) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
-    const b = (body ?? {}) as any;
-    const email = normalizeEmail(b.email);
-    const senha = String(b.password ?? "");
-    if (!email || !String(b.name ?? "").trim()) {
-      set.status = 400;
-      return { detail: "Informe nome e e-mail." };
-    }
-    if (senha.length < SENHA_MINIMA) {
-      set.status = 400;
-      return { detail: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.` };
-    }
-    const jaExiste = await prisma.portalAccount.findFirst({ where: { workspaceId: ws.id, email, deletedAt: null } });
-    if (jaExiste) {
-      set.status = 409;
-      return { detail: "Já existe uma conta do portal com este e-mail." };
-    }
-    const conta = await prisma.portalAccount.create({
-      data: {
-        workspaceId: ws.id,
-        email,
-        password: await hashSenha(senha),
-        name: String(b.name).trim(),
-        entityId: b.entity_id ?? null,
-      },
-    });
-    await definirSistemas(conta.id, b.project_ids);
-    recordAudit({
-      workspaceId: ws.id,
-      entity: AUDIT_ENTITIES.USER,
-      entityId: conta.id,
-      action: AUDIT_ACTIONS.CREATE,
-      actor: user,
-      headers,
-      metadata: { origem: "portal", email },
-    });
+    const espaco = await readEspacoAdministrado(slug, user.id);
     set.status = 201;
-    const completa = await prisma.portalAccount.findFirstOrThrow({
-      where: { id: conta.id },
-      include: { projects: { select: { projectId: true } } },
-    });
-    return contaAdminDto(completa);
+    return createConta({ espaco, autor: user, headers }, body ?? {});
   })
 
-  .patch("/:id", async ({ params: { slug, id }, body, user, set, headers }: any) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
-    const b = (body ?? {}) as any;
-    const existente = await prisma.portalAccount.findFirst({ where: { id, workspaceId: ws.id, deletedAt: null } });
-    if (!existente) {
-      set.status = 404;
-      return { detail: "Conta não encontrada." };
-    }
-    const dados: any = {};
-    if (b.name !== undefined) dados.name = String(b.name).trim();
-    if (b.email !== undefined) dados.email = normalizeEmail(b.email);
-    if (b.entity_id !== undefined) dados.entityId = b.entity_id || null;
-    if (b.is_active !== undefined) dados.isActive = Boolean(b.is_active);
-    if (b.password) {
-      if (String(b.password).length < SENHA_MINIMA) {
-        set.status = 400;
-        return { detail: `A senha precisa de pelo menos ${SENHA_MINIMA} caracteres.` };
-      }
-      dados.password = await hashSenha(String(b.password));
-      dados.tokenUpdatedAt = new Date();
-    }
-    await prisma.portalAccount.update({ where: { id }, data: dados });
-    await definirSistemas(id, b.project_ids);
-    recordAudit({
-      workspaceId: ws.id,
-      entity: AUDIT_ENTITIES.USER,
-      entityId: id,
-      action: AUDIT_ACTIONS.UPDATE,
-      actor: user,
-      headers,
-      // A senha nova nunca entra na trilha; só o fato de ter sido trocada.
-      metadata: { origem: "portal", senha_trocada: Boolean(b.password) },
-    });
-    const completa = await prisma.portalAccount.findFirstOrThrow({
-      where: { id },
-      include: { projects: { select: { projectId: true } } },
-    });
-    return contaAdminDto(completa);
+  .patch("/:id", async ({ params: { slug, id }, body, user, headers }: any) => {
+    const espaco = await readEspacoAdministrado(slug, user.id);
+    return updateConta({ espaco, autor: user, headers }, id, body ?? {});
   })
 
   .delete("/:id", async ({ params: { slug, id }, user, set, headers }: any) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
-    const existente = await prisma.portalAccount.findFirst({ where: { id, workspaceId: ws.id, deletedAt: null } });
-    if (!existente) {
-      set.status = 404;
-      return { detail: "Conta não encontrada." };
-    }
-    // Exclusão lógica: as solicitações que a conta abriu continuam de pé.
-    await prisma.portalAccount.update({ where: { id }, data: { deletedAt: new Date(), isActive: false } });
-    recordAudit({
-      workspaceId: ws.id,
-      entity: AUDIT_ENTITIES.USER,
-      entityId: id,
-      action: AUDIT_ACTIONS.DELETE,
-      actor: user,
-      headers,
-      metadata: { origem: "portal" },
-    });
+    const espaco = await readEspacoAdministrado(slug, user.id);
+    await deleteConta({ espaco, autor: user, headers }, id);
     set.status = 204;
     return null;
+  })
+
+  // Link por e-mail quando há SMTP; senha provisória quando não há ou quando
+  // o corpo pede `{ modo: "provisoria" }`.
+  .post("/:id/reset-password/", async ({ params: { slug, id }, body, user, headers }: any) => {
+    const espaco = await readEspacoAdministrado(slug, user.id);
+    return resetSenhaDaConta({ espaco, autor: user, headers }, id, body ?? {}, ipDaRequisicao(headers));
+  });
+
+// ── O que o portal trouxe para dentro do chamado (crachá do Plane) ───────────
+//
+// A conta que abriu e as avaliações do cliente, lidas no detalhe do chamado por
+// quem pode ver o chamado.
+
+export const portalChamadoModule = new Elysia({ prefix: "/workspaces/:slug/portal-requests" })
+  .use(authPlugin)
+
+  .get("/:issue_id/", async ({ params: { slug, issue_id }, user, set }: any) => {
+    const ws = await getWorkspaceOrFail(slug);
+    const pedido = isUuid(issue_id)
+      ? await prisma.portalRequest.findFirst({
+          where: { issueId: issue_id, issue: { workspaceId: ws.id, deletedAt: null } },
+          include: {
+            account: { select: { id: true, name: true, email: true } },
+            issue: { select: { projectId: true } },
+          },
+        })
+      : null;
+    if (!pedido) {
+      set.status = 404;
+      return { detail: "Este chamado não veio do portal do cliente." };
+    }
+    await requireProjectAction(ws.id, pedido.issue.projectId, user.id, EProjectAction.ISSUE_VIEW);
+    const avaliacoes = await prisma.portalEvaluation.findMany({
+      where: { issueId: issue_id },
+      orderBy: { createdAt: "desc" },
+    });
+    return { account: pedido.account, evaluations: avaliacoes.map(serializeAvaliacaoParaEquipe) };
   });
 
 // ── Resposta ao cliente (crachá do Plane, quem trabalha no chamado) ──────────

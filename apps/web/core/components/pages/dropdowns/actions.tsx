@@ -87,7 +87,7 @@ export const PageActions = observer(function PageActions(props: Props) {
           action: () => {
             pageOperations.toggleLock();
           },
-          title: is_locked ? "Unlock" : "Lock",
+          title: is_locked ? "Desbloquear" : "Bloquear",
           icon: is_locked ? LockKeyholeOpen : LockKeyhole,
           shouldRender: canCurrentUserLockPage,
         },
@@ -96,7 +96,7 @@ export const PageActions = observer(function PageActions(props: Props) {
           action: () => {
             pageOperations.toggleAccess();
           },
-          title: access === EPageAccess.PUBLIC ? "Make private" : "Make public",
+          title: access === EPageAccess.PUBLIC ? "Tornar privada" : "Tornar pública",
           icon: access === EPageAccess.PUBLIC ? LockIcon : GlobeIcon,
           shouldRender: canCurrentUserChangeAccess && !archived_at,
         },
@@ -128,7 +128,7 @@ export const PageActions = observer(function PageActions(props: Props) {
           action: () => {
             pageOperations.toggleArchive();
           },
-          title: archived_at ? "Restore" : "Archive",
+          title: archived_at ? "Restaurar" : "Arquivar",
           icon: archived_at ? ArchiveRestoreIcon : ArchiveIcon,
           shouldRender: canCurrentUserArchivePage,
         },

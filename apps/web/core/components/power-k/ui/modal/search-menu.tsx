@@ -89,13 +89,13 @@ export function PowerKModalSearchMenu(props: Props) {
               "animate-pulse": isSearching,
             })}
           >
-            Search results for{" "}
+            Resultados para{" "}
             <span className="font-medium">
               {'"'}
               {searchTerm}
               {'"'}
             </span>{" "}
-            in {isWorkspaceLevel ? "workspace" : "project"}:
+            {isWorkspaceLevel ? "no espaço de trabalho" : "no sistema"}:
           </h5>
         </div>
       )}

@@ -17,7 +17,7 @@ import prisma from "@db";
 import { CAUSA_DO_FIM } from "@/ciclo-de-vida/abandono";
 import { closeAtendimento } from "@/ciclo-de-vida/encerrar";
 import { parseCatalogoDeMotivos, validateEncerramento } from "@/ciclo-de-vida/encerramento-regras";
-import { buscarResponsavelPorId, salvarResponsavel, workspaceIdDoSlug, type Responsavel } from "@/responsaveis";
+import { findResponsavelPorId, saveResponsavel, workspaceIdDoSlug, type Responsavel } from "@/responsaveis";
 
 export type CadastroDoEncerramento = {
   /** Responsável já existente escolhido pelo atendente na busca. */
@@ -96,13 +96,13 @@ async function updateHistoricoDoChat(contactId: string | null, responsavel: Resp
   });
 }
 
-async function saveResponsavel(
+async function saveResponsavelDaSessao(
   sessao: Sessao,
   cadastro: CadastroDoEncerramento | null | undefined,
   atendenteId?: string | null
 ) {
   if (!cadastro) return null;
-  const responsavel = await salvarResponsavel(
+  const responsavel = await saveResponsavel(
     sessao.workspaceId,
     {
       id: cadastro.contact_id ?? sessao.entityContactId ?? null,
@@ -134,7 +134,7 @@ export async function saveContatoDoAtendimento(
   cadastro: CadastroDoEncerramento,
   atendenteId?: string | null
 ): Promise<Responsavel | null> {
-  return saveResponsavel(await readSessao(sessionId), cadastro, atendenteId);
+  return saveResponsavelDaSessao(await readSessao(sessionId), cadastro, atendenteId);
 }
 
 /** A entidade existe NESTE espaço? Id de outro espaço não entra no registro. */
@@ -180,7 +180,7 @@ async function readSistema(slug: string, projectId: string) {
  */
 async function readEntidadeDoContato(slug: string, contactId: string | null | undefined): Promise<string | null> {
   if (!contactId) return null;
-  return (await buscarResponsavelPorId(slug, contactId))?.entityId ?? null;
+  return (await findResponsavelPorId(slug, contactId))?.entityId ?? null;
 }
 
 async function readCatalogo(workspaceId: string) {
@@ -221,7 +221,7 @@ export async function closeWithEncerramento(
   const sistema = dados.project_id ? await readSistema(sessao.workspaceId, dados.project_id) : {};
   const nomeDoModulo = dados.module_id ? await readModulo(dados.module_id, projectId) : null;
 
-  const responsavel = await saveResponsavel(sessao, dados.contact, atendenteId);
+  const responsavel = await saveResponsavelDaSessao(sessao, dados.contact, atendenteId);
   await prisma.chatSession.updateMany({
     where: { id: sessionId },
     data: {

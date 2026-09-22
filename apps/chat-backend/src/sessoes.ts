@@ -6,10 +6,12 @@
  * escolher explicitamente — e para caber em teste sem subir o servidor.
  */
 
+import { readAlertaPausadoAte } from "@/atendente/alerta";
+import { parseClientInfo } from "@/atendente/client-info";
 import { isAbandonado, rotuloDoAbandono } from "@/ciclo-de-vida/abandono";
 
 /** Nada aqui lê o banco: a entrada é o registro do Prisma já carregado. */
-export function serializeSession(s: any) {
+export function serializeSession(s: any, agora: Date = new Date()) {
   return {
     id: s.id,
     protocol: s.protocol,
@@ -50,6 +52,9 @@ export function serializeSession(s: any) {
     issue_id: s.issueId ?? null,
     issue_project_id: s.issueProjectId ?? null,
     issue_label: s.issueLabel ?? null,
+    // Ferramentas do atendente (src/atendente/): alerta pausado e dados técnicos do cliente.
+    sla_alert_paused_until: readAlertaPausadoAte(s.slaAlertPausedAt ?? null, agora),
+    client_info: parseClientInfo(s.clientInfo),
   };
 }
 
@@ -62,7 +67,7 @@ export type SessaoSerializada = ReturnType<typeof serializeSession>;
  * Mostrar a nota e o comentário ao atendente que acabou de ser avaliado muda a
  * conversa seguinte — e não é para isso que se pergunta ao cliente.
  */
-export function semAvaliacao<T extends SessaoSerializada>(sessao: T): T {
+export function withoutAvaliacao<T extends SessaoSerializada>(sessao: T): T {
   return { ...sessao, rating_score: null, rating_comment: null };
 }
 
@@ -72,6 +77,6 @@ export function semAvaliacao<T extends SessaoSerializada>(sessao: T): T {
  * É o que separa "o atendimento acabou" de "não houve atendimento": quem abriu o
  * chat, esperou e desistiu não tem o que avaliar.
  */
-export function houveAtendimento(s: { assignedAttendantId?: string | null }): boolean {
+export function hasAtendimento(s: { assignedAttendantId?: string | null }): boolean {
   return Boolean(s.assignedAttendantId);
 }

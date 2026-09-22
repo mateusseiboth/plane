@@ -14,7 +14,7 @@ import type {
   IWorkspaceProjectSearchResult,
   IWorkspaceSearchResult,
 } from "@plane/types";
-import { generateWorkItemLink } from "@plane/utils";
+import { generateWorkItemLink, getPaginaPath } from "@plane/utils";
 // plane web components
 import { IssueIdentifier } from "@/plane-web/components/issues/issue-details/issue-identifier";
 
@@ -92,13 +92,13 @@ export const commandGroups: TCommandGroups = {
         <span className="text-11 text-tertiary">{page.project__identifiers?.[0]}</span> {page.name}
       </h6>
     ),
-    path: (page: IWorkspacePageSearchResult, projectId: string | undefined) => {
-      let redirectProjectId = page?.project_ids?.[0];
-      if (!!projectId && page?.project_ids?.includes(projectId)) redirectProjectId = projectId;
-      return redirectProjectId
-        ? `/${page?.workspace__slug}/projects/${redirectProjectId}/pages/${page?.id}`
-        : `/${page?.workspace__slug}/wiki/${page?.id}`;
-    },
+    path: (page: IWorkspacePageSearchResult, projectId: string | undefined) =>
+      getPaginaPath({
+        workspaceSlug: page?.workspace__slug,
+        pageId: page?.id,
+        projectIds: page?.project_ids,
+        currentProjectId: projectId,
+      }),
     title: "Páginas",
   },
   project: {
