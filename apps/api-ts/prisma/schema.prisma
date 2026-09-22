@@ -166,6 +166,7 @@ model Workspace {
   entityContactTypes EntityContactType[]
   entityContacts     EntityContact[]
   portalAccounts     PortalAccount[]
+  muralRecados       MuralRecado[]
 
   @@map("workspaces")
 }
@@ -1979,4 +1980,41 @@ model PortalRequest {
   issueId   String        @unique @map("issue_id") @db.Uuid
 
   @@map("portal_requests")
+}
+
+/// Recado do mural da home. Só quem tem `mural.publish` grava; todo membro lê.
+/// Autor e anexo ficam sem relação no Prisma (como `issue_unreads`): o recado
+/// sobrevive à conta desativada e ao anexo apagado. Ver .claude/mural.md.
+model MuralRecado {
+  id                  String         @id @default(uuid()) @db.Uuid
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  workspace           Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId         String         @map("workspace_id") @db.Uuid
+  authorId            String         @map("author_id") @db.Uuid
+  title               String         @db.VarChar(200)
+  descriptionHtml     String         @default("<p></p>") @map("description_html")
+  descriptionStripped String         @default("") @map("description_stripped")
+  publishedAt         DateTime       @default(now()) @map("published_at")
+  expiresAt           DateTime?      @map("expires_at")
+  isPinned            Boolean        @default(false) @map("is_pinned")
+  isRequired          Boolean        @default(false) @map("is_required")
+  isActive            Boolean        @default(true) @map("is_active")
+  attachmentId        String?        @map("attachment_id") @db.Uuid
+  leituras            MuralLeitura[]
+
+  @@index([workspaceId, isActive, publishedAt])
+  @@map("mural_recados")
+}
+
+/// Leitura de um recado por pessoa (a antiga `mural_lido`). Existe = leu.
+model MuralLeitura {
+  recadoId String      @map("recado_id") @db.Uuid
+  userId   String      @map("user_id") @db.Uuid
+  readAt   DateTime    @default(now()) @map("read_at")
+  recado   MuralRecado @relation(fields: [recadoId], references: [id], onDelete: Cascade)
+
+  @@id([recadoId, userId])
+  @@index([userId])
+  @@map("mural_leituras")
 }

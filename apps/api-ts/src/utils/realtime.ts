@@ -17,7 +17,8 @@ export type RealtimeEntity =
   | "cycle"
   | "module"
   | "state"
-  | "notification";
+  | "notification"
+  | "mural";
 
 export type RealtimeAction = "create" | "update" | "delete";
 

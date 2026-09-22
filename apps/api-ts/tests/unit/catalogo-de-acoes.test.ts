@@ -205,6 +205,11 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     }
   });
 
+  it("publicar no mural é de Gestor e admin; os demais recebem por pessoa", () => {
+    expect(donosDe("mural.publish")).toEqual(["admin", "gestor_projeto"]);
+    expect(ACTION_CATALOG.MURAL_PUBLISH).toMatchObject({ label: "Publicar recados no mural", scope: "workspace" });
+  });
+
   it("funções e SLA de etiqueta, que eram papel >= 18, ficam com Gestor e admin", () => {
     expect(donosDe("role.manage")).toEqual(["admin", "gestor_projeto"]);
     expect(donosDe("label.sla")).toEqual(["admin", "gestor_projeto"]);

@@ -96,6 +96,7 @@ export const ACTION_CATALOG = {
   WORKSPACE_SETTINGS: {key: "workspace.settings", label: "Configurar o espaço de trabalho", group: G.ESPACO, scope: "workspace", roles: SO_ADMIN},
   AUDIT_VIEW: {key: "audit.view", label: "Consultar a auditoria", group: G.ESPACO, scope: "workspace", roles: SO_ADMIN},
   PAGE_MANAGE_ALL: {key: "page.manage.all", label: "Travar, arquivar e excluir páginas de outros", group: G.ESPACO, scope: "workspace", roles: SO_ADMIN},
+  MURAL_PUBLISH: {key: "mural.publish", label: "Publicar recados no mural", group: G.ESPACO, scope: "workspace", roles: GESTOR},
   LABEL_SLA: {key: "label.sla", label: "Configurar o prazo das etiquetas", group: G.ESPACO, scope: "workspace", roles: GESTOR},
   ENTITY_MANAGE: {key: "entity.manage", label: "Cadastrar entidades", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   VISIT_MANAGE: {key: "visit.manage", label: "Registrar visitas técnicas", group: G.CADASTROS, scope: "workspace", roles: OPERAM},
