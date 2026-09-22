@@ -24,6 +24,7 @@ import { cn, generateWorkItemLink } from "@plane/utils";
 // components
 import RenderIfVisible from "@/components/core/render-if-visible-HOC";
 import { HIGHLIGHT_CLASS, getIssueBlockId } from "@/components/issues/issue-layouts/utils";
+import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
 // helpers
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -125,7 +126,7 @@ const KanbanIssueDetailsBlock = observer(function KanbanIssueDetailsBlock(props:
       </div>
 
       <Tooltip tooltipContent={issue.name} isMobile={isMobile} renderByDefault={false}>
-        <div className="line-clamp-1 w-full text-body-sm-medium text-primary">
+        <div className={cn("line-clamp-1 w-full text-body-sm-medium text-primary", { "font-bold": issue.is_unread })}>
           <span>{issue.name}</span>
         </div>
       </Tooltip>
@@ -139,14 +140,8 @@ const KanbanIssueDetailsBlock = observer(function KanbanIssueDetailsBlock(props:
           </div>
         </div>
       )}
-      {/* Legacy chamado number */}
-      {issue.legacy_ticket_number && (
-        <div className="mt-1 flex items-center">
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
-            #{issue.legacy_ticket_number}
-          </span>
-        </div>
-      )}
+      {/* Número anual do chamado (e o legado, quando for outro) */}
+      <NumerosDoChamado issue={issue} className="mt-1" />
 
       <IssueProperties
         className="flex flex-wrap items-center gap-2 pt-1.5 whitespace-nowrap text-tertiary"

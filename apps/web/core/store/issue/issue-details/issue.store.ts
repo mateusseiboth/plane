@@ -94,6 +94,7 @@ export class IssueStore implements IIssueStore {
 
     if (!issue) throw new Error("Work item not found");
 
+    this.markAsRead(workspaceSlug, projectId, issueId);
     const issuePayload = this.addIssueToStore(issue);
 
     this.rootIssueDetailStore.rootIssueStore.issues.addIssue([issuePayload]);
@@ -139,6 +140,14 @@ export class IssueStore implements IIssueStore {
     return issue;
   };
 
+  /**
+   * Abrir o detalhe apaga a marca de não lido de quem abriu. Falhar aqui não
+   * pode impedir a tela de abrir: a marca volta a ser conferida na próxima vez.
+   */
+  markAsRead = (workspaceSlug: string, projectId: string, issueId: string) => {
+    this.issueService.markAsRead(workspaceSlug, projectId, issueId).catch(() => undefined);
+  };
+
   addIssueToStore = (issue: TIssue) => {
     const issuePayload: TIssue = {
       id: issue?.id,
@@ -170,6 +179,10 @@ export class IssueStore implements IIssueStore {
       is_draft: issue?.is_draft,
       is_subscribed: issue?.is_subscribed,
       is_epic: issue?.is_epic,
+      ticket_number: issue?.ticket_number,
+      legacy_ticket_number: issue?.legacy_ticket_number,
+      // Quem está vendo o detalhe acabou de abrir o chamado (ver markAsRead).
+      is_unread: false,
     };
 
     this.rootIssueDetailStore.rootIssueStore.issues.addIssue([issuePayload]);
@@ -281,6 +294,7 @@ export class IssueStore implements IIssueStore {
 
     if (!issue || !projectId || !issueId) throw new Error("Issue not found");
 
+    this.markAsRead(workspaceSlug, projectId, issueId);
     const issuePayload = this.addIssueToStore(issue);
     this.rootIssueDetailStore.rootIssueStore.issues.addIssue([issuePayload]);
 

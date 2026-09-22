@@ -14,7 +14,9 @@ import { FilterOption } from "@/components/issues/issue-layouts/filters";
 // constants
 const ISSUE_EXTRA_OPTIONS: {
   key: TIssueExtraOptions;
-  titleTranslationKey: string;
+  titleTranslationKey?: string;
+  /** Rótulo fixo em português, para opções que só existem nesta instalação. */
+  title?: string;
 }[] = [
   {
     key: "sub_issue",
@@ -24,12 +26,17 @@ const ISSUE_EXTRA_OPTIONS: {
     key: "show_empty_groups",
     titleTranslationKey: "issue.display.extra.show_empty_groups",
   }, // filter on front-end
+  {
+    key: "unread",
+    title: "Somente não lidos",
+  }, // filtro no servidor (unread=true)
 ];
 
 type Props = {
   selectedExtraOptions: {
     sub_issue: boolean;
     show_empty_groups: boolean;
+    unread: boolean;
   };
   handleUpdate: (key: keyof IIssueDisplayFilterOptions, val: boolean) => void;
   enabledExtraOptions: TIssueExtraOptions[];
@@ -51,7 +58,7 @@ export const FilterExtraOptions = observer(function FilterExtraOptions(props: Pr
             key={option.key}
             isChecked={selectedExtraOptions?.[option.key] ? true : false}
             onClick={() => handleUpdate(option.key, !selectedExtraOptions?.[option.key])}
-            title={t(option.titleTranslationKey)}
+            title={option.title ?? t(option.titleTranslationKey ?? "")}
           />
         );
       })}

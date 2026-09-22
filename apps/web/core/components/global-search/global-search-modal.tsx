@@ -5,6 +5,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { useParams, useRouter } from "next/navigation";
 import { Search, X, FileText, Inbox, ArrowUpRight } from "lucide-react";
 import { cn } from "@plane/utils";
+import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
 import { WorkspaceService } from "@/services/workspace.service";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -37,6 +38,7 @@ type SearchResult = {
   type: "issue" | "intake";
   sequence_id?: number | null;
   legacy_ticket_number?: string | null;
+  ticket_number?: string | null;
   priority?: string | null;
   state?: { name: string; group: string } | null;
   project?: { id: string; identifier: string; name: string } | null;
@@ -183,12 +185,8 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                                 </span>
                               )}
 
-                              {/* Legacy ticket badge */}
-                              {item.legacy_ticket_number && (
-                                <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
-                                  #{item.legacy_ticket_number}
-                                </span>
-                              )}
+                              {/* Número anual e, quando for outro, o legado */}
+                              <NumerosDoChamado issue={item} />
 
                               {/* Priority indicator */}
                               {item.priority && item.priority !== "none" && (

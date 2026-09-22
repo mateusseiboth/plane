@@ -1,4 +1,5 @@
 // Shared serialization helpers — converts Prisma camelCase to frontend snake_case
+import {formatNumeroDoChamado} from "@utils/numero-do-chamado";
 
 export function isoDate(d: any): string | null {
   if (!d) return null;
@@ -82,6 +83,9 @@ export function serializeIssue(issue: any): Record<string, unknown> {
       : null,
 
     legacy_ticket_number: issue.legacyTicketNumber ?? null,
+    ticket_number: formatNumeroDoChamado(issue),
+    // Só as rotas que sabem quem pergunta preenchem (ver @utils/chamado-nao-lido).
+    is_unread: issue.isUnread ?? false,
   };
 }
 

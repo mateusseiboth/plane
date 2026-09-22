@@ -190,7 +190,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
         },
         extra_options: {
           access: true,
-          values: ["sub_issue"],
+          values: ["sub_issue", "unread"],
         },
       },
       list: {
@@ -202,8 +202,8 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
           type: ["active", "backlog"],
         },
         extra_options: {
-          access: false,
-          values: [],
+          access: true,
+          values: ["unread"],
         },
       },
       kanban: {
@@ -215,8 +215,8 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
           type: ["active", "backlog"],
         },
         extra_options: {
-          access: false,
-          values: [],
+          access: true,
+          values: ["unread"],
         },
       },
       calendar: {
@@ -267,7 +267,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
         },
         extra_options: {
           access: true,
-          values: ["show_empty_groups", "sub_issue"],
+          values: ["show_empty_groups", "sub_issue", "unread"],
         },
       },
       kanban: {
@@ -280,7 +280,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
         },
         extra_options: {
           access: true,
-          values: ["show_empty_groups", "sub_issue"],
+          values: ["show_empty_groups", "sub_issue", "unread"],
         },
       },
       calendar: {
@@ -301,7 +301,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
         },
         extra_options: {
           access: true,
-          values: ["sub_issue"],
+          values: ["sub_issue", "unread"],
         },
       },
       gantt_chart: {

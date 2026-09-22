@@ -6,6 +6,7 @@ import {resolverOrdenacao} from "@utils/issue-order";
 import {paginate} from "@utils/pagination";
 import {sincronizarFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
+import {whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {buscarChamados, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
@@ -682,6 +683,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           project__identifier: c.project_identifier,
           workspace__slug: ws.slug,
           legacy_ticket_number: c.legacy_ticket_number,
+          ticket_number: c.ticket_number,
           is_intake: c.state_group === "triage",
           type_id: null,
         })),
@@ -747,6 +749,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           type: "issue",
           sequence_id: r.sequence_id,
           legacy_ticket_number: r.legacy_ticket_number ?? null,
+          ticket_number: r.ticket_number ?? null,
           priority: r.priority,
           state: r.state_name ? {name: r.state_name, group: r.state_group} : null,
           project: toProject(r),
@@ -757,6 +760,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           type: "intake",
           sequence_id: r.sequence_id,
           legacy_ticket_number: r.legacy_ticket_number ?? null,
+          ticket_number: r.ticket_number ?? null,
           project: toProject(r),
         })),
         projects: projects.map((p: any) => ({...p, type: "project"})),
@@ -2221,6 +2225,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
     if (query.entity_id) where.entityId = query.entity_id;
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.unread === "true") Object.assign(where, whereNaoLidoPor(user.id));
 
     // Parse the frontend `filters` JSON param (+ loose params) and apply it.
     const filters = normalizeFilters(query as Record<string, unknown>);
@@ -2314,7 +2319,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           groupWhere.stateId = restringirAoGrupo(where.stateId, stateIds.map((s) => s.id));
         }
         const [groupIssues, groupCount] = await Promise.all([
-          prisma.issue.findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage}),
+          prisma.issue
+            .findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage})
+            .then((chamados) => withNaoLido(user.id, chamados)),
           prisma.issue.count({where: groupWhere}),
         ]);
         results[gv ?? "none"] = {
@@ -2333,7 +2340,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
       count: () => prisma.issue.count({where}),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeIssue),
+      transform: async (items) => (await withNaoLido(user.id, items)).map(serializeIssue),
     });
   })
 
@@ -2357,6 +2364,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
 
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.unread === "true") Object.assign(where, whereNaoLidoPor(user.id));
 
     const filters = normalizeFilters(query as Record<string, unknown>);
     await applyIssueFilters(where, filters, {workspaceId: ws.id});
@@ -2370,7 +2378,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
       count: () => prisma.issue.count({where}),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeIssue),
+      transform: async (items) => (await withNaoLido(user.id, items)).map(serializeIssue),
     });
   })
 

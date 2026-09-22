@@ -58,7 +58,7 @@ export type TIssueOrderByOptions =
 
 export type TIssueGroupingFilters = "active" | "backlog";
 
-export type TIssueExtraOptions = "show_empty_groups" | "sub_issue";
+export type TIssueExtraOptions = "show_empty_groups" | "sub_issue" | "unread";
 
 export type TIssueParams =
   | "priority"
@@ -82,6 +82,7 @@ export type TIssueParams =
   | "type"
   | "sub_issue"
   | "show_empty_groups"
+  | "unread"
   | "cursor"
   | "per_page"
   | "issue_type"
@@ -160,6 +161,8 @@ export interface IIssueDisplayFilterOptions {
   order_by?: TIssueOrderByOptions;
   show_empty_groups?: boolean;
   sub_issue?: boolean;
+  /** Só os chamados não lidos por quem está olhando. */
+  unread?: boolean;
 }
 export interface IIssueDisplayProperties {
   assignee?: boolean;

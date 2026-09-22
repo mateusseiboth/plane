@@ -22,6 +22,7 @@ import {publishRealtime} from "@utils/realtime";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, clientIp, recordAudit} from "@utils/audit";
 import {registrarVersaoDaDescricao, serializarVersao} from "@utils/versoes-da-descricao";
 import {nextSequenceId} from "@utils/sequence";
+import {markChamadoLido, markChamadoNaoLido, whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {computeTargetDate} from "@utils/sla";
 import {inicioRecebido, vencimentoRecebido} from "@utils/prazo";
 import {sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-chamado";
@@ -72,6 +73,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     // `entity_id` is handled by normalizeFilters/applyIssueFilters below so it
     // accepts both a single id and a CSV list from the work-item filter panel.
     if (query.legacy_ticket_number) where.legacyTicketNumber = query.legacy_ticket_number;
+    if (query.unread === "true") Object.assign(where, whereNaoLidoPor(user.id));
 
     // Parse the frontend `filters` JSON param (+ loose params) and apply it
     const filters = normalizeFilters(query as Record<string, unknown>);
@@ -141,7 +143,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         }
 
         const [groupIssues, groupCount] = await Promise.all([
-          prisma.issue.findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage}),
+          prisma.issue
+            .findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage})
+            .then((chamados) => withNaoLido(user.id, chamados)),
           prisma.issue.count({where: groupWhere}),
         ]);
 
@@ -163,7 +167,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
       count: () => prisma.issue.count({where}),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeIssue),
+      transform: async (items) => (await withNaoLido(user.id, items)).map(serializeIssue),
     });
   })
 
@@ -256,6 +260,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         : []),
     ]);
 
+    // Atribuído por outra pessoa: o responsável ainda não viu.
+    await markChamadoNaoLido({issueId: issue.id, actorId: user.id});
+
     publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, actor: user.id});
 
     // LGPD: abertura de chamado é tratamento de dado pessoal do solicitante.
@@ -290,7 +297,19 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       headers,
       metadata: {project_id, sequence_id: issue.sequenceId},
     });
-    return serializeIssue(issue);
+    const [comMarca] = await withNaoLido(user.id, [issue]);
+    return serializeIssue(comMarca);
+  })
+
+  // Abrir o detalhe (página ou espiada) apaga a marca de não lido de quem abriu.
+  // É uma chamada explícita da tela, e não um efeito do GET acima: o GET também
+  // é usado para recarregar chamados que ninguém abriu.
+  .post("/:issue_id/read/", async ({params: {slug, project_id, issue_id}, user, set}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await getProjectOrFail(ws.id, project_id, user.id);
+    await markChamadoLido(issue_id, user.id);
+    set.status = 204;
+    return null;
   })
 
   .patch("/:issue_id", async ({params: {slug, project_id, issue_id}, body, user, set, headers}) => {
@@ -410,6 +429,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
         });
       }
     }
+
+    // Etapa ou responsáveis mudaram: acende a marca de não lido de quem não fez a mudança.
+    const mudouEtapa = newStateId !== undefined && before?.stateId !== newStateId;
+    if (mudouEtapa || newAssignees !== undefined) await markChamadoNaoLido({issueId: issue_id, actorId: user.id});
 
     // SLA (C): recompute the auto due date when labels/priority change and the
     // caller did not explicitly set target_date.
@@ -696,6 +719,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       },
       include: COMMENT_INCLUDE,
     });
+    await markChamadoNaoLido({issueId: issue_id, actorId: user.id});
     publishRealtime(ws.id, {entity: "comment", action: "create", project_id, issue_id, id: comment.id, actor: user.id});
     // LGPD: interação do usuário no chamado.
     recordAudit({

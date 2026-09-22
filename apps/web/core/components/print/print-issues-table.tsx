@@ -50,6 +50,7 @@ export const PrintIssuesTable = observer(function PrintIssuesTable(props: Props)
       <thead>
         <tr className="bg-neutral-100 text-left">
           <th className={CELL}>ID</th>
+          <th className={CELL}>Número</th>
           <th className={CELL}>Título</th>
           {showProject && <th className={CELL}>Projeto</th>}
           <th className={CELL}>Estado</th>
@@ -64,6 +65,7 @@ export const PrintIssuesTable = observer(function PrintIssuesTable(props: Props)
             <td className={CELL}>
               {getProjectIdentifierById(issue.project_id) ?? ""}-{issue.sequence_id}
             </td>
+            <td className={CELL}>{issue.ticket_number ?? "—"}</td>
             <td className={CELL}>{issue.name}</td>
             {showProject && <td className={CELL}>{getProjectById(issue.project_id)?.name ?? "—"}</td>}
             <td className={CELL}>{getStateById(issue.state_id)?.name ?? "—"}</td>
