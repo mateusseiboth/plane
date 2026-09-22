@@ -172,13 +172,13 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
         {nextPath && <input type="hidden" value={nextPath} name="next_path" />}
         <div className="space-y-1">
           <label htmlFor="email" className="text-13 font-medium text-tertiary">
-            {t("auth.common.email.label")}
+            {t("auth.common.email_or_username.label")}
           </label>
           <div className={`relative flex items-center rounded-md border border-strong bg-surface-1`}>
             <Input
               id="email"
               name="email"
-              type="email"
+              type="text"
               value={passwordFormData.email}
               onChange={(e) => handleFormChange("email", e.target.value)}
               placeholder={t("auth.common.email.placeholder")}

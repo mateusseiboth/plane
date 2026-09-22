@@ -21,7 +21,8 @@ import { useEntityContactTypes } from "@/hooks/use-entity-contacts";
 // services
 import entityContactService, { type TEntityContactPayload } from "@/services/entity-contact.service";
 // local imports
-import { mascararTelefone, paraCampoDeData, telefoneInvalido } from "./helpers";
+import { formatTelefone, toCampoDeData, telefoneInvalido } from "./helpers";
+import { AvisoDeRepetido } from "./aviso-de-repetido";
 import { SeletorDeSistemas } from "./seletor-de-sistemas";
 
 type TFormulario = {
@@ -50,7 +51,7 @@ const FORMULARIO_VAZIO: TFormulario = {
   project_ids: [],
 };
 
-function paraFormulario(contact: TEntityContact | null | undefined, entidadePadrao: string): TFormulario {
+function toFormulario(contact: TEntityContact | null | undefined, entidadePadrao: string): TFormulario {
   if (!contact) return { ...FORMULARIO_VAZIO, entity_id: entidadePadrao };
   return {
     name: contact.name ?? "",
@@ -58,7 +59,7 @@ function paraFormulario(contact: TEntityContact | null | undefined, entidadePadr
     type_id: contact.type_id ?? "",
     email: contact.email ?? "",
     phone: contact.phone ?? "",
-    birth_date: paraCampoDeData(contact.birth_date),
+    birth_date: toCampoDeData(contact.birth_date),
     notes: contact.notes ?? "",
     is_active: contact.is_active ?? true,
     receive_messages: contact.receive_messages ?? true,
@@ -67,7 +68,7 @@ function paraFormulario(contact: TEntityContact | null | undefined, entidadePadr
 }
 
 /** `phone_digits` é derivado no servidor — o cliente nunca o envia. */
-function paraPayload(form: TFormulario): TEntityContactPayload {
+function buildPayload(form: TFormulario): TEntityContactPayload {
   return {
     name: form.name.trim(),
     entity_id: form.entity_id || null,
@@ -122,13 +123,13 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
   const { entities } = useEntities(workspaceSlug);
   const { types } = useEntityContactTypes(workspaceSlug);
 
-  const [form, setForm] = useState<TFormulario>(() => paraFormulario(contact, entityId ?? ""));
+  const [form, setForm] = useState<TFormulario>(() => toFormulario(contact, entityId ?? ""));
   const [salvando, setSalvando] = useState(false);
   const [erroDeSistemas, setErroDeSistemas] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
-    const inicial = paraFormulario(contact, entityId ?? "");
+    const inicial = toFormulario(contact, entityId ?? "");
     // Ao EDITAR, o cadastro manda; os valores sugeridos só preenchem o que
     // estaria em branco num cadastro novo.
     setErroDeSistemas(undefined);
@@ -136,7 +137,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
     setForm({
       ...inicial,
       name: nomeInicial || inicial.name,
-      phone: mascararTelefone(telefoneInicial || inicial.phone),
+      phone: formatTelefone(telefoneInicial || inicial.phone),
     });
   }, [open, contact, entityId, nomeInicial, telefoneInicial]);
 
@@ -155,7 +156,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
     }
     setSalvando(true);
     try {
-      const payload = paraPayload(form);
+      const payload = buildPayload(form);
       const salvo = contact
         ? await entityContactService.update(workspaceSlug, contact.id, payload)
         : await entityContactService.create(workspaceSlug, payload);
@@ -251,7 +252,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                 <label className={rotulo}>Telefone</label>
                 <input
                   value={form.phone}
-                  onChange={(e) => alterar("phone", mascararTelefone(e.target.value))}
+                  onChange={(e) => alterar("phone", formatTelefone(e.target.value))}
                   className={campoTexto}
                   placeholder="(67) 99999-0000"
                   inputMode="tel"
@@ -274,6 +275,13 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                 className={campoTexto}
               />
             </div>
+
+            <AvisoDeRepetido
+              workspaceSlug={workspaceSlug}
+              phone={form.phone}
+              email={form.email}
+              contactId={contact?.id}
+            />
 
             <div>
               <span className={rotulo}>Sistemas de que cuida</span>

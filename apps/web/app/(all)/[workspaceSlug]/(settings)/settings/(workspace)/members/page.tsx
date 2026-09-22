@@ -19,11 +19,13 @@ import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view
 import { CountChip } from "@/components/common/count-chip";
 import { PageHead } from "@/components/core/page-title";
 import { MemberListFiltersDropdown } from "@/components/project/dropdowns/filters/member-list";
+import { CreateMemberModal } from "@/components/workspace/settings/create-member-modal";
 import { WorkspaceMembersList } from "@/components/workspace/settings/members-list";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web components
 import { BillingActionsButton } from "@/plane-web/components/workspace/billing/billing-actions-button";
 import { SendWorkspaceInvitationModal, MembersActivityButton } from "@/plane-web/components/workspace/members";
@@ -35,6 +37,7 @@ import { MembersWorkspaceSettingsHeader } from "./header";
 const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsPage({ params }: Route.ComponentProps) {
   // states
   const [inviteModal, setInviteModal] = useState(false);
+  const [createModal, setCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   // router
   const { workspaceSlug } = params;
@@ -45,6 +48,7 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
   } = useMember();
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
+  const { can } = useMyWorkspaceActions(workspaceSlug);
 
   // derived values
   const canPerformWorkspaceAdminActions = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
@@ -108,6 +112,7 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
         onClose={() => setInviteModal(false)}
         onSubmit={handleWorkspaceInvite}
       />
+      <CreateMemberModal open={createModal} onClose={() => setCreateModal(false)} workspaceSlug={workspaceSlug} />
       <section
         className={cn("size-full", {
           "opacity-60": !canPerformWorkspaceMemberActions,
@@ -138,6 +143,11 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
               memberType="workspace"
             />
             <MembersActivityButton workspaceSlug={workspaceSlug} />
+            {can("workspace.members") && (
+              <Button variant="secondary" size="lg" onClick={() => setCreateModal(true)}>
+                Criar usuário
+              </Button>
+            )}
             {canPerformWorkspaceAdminActions && (
               <Button variant="primary" size="lg" onClick={() => setInviteModal(true)}>
                 {t("workspace_settings.settings.members.add_member")}

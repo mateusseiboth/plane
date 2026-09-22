@@ -12,6 +12,7 @@ import { cn } from "@plane/utils";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { PageHead } from "@/components/core/page-title";
 import { ContatoFormModal, mensagemDeErro } from "@/components/entity-contacts";
+import { TiposDeResponsavelModal } from "@/components/entity-contacts/tipos-de-responsavel-modal";
 // hooks
 import useDebounce from "@/hooks/use-debounce";
 import { useEntities } from "@/hooks/use-entities";
@@ -30,7 +31,7 @@ const SITUACOES: { value: TSituacao; label: string }[] = [
 ];
 
 /** `is_active` só entra na consulta quando o usuário escolhe um dos dois lados. */
-function paraFiltroDeSituacao(situacao: TSituacao): boolean | undefined {
+function toFiltroDeSituacao(situacao: TSituacao): boolean | undefined {
   if (situacao === "ativos") return true;
   if (situacao === "inativos") return false;
   return undefined;
@@ -128,6 +129,7 @@ function ContatosPage() {
   const [sistemaId, setSistemaId] = useState("");
   const [situacao, setSituacao] = useState<TSituacao>("todos");
   const [modal, setModal] = useState<{ open: boolean; contact?: TEntityContact | null }>({ open: false });
+  const [tiposAbertos, setTiposAbertos] = useState(false);
 
   const buscaAdiada = useDebounce(busca, 300);
 
@@ -137,7 +139,7 @@ function ContatosPage() {
       entity_id: entidadeId || undefined,
       type_id: tipoId || undefined,
       project_id: sistemaId || undefined,
-      is_active: paraFiltroDeSituacao(situacao),
+      is_active: toFiltroDeSituacao(situacao),
     }),
     [buscaAdiada, entidadeId, tipoId, sistemaId, situacao]
   );
@@ -199,14 +201,23 @@ function ContatosPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setModal({ open: true, contact: null })}
-          className="inline-flex items-center gap-1.5 rounded bg-accent-primary px-3 py-2 text-13 font-medium text-white hover:bg-accent-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Novo contato
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setTiposAbertos(true)}
+            className="inline-flex items-center gap-1.5 rounded border border-subtle px-3 py-2 text-13 font-medium text-primary hover:bg-surface-2"
+          >
+            Tipos de responsável
+          </button>
+          <button
+            type="button"
+            onClick={() => setModal({ open: true, contact: null })}
+            className="inline-flex items-center gap-1.5 rounded bg-accent-primary px-3 py-2 text-13 font-medium text-white hover:bg-accent-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Novo contato
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-b border-subtle px-6 py-3">
@@ -337,6 +348,7 @@ function ContatosPage() {
         )}
       </div>
 
+      <TiposDeResponsavelModal open={tiposAbertos} onClose={() => setTiposAbertos(false)} workspaceSlug={slug} />
       <ContatoFormModal
         open={modal.open}
         onClose={() => setModal({ open: false })}

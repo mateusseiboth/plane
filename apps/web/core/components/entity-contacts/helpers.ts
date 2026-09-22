@@ -18,7 +18,7 @@ export function descricaoDoContato(contact: TEntityContact): string {
 }
 
 /** `1980-05-01T00:00:00Z` e `1980-05-01` viram `1980-05-01` (valor de `<input type="date">`). */
-export function paraCampoDeData(valor?: string | null): string {
+export function toCampoDeData(valor?: string | null): string {
   return valor ? valor.slice(0, 10) : "";
 }
 
@@ -33,19 +33,19 @@ export function paraCampoDeData(valor?: string | null): string {
  */
 const DDI_BR = "55";
 
-export function somenteDigitos(valor: string): string {
+export function onlyDigitos(valor: string): string {
   return (valor ?? "").replace(/\D/g, "");
 }
 
 /** Tira o 55 da frente quando o que sobra ainda é um número nacional plausível. */
-function semDdi(digitos: string): string {
+function withoutDdi(digitos: string): string {
   const cortado = digitos.startsWith(DDI_BR) ? digitos.slice(2) : digitos;
   return cortado.length === 10 || cortado.length === 11 ? cortado : digitos;
 }
 
 /** `67999990000` → `(67) 99999-0000`; `6733210000` → `(67) 3321-0000`. */
-export function mascararTelefone(valor: string): string {
-  const d = semDdi(somenteDigitos(valor)).slice(0, 11);
+export function formatTelefone(valor: string): string {
+  const d = withoutDdi(onlyDigitos(valor)).slice(0, 11);
   if (d.length <= 2) return d;
   const ddd = `(${d.slice(0, 2)}) `;
   if (d.length <= 6) return ddd + d.slice(2);
@@ -56,9 +56,9 @@ export function mascararTelefone(valor: string): string {
 
 /** Vazio é válido: telefone é opcional. */
 export function telefoneInvalido(valor: string): string | null {
-  const d = somenteDigitos(valor);
+  const d = onlyDigitos(valor);
   if (!d) return null;
-  const nacional = semDdi(d);
+  const nacional = withoutDdi(d);
   if (nacional.length !== 10 && nacional.length !== 11) return "Telefone deve ter 10 ou 11 dígitos, com DDD.";
   if (nacional.length === 11 && nacional[2] !== "9")
     return "Celular com 11 dígitos precisa começar com 9 depois do DDD.";

@@ -32,7 +32,7 @@ type Props = {
 // O que muda para o operador em cada caso. Vai no diálogo antes de confirmar.
 const FREEZE_EFFECTS: Record<TFreezeSubject, string> = {
   entity: "Os contatos e as contas do portal desta entidade também ficam desativados.",
-  member: "O usuário não consegue mais entrar e as sessões abertas são encerradas.",
+  member: "A pessoa perde o acesso a este espaço. A conta continua valendo nos outros espaços.",
 };
 
 const ACTION_LABELS: Record<TFreezeEvent["action"], string> = {

@@ -75,6 +75,16 @@ function toList(data: unknown): TEntityContact[] {
   return Array.isArray(results) ? results : [];
 }
 
+/** Contato com o mesmo telefone ou e-mail de quem está sendo cadastrado. */
+export type TContactDuplicate = {
+  id: string;
+  name: string;
+  entity_name: string | null;
+  matches: ("phone" | "email")[];
+};
+
+export type TContactDuplicateQuery = { phone?: string; email?: string; exclude_id?: string };
+
 export class EntityContactService extends APIService {
   constructor() {
     super(API_BASE_URL);
@@ -118,6 +128,14 @@ export class EntityContactService extends APIService {
   }
 
   /** Atalho do contrato; mesma forma da listagem. */
+  async findDuplicates(workspaceSlug: string, query: TContactDuplicateQuery): Promise<TContactDuplicate[]> {
+    return this.get(`/api/workspaces/${workspaceSlug}/entity-contacts/duplicates/${toQuery(query)}`)
+      .then((res) => res?.data ?? [])
+      .catch((err) => {
+        throw err?.response?.data;
+      });
+  }
+
   async listByEntity(workspaceSlug: string, entityId: string): Promise<TEntityContact[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/entities/${entityId}/contacts/`)
       .then((res) => toList(res?.data))
