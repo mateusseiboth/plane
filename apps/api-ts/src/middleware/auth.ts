@@ -31,8 +31,7 @@ async function resolveApiKey(apiKey: string, isSemRastro = false): Promise<AuthU
   // Usuário congelado ou desativado perde também o acesso por chave de API.
   if (token.user.isActive === false) return null;
   // Rota sem rastro (denúncia): o "último uso" seria a hora exata da denúncia.
-  if (!isSemRastro)
-    prisma.apiToken.update({ where: { id: token.id }, data: { lastUsed: new Date() } }).catch(() => {});
+  if (!isSemRastro) prisma.apiToken.update({ where: { id: token.id }, data: { lastUsed: new Date() } }).catch(() => {});
   const { isActive: _isActive, ...user } = token.user;
   return user;
 }
