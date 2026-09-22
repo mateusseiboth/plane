@@ -143,7 +143,20 @@ DATABASE_URL=... bun run scripts/import-pos-atendimento.ts   # sem MYSQL_HOST: c
 - `migrate-sac.ts` (no `.gitignore`) não foi alterado: o §12 continua gravando os comentários;
   o script novo roda depois dele.
 
-Validação em `plane_w12`: ver §8.
+Validação em `plane_w12` (seed + `migrate-sac.ts` com `CHAMADO_MIN_ID=28000
+CHAMADO_MAX_ID=28904`: 900 chamados, 892 visitas, 20 comentários `pos-N`):
+
+| Rodada | Resultado |
+| --- | --- |
+| comentários, `DRY_RUN` | lidos 20, gravaria 20 |
+| comentários, 1ª | 20 gravados (expectativa nula, classificação e meio preenchidos) |
+| comentários, 2ª | 0 gravados (idempotente) |
+| MySQL, 1ª | 11.837 lidos, 271 gravados (todos de visita: os 20 do comentário eram de visita e MUDARAM do chamado para a visita, agora com expectativa), 11.557 sem chamado migrado no recorte, 9 repetidos no mesmo destino |
+| MySQL, 2ª | 271 regravados, total continua 271 (upsert idempotente); 147 verificados |
+| MySQL fora do ar | cai para os comentários, 0 gravados |
+
+Com esses dados, a fila respondeu em 25 a 75 ms (1.335 pendentes, 124 visitas pendentes de
+verificação, 147 verificados) e o relatório deu 271 registros (93,7% ótimo, 6,3% bom).
 
 ## 7. Testes
 
@@ -167,3 +180,7 @@ Validação em `plane_w12`: ver §8.
 - Sem notificação no sino e sem SSE: a fila revalida ao gravar pela própria tela.
 - O relatório por período usa a data do contato, não a do encerramento.
 - Porta 8112 estava ocupada pelo proxy do W11; os testes de contrato rodaram na 8122.
+- Testes de e-mail (`sessao-e-senha`, `portal-senha`) precisam também de `SMTP_FROM` no
+  servidor e no `bun test` (com só `SMTP_HOST`, o SMTP conta como não configurado).
+- `migrate-sac.ts` foi COPIADO do checkout principal só para gerar os dados da validação e
+  apagado depois (está no `.gitignore`); o teste `migrate-sac-etapas` só passa com ele presente.
