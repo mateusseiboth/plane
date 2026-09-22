@@ -135,6 +135,9 @@ export const coreRoutes: RouteConfigEntry[] = [
         route(":workspaceSlug/visits", "./(all)/[workspaceSlug]/(projects)/visits/page.tsx"),
         route(":workspaceSlug/visits/:visitId", "./(all)/[workspaceSlug]/(projects)/visits/[visitId]/page.tsx"),
 
+        // Mural de recados (a seção da home abre daqui o histórico)
+        route(":workspaceSlug/mural", "./(all)/[workspaceSlug]/(projects)/mural/page.tsx"),
+
         // Contatos (responsáveis das entidades)
         route(":workspaceSlug/contatos", "./(all)/[workspaceSlug]/(projects)/contatos/page.tsx"),
 
