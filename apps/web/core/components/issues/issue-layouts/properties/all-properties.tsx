@@ -51,6 +51,7 @@ import { WorkItemLayoutAdditionalProperties } from "@/plane-web/components/issue
 import { IssuePropertyLabels } from "./labels";
 import { WithDisplayPropertiesHOC } from "./with-display-properties-HOC";
 import entityService, { type TEntity } from "@/services/entity.service";
+import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
 // Simple entity badge for list/kanban properties
 function EntityListProperty({
@@ -94,6 +95,8 @@ export interface IIssueProperties {
 
 export const IssueProperties = observer(function IssueProperties(props: IIssueProperties) {
   const { issue, updateIssue, displayProperties, isReadOnly, className, isEpic = false } = props;
+  // Prioridade é permissão própria (Gestor e admin; demais por concessão na tela de Funções).
+  const { canChangePriority } = useProjectRolePermissions(issue.project_id ?? undefined);
   // i18n
   const { t } = useTranslation();
   // store hooks
@@ -189,7 +192,9 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
 
   const handleTargetDate = async (date: Date | null) => {
     if (updateIssue)
-      await updateIssue(issue.project_id, issue.id, { target_date: date ? renderFormattedPayloadDateTime(date) : null });
+      await updateIssue(issue.project_id, issue.id, {
+        target_date: date ? renderFormattedPayloadDateTime(date) : null,
+      });
   };
 
   const handleEstimate = async (value: string | undefined) => {
@@ -250,7 +255,7 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
           <PriorityDropdown
             value={issue?.priority}
             onChange={handlePriority}
-            disabled={isReadOnly}
+            disabled={isReadOnly || !canChangePriority}
             buttonVariant="border-without-text"
             renderByDefault={isMobile}
             showTooltip

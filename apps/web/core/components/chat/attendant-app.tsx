@@ -31,12 +31,12 @@ import {
   X,
 } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useProject } from "@/hooks/store/use-project";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // components
 import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-button";
 // services
@@ -432,15 +432,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const router = useRouter();
   const slug = workspaceSlug?.toString() ?? "";
   const { data: currentUser } = useUser();
-  const { allowPermissions } = useUserPermissions();
   const { joinedProjectIds, getProjectById } = useProject();
   const { sidebarCollapsed } = useAppTheme();
 
-  const isManager = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.GESTOR_PROJETO],
-    EUserPermissionsLevel.WORKSPACE
-  );
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  // Mesma matriz de ações que o chat-backend consulta: transferir e relatórios
+  // (`chat.gerenciar`); fila, robô, avaliação e configuração (`chat.administrar`).
+  const { can } = useMyWorkspaceActions(slug);
+  const isManager = can("chat.gerenciar");
+  const isAdmin = can("chat.administrar");
 
   const [showConfig, setShowConfig] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);

@@ -21,7 +21,14 @@ import {
   EstimatePropertyIcon,
   ParentPropertyIcon,
 } from "@plane/propel/icons";
-import { cn, getDate, getDateTime, renderFormattedPayloadDate, renderFormattedPayloadDateTime, shouldHighlightIssueDueDate } from "@plane/utils";
+import {
+  cn,
+  getDate,
+  getDateTime,
+  renderFormattedPayloadDate,
+  renderFormattedPayloadDateTime,
+  shouldHighlightIssueDueDate,
+} from "@plane/utils";
 // components
 import { DateDropdown } from "@/components/dropdowns/date";
 import { EstimateDropdown } from "@/components/dropdowns/estimate";
@@ -48,6 +55,7 @@ import { IssueEntitySelect } from "./entity-select";
 import { IssueLabel } from "./label";
 import { IssueModuleSelect } from "./module-select";
 import type { TIssueOperations } from "./root";
+import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
 type Props = {
   workspaceSlug: string;
@@ -60,6 +68,8 @@ type Props = {
 export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: Props) {
   const { t } = useTranslation();
   const { workspaceSlug, projectId, issueId, issueOperations, isEditable } = props;
+  // Prioridade é permissão própria (Gestor e admin; demais por concessão na tela de Funções).
+  const { canChangePriority } = useProjectRolePermissions(projectId);
   // store hooks
   const { getProjectById } = useProject();
   const { areEstimateEnabledByProjectId } = useProjectEstimates();
@@ -126,7 +136,7 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
               <PriorityDropdown
                 value={issue?.priority}
                 onChange={(val) => issueOperations.update(workspaceSlug, projectId, issueId, { priority: val })}
-                disabled={!isEditable}
+                disabled={!isEditable || !canChangePriority}
                 buttonVariant="transparent-with-text"
                 className="h-7.5 w-full grow rounded-sm"
                 buttonContainerClassName="size-full text-left"

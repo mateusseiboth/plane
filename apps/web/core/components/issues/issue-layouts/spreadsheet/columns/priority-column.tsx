@@ -10,6 +10,7 @@ import { observer } from "mobx-react";
 import type { TIssue } from "@plane/types";
 // components
 import { PriorityDropdown } from "@/components/dropdowns/priority";
+import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
 type Props = {
   issue: TIssue;
@@ -20,13 +21,15 @@ type Props = {
 
 export const SpreadsheetPriorityColumn = observer(function SpreadsheetPriorityColumn(props: Props) {
   const { issue, onChange, disabled, onClose } = props;
+  // Prioridade é permissão própria (Gestor e admin; demais por concessão na tela de Funções).
+  const { canChangePriority } = useProjectRolePermissions(issue.project_id ?? undefined);
 
   return (
     <div className="h-11 border-b-[0.5px] border-subtle">
       <PriorityDropdown
         value={issue.priority}
         onChange={(data) => onChange(issue, { priority: data }, { changed_property: "priority", change_details: data })}
-        disabled={disabled}
+        disabled={disabled || !canChangePriority}
         buttonVariant="transparent-with-text"
         buttonClassName="text-left rounded-none group-[.selected-issue-row]:bg-accent-primary/5 group-[.selected-issue-row]:hover:bg-accent-primary/10 px-page-x"
         buttonContainerClassName="w-full"
