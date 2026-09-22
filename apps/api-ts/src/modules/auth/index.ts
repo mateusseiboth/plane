@@ -5,9 +5,7 @@ import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { paginate } from "@utils/pagination";
 
-const JWT_SECRET_BYTES = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production"
-);
+const JWT_SECRET_BYTES = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
 async function signToken(sub: string, email: string): Promise<string> {
@@ -30,12 +28,13 @@ function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-async function resolveTokenFromRequest(headers: Record<string, string | undefined>): Promise<{ sub: string; email: string } | null> {
+async function resolveTokenFromRequest(
+  headers: Record<string, string | undefined>
+): Promise<{ sub: string; email: string } | null> {
   const cookieHeader = headers["cookie"] ?? "";
   const match = cookieHeader.match(/(?:^|;\s*)plane_auth=([^;]+)/);
   const rawToken =
-    headers["authorization"]?.replace("Bearer ", "") ??
-    (match?.[1] ? decodeURIComponent(match[1]) : null);
+    headers["authorization"]?.replace("Bearer ", "") ?? (match?.[1] ? decodeURIComponent(match[1]) : null);
   if (!rawToken) return null;
   try {
     const { payload } = await jwtVerify(rawToken, JWT_SECRET_BYTES);
@@ -120,7 +119,6 @@ function authUserDto(u: any, token: string) {
   };
 }
 
-
 /**
  * Registra tentativa de acesso na trilha LGPD. A trilha é por workspace, e no
  * login ainda não há workspace escolhido — usamos o primeiro do usuário (ou
@@ -156,7 +154,6 @@ async function auditAuth(
   }
 }
 
-
 /** Resolve o usuário a partir do cookie de sessão (para o logout, que não usa authPlugin). */
 async function userFromCookie(headers: any): Promise<{ id: string; email: string } | null> {
   try {
@@ -190,7 +187,9 @@ async function signIn(b: any, set: any, json = false, headers?: any) {
       : authRedirect(set, `/?error_code=${AUTH_ERR.FAILED_SIGN_IN}&email=${encodeURIComponent(email)}`);
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user?.password || !user.isActive) {
-    auditAuth(AUDIT_ACTIONS.LOGIN_FAILED, email, headers, user, { motivo: user ? "inativo ou sem senha" : "usuário inexistente" });
+    auditAuth(AUDIT_ACTIONS.LOGIN_FAILED, email, headers, user, {
+      motivo: user ? "inativo ou sem senha" : "usuário inexistente",
+    });
     return fail();
   }
   const valid = await Bun.password.verify(b.password, user.password);
@@ -211,12 +210,14 @@ async function signUp(b: any, set: any) {
   if (!b?.email || !b?.password) return authRedirect(set, `/?error_code=${AUTH_ERR.REQUIRED_SIGN_UP}`);
   const email = String(b.email).toLowerCase().trim();
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return authRedirect(set, `/?error_code=${AUTH_ERR.USER_ALREADY_EXISTS}&email=${encodeURIComponent(email)}`);
+  if (existing)
+    return authRedirect(set, `/?error_code=${AUTH_ERR.USER_ALREADY_EXISTS}&email=${encodeURIComponent(email)}`);
 
   const hash = await Bun.password.hash(b.password, { algorithm: "bcrypt", cost: 12 });
   const user = await prisma.user.create({
     data: {
-      email, password: hash,
+      email,
+      password: hash,
       firstName: b.first_name ?? "",
       lastName: b.last_name ?? "",
       displayName: b.display_name ?? email.split("@")[0],
@@ -273,12 +274,21 @@ export const sessionAuthModule = new Elysia()
     const cookieHeader = headers["cookie"] ?? "";
     const match = cookieHeader.match(/(?:^|;\s*)plane_auth=([^;]+)/);
     const rawToken = b?.refresh_token ?? (match?.[1] ? decodeURIComponent(match[1]) : null);
-    if (!rawToken) { set.status = 401; return { detail: "Nenhum token informado." }; }
+    if (!rawToken) {
+      set.status = 401;
+      return { detail: "Nenhum token informado." };
+    }
     try {
       const { payload } = await jwtVerify(rawToken, JWT_SECRET_BYTES);
-      if (!payload.sub) { set.status = 401; return { detail: "Token inválido." }; }
+      if (!payload.sub) {
+        set.status = 401;
+        return { detail: "Token inválido." };
+      }
       const user = await prisma.user.findUnique({ where: { id: payload.sub as string } });
-      if (!user?.isActive) { set.status = 401; return { detail: "Usuário inativo." }; }
+      if (!user?.isActive) {
+        set.status = 401;
+        return { detail: "Usuário inativo." };
+      }
       const newToken = await signToken(user.id, user.email);
       set.headers["Set-Cookie"] = setCookieHeader(newToken);
       return { token: newToken, access: newToken };
@@ -292,11 +302,19 @@ export const sessionAuthModule = new Elysia()
   .post("/auth/forgot-password/", async ({ body, set }) => {
     // SMTP not configured; instruct user to use admin
     set.status = 400;
-    return { error_code: 5007, error_message: "SMTP_NOT_CONFIGURED", detail: "O e-mail não está configurado. Entre em contato com o administrador." };
+    return {
+      error_code: 5007,
+      error_message: "SMTP_NOT_CONFIGURED",
+      detail: "O e-mail não está configurado. Entre em contato com o administrador.",
+    };
   })
   .post("/auth/spaces/forgot-password/", async ({ body, set }) => {
     set.status = 400;
-    return { error_code: 5007, error_message: "SMTP_NOT_CONFIGURED", detail: "O e-mail não está configurado. Entre em contato com o administrador." };
+    return {
+      error_code: 5007,
+      error_message: "SMTP_NOT_CONFIGURED",
+      detail: "O e-mail não está configurado. Entre em contato com o administrador.",
+    };
   })
   .post("/auth/reset-password/:uidb64/:token/", async ({ params, body, set }) => {
     set.status = 400;
@@ -308,9 +326,15 @@ export const sessionAuthModule = new Elysia()
   })
   .post("/auth/set-password/", async ({ body, headers, set }) => {
     const resolved = await resolveTokenFromRequest(headers as any);
-    if (!resolved) { set.status = 401; return { detail: "Não autenticado." }; }
+    if (!resolved) {
+      set.status = 401;
+      return { detail: "Não autenticado." };
+    }
     const b = body as any;
-    if (!b.password) { set.status = 400; return { detail: "password é obrigatório." }; }
+    if (!b.password) {
+      set.status = 400;
+      return { detail: "password é obrigatório." };
+    }
     const hash = await Bun.password.hash(b.password, { algorithm: "bcrypt", cost: 12 });
     await prisma.user.update({
       where: { id: resolved.sub },
@@ -320,16 +344,25 @@ export const sessionAuthModule = new Elysia()
   })
   .post("/auth/change-password/", async ({ body, headers, set }) => {
     const resolved = await resolveTokenFromRequest(headers as any);
-    if (!resolved) { set.status = 401; return { detail: "Não autenticado." }; }
+    if (!resolved) {
+      set.status = 401;
+      return { detail: "Não autenticado." };
+    }
     const b = body as any;
     if (!b.old_password || !b.new_password) {
       set.status = 400;
       return { detail: "old_password e new_password são obrigatórios." };
     }
     const user = await prisma.user.findUnique({ where: { id: resolved.sub } });
-    if (!user?.password) { set.status = 400; return { detail: "Nenhuma senha definida. Use set-password." }; }
+    if (!user?.password) {
+      set.status = 400;
+      return { detail: "Nenhuma senha definida. Use set-password." };
+    }
     const valid = await Bun.password.verify(b.old_password, user.password);
-    if (!valid) { set.status = 400; return { detail: "A senha atual está incorreta." }; }
+    if (!valid) {
+      set.status = 400;
+      return { detail: "A senha atual está incorreta." };
+    }
     const hash = await Bun.password.hash(b.new_password, { algorithm: "bcrypt", cost: 12 });
     await prisma.user.update({ where: { id: user.id }, data: { password: hash } });
     return { detail: "Senha alterada com sucesso." };
@@ -362,42 +395,108 @@ export const sessionAuthModule = new Elysia()
   })
 
   // ── OAuth stubs (not configured) ─────────────────────────────────────────────
-  .get("/auth/gitlab/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitLab não configurado." }; })
-  .get("/auth/gitlab/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitLab não configurado." }; })
-  .get("/auth/spaces/gitlab/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitLab não configurado." }; })
-  .get("/auth/spaces/gitlab/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitLab não configurado." }; })
-  .get("/auth/github/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitHub não configurado." }; })
-  .get("/auth/github/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitHub não configurado." }; })
-  .get("/auth/spaces/github/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitHub não configurado." }; })
-  .get("/auth/spaces/github/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do GitHub não configurado." }; })
-  .get("/auth/google/", ({ set }) => { set.status = 400; return { detail: "OAuth do Google não configurado." }; })
-  .get("/auth/google/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do Google não configurado." }; })
-  .get("/auth/spaces/google/", ({ set }) => { set.status = 400; return { detail: "OAuth do Google não configurado." }; })
-  .get("/auth/spaces/google/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do Google não configurado." }; })
-  .get("/auth/gitea/", ({ set }) => { set.status = 400; return { detail: "OAuth do Gitea não configurado." }; })
-  .get("/auth/gitea/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do Gitea não configurado." }; })
-  .get("/auth/spaces/gitea/", ({ set }) => { set.status = 400; return { detail: "OAuth do Gitea não configurado." }; })
-  .get("/auth/spaces/gitea/callback/", ({ set }) => { set.status = 400; return { detail: "OAuth do Gitea não configurado." }; })
+  .get("/auth/gitlab/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitLab não configurado." };
+  })
+  .get("/auth/gitlab/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitLab não configurado." };
+  })
+  .get("/auth/spaces/gitlab/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitLab não configurado." };
+  })
+  .get("/auth/spaces/gitlab/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitLab não configurado." };
+  })
+  .get("/auth/github/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitHub não configurado." };
+  })
+  .get("/auth/github/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitHub não configurado." };
+  })
+  .get("/auth/spaces/github/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitHub não configurado." };
+  })
+  .get("/auth/spaces/github/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do GitHub não configurado." };
+  })
+  .get("/auth/google/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Google não configurado." };
+  })
+  .get("/auth/google/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Google não configurado." };
+  })
+  .get("/auth/spaces/google/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Google não configurado." };
+  })
+  .get("/auth/spaces/google/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Google não configurado." };
+  })
+  .get("/auth/gitea/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Gitea não configurado." };
+  })
+  .get("/auth/gitea/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Gitea não configurado." };
+  })
+  .get("/auth/spaces/gitea/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Gitea não configurado." };
+  })
+  .get("/auth/spaces/gitea/callback/", ({ set }) => {
+    set.status = 400;
+    return { detail: "OAuth do Gitea não configurado." };
+  })
 
   // ── Me / session endpoints ────────────────────────────────────────────────────
   .get("/auth/me/", async ({ headers, set }) => {
     const resolved = await resolveTokenFromRequest(headers as any);
-    if (!resolved) { set.status = 401; return { detail: "Não autenticado." }; }
+    if (!resolved) {
+      set.status = 401;
+      return { detail: "Não autenticado." };
+    }
     const user = await prisma.user.findUnique({
       where: { id: resolved.sub },
       select: {
-        id: true, email: true, firstName: true, lastName: true, displayName: true,
-        avatar: true, userTimezone: true, isActive: true, isSuperuser: true,
-        isStaff: true, isInstanceAdmin: true, dateJoined: true,
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        displayName: true,
+        avatar: true,
+        userTimezone: true,
+        isActive: true,
+        isSuperuser: true,
+        isStaff: true,
+        isInstanceAdmin: true,
+        dateJoined: true,
       },
     });
-    if (!user) { set.status = 401; return { detail: "Usuário não encontrado." }; }
+    if (!user) {
+      set.status = 401;
+      return { detail: "Usuário não encontrado." };
+    }
     return user;
   })
 
   .get("/auth/instance/", async ({ headers, set }) => {
     const resolved = await resolveTokenFromRequest(headers as any);
-    if (!resolved) { set.status = 401; return { detail: "Não autenticado." }; }
+    if (!resolved) {
+      set.status = 401;
+      return { detail: "Não autenticado." };
+    }
     const user = await prisma.user.findUnique({
       where: { id: resolved.sub },
       select: { id: true, email: true, displayName: true, isInstanceAdmin: true, isSuperuser: true },
@@ -418,8 +517,18 @@ export const authModule = new Elysia()
     return paginate({
       query: (skip, take) =>
         prisma.apiToken.findMany({
-          where: { userId: user.id }, skip, take,
-          select: { id: true, label: true, description: true, isActive: true, expiredAt: true, lastUsed: true, createdAt: true },
+          where: { userId: user.id },
+          skip,
+          take,
+          select: {
+            id: true,
+            label: true,
+            description: true,
+            isActive: true,
+            expiredAt: true,
+            lastUsed: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: "desc" },
         }),
       count: () => prisma.apiToken.count({ where: { userId: user.id } }),
@@ -445,13 +554,19 @@ export const authModule = new Elysia()
 
   .get("/users/api-tokens/:token_id/", async ({ params: { token_id }, user, set }) => {
     const token = await prisma.apiToken.findFirst({ where: { id: token_id, userId: user.id } });
-    if (!token) { set.status = 404; return { detail: "Token não encontrado." }; }
+    if (!token) {
+      set.status = 404;
+      return { detail: "Token não encontrado." };
+    }
     return token;
   })
 
   .patch("/users/api-tokens/:token_id/", async ({ params: { token_id }, body, user, set }) => {
     const token = await prisma.apiToken.findFirst({ where: { id: token_id, userId: user.id } });
-    if (!token) { set.status = 404; return { detail: "Token não encontrado." }; }
+    if (!token) {
+      set.status = 404;
+      return { detail: "Token não encontrado." };
+    }
     const b = body as any;
     const data: any = {};
     if (b.label !== undefined) data.label = b.label;
@@ -463,7 +578,10 @@ export const authModule = new Elysia()
 
   .delete("/users/api-tokens/:token_id/", async ({ params: { token_id }, user, set }) => {
     const token = await prisma.apiToken.findFirst({ where: { id: token_id, userId: user.id } });
-    if (!token) { set.status = 404; return { detail: "Token não encontrado." }; }
+    if (!token) {
+      set.status = 404;
+      return { detail: "Token não encontrado." };
+    }
     await prisma.apiToken.delete({ where: { id: token_id } });
     set.status = 204;
     return null;

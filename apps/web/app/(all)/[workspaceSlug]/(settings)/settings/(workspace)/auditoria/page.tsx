@@ -43,7 +43,7 @@ function FiltroSelect(props: {
   opcoes: Record<string, string>;
   onChange: (valor: string) => void;
 }) {
-  const {id, rotulo, valor, rotuloVazio, opcoes, onChange} = props;
+  const { id, rotulo, valor, rotuloVazio, opcoes, onChange } = props;
   return (
     <div className="flex flex-col gap-1">
       <label className="text-13 font-medium text-secondary" htmlFor={id}>
@@ -277,7 +277,7 @@ function AuditoriaSettingsPage() {
         </p>
 
         <div className="overflow-x-auto rounded-md border border-subtle">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="text-sm w-full min-w-[900px] text-left">
             <thead className="bg-surface-2 text-13 text-secondary">
               <tr>
                 <th className="px-3 py-2 font-medium">Data e hora</th>
@@ -298,10 +298,12 @@ function AuditoriaSettingsPage() {
               )}
               {visibleLogs.map((log) => (
                 <tr key={log.id} className="border-t border-subtle align-top">
-                  <td className="whitespace-nowrap px-3 py-2 text-secondary">{formatDateTime(log.created_at)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-secondary">{formatDateTime(log.created_at)}</td>
                   <td className="px-3 py-2 text-primary">{log.actor_email ?? "—"}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-secondary">{log.actor_ip ?? "—"}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-primary">{ACTION_LABELS[log.action] ?? log.action}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-secondary">{log.actor_ip ?? "—"}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-primary">
+                    {ACTION_LABELS[log.action] ?? log.action}
+                  </td>
                   <td className="px-3 py-2 text-secondary">
                     {ENTITY_LABELS[log.entity] ?? log.entity}
                     <span className="ml-1 text-13 text-tertiary">{log.entity_id.slice(0, 8)}</span>
@@ -314,7 +316,12 @@ function AuditoriaSettingsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="neutral-primary" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+          <Button
+            variant="neutral-primary"
+            size="sm"
+            disabled={page === 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+          >
             Anterior
           </Button>
           <span className="text-13 text-secondary">Página {page + 1}</span>

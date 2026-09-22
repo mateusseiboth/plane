@@ -8,9 +8,9 @@
  * Token ruim é 401; banco fora do ar é 503, que o front trata como falha
  * temporária.
  */
-import {afterAll, afterEach, describe, expect, it, mock} from "bun:test";
+import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
 import Elysia from "elysia";
-import {SignJWT} from "jose";
+import { SignJWT } from "jose";
 
 const SEGREDO = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 
@@ -26,20 +26,20 @@ const USUARIO = {
 async function montar(dubleUser: () => Promise<unknown>, dubleToken: () => Promise<unknown> = async () => null) {
   mock.module("@db", () => ({
     default: {
-      user: {findUnique: dubleUser},
-      apiToken: {findUnique: dubleToken, update: () => ({catch: () => {}})},
+      user: { findUnique: dubleUser },
+      apiToken: { findUnique: dubleToken, update: () => ({ catch: () => {} }) },
     },
   }));
   // Import dinâmico DEPOIS do mock: o módulo captura `prisma` na avaliação.
-  const {authPlugin} = await import("@middleware/auth?" + Math.random());
-  return new Elysia().use(authPlugin).get("/quem-sou", ({user}: any) => ({id: user.id}));
+  const { authPlugin } = await import("@middleware/auth?" + Math.random());
+  return new Elysia().use(authPlugin).get("/quem-sou", ({ user }: any) => ({ id: user.id }));
 }
 
 const assinar = (sub: string) =>
-  new SignJWT({}).setProtectedHeader({alg: "HS256"}).setSubject(sub).setExpirationTime("1h").sign(SEGREDO);
+  new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(sub).setExpirationTime("1h").sign(SEGREDO);
 
 const chamar = (app: Elysia, headers: Record<string, string>) =>
-  app.handle(new Request("http://local/quem-sou", {headers}));
+  app.handle(new Request("http://local/quem-sou", { headers }));
 
 describe("authPlugin", () => {
   // `mock.restore()` do Bun NÃO desfaz `mock.module`: a troca do `@db` fica
@@ -48,8 +48,7 @@ describe("authPlugin", () => {
   // que só tem `user` e `apiToken`). O sintoma aparecia e sumia conforme a
   // ordem dos arquivos. Quem sujou, limpa: o `@db` volta a apontar para o
   // cliente verdadeiro, que src/db.ts guarda em globalThis.
-  const devolverBanco = () =>
-    mock.module("@db", () => ({default: (globalThis as any).__prisma}));
+  const devolverBanco = () => mock.module("@db", () => ({ default: (globalThis as any).__prisma }));
 
   afterEach(() => {
     mock.restore();
@@ -59,14 +58,14 @@ describe("authPlugin", () => {
 
   it("aceita um JWT válido de usuário existente", async () => {
     const app = await montar(async () => USUARIO);
-    const res = await chamar(app, {authorization: `Bearer ${await assinar(USUARIO.id)}`});
+    const res = await chamar(app, { authorization: `Bearer ${await assinar(USUARIO.id)}` });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({id: USUARIO.id});
+    expect(await res.json()).toEqual({ id: USUARIO.id });
   });
 
   it("lê o JWT também do cookie plane_auth", async () => {
     const app = await montar(async () => USUARIO);
-    const res = await chamar(app, {cookie: `plane_auth=${await assinar(USUARIO.id)}`});
+    const res = await chamar(app, { cookie: `plane_auth=${await assinar(USUARIO.id)}` });
     expect(res.status).toBe(200);
   });
 
@@ -81,14 +80,14 @@ describe("authPlugin", () => {
       consultou = true;
       return USUARIO;
     });
-    const res = await chamar(app, {authorization: "Bearer nao.eh.jwt"});
+    const res = await chamar(app, { authorization: "Bearer nao.eh.jwt" });
     expect(res.status).toBe(401);
     expect(consultou).toBe(false);
   });
 
   it("usuário inexistente (ou inativo) responde 401", async () => {
     const app = await montar(async () => null);
-    const res = await chamar(app, {authorization: `Bearer ${await assinar(USUARIO.id)}`});
+    const res = await chamar(app, { authorization: `Bearer ${await assinar(USUARIO.id)}` });
     expect(res.status).toBe(401);
   });
 
@@ -96,7 +95,7 @@ describe("authPlugin", () => {
     const app = await montar(async () => {
       throw new Error("Can't reach database server at plane-db:5432");
     });
-    const res = await chamar(app, {authorization: `Bearer ${await assinar(USUARIO.id)}`});
+    const res = await chamar(app, { authorization: `Bearer ${await assinar(USUARIO.id)}` });
     expect(res.status).toBe(503);
   });
 
@@ -105,9 +104,9 @@ describe("authPlugin", () => {
       async () => USUARIO,
       async () => {
         throw new Error("connection pool timeout");
-      },
+      }
     );
-    const res = await chamar(app, {"x-api-key": "plane_api_qualquer"});
+    const res = await chamar(app, { "x-api-key": "plane_api_qualquer" });
     expect(res.status).toBe(503);
   });
 });

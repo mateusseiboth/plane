@@ -140,9 +140,7 @@ export function recordAudit(input: AuditInput): Promise<void> {
 }
 
 /** Açúcar para leituras (o caso mais comum e mais fácil de esquecer). */
-export function recordView(
-  args: Omit<AuditInput, "action" | "changes"> & { changes?: never }
-): Promise<void> {
+export function recordView(args: Omit<AuditInput, "action" | "changes"> & { changes?: never }): Promise<void> {
   return recordAudit({ ...args, action: AUDIT_ACTIONS.VIEW });
 }
 

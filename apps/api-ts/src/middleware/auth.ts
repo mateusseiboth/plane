@@ -10,9 +10,7 @@ export type AuthUser = {
   isSuperuser: boolean;
 };
 
-const JWT_SECRET_BYTES = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production"
-);
+const JWT_SECRET_BYTES = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 
 async function resolveApiKey(apiKey: string): Promise<AuthUser | null> {
   const token = await prisma.apiToken.findUnique({
@@ -25,9 +23,7 @@ async function resolveApiKey(apiKey: string): Promise<AuthUser | null> {
   });
   if (!token) return null;
   if (token.expiredAt && token.expiredAt < new Date()) return null;
-  prisma.apiToken
-    .update({ where: { id: token.id }, data: { lastUsed: new Date() } })
-    .catch(() => {});
+  prisma.apiToken.update({ where: { id: token.id }, data: { lastUsed: new Date() } }).catch(() => {});
   return token.user;
 }
 
@@ -68,34 +64,33 @@ async function tentar(resolver: () => Promise<AuthUser | null>): Promise<AuthUse
   }
 }
 
-export const authPlugin = new Elysia({ name: "auth" })
-  .derive({ as: "global" }, async (ctx) => {
-    const tentativas: Array<() => Promise<AuthUser | null>> = [];
+export const authPlugin = new Elysia({ name: "auth" }).derive({ as: "global" }, async (ctx) => {
+  const tentativas: Array<() => Promise<AuthUser | null>> = [];
 
-    // 1. X-Api-Key header
-    const apiKey = ctx.headers["x-api-key"];
-    if (apiKey) tentativas.push(() => resolveApiKey(apiKey));
+  // 1. X-Api-Key header
+  const apiKey = ctx.headers["x-api-key"];
+  if (apiKey) tentativas.push(() => resolveApiKey(apiKey));
 
-    // 2. Bearer token from Authorization header
-    const authHeader = ctx.headers["authorization"];
-    if (authHeader?.startsWith("Bearer ")) tentativas.push(() => resolveJwt(authHeader.slice(7)));
+  // 2. Bearer token from Authorization header
+  const authHeader = ctx.headers["authorization"];
+  if (authHeader?.startsWith("Bearer ")) tentativas.push(() => resolveJwt(authHeader.slice(7)));
 
-    // 3. JWT from plane_auth cookie (Elysia built-in cookie access)
-    const match = (ctx.headers["cookie"] ?? "").match(/(?:^|;\s*)plane_auth=([^;]+)/);
-    if (match?.[1]) tentativas.push(() => resolveJwt(decodeURIComponent(match[1])));
+  // 3. JWT from plane_auth cookie (Elysia built-in cookie access)
+  const match = (ctx.headers["cookie"] ?? "").match(/(?:^|;\s*)plane_auth=([^;]+)/);
+  if (match?.[1]) tentativas.push(() => resolveJwt(decodeURIComponent(match[1])));
 
-    try {
-      for (const tentativa of tentativas) {
-        const user = await tentar(tentativa);
-        if (user) return { user };
-      }
-    } catch (error) {
-      if (!(error instanceof AuthUnavailableError)) throw error;
-      console.error("[auth] falha ao resolver credencial:", error.cause);
-      ctx.set.status = 503;
-      throw new Error(error.message);
+  try {
+    for (const tentativa of tentativas) {
+      const user = await tentar(tentativa);
+      if (user) return { user };
     }
+  } catch (error) {
+    if (!(error instanceof AuthUnavailableError)) throw error;
+    console.error("[auth] falha ao resolver credencial:", error.cause);
+    ctx.set.status = 503;
+    throw new Error(error.message);
+  }
 
-    ctx.set.status = 401;
-    throw new Error("Credenciais de autenticação não foram fornecidas.");
-  });
+  ctx.set.status = 401;
+  throw new Error("Credenciais de autenticação não foram fornecidas.");
+});
