@@ -208,7 +208,7 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                   handleToggle={(val: boolean) => setIsOpen(val)}
                   className="flex items-center justify-center"
                   buttonClassName="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-lg bg-white/10"
-                  label={<Logo logo={value} size={28} />}
+                  label={<Logo logo={value} size={28} fill />}
                   // TODO: fix types
                   onChange={(val: any) => {
                     let logoValue = {};

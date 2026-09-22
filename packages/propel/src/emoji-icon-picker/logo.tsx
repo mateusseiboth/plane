@@ -18,9 +18,15 @@ type Props = {
   logo?: TLogoProps;
   size?: number;
   type?: "lucide" | "material";
+  /**
+   * Ícone em IMAGEM preenchendo a caixa em volta (o `size` vira só o piso).
+   * Emoji e ícone de fonte pedem folga; imagem, não: a arte já vem no
+   * tamanho certo e desenhá-la pequena no meio da caixa deixa um vão.
+   */
+  fill?: boolean;
 };
 
-export function Logo({ logo, size = 16, type = "material" }: Props) {
+export function Logo({ logo, size = 16, type = "material", fill = false }: Props) {
   const isMaterialSymbolsFontLoaded = useFontFaceObserver([
     {
       family: "Material Symbols Rounded",
@@ -43,8 +49,8 @@ export function Logo({ logo, size = 16, type = "material" }: Props) {
       <img
         src={logo.image.url}
         alt=""
-        className="flex-shrink-0 rounded-sm object-contain"
-        style={{ height: size, width: size }}
+        className={fill ? "size-full rounded-sm object-contain" : "flex-shrink-0 rounded-sm object-contain"}
+        style={fill ? { minHeight: size, minWidth: size } : { height: size, width: size }}
       />
     );
   }

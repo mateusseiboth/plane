@@ -97,7 +97,7 @@ function ProjectCreateHeader(props: Props) {
               buttonClassName="flex items-center justify-center"
               label={
                 <span className="grid h-11 w-11 place-items-center rounded-md border border-subtle bg-layer-2">
-                  <Logo logo={value} size={20} />
+                  <Logo logo={value} size={20} fill />
                 </span>
               }
               onChange={(val: any) => {

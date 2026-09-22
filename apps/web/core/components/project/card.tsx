@@ -222,7 +222,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
           <div className="absolute bottom-4 z-[1] flex h-10 w-full items-center justify-between gap-3 px-4">
             <div className="flex flex-grow items-center gap-2.5 truncate">
               <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-sm bg-white/10">
-                <Logo logo={project.logo_props} size={18} />
+                <Logo logo={project.logo_props} size={18} fill />
               </div>
 
               <div className="flex w-full flex-col justify-between gap-0.5 truncate">
