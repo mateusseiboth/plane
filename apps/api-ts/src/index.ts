@@ -57,6 +57,7 @@ import { ouvidoriaModule } from "@modules/ouvidoria";
 import { denunciaModule } from "@modules/denuncia";
 import { curriculoModule, scheduleExpurgoDeCurriculos } from "@modules/curriculo";
 import { contatoEmailModule } from "@modules/contato-email";
+import { linksUteisModule } from "@modules/links-uteis";
 import { internoChatModule } from "@modules/interno-chat";
 
 const PORT = Number(process.env.PORT ?? 8001);
@@ -247,6 +248,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(denunciaModule)
   .use(curriculoModule)
   .use(contatoEmailModule)
+  // Links úteis: os endereços públicos do espaço reunidos numa página (W21).
+  .use(linksUteisModule)
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)

@@ -44,6 +44,7 @@ vez, na criação. Quem já está logado no Plane abre o painel sem chave nenhum
 | Pós-atendimento | `/<slug>/pos-atendimento` |
 | Satisfação (relatório do pós) | `/<slug>/pos-atendimento/satisfacao` |
 | Relatórios | `/<slug>/reports` |
+| Links úteis (os endereços desta lista, prontos para copiar) | `/<slug>/links-uteis` |
 | Plugins instalados | `/<slug>/plugins/<slug-do-plugin>` |
 
 ### Configurações do espaço
