@@ -97,7 +97,7 @@ export async function startWhatsappDoResponsavel(slug: string, userId: string, b
       contactId: contato.id,
       clientName: responsavel.name,
       clientPhone: telefone,
-      protocol: await nextProtocol(slug),
+      protocol: await nextProtocol(),
       status: "active",
       assignedAttendantId: userId,
       botState: "done",

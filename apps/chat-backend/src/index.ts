@@ -320,7 +320,7 @@ const app = new Elysia()
     if (!session) {
       // Resolve the chosen "system" → a Plane project (by id or identifier).
       const project = await resolveProject(b.workspace_id, b.project_id, b.system);
-      const protocol = await nextProtocol(b.workspace_id);
+      const protocol = await nextProtocol();
       session = await prisma.chatSession.create({
         data: {
           workspaceId: b.workspace_id,
@@ -559,7 +559,7 @@ const app = new Elysia()
       set.status = 400;
       return { detail: "Contato sem telefone." };
     }
-    const protocol = await nextProtocol(slug);
+    const protocol = await nextProtocol();
     const session = await prisma.chatSession.create({
       data: {
         workspaceId: slug,

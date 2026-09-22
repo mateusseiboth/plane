@@ -83,7 +83,7 @@ async function findOrCreateSessao(slug: string, inbound: InboundMessage) {
       contactId: contact.id,
       clientPhone: inbound.phone,
       clientName: contact.name,
-      protocol: await nextProtocol(slug),
+      protocol: await nextProtocol(),
       status: "bot",
       botState: "new",
     },

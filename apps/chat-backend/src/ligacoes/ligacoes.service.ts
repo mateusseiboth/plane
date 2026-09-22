@@ -92,7 +92,7 @@ async function createFromPbx(slug: string, l: LigacaoRecebida) {
   const [responsavel, atendenteId, protocol] = await Promise.all([
     findResponsavelPorTelefone(slug, l.caller),
     findAtendenteDoRamal(slug, l.extension),
-    nextProtocol(slug),
+    nextProtocol(),
   ]);
   const situacao = resolveSituacaoInicial(l.status, atendenteId, l.endedAt ?? new Date());
   const sessionId = await dao.createSessaoComLigacao(
