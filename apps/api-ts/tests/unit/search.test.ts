@@ -174,6 +174,16 @@ describe("buscarChamados", () => {
     expect(achado.name).toBe("Cálculo IPTU");
   });
 
+  it("acha pelo número anual do chamado (N-AAAA), também nas grafias soltas", async () => {
+    const chamado = await prisma.issue.findUniqueOrThrow({where: {id: chamadoId}});
+    const numero = `${chamado.ticketSequence}-${chamado.ticketYear}`;
+    for (const digitado of [numero, `#${numero}`, numero.replace("-", "/")]) {
+      const achados = await buscarChamados(workspaceId, digitado, 10);
+      expect(achados[0]?.id).toBe(chamadoId);
+      expect(achados[0]?.ticket_number).toBe(numero);
+    }
+  });
+
   it("termo vazio não busca nada", async () => {
     expect(await buscarChamados(workspaceId, "   ", 10)).toEqual([]);
   });

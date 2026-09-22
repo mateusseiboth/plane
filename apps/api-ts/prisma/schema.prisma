@@ -415,6 +415,10 @@ model Issue {
   externalSource      String?               @map("external_source")
   externalId          String?               @map("external_id")
   legacyTicketNumber  String?               @map("legacy_ticket_number") @db.VarChar(50)
+  /// Número anual do chamado ("12-2026"): preenchido pelo gatilho `issues_assign_ticket_number`.
+  /// Nunca grave à mão: ver @utils/numero-do-chamado.
+  ticketSequence      Int?                  @map("ticket_sequence")
+  ticketYear          Int?                  @map("ticket_year")
   assignees           IssueAssignee[]
   labels              IssueLabel[]
   comments            IssueComment[]
@@ -437,9 +441,35 @@ model Issue {
   versions            IssueVersion[]
   gitLinks            GitIssueLink[]
   portalRequest       PortalRequest?
+  unreads             IssueUnread[]
 
   @@index([legacyTicketNumber])
+  @@index([workspaceId, ticketYear, ticketSequence])
   @@map("issues")
+}
+
+/// Contador do número anual do chamado, por espaço de trabalho e ano.
+/// Só o gatilho de `issues` e o backfill escrevem aqui.
+model IssueTicketCounter {
+  workspaceId String @map("workspace_id") @db.Uuid
+  year        Int
+  lastNumber  Int    @map("last_number")
+
+  @@id([workspaceId, year])
+  @@map("issue_ticket_counters")
+}
+
+/// Marca de não lido: existe enquanto o responsável não abrir o chamado depois
+/// da última alteração relevante feita por outra pessoa. Ver @utils/chamado-nao-lido.
+model IssueUnread {
+  issueId   String   @map("issue_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, userId])
+  @@index([userId])
+  @@map("issue_unreads")
 }
 
 model IssueAssignee {

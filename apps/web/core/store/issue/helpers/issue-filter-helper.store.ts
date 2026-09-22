@@ -101,6 +101,8 @@ export class IssueFilterHelperStore implements IIssueFilterHelperStore {
         : undefined,
       order_by: displayFilters?.order_by || undefined,
       sub_issue: displayFilters?.sub_issue ?? true,
+      // Só vai no pedido quando ligado: o servidor entende "unread=true".
+      unread: displayFilters?.unread || undefined,
     };
 
     const issueFiltersParams: Partial<Record<TIssueParams, boolean | string>> = {};

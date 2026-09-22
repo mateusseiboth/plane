@@ -15,6 +15,7 @@ import type {
   IWorkspaceSearchResult,
 } from "@plane/types";
 // components
+import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
 import type { TPowerKSearchResultsKeys } from "@/components/power-k/core/types";
 // plane web imports
 import { SEARCH_RESULTS_GROUPS_MAP_EXTENDED } from "@/plane-web/components/command-palette/power-k/search/search-results-map";
@@ -49,12 +50,8 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
           issueSequenceId={workItem.sequence_id}
           size="xs"
         />
-        {/* Número do chamado no sistema antigo: é por ele que muita gente procura. */}
-        {workItem.legacy_ticket_number && (
-          <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-10 font-semibold text-secondary">
-            #{workItem.legacy_ticket_number}
-          </span>
-        )}
+        {/* Número anual e, quando for outro, o do sistema antigo: é por eles que muita gente procura. */}
+        <NumerosDoChamado issue={workItem} />
         {workItem.name}
       </div>
     ),

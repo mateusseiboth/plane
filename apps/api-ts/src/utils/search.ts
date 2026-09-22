@@ -15,6 +15,7 @@
  */
 import prisma from "@db";
 import { Prisma } from "@prisma/client";
+import { parseNumeroDoChamado } from "@utils/numero-do-chamado";
 
 /** Name of the custom text-search configuration (portuguese + unaccent). */
 export const PT_FTS_CONFIG = "pt_unaccent";
@@ -94,6 +95,8 @@ export type ChamadoEncontrado = {
   sequence_id: number;
   priority: string;
   legacy_ticket_number: string | null;
+  /** Número anual "12-2026" (ver @utils/numero-do-chamado). */
+  ticket_number: string | null;
   state_group: string | null;
   state_name: string | null;
   project_id: string | null;
@@ -126,6 +129,7 @@ export type ChamadoEncontrado = {
  *  - número do chamado legado, como a pessoa digita ("500-2026")
  *  - corpo dos comentários (FTS)
  *  - chave composta "ALMOXA-954", quando o termo tem essa cara
+ *  - número anual "12-2026", quando o termo tem essa cara
  *
  * O trigrama de comentário (`comment_stripped % q`) foi retirado de propósito:
  * medido em produção, custava de 3 s a 8 s e não trazia praticamente nada —
@@ -167,6 +171,21 @@ export async function buscarChamados(workspaceId: string, termo: string, limite:
     ? Prisma.sql`+ (CASE WHEN i.legacy_ticket_number = ${grafiaCanonica} THEN 100 ELSE 0 END)`
     : Prisma.empty;
 
+  // "12-2026", "12/2026", "122026": o número anual, pelo índice
+  // (workspace_id, ticket_year, ticket_sequence).
+  const numero = parseNumeroDoChamado(q);
+  const numeroBranch = numero
+    ? Prisma.sql`
+        UNION
+        SELECT i.id FROM issues i
+         WHERE i.workspace_id = ${workspaceId}::uuid
+           AND i.deleted_at IS NULL AND i.is_draft = false
+           AND i.ticket_year = ${numero.ano} AND i.ticket_sequence = ${numero.sequencial}`
+    : Prisma.empty;
+  const numeroBoost = numero
+    ? Prisma.sql`+ (CASE WHEN i.ticket_year = ${numero.ano} AND i.ticket_sequence = ${numero.sequencial} THEN 200 ELSE 0 END)`
+    : Prisma.empty;
+
   const ftsDoc = Prisma.raw(ISSUE_FTS_DOC_I);
   const titleDoc = Prisma.raw(ISSUE_TITLE_DOC_I);
   const commentDoc = Prisma.raw(COMMENT_FTS_DOC_C);
@@ -191,8 +210,11 @@ export async function buscarChamados(workspaceId: string, termo: string, limite:
            AND ${commentDoc} @@ websearch_to_tsquery(${cfg}, ${q})
         ${varianteLegadaBranch}
         ${chaveBranch}
+        ${numeroBranch}
       )
       SELECT i.id, i.name, i.sequence_id, i.priority, i.legacy_ticket_number,
+             CASE WHEN i.ticket_sequence IS NULL THEN NULL
+                  ELSE i.ticket_sequence || '-' || i.ticket_year END AS ticket_number,
              s."group" AS state_group, s.name AS state_name,
              p.id AS project_id, p.identifier AS project_identifier, p.name AS project_name
       FROM issues i
@@ -210,6 +232,7 @@ export async function buscarChamados(workspaceId: string, termo: string, limite:
         + similarity(coalesce(i.legacy_ticket_number,''), ${q})
         ${varianteLegadaBoost}
         ${chaveBoost}
+        ${numeroBoost}
       ) DESC, i.updated_at DESC
       LIMIT ${limite}
     `);

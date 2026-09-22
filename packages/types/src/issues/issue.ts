@@ -47,6 +47,10 @@ export type TBaseIssue = {
   sequence_id: number;
   /** Legacy SAC ticket number (e.g. "1234-2026"). Used for migration identification. */
   legacy_ticket_number?: string | null;
+  /** Número anual do chamado ("12-2026"), gerado pelo servidor. */
+  ticket_number?: string | null;
+  /** Não lido por quem pergunta: mudou depois da última vez que ele abriu o chamado. */
+  is_unread?: boolean;
   name: string;
   sort_order: number;
 

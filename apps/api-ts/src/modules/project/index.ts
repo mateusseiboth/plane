@@ -5,6 +5,8 @@ import { paginate } from "@utils/pagination";
 import { publishRealtime } from "@utils/realtime";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { nextSequenceId } from "@utils/sequence";
+import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
+import { markChamadoNaoLido } from "@utils/chamado-nao-lido";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 import { notifyQualityOfIntake } from "@utils/notifications";
@@ -523,7 +525,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         next_page_results: false, prev_page_results: false,
         results: issues.map((i: any) => ({
           id: i.id, status: -2, snoozed_till: null, duplicate_to: undefined, source: "IN_APP", created_by: i.createdById,
-          issue: {id: i.id, name: i.name, state_id: i.stateId, priority: i.priority, project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId, description_html: i.descriptionHtml ?? "<p></p>", created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString()},
+          issue: {id: i.id, name: i.name, state_id: i.stateId, priority: i.priority, project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId, ticket_number: formatNumeroDoChamado(i), description_html: i.descriptionHtml ?? "<p></p>", created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString()},
         })),
       };
     }
@@ -548,6 +550,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
           issue: {
             id: i.id, name: i.name, state_id: i.stateId, priority: i.priority,
             project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId,
+            ticket_number: formatNumeroDoChamado(i),
             description_html: i.descriptionHtml ?? "<p></p>",
             created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString(),
           },
@@ -589,6 +592,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       data: Array.from(assigneeSet).map((uid) => ({issueId: issue.id, assigneeId: uid, workspaceId: ws.id, projectId: project_id})),
       skipDuplicates: true,
     });
+    await markChamadoNaoLido({issueId: issue.id, actorId: user.id});
     // D3: notify Quality-team members of the project that a new intake was opened
     await notifyQualityOfIntake({workspaceId: ws.id, projectId: project_id, issueId: issue.id, actorId: user.id, issueName: issue.name});
     publishRealtime(ws.id, {entity: "intake", action: "create", project_id, id: issue.id, issue_id: issue.id, actor: user.id});
@@ -643,6 +647,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         id: issue.id, name: issue.name, state_id: issue.stateId,
         priority: issue.priority, project_id: issue.projectId,
         workspace_id: issue.workspaceId, sequence_id: issue.sequenceId,
+        ticket_number: formatNumeroDoChamado(issue),
         description_html: issue.descriptionHtml ?? "<p></p>",
         created_at: issue.createdAt?.toISOString(), updated_at: issue.updatedAt?.toISOString(),
       },
