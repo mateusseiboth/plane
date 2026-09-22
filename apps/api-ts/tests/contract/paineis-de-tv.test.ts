@@ -145,7 +145,8 @@ describe("painéis de TV", () => {
 
     it("configuração inválida volta com o campo recusado", async () => {
       const res = await admin.put(gestao("/columns/ti/"), {
-        columns: [{ chave: "x", rotulo: "X", cor: "rosa", etapas: [] }],
+        // "turquesa" não está na paleta (ver CORES_DA_COLUNA); rosa está.
+        columns: [{ chave: "x", rotulo: "X", cor: "turquesa", etapas: [] }],
       });
       const corpo = (await res.json()) as any;
       expect(res.status).toBe(400);
