@@ -52,6 +52,7 @@ import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 import { buildErrorBody, type HttpError } from "@utils/field-error";
 import { muralModule } from "@modules/mural";
+import { posAtendimentoModule } from "@modules/pos-atendimento";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -217,6 +218,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // onto the SSE stream (see the rolesModule note above).
   .use(realtimeModule)
   .use(muralModule)
+  .use(posAtendimentoModule)
   .use(customWidgetModule)
   .use(customWebhookModule)
   .use(widgetModule)

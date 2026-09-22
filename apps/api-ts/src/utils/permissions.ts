@@ -49,6 +49,7 @@ const G = {
   CHAT: "Atendimento (chat)",
   ESPACO: "Espaço de trabalho",
   CADASTROS: "Cadastros e integrações",
+  POS_ATENDIMENTO: "Pós-atendimento",
 } as const;
 
 // UMA LINHA POR AÇÃO. A ordem é a ordem em que a tela de Funções desenha.
@@ -108,6 +109,8 @@ export const ACTION_CATALOG = {
   AI_CONFIG: {key: "ai.config", label: "Configurar provedores de IA", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   PLUGIN_MANAGE: {key: "plugin.manage", label: "Instalar e remover plugins", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
   PORTAL_MANAGE: {key: "portal.manage", label: "Gerenciar contas do portal do cliente", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
+  POSATENDIMENTO_RECORD: {key: "posatendimento.record", label: "Registrar pós-atendimento", group: G.POS_ATENDIMENTO, scope: "workspace", roles: ["atendimento", "qualidade", "gestor_projeto"]},
+  POSATENDIMENTO_VERIFY: {key: "posatendimento.verify", label: "Verificar pós-atendimento", group: G.POS_ATENDIMENTO, scope: "workspace", roles: ["qualidade", "gestor_projeto"]},
 } as const satisfies Record<string, ActionDef>;
 
 type Catalog = typeof ACTION_CATALOG;

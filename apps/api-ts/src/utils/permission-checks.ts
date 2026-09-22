@@ -190,6 +190,21 @@ export async function requireWorkspaceAction(
   return role;
 }
 
+/**
+ * Guarda de espaço que aceita QUALQUER uma das ações. Ex.: a fila do
+ * pós-atendimento é de quem registra e também de quem só verifica.
+ */
+export async function requireWorkspaceAnyAction(
+  workspaceId: string,
+  userId: string,
+  actions: EProjectAction[],
+): Promise<EffectiveRole> {
+  await requireWorkspaceMember(workspaceId, userId);
+  const role = await resolveWorkspaceRole(workspaceId, userId);
+  if (!role || !actions.some((action) => roleCan(role, action))) return denyAction();
+  return role;
+}
+
 /** Versão que não lança: para decidir o que MOSTRAR (ex.: páginas de outros). */
 export async function hasWorkspaceAction(workspaceId: string, userId: string, action: EProjectAction): Promise<boolean> {
   const role = await resolveWorkspaceRole(workspaceId, userId);

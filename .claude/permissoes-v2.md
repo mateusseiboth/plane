@@ -177,6 +177,9 @@ do banco compartilhado).
 `import.manage`, `integration.manage`, `ai.config`, `plugin.manage`, `portal.manage`.
 
 Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`).
+`posatendimento.record` (Atendimento, Qualidade, Gestor, admin) e `posatendimento.verify`
+(Qualidade, Gestor, admin), ver `.claude/pos-atendimento.md`. Helper novo
+`requireWorkspaceAnyAction` (qualquer uma das ações, no escopo do espaço).
 
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já

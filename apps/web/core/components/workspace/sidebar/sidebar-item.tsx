@@ -19,6 +19,7 @@ import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web imports
 import { getSidebarNavigationItemIcon } from "@/plane-web/components/workspace/sidebar/helper";
 
@@ -60,12 +61,15 @@ export const SidebarItemBase = observer(function SidebarItemBase({
     "contatos",
     "telefones",
     "mural",
+    "pos-atendimento",
     "reports",
     ...(additionalStaticItems || []),
   ];
   const slug = workspaceSlug?.toString() || "";
+  const { can } = useMyWorkspaceActions(slug);
 
   if (!allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)) return null;
+  if (item.requiredActions && !item.requiredActions.some(can)) return null;
 
   const isPinned = isWorkspaceItemPinned(item.key);
   if (!isPinned && !staticItems.includes(item.key)) return null;

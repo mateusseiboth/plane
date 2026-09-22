@@ -461,6 +461,7 @@ model Issue {
   gitLinks            GitIssueLink[]
   portalRequest       PortalRequest?
   unreads             IssueUnread[]
+  posAtendimento      PosAtendimento?
 
   @@index([legacyTicketNumber])
   @@index([workspaceId, ticketYear, ticketSequence])
@@ -1707,6 +1708,7 @@ model TechnicalVisit {
   moduleIds           Json                    @default("[]") @map("module_ids")
   visitIssues         TechnicalVisitIssue[]
   contactRecords      TechnicalVisitContact[]
+  posAtendimento      PosAtendimento?
 
   @@index([visitNumber])
   @@map("technical_visits")
@@ -2132,4 +2134,42 @@ model MuralLeitura {
   @@id([recadoId, userId])
   @@index([userId])
   @@map("mural_leituras")
+}
+
+/// Pós-atendimento (a antiga `posatendimento` do SAC): a equipe liga para o cliente
+/// depois que o chamado ou a visita terminou. Um por chamado OU por visita (CHECK na
+/// migração). Os códigos são os do legado, ver `modules/pos-atendimento/*.codes.ts`.
+/// É a avaliação da EQUIPE; a nota que o próprio cliente dá no portal é outra coisa.
+/// Quem registrou e quem verificou ficam sem FK, como no mural: o registro sobrevive à
+/// conta desativada.
+model PosAtendimento {
+  id                  String          @id @default(uuid()) @db.Uuid
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  workspaceId         String          @map("workspace_id") @db.Uuid
+  issue               Issue?          @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issueId             String?         @unique @map("issue_id") @db.Uuid
+  visit               TechnicalVisit? @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  visitId             String?         @unique @map("visit_id") @db.Uuid
+  /// 4 sim, 3 parcialmente, 2 não, 1 não era o que precisava. Nulo só no histórico
+  /// convertido dos comentários sem o MySQL (a expectativa se perdeu ali).
+  expectativa         Int?
+  /// 3 ótimo, 2 bom, 1 ruim. Nulo no histórico que não tinha nota.
+  classificacao       Int?
+  /// sim, parcial, nao. Só visita.
+  problemaResolvido   String?         @map("problema_resolvido") @db.VarChar(10)
+  /// 1 telefone, 2 e-mail, 3 MSN, 4 chat, 5 remoto, 6 comunicador interno.
+  meioContato         Int?            @map("meio_contato")
+  observacao          String          @default("")
+  recordedById        String?         @map("recorded_by_id") @db.Uuid
+  recordedAt          DateTime        @default(now()) @map("recorded_at")
+  verifiedById        String?         @map("verified_by_id") @db.Uuid
+  verifiedAt          DateTime?       @map("verified_at")
+  verificationComment String?         @map("verification_comment")
+  /// `posatendimento_id` do SAC: torna a importação idempotente.
+  legacyId            Int?            @unique @map("legacy_id")
+
+  @@index([workspaceId, verifiedAt])
+  @@index([workspaceId, recordedAt])
+  @@map("pos_atendimentos")
 }

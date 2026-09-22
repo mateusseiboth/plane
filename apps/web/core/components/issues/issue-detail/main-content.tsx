@@ -14,6 +14,7 @@ import { getTextContent } from "@plane/utils";
 // components
 import { DescriptionVersionsRoot } from "@/components/core/description-versions";
 import { DescriptionInput } from "@/components/editor/rich-text/description-input";
+import { PosAtendimentoPanel } from "@/components/pos-atendimento/pos-atendimento-panel";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useMember } from "@/hooks/store/use-member";
@@ -251,6 +252,15 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
           />
         </div>
       )}
+
+      <PosAtendimentoPanel
+        workspaceSlug={workspaceSlug}
+        origem="issue"
+        alvoId={issueId}
+        titulo={`Chamado ${issue.name}`}
+        versao={issue.state_id}
+        className="px-6 pb-2"
+      />
 
       <IssueActivity workspaceSlug={workspaceSlug} projectId={projectId} issueId={issueId} disabled={isArchived} />
     </>

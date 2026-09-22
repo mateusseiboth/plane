@@ -14,6 +14,7 @@ import {
   requireOwnOrAll,
   requireProjectAction,
   requireWorkspaceAction,
+  requireWorkspaceAnyAction,
   resolveRole,
 } from "@utils/permission-checks";
 import {getProjectOrFail} from "@utils/workspace";
@@ -247,6 +248,16 @@ describe("permission-checks", () => {
     it("hasWorkspaceAction responde falso para quem não é do espaço", async () => {
       const outsider = await createUser();
       expect(await hasWorkspaceAction(workspaceId, outsider.id, EProjectAction.ISSUE_VIEW)).toBe(false);
+    });
+
+    it("requireWorkspaceAnyAction passa com qualquer uma das ações e barra sem nenhuma", async () => {
+      const acoes = [EProjectAction.POSATENDIMENTO_RECORD, EProjectAction.POSATENDIMENTO_VERIFY];
+      expect((await requireWorkspaceAnyAction(workspaceId, qualidadeId, acoes)).key).toBe("qualidade");
+      expect(await catchThrown(() => requireWorkspaceAnyAction(workspaceId, tiId, acoes))).toMatchObject({status: 403});
+      const outsider = await createUser();
+      expect(await catchThrown(() => requireWorkspaceAnyAction(workspaceId, outsider.id, acoes))).toMatchObject({
+        status: 403,
+      });
     });
   });
 

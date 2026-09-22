@@ -16,6 +16,7 @@ import { EIssuesStoreType } from "@plane/types";
 import { generateWorkItemLink, copyTextToClipboard } from "@plane/utils";
 // components
 import { PrintButton, WorkItemPrintDocument } from "@/components/print";
+import { ConcluirComPosButton } from "@/components/pos-atendimento/concluir-com-pos-button";
 import { CreateVisitFromIssueButton } from "@/components/technical-visits/create-visit-from-issue-button";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -160,6 +161,14 @@ export const IssueDetailQuickActions = observer(function IssueDetailQuickActions
               auditEntityId={issueId}
             />
             <WorkItemPrintDocument issueId={issueId} />
+            {!issue?.archived_at && (
+              <ConcluirComPosButton
+                workspaceSlug={workspaceSlug}
+                projectId={projectId}
+                issueId={issueId}
+                titulo={`Chamado ${projectIdentifier ?? ""}-${issue.sequence_id}: ${issue.name}`}
+              />
+            )}
             {!issue?.archived_at && (
               <CreateVisitFromIssueButton
                 workspaceSlug={workspaceSlug}

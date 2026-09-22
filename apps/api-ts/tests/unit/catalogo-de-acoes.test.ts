@@ -227,6 +227,13 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     // No SAC só a gestão de projetos cancelava e trocava técnico ou data.
     expect(donosDe("visit.manage.all")).toEqual(["admin", "gestor_projeto"]);
   });
+
+  it("pós-atendimento: Atendimento registra, Qualidade verifica; Gestor e admin fazem os dois", () => {
+    expect(donosDe("posatendimento.record")).toEqual(["admin", "atendimento", "gestor_projeto", "qualidade"]);
+    expect(donosDe("posatendimento.verify")).toEqual(["admin", "gestor_projeto", "qualidade"]);
+    expect(ACTION_CATALOG.POSATENDIMENTO_RECORD).toMatchObject({ scope: "workspace" });
+    expect(ACTION_CATALOG.POSATENDIMENTO_VERIFY).toMatchObject({ scope: "workspace" });
+  });
 });
 
 describe("applyMemberOverrides", () => {
