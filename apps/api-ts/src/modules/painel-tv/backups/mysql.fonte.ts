@@ -26,14 +26,22 @@ import {
 import {
   FONTE_VAZIA,
   type BackupDaEntidade,
+  type ConsultaDoHistorico,
   type EnvioDeBackup,
   type FonteDeBackups,
 } from "@modules/painel-tv/backups/fonte";
+import {
+  buildHistoricoDoLegado,
+  type EnvioDetalhado,
+  type LinhaDoHistorico,
+} from "@modules/painel-tv/backups/historico";
 
 /** Fuso em que o legado gravou os DATETIME (Campo Grande, sem horário de verão). */
 const TZ_PADRAO = "-04:00";
 const DIAS_DE_TOLERANCIA = 1;
 const CACHE_MS = 5 * 60_000;
+/** Teto da gaveta de histórico: ninguém lê mais que isto numa tela. */
+const LIMITE_DO_HISTORICO = 300;
 const NOME_DE_BASE = /^[A-Za-z0-9_]+$/;
 
 type Opcoes = {
@@ -47,6 +55,22 @@ type Opcoes = {
 type Linha = Record<string, string | number | bigint | null>;
 
 const texto = (valor: string | number | bigint | null): string => (valor === null ? "" : String(valor));
+
+const toLinhaDoHistorico = (linha: Linha): LinhaDoHistorico => ({
+  id: texto(linha.id),
+  id_entidade: texto(linha.id_entidade),
+  id_sistema: texto(linha.id_sistema),
+  datahora_envio: texto(linha.datahora_envio),
+  tamanho_banco: linha.tamanho_banco as number | null,
+  nome_arquivo: linha.nome_arquivo as string | null,
+  host: linha.host as string | null,
+  ip_externo: linha.ip_externo as string | null,
+  versao_backup: linha.versao_backup as string | null,
+  corrompido: linha.corrompido as number | null,
+  envio_ftp: linha.envio_ftp as number | null,
+  erro_backup: linha.erro_backup as string | null,
+  erro_restore: linha.erro_restore as string | null,
+});
 
 const toEnvio = (linha: Linha): EnvioAutom => ({
   id: texto(linha.id),
@@ -134,6 +158,14 @@ export function createFonteMysqlDeBackups({
       return linhas.map(toEnvio);
     }) as Promise<EnvioAutom[]>;
 
+  // O histórico mostra o envio QUEBRADO também (é o que a infra confere), por
+  // isso nada de `tamanho_banco > 100` aqui, e traz as colunas que só ele usa:
+  // nome do arquivo, o computador de onde veio e a versão do app de backup.
+  const COLUNAS_DO_HISTORICO = `e.id, e.id_entidade, e.id_sistema,
+             DATE_FORMAT(e.datahora_envio, '%Y-%m-%d %H:%i:%s') AS datahora_envio,
+             e.tamanho_banco, e.nome_arquivo, e.host, e.ip_externo, e.versao_backup,
+             e.corrompido, e.envio_ftp, e.erro_backup, e.erro_restore`;
+
   const lerCodigoPorLegado = () =>
     cache("codigos", async () => {
       const linhas = await consulta(`
@@ -174,6 +206,30 @@ export function createFonteMysqlDeBackups({
       ]);
       return buildEnviosDoLegado({ entidades, codigoPorLegado, envios, nomes, staleSince, tz });
     },
+
+    async findHistorico({ entidade, sistema, agora: instante, dias }: ConsultaDoHistorico): Promise<EnvioDetalhado[]> {
+      const codigoPorLegado = await lerCodigoPorLegado();
+      const codigo = entidade.legacyId === null ? undefined : codigoPorLegado.get(entidade.legacyId);
+      // Entidade que não existe no SAC desktop nunca mandou backup nenhum.
+      if (!codigo) return [];
+
+      const desde = comoDataDoLegado(buildStaleSince(instante, dias, tz), tz);
+      const [linhas, nomes] = await Promise.all([
+        cache(`historico:${codigo}:${desde}`, async () =>
+          consulta(
+            `SELECT ${COLUNAS_DO_HISTORICO}
+               FROM envio_autom e
+              WHERE e.id_entidade = ? AND e.datahora_envio >= ?
+              ORDER BY e.datahora_envio DESC, e.id DESC
+              LIMIT ${LIMITE_DO_HISTORICO}`,
+            [codigo, desde]
+          )
+        ) as Promise<Linha[]>,
+        lerNomes(),
+      ]);
+
+      return buildHistoricoDoLegado({ linhas: linhas.map(toLinhaDoHistorico), nomes, sistema, tz });
+    },
   };
 }
 
@@ -196,5 +252,6 @@ export function createFonteDeBackups(env: Record<string, string | undefined> = p
   return {
     findAtrasados: (entidades, instante, dias) => semQuebrar(fonte.findAtrasados(entidades, instante, dias)),
     findEnviosRecentes: (entidades, instante, dias) => semQuebrar(fonte.findEnviosRecentes(entidades, instante, dias)),
+    findHistorico: (consulta) => semQuebrar(fonte.findHistorico(consulta)),
   };
 }

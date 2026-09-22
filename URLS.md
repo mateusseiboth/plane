@@ -19,7 +19,8 @@ Tudo abaixo está no ar no 10.1.2.12.
 | Painel de TV: Qualidade | `/<slug>/painel/qualidade?key=<chave>` | chave de painel |
 | Painel de TV: Atendimento | `/<slug>/painel/atendimento?key=<chave>` | chave de painel; abas trocam sozinhas |
 | Painel de TV: Mapa | `/<slug>/painel/mapa?key=<chave>` | chave de painel |
-| Painel de TV: Backups | `/<slug>/painel/backups?key=<chave>` | chave de painel; `?dias=` muda a janela |
+| Painel de TV: Backups | `/<slug>/painel/backups?key=<chave>&uf=<UF>&dias=<1 a 30>` | chave de painel |
+| Painel de Backups interativo | `/<slug>/painel/backups?interativo=1&entidade=<busca>&sistema=<1,3,4,8>&situacao=<em-dia,atrasado,nunca>&ordem=<atraso,entidade,problema>&dias=<1 a 30>` | login do Plane (ou chave de painel com `?interativo=1`) |
 
 As chaves de painel são criadas em *Configurações → Painéis de TV*. Há a chave GERAL,
 que abre todos os painéis, e chaves restritas a painéis escolhidos; a chave aparece uma

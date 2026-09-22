@@ -31,17 +31,31 @@ export type EnvioDeBackup = {
   erroRestore: boolean;
 };
 
+import type { EnvioDetalhado } from "@modules/painel-tv/backups/historico";
+
 export type EntidadeParaBackup = { id: string; nome: string; legacyId: number | null };
+
+/** O que a gaveta do painel interativo pede: uma entidade, um sistema, N dias. */
+export type ConsultaDoHistorico = {
+  entidade: EntidadeParaBackup;
+  /** Código já normalizado (o grupo da integração é o 8); `null` traz todos. */
+  sistema: number | null;
+  agora: Date;
+  dias: number;
+};
 
 export interface FonteDeBackups {
   /** Último backup de cada par entidade × sistema que ficou para trás do corte. */
   findAtrasados(entidades: EntidadeParaBackup[], agora: Date, dias?: number): Promise<BackupDaEntidade[]>;
   /** Envios dos últimos `dias`, um por entidade × sistema, o mais recente. */
   findEnviosRecentes(entidades: EntidadeParaBackup[], agora: Date, dias?: number): Promise<EnvioDeBackup[]>;
+  /** Todos os envios de uma entidade no período, inclusive os quebrados. */
+  findHistorico(consulta: ConsultaDoHistorico): Promise<EnvioDetalhado[]>;
 }
 
 /** Sem banco configurado: nenhuma linha, e a tela diz "Sem dados de backup". */
 export const FONTE_VAZIA: FonteDeBackups = {
   findAtrasados: async () => [],
   findEnviosRecentes: async () => [],
+  findHistorico: async () => [],
 };

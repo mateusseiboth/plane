@@ -18,11 +18,30 @@ import {
 describe("opções da URL", () => {
   it("lê a chave, o intervalo da rotação e o som", () => {
     const opcoes = readOpcoesDaUrl("?key=ptv_abc&intervalo=25&som=1&uf=MT");
-    expect(opcoes).toEqual({ chave: "ptv_abc", intervaloSeg: 25, somLigado: true, uf: "MT", dias: null });
+    expect(opcoes).toEqual({
+      chave: "ptv_abc",
+      intervaloSeg: 25,
+      somLigado: true,
+      uf: "MT",
+      dias: null,
+      interativo: false,
+    });
   });
 
   it("sem nada na URL, o intervalo é 15 s e o som fica desligado", () => {
-    expect(readOpcoesDaUrl("")).toEqual({ chave: null, intervaloSeg: 15, somLigado: false, uf: null, dias: null });
+    expect(readOpcoesDaUrl("")).toEqual({
+      chave: null,
+      intervaloSeg: 15,
+      somLigado: false,
+      uf: null,
+      dias: null,
+      interativo: false,
+    });
+  });
+
+  it("`?interativo=1` liga a barra de filtros mesmo sem login", () => {
+    expect(readOpcoesDaUrl("?interativo=1").interativo).toBe(true);
+    expect(readOpcoesDaUrl("?interativo=0").interativo).toBe(false);
   });
 
   it("intervalo fora do razoável volta ao padrão", () => {

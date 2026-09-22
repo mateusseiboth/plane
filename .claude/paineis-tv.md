@@ -22,7 +22,9 @@ Qualidade), `siteintranet/intranet/chatger/` (abas do atendimento) e
 Parâmetros da URL (a TV só sabe abrir endereço): `?key=` a chave do painel,
 `?intervalo=` os segundos da rotação das abas do atendimento (padrão 15),
 `?som=1` para deixar o botão do alerta sonoro piscando (o navegador ainda exige
-um clique), `?uf=` e `?dias=` no painel de backups.
+um clique), `?uf=` e `?dias=` no painel de backups, e os filtros do painel de
+backups interativo (`?interativo=1`, `?entidade=`, `?sistema=`, `?situacao=`,
+`?ordem=`, ver §9).
 
 Todas ficam em `/:slug/painel/:painel`, FORA do layout do espaço
 (`apps/web/app/(all)/painel/[workspaceSlug]/[painel]/page.tsx`): a página não
@@ -38,7 +40,8 @@ apps/api-ts/src/modules/painel-tv/
   mapa/         mapa.ts (puro) · mapa.dao.ts · mapa.service.ts · dados.ts
                 dados/municipios-ms.json · dados/entidades-legado.json
   backups/      fonte.ts (contrato + fonte vazia) · legado.ts (regras do legado, puro)
-                atrasados.ts · painel-de-backups.ts (puro) · mysql.fonte.ts · backups.service.ts
+                atrasados.ts · painel-de-backups.ts (puro) · historico.ts (puro)
+                mysql.fonte.ts · backups.dao.ts · backups.errors.ts · backups.service.ts
   servidores/   status.ts (contrato + regra pura) · status.gateway.ts
   atendimento/  atendimento.service.ts (atravessa para o chat)
   rotas-da-tv.ts        /api/v1/tv/:slug/... (chave OU sessão)
@@ -52,7 +55,9 @@ apps/web/core/components/painel-tv/
   painel-da-tv.tsx (escolhe o painel por mapa, sem `if`)
   quadro/quadro-tv.tsx · atendimento/atendimento-tv.tsx
   mapa/mapa-tv.tsx · mapa/mapa-svg.tsx · mapa/dados/ms-municipios.geo.json
-  backups/backups-tv.tsx · gestao/{chaves-de-painel,colunas-do-painel}.tsx
+  backups/backups-helpers.ts (puro: tipos, filtros, ordenação) · backups/backups-tv.tsx
+  backups/filtros-de-backup.tsx · backups/historico-de-backups.tsx · backups/use-backups.ts
+  gestao/{chaves-de-painel,colunas-do-painel}.tsx
 apps/web/core/services/painel-tv.service.ts · core/hooks/use-paineis-de-tv.ts
 ```
 
@@ -93,6 +98,7 @@ herdarem o `authPlugin` global):
 | `GET /atendimento/` | atravessa para o chat (ver §7) |
 | `GET /mapa/` | pontos, laterais e backups atrasados |
 | `GET /backups/` | `uf`, `dias` (1 a 30) |
+| `GET /backups/historico/` | `entidade` (id no Plane, obrigatório), `sistema` (1, 3, 4 ou 8), `dias` (1 a 180, padrão 30) |
 | `GET /stream/` | fluxo de eventos (SSE) de chamado e solicitação |
 
 Gestão (`/workspaces/:slug/tv-panels/...`, `panel.manage`): `GET/POST keys/`,
@@ -194,6 +200,53 @@ do banco de integração (8, 9, 10, 11, 12, 13, 15, 18, 21, 22 e 23) conta como 
 (`SAC_ENTIDADE_LIBERACAO`), que não temos aqui. O campo existe no contrato
 (`expira_em`) e chega `null`; a tela só o mostra quando houver fonte.
 
+### 9.1 Modo interativo (W23)
+
+O painel de backups tem DUAS vidas no mesmo componente. Na PAREDE (chave de
+painel, sem ninguém por perto) nada é clicável e as listas rolam sozinhas, como
+sempre foi. Com alguém USANDO ele (sessão do Plane, ou `?interativo=1` na URL)
+aparece a barra de filtros, a rolagem automática desliga e cada linha vira
+botão. A infra confere os envios pela tela; a TV continua a mesma.
+
+**Filtros**, todos refletidos na URL para o painel ser mandado por link:
+
+| Parâmetro | O quê |
+| --- | --- |
+| `entidade` | busca rápida por nome (sem acento, sem caixa) ou por código |
+| `sistema` | 1 Contabilidade, 3 ARH, 4 SIART, 8 Integração |
+| `situacao` | `em-dia`, `atrasado` (já enviou algum dia) ou `nunca` |
+| `ordem` | `atraso` (padrão), `entidade` (A a Z) ou `problema` |
+| `dias` | a janela do painel, de 1 a 30 |
+| `interativo` | `1` liga a barra mesmo sem login |
+
+As regras são PURAS (`backups-helpers.ts`, testadas em `backups-helpers.test.ts`)
+e os contadores do alto são refeitos sobre a lista filtrada: número que conta o
+que não está na tela é mentira. Quem está sem backup nenhum continua aparecendo
+com o filtro de sistema ligado, porque falta o backup daquele sistema também.
+
+**Detalhe por célula**: clicar numa entidade × sistema abre a gaveta lateral com
+`GET /backups/historico/`. Colunas de `backup.envio_autom` que só ela usa:
+`nome_arquivo`, `host` (o computador que mandou, "IP/porta" ou o nome da
+máquina), `ip_externo` e `versao_backup`, além de `tamanho_banco`,
+`datahora_envio` e os quatro sinalizadores.
+
+Duas diferenças propositais entre a gaveta e o painel:
+
+- **o envio QUEBRADO aparece**, marcado "Com problema". O painel descarta
+  `tamanho_banco <= 100` porque não conta como backup feito; quem abriu a gaveta
+  veio justamente ver o que deu errado;
+- **só os quatro sistemas do painel**. O legado guarda envio de outros (Gecom,
+  por exemplo); mostrá-los aqui faria a gaveta contar mais backups do que a
+  grade que a abriu. Quando `sistema` não vem, valem os quatro.
+
+**"Solicitar backup"**: a gaveta mostra o atalho para a página do plugin de
+backup (`/:slug/plugins/:slug-do-plugin`) quando o espaço tem um plugin ATIVO
+cujo slug contém "backup" e quem está olhando está logado. A lista de plugins é
+lida por `fetch` cru (`findPluginDeBackup` em `painel-tv.service.ts`), nunca pelo
+cliente axios do produto: ele manda quem toma 401 para a tela de entrar, e o
+painel também roda sem sessão nenhuma. Não há disparo de solicitação daqui: o
+plugin backup-manager vive em repositório separado e a ação é dele.
+
 ## 10. Fontes externas (todas injetáveis, todas com provedor vazio)
 
 | Fonte | Variáveis | Sem configuração |
@@ -261,13 +314,17 @@ ligada o dia inteiro e ninguém a recarrega.
 
 - api-ts, puros: `painel-chave`, `painel-chave-service` (DAO e auditoria
   mockados), `painel-quadro`, `painel-mapa`, `painel-backups`,
-  `painel-de-backups`, `painel-servidores` (gateway com `fetch` injetado).
+  `painel-de-backups`, `painel-historico-de-backups`, `painel-servidores`
+  (gateway com `fetch` injetado).
 - api-ts, contrato: `tests/contract/paineis-de-tv.test.ts` (17) — gestão das
   chaves, as duas portas de entrada, escopo, revogação, colunas e cada rota de
-  dados.
+  dados; `tests/contract/historico-de-backups.test.ts` (8) — as duas portas de
+  entrada do histórico, escopo da chave, os campos recusados e a janela.
 - chat-backend: `tests/painel-regras.test.ts` (puro) e `tests/painel.db.test.ts`
   (abas contra o banco e o segredo da rota interna).
-- web: `core/components/painel-tv/painel-helpers.test.ts`.
+- web: `core/components/painel-tv/painel-helpers.test.ts` e
+  `core/components/painel-tv/backups/backups-helpers.test.ts` (filtros,
+  ordenação e leitura dos parâmetros da URL do painel interativo).
 
 ## 15. Dados de demonstração
 
@@ -288,3 +345,6 @@ Servem para conferir os painéis no navegador; não tocam em dado real.
    enviados" fica vazio. É esperado.
 4. Contagem de chamados do mapa considera a entidade do chamado; chamado sem
    entidade não aparece em ponto nenhum (aparece nos painéis de etapa).
+5. "Solicitar backup" é só o ATALHO para a página do plugin (§9.1). Disparar a
+   solicitação daqui depende de o plugin backup-manager expor a ação pelo
+   gateway; o plugin está em repositório separado.

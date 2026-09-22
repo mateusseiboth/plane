@@ -20,6 +20,7 @@ import { QuadroDaTv, type TQuadroDaTv } from "./quadro/quadro-tv";
 import { AtendimentoDaTv, type TPainelDeAtendimento } from "./atendimento/atendimento-tv";
 import { MapaDaTv, type TPainelDoMapa } from "./mapa/mapa-tv";
 import { BackupsDaTv, type TPainelDeBackups } from "./backups/backups-tv";
+import { useFiltrosDeBackup } from "./backups/use-backups";
 
 type Props = { workspaceSlug: string; painel: PainelDaTv; busca: string };
 
@@ -46,9 +47,15 @@ export function PainelDaTvPage({ workspaceSlug, painel, busca }: Props) {
   const agora = useRelogio();
   const espaco = useEspacoDoPainel(workspaceSlug, opcoes.chave);
 
+  // O painel de backups é o único que a pessoa OPERA: quem está logado (ou
+  // abriu com `?interativo=1`) ganha a barra de filtros e o detalhe por clique.
+  const logado = espaco?.via === "sessao";
+  const interativo = painel === "backups" && (opcoes.interativo || logado);
+  const backups = useFiltrosDeBackup(opcoes.dias);
+
   const params = useMemo(
-    () => (painel === "backups" ? { uf: opcoes.uf, dias: opcoes.dias } : {}),
-    [painel, opcoes.uf, opcoes.dias]
+    () => (painel === "backups" ? { uf: opcoes.uf, dias: backups.dias } : {}),
+    [painel, opcoes.uf, backups.dias]
   );
   const { data, error, isLoading } = usePainelDados<Record<string, any>>(workspaceSlug, PAINEIS[painel].caminho, {
     chave: opcoes.chave,
@@ -89,7 +96,19 @@ export function PainelDaTvPage({ workspaceSlug, painel, busca }: Props) {
       />
     ),
     mapa: () => <MapaDaTv painel={data as unknown as TPainelDoMapa} />,
-    backups: () => <BackupsDaTv painel={data as unknown as TPainelDeBackups} />,
+    backups: () => (
+      <BackupsDaTv
+        painel={data as unknown as TPainelDeBackups}
+        workspaceSlug={workspaceSlug}
+        chave={opcoes.chave}
+        interativo={interativo}
+        logado={!!logado}
+        filtros={backups.filtros}
+        dias={backups.dias ?? ((data as unknown as TPainelDeBackups).dias || 1)}
+        aoFiltrar={backups.aplicar}
+        aoTrocarDias={backups.trocarDias}
+      />
+    ),
   };
 
   const legendas: Record<PainelDaTv, JSX.Element | undefined> = {
@@ -117,6 +136,7 @@ export function PainelDaTvPage({ workspaceSlug, painel, busca }: Props) {
         <ItemDaLegenda cor={STATUS.bom}>Backup em ordem</ItemDaLegenda>
         <ItemDaLegenda cor={STATUS.critico}>Corrompido, não enviado ou com erro</ItemDaLegenda>
         <span>Janela de {(data as unknown as TPainelDeBackups).dias ?? 1} dia(s).</span>
+        {interativo && <span>Clique numa entidade para ver o histórico dos envios.</span>}
       </>
     ),
   };

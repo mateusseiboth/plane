@@ -91,6 +91,27 @@ export function openStreamDoPainel(workspaceSlug: string, chave: string | null, 
   return () => controle.abort();
 }
 
+/**
+ * O plugin de backup instalado no espaço, se houver. Vai por `fetch` cru de
+ * propósito: o cliente axios do produto manda quem toma 401 para a tela de
+ * entrar, e o painel também roda sem sessão nenhuma. Sem plugin (ou sem
+ * permissão de ler a lista) o atalho simplesmente não aparece.
+ */
+export type TPluginDeBackup = { slug: string; name: string };
+
+export async function findPluginDeBackup(): Promise<TPluginDeBackup | null> {
+  try {
+    const resposta = await fetch(new URL(`${API_BASE_URL}/api/v1/plugins/active`, window.location.origin).toString(), {
+      credentials: "include",
+    });
+    if (!resposta.ok) return null;
+    const corpo = (await resposta.json()) as { results?: TPluginDeBackup[] };
+    return (corpo.results ?? []).find((p) => p.slug.includes("backup")) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export type TChaveDePainel = {
   id: string;
   name: string;

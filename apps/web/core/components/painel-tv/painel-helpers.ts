@@ -33,6 +33,8 @@ export type OpcoesDoPainel = {
   somLigado: boolean;
   uf: string | null;
   dias: number | null;
+  /** `?interativo=1`: a barra de filtros aparece mesmo sem login. */
+  interativo: boolean;
 };
 
 const readInteiro = (valor: string | null): number | null => {
@@ -51,6 +53,7 @@ export function readOpcoesDaUrl(busca: string): OpcoesDoPainel {
     somLigado: parametros.get("som") === "1",
     uf: parametros.get("uf")?.trim().toUpperCase() || null,
     dias: dias === null || dias < 1 ? null : Math.min(dias, DIAS_MAXIMO),
+    interativo: parametros.get("interativo") === "1",
   };
 }
 
