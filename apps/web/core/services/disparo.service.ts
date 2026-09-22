@@ -26,7 +26,7 @@ export type MensagemDeDisparo = {
 /** O que vai à API: só o filtro escolhido. */
 export type FiltrosDoEnvio = { entity_type?: number; entity_id?: string; project_id?: string };
 
-export type PreviaDoEnvio = { total: number; sem_telefone: number; repetidos: number };
+export type PreviaDoEnvio = { total: number; without_telefone: number; repetidos: number };
 
 export type ResumoDoEnvio = {
   total: number;
@@ -43,7 +43,7 @@ export type ExecucaoDeDisparo = {
   titulo: string;
   filtros: { entity_type: number | null; entity_id: string | null; project_id: string | null };
   total: number;
-  sem_telefone: number;
+  without_telefone: number;
   repetidos: number;
   status: string;
   created_by_id: string;
@@ -86,7 +86,7 @@ const jsonInit = (method: string, data?: unknown): RequestInit => ({
 const base = (slug: string) => `/workspaces/${slug}/disparo`;
 
 /** DELETE responde 204 sem corpo: não dá para ler JSON. */
-async function deleteSemCorpo(apiUrl: string, path: string): Promise<void> {
+async function deleteWithoutCorpo(apiUrl: string, path: string): Promise<void> {
   const res = await fetch(apiUrl.replace(/\/$/, "") + path, { method: "DELETE", credentials: "include" });
   if (!res.ok) throw await res.json().catch(() => ({ detail: res.statusText }));
 }
@@ -102,7 +102,7 @@ export function disparoApi(apiUrl: string) {
     updateMensagem: (slug: string, id: string, form: FormData): Promise<MensagemDeDisparo> =>
       req(`${base(slug)}/mensagens/${id}/`, { method: "PATCH", body: form }),
     deleteMensagem: (slug: string, id: string): Promise<void> =>
-      deleteSemCorpo(apiUrl, `${base(slug)}/mensagens/${id}/`),
+      deleteWithoutCorpo(apiUrl, `${base(slug)}/mensagens/${id}/`),
     previa: (slug: string, filtros: FiltrosDoEnvio): Promise<PreviaDoEnvio> =>
       req(`${base(slug)}/previa/`, jsonInit("POST", filtros)),
     send: (slug: string, id: string, filtros: FiltrosDoEnvio): Promise<ExecucaoDeDisparo> =>

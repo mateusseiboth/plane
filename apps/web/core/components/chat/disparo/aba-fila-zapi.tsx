@@ -46,8 +46,8 @@ export function AbaFilaZapi({ slug, apiUrl }: Props) {
             </tr>
           </thead>
           <tbody>
-            {fila.map((item, i) => (
-              <tr key={item.id ?? i} className="border-b border-subtle">
+            {fila.map((item) => (
+              <tr key={item.id ?? `${item.telefone}-${item.criadaEm}`} className="border-b border-subtle">
                 <td className={CELULA}>{formatDataHora(item.criadaEm)}</td>
                 <td className={`${CELULA} font-mono text-12`}>{item.telefone}</td>
                 <td className={`${CELULA} line-clamp-2`}>{item.mensagem}</td>

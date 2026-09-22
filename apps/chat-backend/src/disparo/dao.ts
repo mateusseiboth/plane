@@ -35,7 +35,7 @@ export const listMensagens = (slug: string) =>
     orderBy: { createdAt: "desc" },
   });
 
-export type MensagemComUltimoEnvio = Awaited<ReturnType<typeof listMensagens>>[number];
+export type MensagemWithUltimoEnvio = Awaited<ReturnType<typeof listMensagens>>[number];
 
 export const findMensagem = (slug: string, id: string) =>
   prisma.chatDisparoMensagem.findFirst({
@@ -83,7 +83,7 @@ export const hasExecucaoEmAndamento = async (mensagemId: string): Promise<boolea
   })) > 0;
 
 /** Execução e itens nascem juntos: nada de execução sem fila. */
-export const createExecucaoComItens = (mensagemId: string, execucao: NovaExecucao, destinatarios: Destinatario[]) =>
+export const createExecucaoWithItens = (mensagemId: string, execucao: NovaExecucao, destinatarios: Destinatario[]) =>
   prisma.$transaction(async (tx) => {
     const criada = await tx.chatDisparoExecucao.create({ data: { ...execucao, mensagemId } });
     await tx.chatDisparoItem.createMany({
@@ -144,7 +144,7 @@ export const cancelExecucao = (id: string, agora: Date) =>
 
 // ── Fila (worker) ─────────────────────────────────────────────────────────────
 
-export const listWorkspacesComEnvioAberto = async (): Promise<string[]> =>
+export const listWorkspacesWithEnvioAberto = async (): Promise<string[]> =>
   (
     await prisma.chatDisparoExecucao.findMany({
       where: { status: DISPARO_EXECUCAO_STATUS.EM_ANDAMENTO },
@@ -181,16 +181,16 @@ export async function claimProximoItem(slug: string, agora: Date): Promise<strin
   return linhas[0]?.id ?? null;
 }
 
-export const findItemComExecucao = (id: string) =>
+export const findItemWithExecucao = (id: string) =>
   prisma.chatDisparoItem.findUniqueOrThrow({ where: { id }, include: { execucao: true } });
 
-export type ItemComExecucao = Awaited<ReturnType<typeof findItemComExecucao>>;
+export type ItemWithExecucao = Awaited<ReturnType<typeof findItemWithExecucao>>;
 
 export const markItem = (id: string, data: { status: string; erro?: string | null; externalId?: string | null }) =>
   prisma.chatDisparoItem.update({ where: { id }, data });
 
 /** Execução sem nada pendente nem em envio está concluída. */
-export const finishExecucoesSemPendencia = (slug: string, agora: Date) =>
+export const finishExecucoesWithoutPendencia = (slug: string, agora: Date) =>
   prisma.chatDisparoExecucao.updateMany({
     where: {
       workspaceId: slug,

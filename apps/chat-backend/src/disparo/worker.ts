@@ -22,14 +22,14 @@ const INTERROMPIDO = "Envio interrompido por reinício do serviço. Não reenvia
 const LIMITE_DO_ERRO = 500;
 const PASSO_MS = 1000;
 
-async function deliverItem(provider: WhatsAppProvider, item: dao.ItemComExecucao): Promise<string | null> {
+async function deliverItem(provider: WhatsAppProvider, item: dao.ItemWithExecucao): Promise<string | null> {
   const { execucao } = item;
   if (!execucao.mediaKey) return provider.sendText(item.telefone, execucao.texto ?? "");
   return provider.sendMedia(item.telefone, await buildMidiaDeSaida(execucao, execucao.texto));
 }
 
 async function sendItem(provider: WhatsAppProvider, itemId: string): Promise<void> {
-  const item = await dao.findItemComExecucao(itemId);
+  const item = await dao.findItemWithExecucao(itemId);
   try {
     const externalId = await deliverItem(provider, item);
     await dao.markItem(itemId, { status: DISPARO_ITEM_STATUS.ENVIADO, externalId, erro: null });
@@ -45,11 +45,11 @@ async function sendItem(provider: WhatsAppProvider, itemId: string): Promise<voi
  * argumento para o teste controlar o relógio.
  */
 export async function processWorkspace(slug: string, agora: Date = new Date()): Promise<void> {
-  await sendProximoSeForHora(slug, agora);
-  await dao.finishExecucoesSemPendencia(slug, agora);
+  await sendProximoWhenHora(slug, agora);
+  await dao.finishExecucoesWithoutPendencia(slug, agora);
 }
 
-async function sendProximoSeForHora(slug: string, agora: Date): Promise<void> {
+async function sendProximoWhenHora(slug: string, agora: Date): Promise<void> {
   const porMinuto = await getRitmo(slug);
   if (!isHoraDoProximoEnvio(await dao.findUltimaTentativa(slug), agora, porMinuto)) return;
   const resolvido = await getProvider(slug);
@@ -60,7 +60,7 @@ async function sendProximoSeForHora(slug: string, agora: Date): Promise<void> {
 }
 
 export async function runDisparoTick(agora: Date = new Date()): Promise<void> {
-  const espacos = await dao.listWorkspacesComEnvioAberto();
+  const espacos = await dao.listWorkspacesWithEnvioAberto();
   await runInSequence(espacos, (slug) => processWorkspace(slug, agora), "disparo");
 }
 

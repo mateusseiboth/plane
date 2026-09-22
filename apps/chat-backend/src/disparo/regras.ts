@@ -4,7 +4,7 @@
  * Não lê banco nem chama o provedor.
  */
 
-import { telefoneComDdi } from "@/responsaveis";
+import { telefoneWithDdi } from "@/responsaveis";
 import {
   asCorpo,
   erro,
@@ -49,13 +49,13 @@ const PRIMEIRO_DIGITO_DE_CELULAR = new Set(["6", "7", "8", "9"]);
  * (começa em 2 a 5) fica como está. O que não é telefone brasileiro volta `null`.
  */
 export function normalizeTelefoneDisparo(valor?: string | null): string | null {
-  const comDdi = telefoneComDdi(valor);
-  if (!comDdi.startsWith("55")) return null;
-  const local = comDdi.slice(2);
+  const withDdi = telefoneWithDdi(valor);
+  if (!withDdi.startsWith("55")) return null;
+  const local = withDdi.slice(2);
   if (local[0] === "0") return null;
-  if (local.length === 11) return local[2] === "9" ? comDdi : null;
+  if (local.length === 11) return local[2] === "9" ? withDdi : null;
   if (local.length !== 10) return null;
-  if (!PRIMEIRO_DIGITO_DE_CELULAR.has(local[2]!)) return comDdi;
+  if (!PRIMEIRO_DIGITO_DE_CELULAR.has(local[2]!)) return withDdi;
   return `55${local.slice(0, 2)}9${local.slice(2)}`;
 }
 
@@ -68,17 +68,17 @@ export type ContatoDoDisparo = {
 
 export type Destinatario = Omit<ContatoDoDisparo, "phone"> & { telefone: string };
 
-export type ListaDeDestinatarios = { destinatarios: Destinatario[]; semTelefone: number; repetidos: number };
+export type ListaDeDestinatarios = { destinatarios: Destinatario[]; withoutTelefone: number; repetidos: number };
 
 /** Um destinatário por telefone; o primeiro cadastro com o número fica com ele. */
 export function buildDestinatarios(contatos: readonly ContatoDoDisparo[]): ListaDeDestinatarios {
   const porTelefone = new Map<string, Destinatario>();
-  let semTelefone = 0;
+  let withoutTelefone = 0;
   let repetidos = 0;
   for (const { phone, ...contato } of contatos) {
     const telefone = normalizeTelefoneDisparo(phone);
     if (!telefone) {
-      semTelefone += 1;
+      withoutTelefone += 1;
       continue;
     }
     if (porTelefone.has(telefone)) {
@@ -87,7 +87,7 @@ export function buildDestinatarios(contatos: readonly ContatoDoDisparo[]): Lista
     }
     porTelefone.set(telefone, { ...contato, telefone });
   }
-  return { destinatarios: [...porTelefone.values()], semTelefone, repetidos };
+  return { destinatarios: [...porTelefone.values()], withoutTelefone, repetidos };
 }
 
 // ── Ritmo ─────────────────────────────────────────────────────────────────────
@@ -178,15 +178,12 @@ export function readArquivo(arquivo: { type: string; size: number }): Resultado<
 export type ResumoDosItens = Record<DisparoItemStatus, number> & { total: number; emAberto: number };
 
 export function summarizeItens(linhas: readonly { status: string; total: number }[]): ResumoDosItens {
-  const vazio = Object.fromEntries(Object.values(DISPARO_ITEM_STATUS).map((s) => [s, 0])) as Record<
+  const somaDe = (status: DisparoItemStatus) =>
+    linhas.filter((l) => l.status === status).reduce((soma, l) => soma + l.total, 0);
+  const porStatus = Object.fromEntries(Object.values(DISPARO_ITEM_STATUS).map((s) => [s, somaDe(s)])) as Record<
     DisparoItemStatus,
     number
   >;
-  const porStatus = linhas.reduce(
-    (soma, { status, total }) =>
-      status in soma ? { ...soma, [status]: soma[status as DisparoItemStatus] + total } : soma,
-    vazio
-  );
   const total = Object.values(porStatus).reduce((a, b) => a + b, 0);
   return { total, ...porStatus, emAberto: porStatus.pendente + porStatus.processando };
 }

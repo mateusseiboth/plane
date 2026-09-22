@@ -34,7 +34,7 @@ function Previa({ slug, apiUrl, filtros }: { slug: string; apiUrl: string; filtr
     <div className="rounded-md border border-subtle bg-layer-1 p-3 text-13">
       <p className="font-semibold text-primary">{data.total} destinatário(s)</p>
       <p className="text-12 text-tertiary">
-        {data.sem_telefone} sem telefone válido e {data.repetidos} número(s) repetido(s) ficaram de fora.
+        {data.without_telefone} sem telefone válido e {data.repetidos} número(s) repetido(s) ficaram de fora.
       </p>
     </div>
   );

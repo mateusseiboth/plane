@@ -40,14 +40,14 @@ describe("normalizeTelefoneDisparo", () => {
   });
 });
 
-describe("buildDestinatarios", () => {
-  const contato = (contactId: string, phone: string | null) => ({
-    contactId,
-    name: `Pessoa ${contactId}`,
-    entityName: "Prefeitura",
-    phone,
-  });
+const contato = (contactId: string, phone: string | null) => ({
+  contactId,
+  name: `Pessoa ${contactId}`,
+  entityName: "Prefeitura",
+  phone,
+});
 
+describe("buildDestinatarios", () => {
   it("um item por telefone: o mesmo número com e sem nono dígito conta uma vez", () => {
     const r = buildDestinatarios([
       contato("a", "67 9999-0000"),
@@ -57,13 +57,13 @@ describe("buildDestinatarios", () => {
     expect(r.destinatarios.map((d) => d.telefone)).toEqual(["5567999990000", "556733210000"]);
     expect(r.destinatarios[0]!.contactId).toBe("a");
     expect(r.repetidos).toBe(1);
-    expect(r.semTelefone).toBe(0);
+    expect(r.withoutTelefone).toBe(0);
   });
 
   it("conta quem ficou de fora por não ter telefone válido", () => {
     const r = buildDestinatarios([contato("a", null), contato("b", "12"), contato("c", "67999990000")]);
     expect(r.destinatarios).toHaveLength(1);
-    expect(r.semTelefone).toBe(2);
+    expect(r.withoutTelefone).toBe(2);
   });
 });
 

@@ -16,13 +16,13 @@ export class DisparoError extends Error {
   }
 }
 
-export class NaoAutenticadoError extends DisparoError {
+export class NotAutenticadoError extends DisparoError {
   constructor() {
     super("Não autenticado.", 401);
   }
 }
 
-export class SemPermissaoError extends DisparoError {
+export class WithoutPermissaoError extends DisparoError {
   constructor() {
     super("Sua função não permite esta ação.", 403);
   }
@@ -52,7 +52,7 @@ export class ExecucaoNaoEncontradaError extends DisparoError {
   }
 }
 
-export class SemDestinatariosError extends DisparoError {
+export class WithoutDestinatariosError extends DisparoError {
   constructor() {
     super("Nenhum destinatário para os filtros escolhidos.", 422);
   }
@@ -64,7 +64,7 @@ export class EnvioEmAndamentoError extends DisparoError {
   }
 }
 
-export class StatusSemImagemError extends DisparoError {
+export class StatusWithoutImagemError extends DisparoError {
   constructor() {
     super("Só é possível publicar no Status uma mensagem com imagem.", 422);
   }

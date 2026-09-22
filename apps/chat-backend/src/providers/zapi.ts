@@ -33,7 +33,7 @@ export class ZapiProvider implements WhatsAppProvider {
     const res = await fetch(this.url(action), {
       method,
       headers: {"Content-Type": "application/json", "Client-Token": this.clientToken},
-      body: body ? JSON.stringify(body) : undefined,
+      ...(body ? {body: JSON.stringify(body)} : {}),
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");

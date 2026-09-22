@@ -15,8 +15,8 @@ import {
   ExecucaoNaoEncontradaError,
   MensagemNaoEncontradaError,
   ProvedorIndisponivelError,
-  SemDestinatariosError,
-  StatusSemImagemError,
+  WithoutDestinatariosError,
+  StatusWithoutImagemError,
   requireValid,
 } from "@/disparo/erros";
 import {
@@ -41,7 +41,7 @@ const HISTORICO_LIMITE = 100;
 
 // ── Serialização (snake_case, como o resto da API do chat) ────────────────────
 
-const serializeMensagem = (m: dao.MensagemComUltimoEnvio) => ({
+const serializeMensagem = (m: dao.MensagemWithUltimoEnvio) => ({
   id: m.id,
   titulo: m.titulo,
   texto: m.texto,
@@ -79,7 +79,7 @@ async function serializeExecucoes(execucoes: dao.Execucao[]) {
       titulo: e.titulo,
       filtros: e.filtros,
       total: e.total,
-      sem_telefone: e.semTelefone,
+      without_telefone: e.withoutTelefone,
       repetidos: e.repetidos,
       status: e.status,
       created_by_id: e.createdById,
@@ -131,13 +131,13 @@ export async function createMensagem(slug: string, user: PlaneUser, body: unknow
   return serializeMensagem(await dao.createMensagem({ workspaceId: slug, createdById: user.id, ...dados, ...midia }));
 }
 
-const SEM_ARQUIVO = { mediaKey: null, mediaMime: null, mediaName: null };
+const WITHOUT_ARQUIVO = { mediaKey: null, mediaMime: null, mediaName: null };
 
 /** Arquivo novo substitui; `remover_arquivo` tira; nenhum dos dois mantém o que havia. */
 async function resolveMidiaDaEdicao(slug: string, body: unknown, atual: { mediaKey: string | null }) {
   const arquivo = readArquivoDoCorpo(body);
   if (arquivo) return saveArquivo(slug, arquivo);
-  if (String(asCorpo(body).remover_arquivo) === "true") return SEM_ARQUIVO;
+  if (String(asCorpo(body).remover_arquivo) === "true") return WITHOUT_ARQUIVO;
   return { mediaKey: atual.mediaKey };
 }
 
@@ -162,8 +162,8 @@ async function buildLista(slug: string, body: unknown) {
 }
 
 export async function readPrevia(slug: string, body: unknown) {
-  const { destinatarios, semTelefone, repetidos } = await buildLista(slug, body);
-  return { total: destinatarios.length, sem_telefone: semTelefone, repetidos };
+  const { destinatarios, withoutTelefone, repetidos } = await buildLista(slug, body);
+  return { total: destinatarios.length, without_telefone: withoutTelefone, repetidos };
 }
 
 const requireProvedor = async (slug: string): Promise<ResolvedProvider> => {
@@ -174,12 +174,12 @@ const requireProvedor = async (slug: string): Promise<ResolvedProvider> => {
 
 export async function sendMensagem(slug: string, id: string, user: PlaneUser, body: unknown, headers: unknown) {
   const mensagem = await requireMensagem(slug, id);
-  const { filtros, destinatarios, semTelefone, repetidos } = await buildLista(slug, body);
-  if (!destinatarios.length) throw new SemDestinatariosError();
+  const { filtros, destinatarios, withoutTelefone, repetidos } = await buildLista(slug, body);
+  if (!destinatarios.length) throw new WithoutDestinatariosError();
   if (await dao.hasExecucaoEmAndamento(id)) throw new EnvioEmAndamentoError();
   await requireProvedor(slug);
 
-  const execucao = await dao.createExecucaoComItens(
+  const execucao = await dao.createExecucaoWithItens(
     id,
     {
       workspaceId: slug,
@@ -190,7 +190,7 @@ export async function sendMensagem(slug: string, id: string, user: PlaneUser, bo
       mediaName: mensagem.mediaName,
       filtros: serializeFiltros(filtros),
       total: destinatarios.length,
-      semTelefone,
+      withoutTelefone,
       repetidos,
       createdById: user.id,
     },
@@ -285,7 +285,7 @@ export async function buildMidiaDeSaida(midia: Midia, legenda: string | null): P
 
 export async function sendStatus(slug: string, id: string, user: PlaneUser, headers: unknown) {
   const mensagem = await requireMensagem(slug, id);
-  if (getTipoDoArquivo(mensagem.mediaMime) !== "image") throw new StatusSemImagemError();
+  if (getTipoDoArquivo(mensagem.mediaMime) !== "image") throw new StatusWithoutImagemError();
   const { provider } = await requireProvedor(slug);
   const midia = await readConteudoDaMidia(mensagem);
   const externalId = await provider.sendImageStatus((midia.url ?? midia.base64)!);

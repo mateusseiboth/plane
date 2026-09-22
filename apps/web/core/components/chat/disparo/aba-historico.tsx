@@ -114,7 +114,7 @@ const DetalheDoEnvio = observer(function DetalheDoEnvio({
             {formatDataHora(data.created_at)} por {data.created_by_name} · {describeFiltros(data.filtros, nomes)}
           </p>
           <p className="text-12 text-tertiary">
-            {statusDoEnvioLabel(data.status)} · {data.total} destinatário(s) · {data.sem_telefone} sem telefone ·{" "}
+            {statusDoEnvioLabel(data.status)} · {data.total} destinatário(s) · {data.without_telefone} sem telefone ·{" "}
             {data.repetidos} repetido(s)
           </p>
         </div>

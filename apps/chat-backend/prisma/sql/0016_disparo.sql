@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS "chat_disparo_execucoes" (
     "media_name" TEXT,
     "filtros" JSONB NOT NULL DEFAULT '{}',
     "total" INTEGER NOT NULL DEFAULT 0,
-    "sem_telefone" INTEGER NOT NULL DEFAULT 0,
+    "without_telefone" INTEGER NOT NULL DEFAULT 0,
     "repetidos" INTEGER NOT NULL DEFAULT 0,
     "status" TEXT NOT NULL DEFAULT 'em_andamento',
     "created_by_id" TEXT NOT NULL,

@@ -27,8 +27,8 @@ const zapi = { chamadas: [] as Chamada[], falhar: false };
 let server: ReturnType<typeof Bun.serve>;
 
 let token: string;
-let semAcao: string;
-let semAcaoId: string;
+let withoutAcao: string;
+let withoutAcaoId: string;
 let workspaceUuid: string;
 let prefeitura: string;
 let camara: string;
@@ -136,9 +136,9 @@ beforeAll(async () => {
     VALUES (gen_random_uuid(), now(), now(), ${email}, ${email}, 'Sem Disparo', 'Sem', 'Disparo', 'x',
             true, true, false, false, false, false)
     RETURNING id::text AS id`) as Array<{ id: string }>;
-  semAcaoId = outro!.id;
-  await ensureAtendenteNoEspaco(slug, semAcaoId);
-  semAcao = await signPlaneToken(semAcaoId, email);
+  withoutAcaoId = outro!.id;
+  await ensureAtendenteNoEspaco(slug, withoutAcaoId);
+  withoutAcao = await signPlaneToken(withoutAcaoId, email);
 
   prefeitura = await createEntidade("Prefeitura de Teste", 0);
   camara = await createEntidade("Câmara de Teste", 1);
@@ -164,15 +164,15 @@ afterAll(async () => {
   await prisma.chatDisparoConfig.deleteMany({ where: { workspaceId: slug } });
   await cleanWorkspace(slug);
   await limparWorkspacePlane(slug);
-  await prisma.$executeRaw`DELETE FROM users WHERE id::text = ${semAcaoId}`;
+  await prisma.$executeRaw`DELETE FROM users WHERE id::text = ${withoutAcaoId}`;
 });
 
 describe("permissão", () => {
   it("sem login 401; sem chat.disparo 403", async () => {
     expect((await call("GET", "/mensagens/", undefined, null)).status).toBe(401);
-    expect((await call("GET", "/mensagens/", undefined, semAcao)).status).toBe(403);
-    expect((await call("POST", "/previa/", {}, semAcao)).status).toBe(403);
-    expect((await call("GET", "/fila-zapi/", undefined, semAcao)).status).toBe(403);
+    expect((await call("GET", "/mensagens/", undefined, withoutAcao)).status).toBe(403);
+    expect((await call("POST", "/previa/", {}, withoutAcao)).status).toBe(403);
+    expect((await call("GET", "/fila-zapi/", undefined, withoutAcao)).status).toBe(403);
   });
 
   it("com a ação concedida por pessoa, entra", async () => {
@@ -218,7 +218,7 @@ describe("prévia", () => {
   it("conta um por telefone, só quem está ativo e aceita mensagem", async () => {
     const r = await call("POST", "/previa/", {});
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ total: 3, sem_telefone: 1, repetidos: 1 });
+    expect(r.body).toEqual({ total: 3, without_telefone: 1, repetidos: 1 });
   });
 
   it("filtra por tipo de entidade, entidade e sistema", async () => {
@@ -253,11 +253,11 @@ describe("envio, fila e histórico", () => {
   it("enviar cria a execução, um item por telefone, e grava a auditoria", async () => {
     const r = await call("POST", `/mensagens/${mensagemId}/enviar/`, {});
     expect(r.status).toBe(201);
-    expect(r.body).toMatchObject({ total: 3, sem_telefone: 1, repetidos: 1, status: "em_andamento" });
+    expect(r.body).toMatchObject({ total: 3, without_telefone: 1, repetidos: 1, status: "em_andamento" });
     execucaoId = r.body.id;
 
     const itens = await prisma.chatDisparoItem.findMany({ where: { execucaoId } });
-    expect(itens.map((i) => i.telefone).sort()).toEqual(["556733210000", "5567999990001", "5567999990002"]);
+    expect(itens.map((i) => i.telefone).toSorted()).toEqual(["556733210000", "5567999990001", "5567999990002"]);
     expect(itens.every((i) => i.status === "pendente")).toBe(true);
 
     const [audit] = (await prisma.$queryRaw`

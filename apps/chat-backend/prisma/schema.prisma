@@ -429,7 +429,7 @@ model ChatDisparoExecucao {
   // {entity_type, entity_id, project_id} como foram escolhidos na tela.
   filtros     Json                @default("{}")
   total       Int                 @default(0)
-  semTelefone Int                 @default(0) @map("sem_telefone")
+  withoutTelefone Int                 @default(0) @map("without_telefone")
   repetidos   Int                 @default(0)
   status      String              @default("em_andamento") // em_andamento | concluida | cancelada
   createdById String              @map("created_by_id")
