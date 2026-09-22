@@ -93,11 +93,9 @@ export const useEntityContactsOf = (workspaceSlug: string | undefined, entityId:
     isLoading,
     isValidating,
     mutate: refetch,
-  } = useSWR<TEntityContact[]>(
-    key,
-    key ? () => entityContactService.listByEntity(workspaceSlug!, entityId!) : null,
-    { revalidateOnFocus: false }
-  );
+  } = useSWR<TEntityContact[]>(key, key ? () => entityContactService.listByEntity(workspaceSlug!, entityId!) : null, {
+    revalidateOnFocus: false,
+  });
 
   return {
     contacts: data ?? [],

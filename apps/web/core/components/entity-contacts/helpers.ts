@@ -59,8 +59,7 @@ export function telefoneInvalido(valor: string): string | null {
   const d = somenteDigitos(valor);
   if (!d) return null;
   const nacional = semDdi(d);
-  if (nacional.length !== 10 && nacional.length !== 11)
-    return "Telefone deve ter 10 ou 11 dígitos, com DDD.";
+  if (nacional.length !== 10 && nacional.length !== 11) return "Telefone deve ter 10 ou 11 dígitos, com DDD.";
   if (nacional.length === 11 && nacional[2] !== "9")
     return "Celular com 11 dígitos precisa começar com 9 depois do DDD.";
   if (nacional[0] === "0") return "DDD inválido.";
