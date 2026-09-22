@@ -4,6 +4,7 @@
  * "mover para" e o endereço de uma página (wiki ou sistema). Funções puras.
  */
 import { describe, expect, it } from "bun:test";
+import { getPageName } from "../src/page";
 import {
   buildWikiTree,
   getPaginaPath,
@@ -76,5 +77,13 @@ describe("getPaginaPath", () => {
     expect(getPaginaPath({ workspaceSlug: "q", pageId: "1", projectIds: ["p1", "p2"], currentProjectId: "p2" })).toBe(
       "/q/projects/p2/pages/1"
     );
+  });
+});
+
+describe("getPageName", () => {
+  it("página sem nome aparece como Sem título", () => {
+    expect(getPageName("")).toBe("Sem título");
+    expect(getPageName("  ")).toBe("Sem título");
+    expect(getPageName("Processos")).toBe("Processos");
   });
 });
