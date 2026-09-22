@@ -4,21 +4,30 @@
 //  - Clients (anonymous visitors): a lightweight signed "chat session token" we
 //    mint ourselves, bound to a sessionId + browserId.
 
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, type JWTPayload } from "jose";
+import { isSessionValid } from "@/sessao";
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 
 export type PlaneUser = { id: string; email?: string };
 
-export async function verifyPlaneJwt(rawToken: string | null | undefined): Promise<PlaneUser | null> {
-  if (!rawToken) return null;
+async function readPlaneClaims(rawToken: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(rawToken, SECRET);
-    if (!payload.sub) return null;
-    return { id: String(payload.sub), email: payload.email ? String(payload.email) : undefined };
+    return payload.sub ? payload : null;
   } catch {
     return null;
   }
+}
+
+/** Token íntegro E sessão ainda válida no Plane (ver `sessao.ts`). */
+export async function verifyPlaneJwt(rawToken: string | null | undefined): Promise<PlaneUser | null> {
+  if (!rawToken) return null;
+  const payload = await readPlaneClaims(rawToken);
+  if (!payload) return null;
+  const id = String(payload.sub);
+  if (!(await isSessionValid(id, payload))) return null;
+  return { id, email: payload.email ? String(payload.email) : undefined };
 }
 
 /** Extract the Plane JWT from a request's cookie / Authorization header.
@@ -49,7 +58,9 @@ export async function signWsTicket(userId: string, workspaceId: string): Promise
     .sign(SECRET);
 }
 
-export async function verifyWsTicket(token: string | null | undefined): Promise<{ userId: string; workspaceId: string } | null> {
+export async function verifyWsTicket(
+  token: string | null | undefined
+): Promise<{ userId: string; workspaceId: string } | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, SECRET);
@@ -70,7 +81,9 @@ export async function signClientToken(sessionId: string, browserId: string): Pro
     .sign(SECRET);
 }
 
-export async function verifyClientToken(token: string | null | undefined): Promise<{ sessionId: string; browserId: string } | null> {
+export async function verifyClientToken(
+  token: string | null | undefined
+): Promise<{ sessionId: string; browserId: string } | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, SECRET);

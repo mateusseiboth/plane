@@ -8,6 +8,7 @@
 
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import prisma from "@db";
+import { isSessionRevoked, readSessionVersion } from "@utils/session-rules";
 
 export const JWT_SECRET_BYTES = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production"
@@ -17,14 +18,7 @@ export const SESSION_TTL = "7d";
 
 export type SessionSubject = { id: string; email: string; tokenUpdatedAt: Date | null };
 
-export function readSessionVersion(payload: JWTPayload): unknown {
-  return payload.tv;
-}
-
-export function isSessionRevoked(tokenVersion: unknown, tokenUpdatedAt: Date | null | undefined): boolean {
-  if (!tokenUpdatedAt) return false;
-  return tokenVersion !== tokenUpdatedAt.getTime();
-}
+export { isSessionRevoked, readSessionVersion };
 
 export async function signSessionToken(subject: SessionSubject): Promise<string> {
   return new SignJWT({ sub: subject.id, email: subject.email, tv: subject.tokenUpdatedAt?.getTime() ?? 0 })
