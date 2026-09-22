@@ -9,6 +9,7 @@
 
 import { Elysia } from "elysia";
 import prisma from "@db";
+import { refreshFotoDaSessao } from "@/atendente/foto.service";
 import { startBot, handleInboundClient } from "@/bot/engine";
 import { handleRespostaDeInatividade } from "@/ciclo-de-vida/inatividade";
 import { resumeAtendimento } from "@/ciclo-de-vida/pausa";
@@ -117,6 +118,8 @@ async function handleMensagem(slug: string, inbound: InboundMessage) {
     mediaKey: inbound.mediaUrl ? `ext:${inbound.mediaUrl}` : null,
   });
   await (SEGUIMENTO[sessao.status] ?? followBot)(sessao, inbound.text ?? "", isNova);
+  // Depois do robô: é ele que identifica o responsável pelo telefone.
+  void refreshFotoDaSessao(sessao.id, inbound.photoUrl);
 }
 
 const TRATAMENTO_POR_TIPO: Partial<

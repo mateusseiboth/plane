@@ -3,6 +3,7 @@
 // exact same pipeline (the attendant UI behaves identically for both channels).
 
 import prisma from "@db";
+import { formatTextoDoWhatsapp } from "@/atendente/whatsapp-texto";
 import { persistAndBroadcast, serializeMessage, type SendArgs } from "@/messages";
 import { getProvider } from "@/providers/provider";
 import { attendantName } from "@/users";
@@ -83,10 +84,21 @@ async function deliverToWhatsapp(
 
 const isWhatsapp = (session: ChatSessionLike) => session.channel === "whatsapp" && Boolean(session.clientPhone);
 
-/** Nome do atendente em negrito no começo: o WhatsApp não tem rótulo de remetente. */
-async function buildTextoDoWhatsapp(senderUserId: string | null | undefined, sender: string, text: string | null) {
-  if (sender !== "attendant" || !senderUserId || !text) return text;
-  return `*${await attendantName(senderUserId)}*:\n${text}`;
+/**
+ * O texto do WhatsApp para a mensagem gravada: nome do atendente em negrito no
+ * começo (o WhatsApp não tem rótulo de remetente), salvo quando ele pediu para
+ * enviar sem o nome. O corpo por tipo fica em src/atendente/whatsapp-texto.ts.
+ */
+async function buildTextoDoWhatsapp(m: {
+  sender: string;
+  senderUserId?: string | null;
+  type: string;
+  text: string | null;
+  withoutSenderName?: boolean;
+}) {
+  const levaNome = m.sender === "attendant" && Boolean(m.senderUserId) && !m.withoutSenderName;
+  const nome = levaNome ? await attendantName(m.senderUserId) : null;
+  return formatTextoDoWhatsapp({ type: m.type, text: m.text, nome });
 }
 
 export async function deliverOutbound(session: ChatSessionLike, args: Omit<SendArgs, "sessionId">) {
@@ -97,11 +109,7 @@ export async function deliverOutbound(session: ChatSessionLike, args: Omit<SendA
     (args.sender === "attendant" && args.senderUserId ? await attendantName(args.senderUserId) : null);
   const message = await persistAndBroadcast({ ...args, senderName, sessionId: session.id });
   if (!isWhatsapp(session)) return message;
-  return deliverToWhatsapp(
-    session,
-    message,
-    await buildTextoDoWhatsapp(args.senderUserId, args.sender, args.text ?? null)
-  );
+  return deliverToWhatsapp(session, message, await buildTextoDoWhatsapp(message));
 }
 
 /** Reenvia uma mensagem que falhou. Nula quando a mensagem não existe ou não falhou. */
@@ -109,9 +117,5 @@ export async function resendMessage(messageId: string) {
   const message = await prisma.chatMessage.findUnique({ where: { id: messageId }, include: { session: true } });
   if (!message || message.status !== "failed" || !isWhatsapp(message.session)) return null;
   const { session, ...semSessao } = message;
-  return deliverToWhatsapp(
-    session,
-    semSessao,
-    await buildTextoDoWhatsapp(message.senderUserId, message.sender, message.text)
-  );
+  return deliverToWhatsapp(session, semSessao, await buildTextoDoWhatsapp(semSessao));
 }

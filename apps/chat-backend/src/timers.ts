@@ -1,6 +1,7 @@
 // Background timers:
 //  - SLA: active sessions where the client is waiting >10min for the attendant
-//    → push alert.sla to the assigned attendant (UI plays sound + red borders).
+//    → push alert.sla to the assigned attendant (UI plays sound + red borders),
+//    unless the attendant paused the alert (40 min, src/atendente/alerta.ts).
 //  - Ciclo de vida (src/ciclo-de-vida/): inatividade no robô, na fila e em
 //    atendimento; pausa vencida (3 dias); fim do dia do WhatsApp.
 
@@ -9,26 +10,32 @@ import { WITHOUT_PHONE } from "@/canais";
 import { runFimDoDia } from "@/ciclo-de-vida/fim-do-dia";
 import { runInatividade } from "@/ciclo-de-vida/inatividade";
 import { runPausasVencidas } from "@/ciclo-de-vida/pausa";
-import { sendToSession, sendToUser } from "@/ws/hub";
-
-const TEN_MIN = 10 * 60 * 1000;
+import { shouldAlertSla } from "@/atendente/alerta";
+import { sendToUser } from "@/ws/hub";
 
 // Ligação (channel "phone") fica fora do SLA e da inatividade: não há cliente
 // digitando do outro lado. A inatividade usa o mesmo WITHOUT_PHONE.
-export async function checkSla() {
+//
+// O alerta vai SÓ ao atendente. Antes ia também ao socket do cliente, que não
+// tem o que fazer com ele (e ficava sabendo que a equipe estava atrasada). A
+// pausa do alerta por conversa e a regra ficam em src/atendente/alerta.ts.
+export async function checkSla(agora = new Date()) {
   const active = await prisma.chatSession.findMany({
     where: { status: "active", assignedAttendantId: { not: null }, ...WITHOUT_PHONE },
-    select: { id: true, assignedAttendantId: true, lastClientMessageAt: true, lastAttendantMessageAt: true },
+    select: {
+      id: true,
+      assignedAttendantId: true,
+      lastClientMessageAt: true,
+      lastAttendantMessageAt: true,
+      slaAlertPausedAt: true,
+    },
   });
-  const now = Date.now();
-  for (const s of active) {
-    if (!s.lastClientMessageAt) continue;
-    const clientTs = s.lastClientMessageAt.getTime();
-    const attendantTs = s.lastAttendantMessageAt?.getTime() ?? 0;
-    if (clientTs > attendantTs && now - clientTs > TEN_MIN) {
-      sendToUser(s.assignedAttendantId!, { type: "alert.sla", session_id: s.id, waiting_ms: now - clientTs });
-      sendToSession(s.id, { type: "alert.sla", session_id: s.id, waiting_ms: now - clientTs });
-    }
+  for (const s of active.filter((sessao) => shouldAlertSla(sessao, agora))) {
+    sendToUser(s.assignedAttendantId!, {
+      type: "alert.sla",
+      session_id: s.id,
+      waiting_ms: agora.getTime() - s.lastClientMessageAt!.getTime(),
+    });
   }
 }
 

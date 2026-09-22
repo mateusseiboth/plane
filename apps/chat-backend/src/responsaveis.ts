@@ -28,6 +28,8 @@ export type Responsavel = {
   entityId: string | null;
   entityName: string | null;
   typeId: string | null;
+  /** Foto de perfil (cópia do WhatsApp feita pelo chat; ver src/atendente/foto.ts). */
+  photo: string | null;
 };
 
 export type DadosDoResponsavel = {
@@ -47,12 +49,13 @@ const CAMPOS = `ec.id::text AS id,
                 ec.phone_digits AS "phoneDigits",
                 ec.entity_id::text AS "entityId",
                 e.name AS "entityName",
-                ec.type_id::text AS "typeId"`;
+                ec.type_id::text AS "typeId",
+                ec.photo AS photo`;
 
 /** Marca a origem do cadastro nascido no encerramento do atendimento. */
 const ORIGEM_CHAT = "chat";
 
-export function somenteDigitos(valor?: string | null): string {
+export function onlyDigitos(valor?: string | null): string {
   return (valor ?? "").replace(/\D/g, "");
 }
 
@@ -60,8 +63,8 @@ export function somenteDigitos(valor?: string | null): string {
  * Mesma regra do contrato de Responsáveis: só dígitos, com DDI 55 quando o
  * número vem no formato brasileiro sem ele (10 ou 11 dígitos).
  */
-export function telefoneComDdi(valor?: string | null): string {
-  const digitos = somenteDigitos(valor);
+export function telefoneWithDdi(valor?: string | null): string {
+  const digitos = onlyDigitos(valor);
   if (digitos.length === 10 || digitos.length === 11) return `55${digitos}`;
   return digitos;
 }
@@ -73,7 +76,7 @@ export function telefoneComDdi(valor?: string | null): string {
  * do MESMO número, com e sem DDI.
  */
 export function variantesDeTelefone(valor?: string | null): string[] {
-  const comDdi = telefoneComDdi(valor);
+  const comDdi = telefoneWithDdi(valor);
   if (comDdi.length < 10) return [];
 
   const variantes = new Set<string>([comDdi]);
@@ -98,7 +101,7 @@ export async function workspaceIdDoSlug(slug: string): Promise<string | null> {
   return linhas[0]?.id ?? null;
 }
 
-async function buscar(workspaceId: string, condicao: string, ...valores: unknown[]): Promise<Responsavel | null> {
+async function findOne(workspaceId: string, condicao: string, ...valores: unknown[]): Promise<Responsavel | null> {
   const linhas = await prisma.$queryRawUnsafe<Responsavel[]>(
     `SELECT ${CAMPOS}
        FROM entity_contacts ec
@@ -114,11 +117,11 @@ async function buscar(workspaceId: string, condicao: string, ...valores: unknown
   return linhas[0] ?? null;
 }
 
-export async function buscarResponsavelPorId(slug: string, id: string): Promise<Responsavel | null> {
+export async function findResponsavelPorId(slug: string, id: string): Promise<Responsavel | null> {
   try {
     const workspaceId = await workspaceIdDoSlug(slug);
     if (!workspaceId) return null;
-    return await buscar(workspaceId, "ec.id = $2::uuid", id);
+    return await findOne(workspaceId, "ec.id = $2::uuid", id);
   } catch (e) {
     console.error("[responsaveis] busca por id", e);
     return null;
@@ -133,24 +136,28 @@ export async function buscarResponsavelPorId(slug: string, id: string): Promise<
  * Nunca lança: uma falha aqui não pode impedir a saudação do bot — o
  * atendimento continua, apenas sem o nome.
  */
-export async function buscarResponsavelPorTelefone(
-  slug: string,
-  telefone?: string | null
-): Promise<Responsavel | null> {
+export async function findResponsavelPorTelefone(slug: string, telefone?: string | null): Promise<Responsavel | null> {
   const variantes = variantesDeTelefone(telefone);
   if (!variantes.length) return null;
   try {
     const workspaceId = await workspaceIdDoSlug(slug);
     if (!workspaceId) return null;
     const marcadores = variantes.map((_, i) => `$${i + 2}`).join(", ");
-    return await buscar(workspaceId, `ec.is_active = true AND ec.phone_digits IN (${marcadores})`, ...variantes);
+    return await findOne(workspaceId, `ec.is_active = true AND ec.phone_digits IN (${marcadores})`, ...variantes);
   } catch (e) {
     console.error("[responsaveis] busca por telefone", e);
     return null;
   }
 }
 
-async function criarResponsavel(
+/**
+ * Nome antigo, mantido só porque `src/bot/engine.ts` está sendo alterado em
+ * paralelo (W15) e não pode ser tocado agora. Remova e troque o import do
+ * engine para `findResponsavelPorTelefone` quando os dois estiverem no preview.
+ */
+export const buscarResponsavelPorTelefone = findResponsavelPorTelefone;
+
+async function createResponsavel(
   slug: string,
   dados: DadosDoResponsavel,
   criadoPorId?: string | null
@@ -175,10 +182,10 @@ async function criarResponsavel(
     nome,
     (dados.email ?? "").trim() || null,
     telefone,
-    telefoneComDdi(telefone) || null,
+    telefoneWithDdi(telefone) || null,
     ORIGEM_CHAT
   );
-  return buscar(workspaceId, "ec.id = $2::uuid", id);
+  return findOne(workspaceId, "ec.id = $2::uuid", id);
 }
 
 /** Colunas que aceitam atualização direta, no formato `[coluna, cast]`. */
@@ -189,7 +196,7 @@ const ATUALIZAVEIS: Array<[keyof DadosDoResponsavel, string, string]> = [
   ["typeId", "type_id", "::uuid"],
 ];
 
-export async function atualizarResponsavel(
+export async function updateResponsavel(
   slug: string,
   id: string,
   dados: DadosDoResponsavel
@@ -199,21 +206,21 @@ export async function atualizarResponsavel(
 
   const atribuicoes: string[] = [];
   const valores: unknown[] = [];
-  const atribuir = (coluna: string, valor: unknown, cast = "") => {
+  const assign = (coluna: string, valor: unknown, cast = "") => {
     valores.push(valor);
     atribuicoes.push(`${coluna} = $${valores.length}${cast}`);
   };
 
   for (const [campo, coluna, cast] of ATUALIZAVEIS) {
     const valor = typeof dados[campo] === "string" ? (dados[campo] as string).trim() : dados[campo];
-    if (valor) atribuir(coluna, valor, cast);
+    if (valor) assign(coluna, valor, cast);
   }
   const telefone = (dados.phone ?? "").trim();
   if (telefone) {
-    atribuir("phone", telefone);
-    atribuir("phone_digits", telefoneComDdi(telefone) || null);
+    assign("phone", telefone);
+    assign("phone_digits", telefoneWithDdi(telefone) || null);
   }
-  if (!atribuicoes.length) return buscar(workspaceId, "ec.id = $2::uuid", id);
+  if (!atribuicoes.length) return findOne(workspaceId, "ec.id = $2::uuid", id);
 
   valores.push(id, workspaceId);
   await prisma.$executeRawUnsafe(
@@ -222,7 +229,7 @@ export async function atualizarResponsavel(
       WHERE id = $${valores.length - 1}::uuid AND workspace_id = $${valores.length}::uuid`,
     ...valores
   );
-  return buscar(workspaceId, "ec.id = $2::uuid", id);
+  return findOne(workspaceId, "ec.id = $2::uuid", id);
 }
 
 /**
@@ -233,17 +240,17 @@ export async function atualizarResponsavel(
  * vai para esse cadastro" — sem encher `entity_contacts` de gêmeos a cada
  * atendimento do mesmo número.
  */
-export async function salvarResponsavel(
+export async function saveResponsavel(
   slug: string,
   dados: DadosDoResponsavel,
   criadoPorId?: string | null
 ): Promise<Responsavel | null> {
   try {
     const existente = dados.id
-      ? await buscarResponsavelPorId(slug, dados.id)
-      : await buscarResponsavelPorTelefone(slug, dados.phone);
-    if (existente) return await atualizarResponsavel(slug, existente.id, dados);
-    return await criarResponsavel(slug, dados, criadoPorId);
+      ? await findResponsavelPorId(slug, dados.id)
+      : await findResponsavelPorTelefone(slug, dados.phone);
+    if (existente) return await updateResponsavel(slug, existente.id, dados);
+    return await createResponsavel(slug, dados, criadoPorId);
   } catch (e) {
     console.error("[responsaveis] gravação", e);
     return null;

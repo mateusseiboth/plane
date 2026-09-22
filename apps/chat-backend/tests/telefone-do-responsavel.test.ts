@@ -7,21 +7,21 @@
  * número sem o nono dígito.
  */
 import { describe, expect, it } from "bun:test";
-import { somenteDigitos, telefoneComDdi, variantesDeTelefone } from "@/responsaveis";
+import { onlyDigitos, telefoneWithDdi, variantesDeTelefone } from "@/responsaveis";
 
-describe("telefoneComDdi", () => {
+describe("telefoneWithDdi", () => {
   it("prefixa 55 no formato brasileiro sem DDI", () => {
-    expect(telefoneComDdi("(67) 99999-0000")).toBe("5567999990000");
-    expect(telefoneComDdi("6733210000")).toBe("556733210000");
+    expect(telefoneWithDdi("(67) 99999-0000")).toBe("5567999990000");
+    expect(telefoneWithDdi("6733210000")).toBe("556733210000");
   });
 
   it("mantém o número que já veio com DDI", () => {
-    expect(telefoneComDdi("5567999990000")).toBe("5567999990000");
+    expect(telefoneWithDdi("5567999990000")).toBe("5567999990000");
   });
 
   it("devolve vazio quando não há dígito nenhum", () => {
-    expect(telefoneComDdi("sem telefone")).toBe("");
-    expect(somenteDigitos(null)).toBe("");
+    expect(telefoneWithDdi("sem telefone")).toBe("");
+    expect(onlyDigitos(null)).toBe("");
   });
 });
 

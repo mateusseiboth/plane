@@ -24,7 +24,7 @@ import { submitRating, randomDog } from "@/rating";
 import { attendantName } from "@/users";
 import { ratingsReport, slaReport } from "@/reports";
 import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
-import { semAvaliacao, serializeSession } from "@/sessoes";
+import { withoutAvaliacao, serializeSession } from "@/sessoes";
 import {
   register,
   unregister,
@@ -42,6 +42,8 @@ import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
 import { ligacoesModule } from "@/ligacoes/routes";
 import { parseChannelFilter } from "@/canais";
+import { atendenteModule } from "@/atendente/rotas";
+import { mergeClientInfo, parseClientInfo } from "@/atendente/client-info";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
 
@@ -167,6 +169,8 @@ async function onWsMessage(
       mediaMime: msg.media_mime ?? null,
       mediaName: msg.media_name ?? null,
       replyToId: msg.reply_to_id ?? null,
+      // "Enviar sem o nome" (src/atendente/whatsapp-texto.ts): desligado por padrão.
+      withoutSenderName: msg.without_sender_name === true,
     });
     return;
   }
@@ -298,11 +302,18 @@ const app = new Elysia()
     }
     const browserId = b.browser_id || randomUUID();
 
+    // Dados técnicos que o sistema que embute o widget mandou (versão, computador...).
+    const clientInfo = parseClientInfo(b.client_info);
     // Reuse an open session for this browser (reload returns to the same chat).
     let session = await prisma.chatSession.findFirst({
       where: { workspaceId: b.workspace_id, clientBrowserId: browserId, status: { not: "closed" } },
       orderBy: { createdAt: "desc" },
     });
+    if (session && Object.keys(clientInfo).length)
+      session = await prisma.chatSession.update({
+        where: { id: session.id },
+        data: { clientInfo: mergeClientInfo(session.clientInfo, clientInfo) },
+      });
     if (!session) {
       // Resolve the chosen "system" → a Plane project (by id or identifier).
       const project = await resolveProject(b.workspace_id, b.project_id, b.system);
@@ -319,6 +330,7 @@ const app = new Elysia()
           protocol,
           status: "bot",
           botState: "done",
+          clientInfo,
         },
       });
       // Native pre-chat: greet + enqueue. Quem atende é a fila que decide.
@@ -343,7 +355,7 @@ const app = new Elysia()
     const podeVerAvaliacao = role === "client" || (await ehAdminDaConversa(session, headers));
     const serializada = serializeSession(session);
     return {
-      session: podeVerAvaliacao ? serializada : semAvaliacao(serializada),
+      session: podeVerAvaliacao ? serializada : withoutAvaliacao(serializada),
       results: messages.map((m) => serializeMessage(m, { full })),
     };
   })
@@ -367,7 +379,7 @@ const app = new Elysia()
     const serializada = serializeSession(session);
     const podeVerAvaliacao = viewer ? await hasChatAction(session.workspaceId, viewer.id, CHAT_ACTION.ADMINISTRAR) : false;
     return {
-      session: podeVerAvaliacao ? serializada : semAvaliacao(serializada),
+      session: podeVerAvaliacao ? serializada : withoutAvaliacao(serializada),
       results: messages.map((m) => serializeMessage(m, { full: true })),
     };
   })
@@ -456,7 +468,7 @@ const app = new Elysia()
           prisma.chatMessage.findFirst({ where: { sessionId: s.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { text: true, type: true, sender: true, createdAt: true } }),
         ]);
         const preview = last ? (last.text || (last.type === "image" ? "📷 Imagem" : last.type === "audio" ? "🎤 Áudio" : last.type === "video" ? "🎬 Vídeo" : last.type === "file" ? "📎 Arquivo" : "")) : "";
-        const serializada = isAdmin ? serializeSession(s) : semAvaliacao(serializeSession(s));
+        const serializada = isAdmin ? serializeSession(s) : withoutAvaliacao(serializeSession(s));
         return { ...serializada, unread, last_message: preview, last_message_at: last?.createdAt ?? s.lastClientMessageAt ?? s.createdAt };
       })
     );
@@ -678,6 +690,10 @@ const app = new Elysia()
 
   // ── Ligações do FreePBX (entrada do PBX, atendente, telefonia, relatório) ──
   .use(ligacoesModule)
+
+  // ── Ferramentas do atendente e gestão: frases, chave, alerta, cadastro,
+  //    feriados, gerenciador e monitor (src/atendente/rotas.ts) ──
+  .use(atendenteModule)
 
   // ── WebSocket hub ──
   .ws("/ws", {
