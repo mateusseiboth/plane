@@ -361,15 +361,20 @@ describe("ouvidoria, denúncia, currículos e lista de e-mails", () => {
     });
 
     it("exporta CSV e audita a exportação", async () => {
-      const antes = await prisma.auditLog.count({ where: { entity: "entity_contact", action: "export" } });
+      // A trilha é gravada sem bloquear a resposta: espera com prazo, e conta
+      // só este espaço (outros arquivos da suíte também exportam contatos).
+      const doEspaco = { workspaceId: wsId, entity: "entity_contact", action: "export" };
+      const countExportacoes = () => prisma.auditLog.count({ where: doEspaco });
+      const antes = await countExportacoes();
       const res = await gestor.get(`/workspaces/${slug}/contact-emails/export/?entity_id=${entidadeId}`);
       expect(res.status).toBe(200);
       expect(res.headers.get("Content-Type")).toContain("text/csv");
       const csv = await res.text();
       expect(csv).toContain("aceita@pref.gov.br;Aceita;Prefeitura de Teste;Responsável");
       expect(csv).not.toContain("recusa@pref.gov.br");
-      await Bun.sleep(100);
-      expect(await prisma.auditLog.count({ where: { entity: "entity_contact", action: "export" } })).toBe(antes + 1);
+      const prazo = Date.now() + 3000;
+      while ((await countExportacoes()) <= antes && Date.now() < prazo) await Bun.sleep(50);
+      expect(await countExportacoes()).toBe(antes + 1);
     });
   });
 });
