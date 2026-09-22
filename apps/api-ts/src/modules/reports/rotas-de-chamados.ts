@@ -1,5 +1,5 @@
 /**
- * Rotas dos relatórios de chamados sobre os marcos por etapa e do painel de TV.
+ * Rotas dos relatórios de chamados sobre os marcos por etapa.
  * Finas: checam `report.view`, leem os filtros e chamam o service de cada
  * relatório. Os relatórios antigos continuam em `index.ts`.
  *
@@ -9,7 +9,6 @@
  *   weekly-summary/      sintético semanal responsável × sistema × tipo
  *   balance/             balanço mensal ou anual com saldo acumulado
  *   ticket-log/          log consolidado (atividades e comentários)
- *   tv-panel/            painel de TV do TI ou da Qualidade
  */
 import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
@@ -24,7 +23,6 @@ import { findBalanco, readGranularidade } from "@modules/reports/balanco/balanco
 import { parseFilters, readTexto } from "@modules/reports/comum/filtros";
 import { findDevolvidos } from "@modules/reports/devolvidos/devolvidos.service";
 import { findLogDeChamados, readLimite } from "@modules/reports/log-chamados/log-chamados.service";
-import { findPainel, requireSetor } from "@modules/reports/painel-tv/painel-tv.service";
 import { findSinteticoSemanal } from "@modules/reports/sintetico-semanal/sintetico-semanal.service";
 
 /** Espaço de trabalho + `report.view`: a porta de todo relatório. */
@@ -72,9 +70,4 @@ export const reportsDeChamadosModule = new Elysia({ prefix: "/workspaces/:slug/r
       usuarioId: readTexto(query.user_id),
       limite: readLimite(query.limit),
     });
-  })
-
-  .get("/tv-panel/", async ({ params: { slug }, user, query }) => {
-    const ws = await requireRelatorio(slug, user.id);
-    return findPainel(ws.id, requireSetor(query.setor), parseFilters(query));
   });

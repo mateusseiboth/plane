@@ -66,29 +66,43 @@ async function tentar(resolver: () => Promise<AuthUser | null>): Promise<AuthUse
   }
 }
 
-export const authPlugin = new Elysia({ name: "auth" }).derive({ as: "global" }, async (ctx) => {
+type Cabecalhos = Record<string, string | undefined>;
+
+/**
+ * Quem está falando, ou `null` quando não há credencial nenhuma. Não recusa:
+ * é para rota que aceita MAIS DE UMA forma de autenticação (o painel de TV
+ * aceita sessão do Plane ou chave de painel). Falha de banco continua sendo
+ * `AuthUnavailableError`, nunca "credencial inválida".
+ */
+export async function resolveUsuarioOpcional(headers: Cabecalhos, request: Request): Promise<AuthUser | null> {
   const tentativas: Array<() => Promise<AuthUser | null>> = [];
 
   // 1. X-Api-Key header
-  const apiKey = ctx.headers["x-api-key"];
-  const isSemRastro = isRotaSemRastro(ctx.request.method, new URL(ctx.request.url).pathname);
+  const apiKey = headers["x-api-key"];
+  const isSemRastro = isRotaSemRastro(request.method, new URL(request.url).pathname);
   if (apiKey) tentativas.push(() => resolveApiKey(apiKey, isSemRastro));
 
   // 2. Bearer token from Authorization header
-  const authHeader = ctx.headers["authorization"];
+  const authHeader = headers["authorization"];
   if (authHeader?.startsWith("Bearer ")) tentativas.push(() => resolveJwt(authHeader.slice(7)));
 
   // 3. JWT from plane_auth cookie (Elysia built-in cookie access)
-  const match = (ctx.headers["cookie"] ?? "").match(/(?:^|;\s*)plane_auth=([^;]+)/);
+  const match = (headers["cookie"] ?? "").match(/(?:^|;\s*)plane_auth=([^;]+)/);
   if (match?.[1]) tentativas.push(() => resolveJwt(decodeURIComponent(match[1])));
 
+  // Em série de propósito: a primeira credencial válida vence, na ordem acima.
+  for (const tentativa of tentativas) {
+    // oxlint-disable-next-line no-await-in-loop
+    const user = await tentar(tentativa);
+    if (user) return user;
+  }
+  return null;
+}
+
+export const authPlugin = new Elysia({ name: "auth" }).derive({ as: "global" }, async (ctx) => {
   try {
-    // Em série de propósito: a primeira credencial válida vence, na ordem acima.
-    for (const tentativa of tentativas) {
-      // oxlint-disable-next-line no-await-in-loop
-      const user = await tentar(tentativa);
-      if (user) return { user };
-    }
+    const user = await resolveUsuarioOpcional(ctx.headers, ctx.request);
+    if (user) return { user };
   } catch (error) {
     if (!(error instanceof AuthUnavailableError)) throw error;
     console.error("[auth] falha ao resolver credencial:", error.cause);

@@ -108,6 +108,13 @@ services:
       # e-mail do responsável). Vazio = rotas desligadas (503). O MESMO valor vai
       # no chat-backend. Gere com: openssl rand -hex 32
       CHAT_SERVICE_TOKEN: ${CHAT_SERVICE_TOKEN:-}
+      # Painéis de TV (W18): backups do MySQL legado e status dos servidores no
+      # gateway dos bservers. Vazio = painel sem essas informações, nunca quebrado.
+      LEGACY_BACKUP_DB_URL: ${LEGACY_BACKUP_DB_URL:-}
+      LEGACY_INTRANET_DB: ${LEGACY_INTRANET_DB:-}
+      LEGACY_BACKUP_TZ: ${LEGACY_BACKUP_TZ:-}
+      GATEWAY_ADMIN_URL: ${GATEWAY_ADMIN_URL:-}
+      GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:-}
       CORS_ALLOWED_ORIGINS: http://localhost,http://localhost:80,http://localhost:3000
       JWT_SECRET: ${SECRET_KEY:-plane-jwt-secret}
       # IA de levantamento de requisitos ("texto fantasma"). Sem URL o recurso

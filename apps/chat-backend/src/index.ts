@@ -46,6 +46,7 @@ import { disparoModule } from "@/disparo/routes";
 import { startDisparoWorker } from "@/disparo/worker";
 import { parseChannelFilter } from "@/canais";
 import { atendenteModule } from "@/atendente/rotas";
+import { painelModule } from "@/painel/rotas";
 import { mergeClientInfo, parseClientInfo } from "@/atendente/client-info";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
@@ -702,6 +703,9 @@ const app = new Elysia()
   // ── Ferramentas do atendente e gestão: frases, chave, alerta, cadastro,
   //    feriados, gerenciador e monitor (src/atendente/rotas.ts) ──
   .use(atendenteModule)
+
+  // ── Painel de TV do atendimento (rota interna: quem chama é o api-ts) ──
+  .use(painelModule)
 
   // ── WebSocket hub ──
   .ws("/ws", {

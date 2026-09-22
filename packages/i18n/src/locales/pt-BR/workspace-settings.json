@@ -540,6 +540,9 @@
       "auditoria": {
         "title": "Auditoria (LGPD)"
       },
+      "paineis_tv": {
+        "title": "Painéis de TV"
+      },
       "email": {
         "title": "E-mail (SMTP)"
       },

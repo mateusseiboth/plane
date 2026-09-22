@@ -78,7 +78,15 @@ Relatórios estendidos:
   passou a valer para a DATA DO LANÇAMENTO; antes também exigia o chamado aberto no período, e
   hora lançada hoje em chamado antigo sumia.
 
-## 4. Painel de TV
+## 4. Painel de TV (SUBSTITUÍDO — ver `.claude/paineis-tv.md`)
+
+> O painel descrito abaixo foi trocado pelos **painéis de TV sem login** (W18):
+> a rota `tv-panel/` dos relatórios e a tela que exigia login saíram, as colunas
+> passaram a ser configuráveis pelo espaço e entraram mais três painéis
+> (atendimento, mapa e backups). O que segue vale como histórico do que o SAC
+> tinha e de como o mapeamento nasceu.
+
+### Como era
 
 `/:workspaceSlug/painel/ti` e `/qualidade`, fora do layout com menu (tela cheia; botão para
 `requestFullscreen`). Entrada pela tela de Relatórios.

@@ -1,0 +1,555 @@
+[
+  {
+    "ibge": 5000252,
+    "nome": "Alcinópolis",
+    "uf": "MS",
+    "lat": -18.3255,
+    "lon": -53.7042
+  },
+  {
+    "ibge": 5000609,
+    "nome": "Amambai",
+    "uf": "MS",
+    "lat": -23.1058,
+    "lon": -55.2253
+  },
+  {
+    "ibge": 5000708,
+    "nome": "Anastácio",
+    "uf": "MS",
+    "lat": -20.4823,
+    "lon": -55.8104
+  },
+  {
+    "ibge": 5000807,
+    "nome": "Anaurilândia",
+    "uf": "MS",
+    "lat": -22.1852,
+    "lon": -52.7191
+  },
+  {
+    "ibge": 5000856,
+    "nome": "Angélica",
+    "uf": "MS",
+    "lat": -22.1527,
+    "lon": -53.7708
+  },
+  {
+    "ibge": 5000906,
+    "nome": "Antônio João",
+    "uf": "MS",
+    "lat": -22.1927,
+    "lon": -55.9517
+  },
+  {
+    "ibge": 5001003,
+    "nome": "Aparecida do Taboado",
+    "uf": "MS",
+    "lat": -20.0873,
+    "lon": -51.0961
+  },
+  {
+    "ibge": 5001102,
+    "nome": "Aquidauana",
+    "uf": "MS",
+    "lat": -20.4666,
+    "lon": -55.7868
+  },
+  {
+    "ibge": 5001243,
+    "nome": "Aral Moreira",
+    "uf": "MS",
+    "lat": -22.9385,
+    "lon": -55.6334
+  },
+  {
+    "ibge": 5001508,
+    "nome": "Bandeirantes",
+    "uf": "MS",
+    "lat": -19.9275,
+    "lon": -54.3585
+  },
+  {
+    "ibge": 5001904,
+    "nome": "Bataguassu",
+    "uf": "MS",
+    "lat": -21.7159,
+    "lon": -52.4221
+  },
+  {
+    "ibge": 5002001,
+    "nome": "Batayporã",
+    "uf": "MS",
+    "lat": -22.2944,
+    "lon": -53.2705
+  },
+  {
+    "ibge": 5002100,
+    "nome": "Bela Vista",
+    "uf": "MS",
+    "lat": -22.1073,
+    "lon": -56.5263
+  },
+  {
+    "ibge": 5002159,
+    "nome": "Bodoquena",
+    "uf": "MS",
+    "lat": -20.537,
+    "lon": -56.7127
+  },
+  {
+    "ibge": 5002209,
+    "nome": "Bonito",
+    "uf": "MS",
+    "lat": -21.1261,
+    "lon": -56.4836
+  },
+  {
+    "ibge": 5002308,
+    "nome": "Brasilândia",
+    "uf": "MS",
+    "lat": -21.2544,
+    "lon": -52.0365
+  },
+  {
+    "ibge": 5002407,
+    "nome": "Caarapó",
+    "uf": "MS",
+    "lat": -22.6368,
+    "lon": -54.8209
+  },
+  {
+    "ibge": 5002605,
+    "nome": "Camapuã",
+    "uf": "MS",
+    "lat": -19.5347,
+    "lon": -54.0431
+  },
+  {
+    "ibge": 5002704,
+    "nome": "Campo Grande",
+    "uf": "MS",
+    "lat": -20.4486,
+    "lon": -54.6295
+  },
+  {
+    "ibge": 5002803,
+    "nome": "Caracol",
+    "uf": "MS",
+    "lat": -22.011,
+    "lon": -57.0277
+  },
+  {
+    "ibge": 5002902,
+    "nome": "Cassilândia",
+    "uf": "MS",
+    "lat": -19.1179,
+    "lon": -51.7313
+  },
+  {
+    "ibge": 5002951,
+    "nome": "Chapadão do Sul",
+    "uf": "MS",
+    "lat": -18.788,
+    "lon": -52.6263
+  },
+  {
+    "ibge": 5003108,
+    "nome": "Corguinho",
+    "uf": "MS",
+    "lat": -19.8243,
+    "lon": -54.8281
+  },
+  {
+    "ibge": 5003157,
+    "nome": "Coronel Sapucaia",
+    "uf": "MS",
+    "lat": -23.2724,
+    "lon": -55.5278
+  },
+  {
+    "ibge": 5003207,
+    "nome": "Corumbá",
+    "uf": "MS",
+    "lat": -19.0077,
+    "lon": -57.651
+  },
+  {
+    "ibge": 5003256,
+    "nome": "Costa Rica",
+    "uf": "MS",
+    "lat": -18.5432,
+    "lon": -53.1287
+  },
+  {
+    "ibge": 5003306,
+    "nome": "Coxim",
+    "uf": "MS",
+    "lat": -18.5013,
+    "lon": -54.751
+  },
+  {
+    "ibge": 5003454,
+    "nome": "Deodápolis",
+    "uf": "MS",
+    "lat": -22.2763,
+    "lon": -54.1682
+  },
+  {
+    "ibge": 5003488,
+    "nome": "Dois Irmãos do Buriti",
+    "uf": "MS",
+    "lat": -20.6848,
+    "lon": -55.2915
+  },
+  {
+    "ibge": 5003504,
+    "nome": "Douradina",
+    "uf": "MS",
+    "lat": -22.0405,
+    "lon": -54.6158
+  },
+  {
+    "ibge": 5003702,
+    "nome": "Dourados",
+    "uf": "MS",
+    "lat": -22.2231,
+    "lon": -54.812
+  },
+  {
+    "ibge": 5003751,
+    "nome": "Eldorado",
+    "uf": "MS",
+    "lat": -23.7868,
+    "lon": -54.2838
+  },
+  {
+    "ibge": 5003900,
+    "nome": "Figueirão",
+    "uf": "MS",
+    "lat": -18.6782,
+    "lon": -53.638
+  },
+  {
+    "ibge": 5003801,
+    "nome": "Fátima do Sul",
+    "uf": "MS",
+    "lat": -22.3789,
+    "lon": -54.5131
+  },
+  {
+    "ibge": 5004007,
+    "nome": "Glória de Dourados",
+    "uf": "MS",
+    "lat": -22.4136,
+    "lon": -54.2335
+  },
+  {
+    "ibge": 5004106,
+    "nome": "Guia Lopes da Laguna",
+    "uf": "MS",
+    "lat": -21.4583,
+    "lon": -56.1117
+  },
+  {
+    "ibge": 5004304,
+    "nome": "Iguatemi",
+    "uf": "MS",
+    "lat": -23.6736,
+    "lon": -54.5637
+  },
+  {
+    "ibge": 5004403,
+    "nome": "Inocência",
+    "uf": "MS",
+    "lat": -19.7277,
+    "lon": -51.9281
+  },
+  {
+    "ibge": 5004502,
+    "nome": "Itaporã",
+    "uf": "MS",
+    "lat": -22.08,
+    "lon": -54.7934
+  },
+  {
+    "ibge": 5004601,
+    "nome": "Itaquiraí",
+    "uf": "MS",
+    "lat": -23.4779,
+    "lon": -54.187
+  },
+  {
+    "ibge": 5004700,
+    "nome": "Ivinhema",
+    "uf": "MS",
+    "lat": -22.3046,
+    "lon": -53.8184
+  },
+  {
+    "ibge": 5004809,
+    "nome": "Japorã",
+    "uf": "MS",
+    "lat": -23.8903,
+    "lon": -54.4059
+  },
+  {
+    "ibge": 5004908,
+    "nome": "Jaraguari",
+    "uf": "MS",
+    "lat": -20.1386,
+    "lon": -54.3996
+  },
+  {
+    "ibge": 5005004,
+    "nome": "Jardim",
+    "uf": "MS",
+    "lat": -21.4799,
+    "lon": -56.1489
+  },
+  {
+    "ibge": 5005103,
+    "nome": "Jateí",
+    "uf": "MS",
+    "lat": -22.4806,
+    "lon": -54.3079
+  },
+  {
+    "ibge": 5005152,
+    "nome": "Juti",
+    "uf": "MS",
+    "lat": -22.8596,
+    "lon": -54.6061
+  },
+  {
+    "ibge": 5005202,
+    "nome": "Ladário",
+    "uf": "MS",
+    "lat": -19.0089,
+    "lon": -57.5973
+  },
+  {
+    "ibge": 5005251,
+    "nome": "Laguna Carapã",
+    "uf": "MS",
+    "lat": -22.5448,
+    "lon": -55.1502
+  },
+  {
+    "ibge": 5005400,
+    "nome": "Maracaju",
+    "uf": "MS",
+    "lat": -21.6105,
+    "lon": -55.1678
+  },
+  {
+    "ibge": 5005608,
+    "nome": "Miranda",
+    "uf": "MS",
+    "lat": -20.2355,
+    "lon": -56.3746
+  },
+  {
+    "ibge": 5005681,
+    "nome": "Mundo Novo",
+    "uf": "MS",
+    "lat": -23.9355,
+    "lon": -54.281
+  },
+  {
+    "ibge": 5005707,
+    "nome": "Naviraí",
+    "uf": "MS",
+    "lat": -23.0618,
+    "lon": -54.1995
+  },
+  {
+    "ibge": 5005806,
+    "nome": "Nioaque",
+    "uf": "MS",
+    "lat": -21.1419,
+    "lon": -55.8296
+  },
+  {
+    "ibge": 5006002,
+    "nome": "Nova Alvorada do Sul",
+    "uf": "MS",
+    "lat": -21.4657,
+    "lon": -54.3825
+  },
+  {
+    "ibge": 5006200,
+    "nome": "Nova Andradina",
+    "uf": "MS",
+    "lat": -22.238,
+    "lon": -53.3437
+  },
+  {
+    "ibge": 5006259,
+    "nome": "Novo Horizonte do Sul",
+    "uf": "MS",
+    "lat": -22.6693,
+    "lon": -53.8601
+  },
+  {
+    "ibge": 5006309,
+    "nome": "Paranaíba",
+    "uf": "MS",
+    "lat": -19.6746,
+    "lon": -51.1909
+  },
+  {
+    "ibge": 5006358,
+    "nome": "Paranhos",
+    "uf": "MS",
+    "lat": -23.8911,
+    "lon": -55.429
+  },
+  {
+    "ibge": 5006275,
+    "nome": "Paraíso das Águas",
+    "uf": "MS",
+    "lat": -19.0216,
+    "lon": -53.0116
+  },
+  {
+    "ibge": 5006408,
+    "nome": "Pedro Gomes",
+    "uf": "MS",
+    "lat": -18.0996,
+    "lon": -54.5507
+  },
+  {
+    "ibge": 5006606,
+    "nome": "Ponta Porã",
+    "uf": "MS",
+    "lat": -22.5296,
+    "lon": -55.7203
+  },
+  {
+    "ibge": 5006903,
+    "nome": "Porto Murtinho",
+    "uf": "MS",
+    "lat": -21.6981,
+    "lon": -57.8836
+  },
+  {
+    "ibge": 5007109,
+    "nome": "Ribas do Rio Pardo",
+    "uf": "MS",
+    "lat": -20.4445,
+    "lon": -53.7588
+  },
+  {
+    "ibge": 5007208,
+    "nome": "Rio Brilhante",
+    "uf": "MS",
+    "lat": -21.8033,
+    "lon": -54.5427
+  },
+  {
+    "ibge": 5007307,
+    "nome": "Rio Negro",
+    "uf": "MS",
+    "lat": -19.447,
+    "lon": -54.9859
+  },
+  {
+    "ibge": 5007406,
+    "nome": "Rio Verde de Mato Grosso",
+    "uf": "MS",
+    "lat": -18.9249,
+    "lon": -54.8434
+  },
+  {
+    "ibge": 5007505,
+    "nome": "Rochedo",
+    "uf": "MS",
+    "lat": -19.9565,
+    "lon": -54.8848
+  },
+  {
+    "ibge": 5007554,
+    "nome": "Santa Rita do Pardo",
+    "uf": "MS",
+    "lat": -21.3016,
+    "lon": -52.8333
+  },
+  {
+    "ibge": 5007802,
+    "nome": "Selvíria",
+    "uf": "MS",
+    "lat": -20.3637,
+    "lon": -51.4192
+  },
+  {
+    "ibge": 5007703,
+    "nome": "Sete Quedas",
+    "uf": "MS",
+    "lat": -23.9705,
+    "lon": -55.0398
+  },
+  {
+    "ibge": 5007901,
+    "nome": "Sidrolândia",
+    "uf": "MS",
+    "lat": -20.9302,
+    "lon": -54.9692
+  },
+  {
+    "ibge": 5007935,
+    "nome": "Sonora",
+    "uf": "MS",
+    "lat": -17.5698,
+    "lon": -54.7551
+  },
+  {
+    "ibge": 5007695,
+    "nome": "São Gabriel do Oeste",
+    "uf": "MS",
+    "lat": -19.3889,
+    "lon": -54.5507
+  },
+  {
+    "ibge": 5007950,
+    "nome": "Tacuru",
+    "uf": "MS",
+    "lat": -23.636,
+    "lon": -55.0141
+  },
+  {
+    "ibge": 5007976,
+    "nome": "Taquarussu",
+    "uf": "MS",
+    "lat": -22.4898,
+    "lon": -53.3519
+  },
+  {
+    "ibge": 5008008,
+    "nome": "Terenos",
+    "uf": "MS",
+    "lat": -20.4378,
+    "lon": -54.8647
+  },
+  {
+    "ibge": 5008305,
+    "nome": "Três Lagoas",
+    "uf": "MS",
+    "lat": -20.7849,
+    "lon": -51.7007
+  },
+  {
+    "ibge": 5008404,
+    "nome": "Vicentina",
+    "uf": "MS",
+    "lat": -22.4098,
+    "lon": -54.4415
+  },
+  {
+    "ibge": 5000203,
+    "nome": "Água Clara",
+    "uf": "MS",
+    "lat": -20.4452,
+    "lon": -52.879
+  }
+]

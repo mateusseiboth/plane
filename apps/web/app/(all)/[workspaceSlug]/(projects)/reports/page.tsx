@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import * as Icons from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { PageHead } from "@/components/core/page-title";
+import { PaineisDeTvDosRelatorios } from "@/components/reports/paineis-de-tv";
 import { REPORTS, REPORT_CATEGORIES, type ReportMeta } from "@/components/reports/catalog";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 
@@ -33,25 +34,6 @@ function ReportCard({ report, onClick }: { report: ReportMeta; onClick: () => vo
   );
 }
 
-const PAINEIS_DE_TV: ReportMeta[] = [
-  {
-    id: "ti",
-    title: "Painel do TI",
-    description: "A fazer, em desenvolvimento, em homologação e os chamados de cada desenvolvedor.",
-    category: "gerencial",
-    icon: "MonitorPlay",
-    filters: [],
-  },
-  {
-    id: "qualidade",
-    title: "Painel da Qualidade",
-    description: "Verificar, analisar e homologar, com a fatia de cada etapa e os chamados de cada analista.",
-    category: "gerencial",
-    icon: "MonitorCheck",
-    filters: [],
-  },
-];
-
 function ReportsLandingPage() {
   const { workspaceSlug } = useParams();
   const router = useRouter();
@@ -70,21 +52,7 @@ function ReportsLandingPage() {
       </div>
 
       <div className="flex-1 space-y-8 overflow-y-auto px-6 py-6">
-        <section>
-          <div className="mb-3">
-            <h2 className="text-14 font-semibold text-primary">Painéis de TV</h2>
-            <p className="text-12 text-tertiary">Chamados por etapa em tela cheia, com alerta de urgente</p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {PAINEIS_DE_TV.map((painel) => (
-              <ReportCard
-                key={painel.id}
-                report={painel}
-                onClick={() => router.push(`/${workspaceSlug}/painel/${painel.id}`)}
-              />
-            ))}
-          </div>
-        </section>
+        <PaineisDeTvDosRelatorios workspaceSlug={String(workspaceSlug)} />
         {REPORT_CATEGORIES.map((cat) => {
           const reports = REPORTS.filter((r) => r.category === cat.key);
           if (!reports.length) return null;

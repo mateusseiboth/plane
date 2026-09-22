@@ -11,7 +11,7 @@ import {
   buildReportParams,
   hasFiltroAtivo,
 } from "@/components/reports/filtros-do-relatorio";
-import { readAlertasNovos } from "@/components/reports/painel-tv/alerta-sonoro";
+import { readAlertasNovos } from "@/components/painel-tv/alerta-sonoro";
 
 describe("buildReportParams", () => {
   it("manda vários sistemas separados por vírgula", () => {

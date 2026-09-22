@@ -79,6 +79,8 @@ export async function cleanDb() {
     "project",
     // Workspace sub-tables
     "auditLog",
+    "painelChave",
+    "painelConfig",
     "aiProvider",
     "notification",
     "userNotificationPreference",
