@@ -298,6 +298,37 @@ function filtrosDaConsulta(query: any) {
   return usados;
 }
 
+type DuplicateMatch = "phone" | "email";
+
+/**
+ * Contatos do espaço com o mesmo telefone ou e-mail. É um aviso, não uma
+ * trava: duas pessoas podem dividir o telefone da recepção da prefeitura.
+ */
+async function findDuplicateContacts(workspaceId: string, q: any) {
+  const phoneDigits = derivePhoneDigits(q.phone);
+  const email = String(q.email ?? "")
+    .trim()
+    .toLowerCase();
+  const criteria = [
+    ...(phoneDigits ? [{ phoneDigits }] : []),
+    ...(email ? [{ email: { equals: email, mode: "insensitive" as const } }] : []),
+  ];
+  if (criteria.length === 0) return [];
+  const excludeId = normalizeUuid(q.exclude_id);
+  const found = await prisma.entityContact.findMany({
+    where: { workspaceId, deletedAt: null, OR: criteria, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    include: { entity: { select: { name: true } } },
+    orderBy: { name: "asc" },
+    take: 10,
+  });
+  return found.map((c) => {
+    const matches: DuplicateMatch[] = [];
+    if (phoneDigits && c.phoneDigits === phoneDigits) matches.push("phone");
+    if (email && c.email?.toLowerCase() === email) matches.push("email");
+    return { id: c.id, name: c.name, entity_name: c.entity?.name ?? null, matches };
+  });
+}
+
 export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
 
@@ -439,6 +470,25 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
     });
     set.status = 204;
     return null;
+  })
+
+  // Aviso de repetido ─────────────────────────────────────────────────────────
+
+  .get("/entity-contacts/duplicates/", async ({ params: { slug }, user, query, headers }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const duplicates = await findDuplicateContacts(ws.id, query);
+    // LGPD: a consulta devolve nome de terceiros, então também entra na trilha.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.ENTITY_CONTACT,
+      entityId: ws.id,
+      action: AUDIT_ACTIONS.LIST,
+      actor: user,
+      headers,
+      metadata: { total: duplicates.length, motivo: "aviso_de_repetido" },
+    });
+    return duplicates;
   })
 
   // Atalho a partir da entidade ───────────────────────────────────────────────
