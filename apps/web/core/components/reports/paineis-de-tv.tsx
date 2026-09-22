@@ -1,10 +1,10 @@
 /**
  * Atalhos dos painéis de TV na tela de Relatórios.
  *
- * Cada cartão abre o painel em NOVA ABA: quem está logado entra direto (a API
- * aceita a sessão de quem vê relatórios). O link com a chave, que é o que vai
- * para a TV, sai na tela de Configurações > Painéis de TV — a chave aparece uma
- * única vez, na criação, e nem esta tela consegue lê-la depois.
+ * Cada cartão abre o painel em NOVA ABA: quem está logado no espaço entra
+ * direto, seja qual for o papel. O link com a chave, que é o que vai para a TV,
+ * sai na tela de Configurações > Painéis de TV: a chave aparece uma única vez,
+ * na criação, e nem esta tela consegue lê-la depois.
  */
 import { useState } from "react";
 import { Check, Copy, ExternalLink, KeyRound, type LucideIcon } from "lucide-react";

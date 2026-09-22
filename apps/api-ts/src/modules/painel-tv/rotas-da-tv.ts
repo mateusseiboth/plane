@@ -4,11 +4,12 @@
  * Duas portas de entrada, nesta ordem:
  *  1. **chave de painel** (`X-Panel-Key`, ou `?key=` porque a TV só sabe abrir
  *     uma URL) — abre sem login nenhum, dentro do escopo gravado na chave;
- *  2. **sessão do Plane** — quem já está logado e pode ver relatórios
- *     (`report.view`) abre o painel sem chave nenhuma.
+ *  2. **sessão do Plane** — qualquer membro ativo do espaço abre o painel sem
+ *     chave nenhuma, seja qual for o papel: o painel é a TV da sala, e o que
+ *     ele mostra já está nas telas de chamado que todo mundo abre.
  *
- * Sem chave e sem sessão é 401; com sessão sem a ação é 403; com chave fora do
- * escopo é 403. Nada aqui escreve.
+ * Sem chave e sem sessão é 401; sessão de quem não é do espaço é 403; com chave
+ * fora do escopo é 403. Nada aqui escreve.
  *
  * Montadas ANTES do `apiApp` em `src/index.ts`: o `authPlugin` de lá é global e
  * passaria a exigir usuário logado de toda rota registrada depois dele.
@@ -17,10 +18,9 @@
 import { Elysia } from "elysia";
 import { resolveUsuarioOpcional } from "@middleware/auth";
 import { clientIp } from "@utils/audit";
-import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { checkRateLimit } from "@utils/rate-limiter";
 import { subscribeRealtime, type RealtimeEvent } from "@utils/realtime";
-import { getWorkspaceOrFail } from "@utils/workspace";
+import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 import { parseFilters } from "@modules/reports/comum/filtros";
 import { findPainelDeAtendimento } from "@modules/painel-tv/atendimento/atendimento.service";
 import { isPainelDaChave, readChaveDaRequisicao, type PainelDaChave } from "@modules/painel-tv/chaves/chave";
@@ -72,7 +72,7 @@ async function requirePainel(ctx: Contexto, painel: PainelDaChave | null): Promi
 
   const user = await resolveUsuarioOpcional(ctx.headers, ctx.request);
   if (!user) throw new ChaveDePainelInvalidaError();
-  await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
+  await requireWorkspaceMember(ws.id, user.id);
   return { workspaceId: ws.id, slug: ws.slug, nome: ws.name, via: "sessao", chave: null };
 }
 

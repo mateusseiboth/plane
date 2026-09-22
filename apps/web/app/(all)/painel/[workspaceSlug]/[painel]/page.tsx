@@ -3,9 +3,9 @@
 /**
  * Painel de TV em tela cheia: `/:workspaceSlug/painel/:painel`.
  *
- * Fica FORA do layout do espaço de propósito — a TV abre esta URL sem login do
- * Plane, com a chave do painel em `?key=`. Quem já está logado abre sem chave
- * nenhuma (a API aceita a sessão de quem pode ver relatórios).
+ * Fica FORA do layout do espaço de propósito: a TV abre esta URL sem login do
+ * Plane, com a chave do painel em `?key=`. Quem já está logado no espaço abre
+ * sem chave nenhuma, seja qual for o papel.
  */
 import { useParams } from "next/navigation";
 import { PageHead } from "@/components/core/page-title";

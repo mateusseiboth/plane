@@ -75,11 +75,18 @@ apps/web/core/services/painel-tv.service.ts · core/hooks/use-paineis-de-tv.ts
 **Duas portas de entrada** nas rotas de dados, nesta ordem:
 
 1. chave de painel — abre sem login nenhum, dentro do escopo gravado;
-2. sessão do Plane — quem já está logado e tem `report.view` abre sem chave.
+2. sessão do Plane — **qualquer membro ativo do espaço** abre sem chave, seja
+   qual for o papel.
 
-Sem chave e sem sessão é 401; com sessão sem a ação é 403; chave fora do escopo
-é 403. `resolveUsuarioOpcional` (`middleware/auth.ts`) foi extraído do
+Sem chave e sem sessão é 401; sessão de quem não é do espaço é 403; chave fora
+do escopo é 403. `resolveUsuarioOpcional` (`middleware/auth.ts`) foi extraído do
 `authPlugin` justamente para isso: ele resolve a credencial sem recusar.
+
+A porta da sessão pedia `report.view` até W22. O dono do produto trocou: o
+painel é a TV da sala, o que ele mostra já está nas telas de chamado que todo
+mundo abre, e exigir a ação de relatório deixava metade da equipe de fora de uma
+tela que fica ligada na parede. Quem decide agora é `requireWorkspaceMember`. A
+GESTÃO das chaves não mudou: continua em `panel.manage`.
 
 ## 4. Rotas
 
@@ -256,15 +263,18 @@ ligada o dia inteiro e ninguém a recarrega.
   real. Painel nenhum desenha 500 cartões, mas o número tem de estar certo.
 - Contagem do mapa por `groupBy`, nunca `_count` de relação (a armadilha do
   dashboard de 56 s registrada no estilo do time).
+- **O painel abre para toda a equipe** (W22): ver o painel deixou de exigir
+  `report.view`, basta ser membro ativo do espaço. Criar e revogar chave
+  continua em `panel.manage`.
 
 ## 14. Testes
 
 - api-ts, puros: `painel-chave`, `painel-chave-service` (DAO e auditoria
   mockados), `painel-quadro`, `painel-mapa`, `painel-backups`,
   `painel-de-backups`, `painel-servidores` (gateway com `fetch` injetado).
-- api-ts, contrato: `tests/contract/paineis-de-tv.test.ts` (17) — gestão das
-  chaves, as duas portas de entrada, escopo, revogação, colunas e cada rota de
-  dados.
+- api-ts, contrato: `tests/contract/paineis-de-tv.test.ts` (18) — gestão das
+  chaves, as duas portas de entrada (inclusive membro comum SEM `report.view` e
+  logado de fora do espaço), escopo, revogação, colunas e cada rota de dados.
 - chat-backend: `tests/painel-regras.test.ts` (puro) e `tests/painel.db.test.ts`
   (abas contra o banco e o segredo da rota interna).
 - web: `core/components/painel-tv/painel-helpers.test.ts`.
