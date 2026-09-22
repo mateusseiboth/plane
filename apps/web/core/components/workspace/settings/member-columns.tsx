@@ -70,76 +70,76 @@ export function NameColumn(props: NameProps) {
         userDetails={{ id, display_name: display_name || `${first_name} ${last_name}`.trim() || email || "" }}
       />
       <Disclosure>
-      {() => (
-        <div className="group relative">
-          <div className="flex w-72 items-center justify-between gap-x-4 gap-y-2">
-            <div className="flex flex-1 items-center gap-x-2 gap-y-2">
-              {isSuspended ? (
-                <div className="rounded-full bg-layer-1">
-                  <SuspendedUserIcon className="size-6 text-placeholder" />
-                </div>
-              ) : avatar_url && avatar_url.trim() !== "" ? (
-                <Link href={`/${workspaceSlug}/profile/${id}`}>
-                  <span className="relative flex size-6 items-center justify-center rounded-full text-on-color capitalize">
-                    <img
-                      src={getFileURL(avatar_url)}
-                      className="absolute top-0 left-0 h-full w-full rounded-full object-cover"
-                      alt={display_name || email}
-                    />
-                  </span>
-                </Link>
-              ) : (
-                <Link href={`/${workspaceSlug}/profile/${id}`}>
-                  <span className="relative flex size-6 items-center justify-center rounded-full bg-layer-3 text-11 text-tertiary capitalize">
-                    {(email ?? display_name ?? "?")[0]}
-                  </span>
-                </Link>
-              )}
-              <span className={isSuspended ? "text-placeholder" : ""}>
-                {first_name} {last_name}
-              </span>
-            </div>
+        {() => (
+          <div className="group relative">
+            <div className="flex w-72 items-center justify-between gap-x-4 gap-y-2">
+              <div className="flex flex-1 items-center gap-x-2 gap-y-2">
+                {isSuspended ? (
+                  <div className="rounded-full bg-layer-1">
+                    <SuspendedUserIcon className="size-6 text-placeholder" />
+                  </div>
+                ) : avatar_url && avatar_url.trim() !== "" ? (
+                  <Link href={`/${workspaceSlug}/profile/${id}`}>
+                    <span className="relative flex size-6 items-center justify-center rounded-full text-on-color capitalize">
+                      <img
+                        src={getFileURL(avatar_url)}
+                        className="absolute top-0 left-0 h-full w-full rounded-full object-cover"
+                        alt={display_name || email}
+                      />
+                    </span>
+                  </Link>
+                ) : (
+                  <Link href={`/${workspaceSlug}/profile/${id}`}>
+                    <span className="relative flex size-6 items-center justify-center rounded-full bg-layer-3 text-11 text-tertiary capitalize">
+                      {(email ?? display_name ?? "?")[0]}
+                    </span>
+                  </Link>
+                )}
+                <span className={isSuspended ? "text-placeholder" : ""}>
+                  {first_name} {last_name}
+                </span>
+              </div>
 
-            {menuActions.length > 0 && (
-              <PopoverMenu
-                data={menuActions}
-                keyExtractor={(item) => item}
-                popoverClassName="justify-end"
-                buttonClassName="outline-none	origin-center rotate-90 size-8 aspect-square flex-shrink-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity"
-                render={(action) => {
-                  const handle = () =>
-                    action === "reset-password" ? setIsResetPasswordOpen(true) : setRemoveMemberModal(rowData);
-                  return (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="flex cursor-pointer items-center gap-x-3"
-                      onClick={handle}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handle();
-                        }
-                      }}
-                      data-ph-element={MEMBER_TRACKER_ELEMENTS.WORKSPACE_MEMBER_TABLE_CONTEXT_MENU}
-                    >
-                      {action === "reset-password" ? (
-                        <>
-                          <KeyRound className="size-3.5 align-middle" /> Redefinir senha
-                        </>
-                      ) : (
-                        <>
-                          <TrashIcon className="size-3.5 align-middle" /> {isCurrentUser ? "Leave " : "Remove "}
-                        </>
-                      )}
-                    </div>
-                  );
-                }}
-              />
-            )}
+              {menuActions.length > 0 && (
+                <PopoverMenu
+                  data={menuActions}
+                  keyExtractor={(item) => item}
+                  popoverClassName="justify-end"
+                  buttonClassName="outline-none	origin-center rotate-90 size-8 aspect-square flex-shrink-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  render={(action) => {
+                    const handle = () =>
+                      action === "reset-password" ? setIsResetPasswordOpen(true) : setRemoveMemberModal(rowData);
+                    return (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="flex cursor-pointer items-center gap-x-3"
+                        onClick={handle}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handle();
+                          }
+                        }}
+                        data-ph-element={MEMBER_TRACKER_ELEMENTS.WORKSPACE_MEMBER_TABLE_CONTEXT_MENU}
+                      >
+                        {action === "reset-password" ? (
+                          <>
+                            <KeyRound className="size-3.5 align-middle" /> Redefinir senha
+                          </>
+                        ) : (
+                          <>
+                            <TrashIcon className="size-3.5 align-middle" /> {isCurrentUser ? "Leave " : "Remove "}
+                          </>
+                        )}
+                      </div>
+                    );
+                  }}
+                />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </Disclosure>
     </>
   );

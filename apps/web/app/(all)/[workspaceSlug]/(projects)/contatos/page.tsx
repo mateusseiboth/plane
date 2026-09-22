@@ -38,7 +38,7 @@ function paraFiltroDeSituacao(situacao: TSituacao): boolean | undefined {
 function SituacaoBadge({ ativo }: { ativo: boolean }) {
   return (
     <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+      className={`text-xs inline-flex rounded-full px-2 py-0.5 font-medium ${
         ativo
           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
           : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
@@ -58,9 +58,9 @@ const POR_PAGINA = 50;
  * com reticências e mostra o texto inteiro ao passar o mouse.
  */
 function CelulaTruncada({ texto, className }: { texto?: string | null; className?: string }) {
-  if (!texto) return <td className={cn("px-4 py-2.5 text-secondary-text", className)}>—</td>;
+  if (!texto) return <td className={cn("text-secondary-text px-4 py-2.5", className)}>—</td>;
   return (
-    <td className={cn("px-4 py-2.5 text-secondary-text", className)}>
+    <td className={cn("text-secondary-text px-4 py-2.5", className)}>
       <Tooltip tooltipContent={texto} position="top">
         <span className="block truncate">{texto}</span>
       </Tooltip>
@@ -98,7 +98,7 @@ const LinhaDeContato = memo(function LinhaDeContato({
             type="button"
             onClick={() => onEditar(contact)}
             title="Editar contato"
-            className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-3 hover:text-primary"
+            className="text-secondary-text hover:bg-surface-3 rounded p-1 transition-colors hover:text-primary"
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
@@ -106,7 +106,7 @@ const LinhaDeContato = memo(function LinhaDeContato({
             type="button"
             onClick={() => onAlternar(contact)}
             title={ativo ? "Desativar contato" : "Reativar contato"}
-            className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-3 hover:text-primary"
+            className="text-secondary-text hover:bg-surface-3 rounded p-1 transition-colors hover:text-primary"
           >
             {ativo ? <ToggleRight className="h-3.5 w-3.5" /> : <ToggleLeft className="h-3.5 w-3.5" />}
           </button>
@@ -202,9 +202,9 @@ function ContatosPage() {
 
       <div className="flex flex-wrap items-center gap-3 border-b border-subtle px-6 py-3">
         <div className="flex min-w-55 flex-1 items-center gap-1.5 rounded-md border border-subtle bg-surface-2 px-2.5 py-1.5">
-          <Search className="h-3.5 w-3.5 text-secondary-text" />
+          <Search className="text-secondary-text h-3.5 w-3.5" />
           <input
-            className="w-full border-none bg-transparent text-xs text-primary outline-none placeholder:text-secondary-text"
+            className="text-xs placeholder:text-secondary-text w-full border-none bg-transparent text-primary outline-none"
             placeholder="Buscar por nome, e-mail ou telefone..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
@@ -247,7 +247,7 @@ function ContatosPage() {
         )}
 
         {!error && isLoading && contacts.length === 0 && (
-          <p className="py-8 text-center text-sm text-secondary">Carregando contatos...</p>
+          <p className="text-sm py-8 text-center text-secondary">Carregando contatos...</p>
         )}
 
         {!error && !isLoading && contacts.length === 0 && (
@@ -265,8 +265,8 @@ function ContatosPage() {
           <div className="overflow-x-auto rounded-lg border border-subtle">
             {/* `table-fixed` é o que segura as larguras: sem ele o navegador dá
                 à coluna Nome o espaço do maior texto e o resto sai da tela. */}
-            <table className="w-full min-w-225 table-fixed text-xs">
-              <thead className="bg-surface-2 text-secondary-text">
+            <table className="text-xs w-full min-w-225 table-fixed">
+              <thead className="text-secondary-text bg-surface-2">
                 <tr>
                   <th className="w-[20%] px-4 py-2.5 text-left font-medium">Nome</th>
                   <th className="w-[12%] px-4 py-2.5 text-left font-medium">Tipo</th>
@@ -292,7 +292,7 @@ function ContatosPage() {
         )}
 
         {!error && (hasPrev || hasNext) && (
-          <div className="mt-3 flex items-center justify-between text-xs text-secondary">
+          <div className="text-xs mt-3 flex items-center justify-between text-secondary">
             <span>
               Mostrando {contacts.length} de {total}
             </span>
@@ -301,7 +301,7 @@ function ContatosPage() {
                 type="button"
                 disabled={!hasPrev}
                 onClick={() => setCursor(prevCursor ?? undefined)}
-                className="inline-flex items-center gap-1 rounded border border-subtle px-2 py-1 disabled:opacity-40 enabled:hover:bg-surface-2"
+                className="inline-flex items-center gap-1 rounded border border-subtle px-2 py-1 enabled:hover:bg-surface-2 disabled:opacity-40"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
                 Anterior
@@ -310,7 +310,7 @@ function ContatosPage() {
                 type="button"
                 disabled={!hasNext}
                 onClick={() => setCursor(nextCursor ?? undefined)}
-                className="inline-flex items-center gap-1 rounded border border-subtle px-2 py-1 disabled:opacity-40 enabled:hover:bg-surface-2"
+                className="inline-flex items-center gap-1 rounded border border-subtle px-2 py-1 enabled:hover:bg-surface-2 disabled:opacity-40"
               >
                 Próxima
                 <ChevronRight className="h-3.5 w-3.5" />

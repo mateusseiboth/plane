@@ -182,7 +182,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-2"
+              className="text-secondary-text rounded p-1 transition-colors hover:bg-surface-2"
             >
               <X className="h-4 w-4" />
             </button>
@@ -250,7 +250,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                   maxLength={15}
                 />
                 {telefoneInvalido(form.phone) && (
-                  <p className="mt-1 text-11 text-danger-text">{telefoneInvalido(form.phone)}</p>
+                  <p className="text-danger-text mt-1 text-11">{telefoneInvalido(form.phone)}</p>
                 )}
               </div>
             </div>
@@ -277,21 +277,21 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
             </div>
 
             <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm text-primary">
+              <label className="text-sm flex items-center gap-2 text-primary">
                 <input
                   type="checkbox"
                   checked={form.is_active}
                   onChange={(e) => alterar("is_active", e.target.checked)}
-                  className="h-4 w-4 rounded accent-accent-primary"
+                  className="accent-accent-primary h-4 w-4 rounded"
                 />
                 Ativo
               </label>
-              <label className="flex items-center gap-2 text-sm text-primary">
+              <label className="text-sm flex items-center gap-2 text-primary">
                 <input
                   type="checkbox"
                   checked={form.receive_messages}
                   onChange={(e) => alterar("receive_messages", e.target.checked)}
-                  className="h-4 w-4 rounded accent-accent-primary"
+                  className="accent-accent-primary h-4 w-4 rounded"
                 />
                 Recebe mensagens
               </label>
