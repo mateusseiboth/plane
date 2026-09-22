@@ -188,6 +188,7 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
       <h1>Central de Solicitações</h1>
       <p class="sub">Entre para abrir uma solicitação e acompanhar as suas.</p>
       <div id="erro-entrada" class="aviso erro escondido"></div>
+      <div id="ok-entrada" class="aviso escondido"></div>
       <form id="form-entrada" style="margin-top:22px">
         <div class="campo">
           <label for="email">E-mail</label>
@@ -198,6 +199,49 @@ textarea{min-height:170px;resize:vertical;line-height:1.6}
           <input id="senha" type="password" autocomplete="current-password" required />
         </div>
         <button class="botao" id="entrar" style="width:100%">Entrar</button>
+      </form>
+      <p style="margin-top:14px;text-align:center">
+        <button type="button" class="link" id="link-esqueci">Esqueci minha senha</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Esqueci minha senha ────────────────────────────────────────────── -->
+  <section id="tela-esqueci" class="escondido">
+    <div class="cartao entrada">
+      <h1>Esqueci minha senha</h1>
+      <p class="sub">Informe o e-mail da sua conta. Enviaremos um link para criar uma nova senha.</p>
+      <div id="erro-esqueci" class="aviso erro escondido"></div>
+      <div id="ok-esqueci" class="aviso escondido"></div>
+      <form id="form-esqueci" style="margin-top:22px">
+        <div class="campo">
+          <label for="email-esqueci">E-mail</label>
+          <input id="email-esqueci" type="email" autocomplete="username" required />
+        </div>
+        <button class="botao" id="enviar-esqueci" style="width:100%">Enviar link</button>
+      </form>
+      <p style="margin-top:14px;text-align:center">
+        <button type="button" class="link" id="voltar-esqueci">Voltar para entrar</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Nova senha (chega pelo link do e-mail) ─────────────────────────── -->
+  <section id="tela-redefinir" class="escondido">
+    <div class="cartao entrada">
+      <h1>Criar nova senha</h1>
+      <p class="sub">Escolha uma senha com pelo menos 8 caracteres.</p>
+      <div id="erro-redefinir" class="aviso erro escondido"></div>
+      <form id="form-redefinir" style="margin-top:22px">
+        <div class="campo">
+          <label for="senha-nova">Nova senha</label>
+          <input id="senha-nova" type="password" autocomplete="new-password" minlength="8" required />
+        </div>
+        <div class="campo">
+          <label for="senha-repetida">Repita a nova senha</label>
+          <input id="senha-repetida" type="password" autocomplete="new-password" minlength="8" required />
+        </div>
+        <button class="botao" id="salvar-senha" style="width:100%">Salvar nova senha</button>
       </form>
     </div>
   </section>
@@ -332,7 +376,7 @@ function limparHtml(bruto) {
 }
 
 function mostrar(tela) {
-  ["tela-entrada", "tela-lista", "tela-nova", "tela-detalhe"].forEach(function (id) {
+  ["tela-entrada", "tela-esqueci", "tela-redefinir", "tela-lista", "tela-nova", "tela-detalhe"].forEach(function (id) {
     $(id).classList.toggle("escondido", id !== tela);
   });
   window.scrollTo(0, 0);
@@ -391,6 +435,63 @@ $("form-entrada").onsubmit = async function (e) {
     erro("erro-entrada", e3.message);
   } finally {
     $("enviar") && ($("entrar").disabled = false);
+  }
+};
+
+// ── Esqueci minha senha / nova senha ─────────────────────────────────────
+$("link-esqueci").onclick = function () {
+  erro("erro-esqueci", "");
+  $("ok-esqueci").classList.add("escondido");
+  $("email-esqueci").value = $("email").value.trim();
+  mostrar("tela-esqueci");
+};
+$("voltar-esqueci").onclick = function () { mostrar("tela-entrada"); };
+
+$("form-esqueci").onsubmit = async function (e) {
+  e.preventDefault();
+  erro("erro-esqueci", "");
+  $("enviar-esqueci").disabled = true;
+  try {
+    var dados = await api("/esqueci-senha", {
+      method: "POST",
+      body: { workspace: ESPACO, email: $("email-esqueci").value.trim() },
+    });
+    $("ok-esqueci").textContent = dados.detail;
+    $("ok-esqueci").classList.remove("escondido");
+  } catch (e2) {
+    erro("erro-esqueci", e2.message);
+  } finally {
+    $("enviar-esqueci").disabled = false;
+  }
+};
+
+$("form-redefinir").onsubmit = async function (e) {
+  e.preventDefault();
+  erro("erro-redefinir", "");
+  if ($("senha-nova").value !== $("senha-repetida").value) {
+    erro("erro-redefinir", "As duas senhas não são iguais.");
+    return;
+  }
+  $("salvar-senha").disabled = true;
+  try {
+    var dados = await api("/redefinir-senha", {
+      method: "POST",
+      body: {
+        workspace: ESPACO,
+        conta: params.get("conta") || "",
+        token: params.get("redefinir") || "",
+        senha: $("senha-nova").value,
+      },
+    });
+    // O link já foi gasto: tira ele do endereço para um recarregar não voltar aqui.
+    history.replaceState(null, "", location.pathname + "?workspace=" + encodeURIComponent(ESPACO));
+    mostrar("tela-entrada");
+    $("ok-entrada").textContent = dados.detail;
+    $("ok-entrada").classList.remove("escondido");
+  } catch (e2) {
+    erro("erro-redefinir", e2.message);
+  } finally {
+    $("salvar-senha").disabled = false;
   }
 };
 
@@ -728,6 +829,7 @@ async function iniciar() {
     var espaco = await (await fetch(API + "/espaco?workspace=" + encodeURIComponent(ESPACO))).json();
     if (espaco && espaco.nome) $("nome-espaco").textContent = espaco.nome;
   } catch (e) {}
+  if (params.get("redefinir")) { mostrar("tela-redefinir"); return; }
   try { token = localStorage.getItem(CHAVE) || ""; } catch (e2) { token = ""; }
   if (!token) { mostrar("tela-entrada"); return; }
   try {

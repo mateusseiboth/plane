@@ -4,18 +4,10 @@
 
 import prisma from "@db";
 import { readAppBaseUrl, sendEmail } from "@utils/email";
-import {
-  RESET_TOKEN_MINUTES,
-  buildResetExpiry,
-  decodeUid,
-  encodeUid,
-  generateResetToken,
-  hashResetToken,
-  readResetTokenState,
-  type ResetTokenState,
-} from "@utils/password-reset";
+import { RESET_TOKEN_MINUTES, decodeUid, encodeUid, type ResetTokenState } from "@utils/password-reset";
+import { RESET_KINDS, consumeResetTokens, issueResetToken, readResetState } from "@utils/password-reset-flow";
 
-const RESET_KIND = "user";
+const RESET_KIND = RESET_KINDS.USER;
 const BCRYPT = { algorithm: "bcrypt", cost: 12 } as const;
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -65,30 +57,13 @@ export async function requestPasswordReset(email: string, requestIp: string | nu
     select: { id: true, email: true, firstName: true },
   });
   if (!user) return;
-  const token = generateResetToken();
-  await prisma.passwordResetToken.create({
-    data: {
-      kind: RESET_KIND,
-      subjectId: user.id,
-      tokenHash: hashResetToken(token),
-      expiresAt: buildResetExpiry(new Date(), RESET_TOKEN_MINUTES),
-      requestIp,
-    },
-  });
-  await sendResetEmail(user, token);
+  await sendResetEmail(user, await issueResetToken(RESET_KIND, user.id, requestIp));
 }
 
 function readPasswordError(password: unknown): ResetErrorCode | null {
   if (typeof password !== "string" || !password) return RESET_ERROR_CODES.INVALID_PASSWORD;
   if (password.length < MIN_PASSWORD_LENGTH) return RESET_ERROR_CODES.PASSWORD_TOO_WEAK;
   return null;
-}
-
-async function findTokenRow(userId: string | null, token: string) {
-  if (!userId) return null;
-  return prisma.passwordResetToken.findFirst({
-    where: { kind: RESET_KIND, subjectId: userId, tokenHash: hashResetToken(token) },
-  });
 }
 
 /**
@@ -98,8 +73,7 @@ async function findTokenRow(userId: string | null, token: string) {
  */
 export async function applyPasswordReset(uidb64: string, token: string, password: unknown): Promise<ResetOutcome> {
   const userId = decodeUid(uidb64);
-  const row = await findTokenRow(userId, token);
-  const state = readResetTokenState(row, new Date());
+  const state = await readResetState(RESET_KIND, userId, token);
   if (state !== "valid") return { ok: false, errorCode: TOKEN_STATE_ERRORS[state] };
 
   const passwordError = readPasswordError(password);
@@ -107,15 +81,12 @@ export async function applyPasswordReset(uidb64: string, token: string, password
 
   const hash = await Bun.password.hash(password as string, BCRYPT);
   const now = new Date();
-  await prisma.$transaction([
-    prisma.user.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
       where: { id: userId as string },
       data: { password: hash, isPasswordAutoset: false, tokenUpdatedAt: now },
-    }),
-    prisma.passwordResetToken.updateMany({
-      where: { kind: RESET_KIND, subjectId: userId as string, usedAt: null },
-      data: { usedAt: now },
-    }),
-  ]);
+    });
+    await consumeResetTokens(tx, RESET_KIND, userId as string, now);
+  });
   return { ok: true, userId: userId as string };
 }
