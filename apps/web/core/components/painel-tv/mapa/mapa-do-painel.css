@@ -13,12 +13,12 @@
 }
 
 /*
- * O tile de terreno é claro demais para uma sala de TV com o painel escuro.
- * Escurecer um pouco e realçar a cor mantém rio, relevo e vegetação legíveis
- * de longe sem estourar o branco.
+ * O tile de terreno é claro para uma sala de TV com o painel escuro. Escurecer
+ * de leve e realçar a cor mantém rio, relevo e vegetação legíveis de longe sem
+ * estourar o branco nem apagar as cores do National Geographic.
  */
 .mapa-do-painel .leaflet-tile-pane {
-  filter: brightness(0.78) saturate(1.2) contrast(1.06);
+  filter: brightness(0.86) saturate(1.25) contrast(1.05);
 }
 
 .mapa-do-painel .leaflet-container {

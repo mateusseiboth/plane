@@ -40,9 +40,14 @@ import {
 } from "./mapa-helpers";
 import type { TPontoDoMapa } from "./mapa-tv";
 
+/**
+ * National Geographic da Esri: o mais colorido dos mapas de terreno públicos
+ * (verde, ocre, relevo sombreado, hidrografia azul) e legível de longe. O
+ * World Topo ficava pálido demais na TV.
+ */
 const TERRENO = {
-  url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-  atribuicao: "Esri, USGS, NOAA",
+  url: "https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}",
+  atribuicao: "Esri, National Geographic, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA",
   zoomMaximo: 14,
 };
 

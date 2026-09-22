@@ -190,7 +190,7 @@ O mapa é **Leaflet** (`mapa/mapa-de-ms.tsx`), com camada base de TERRENO:
 
 | Item | Escolha |
 | --- | --- |
-| Tiles | **Esri World Topo Map** (`server.arcgisonline.com/.../World_Topo_Map/MapServer/tile/{z}/{y}/{x}`) |
+| Tiles | **Esri National Geographic World Map** (`server.arcgisonline.com/.../NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}`); o World Topo ficava pálido na TV |
 | Por quê | colorido, com rios, sombreamento de relevo e vegetação. Numa TV, de longe, é o que dá cara de mapa de verdade; um mapa de ruas fica branco e vazio no interior de MS |
 | Tema escuro | `filter: brightness(.78) saturate(1.2)` no `.leaflet-tile-pane`, em vez de trocar por um tile escuro, que perderia o relevo |
 | Atribuição | obrigatória, no canto, pelo controle do próprio Leaflet |
