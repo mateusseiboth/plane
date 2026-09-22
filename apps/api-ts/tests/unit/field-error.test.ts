@@ -22,6 +22,17 @@ describe("buildErrorBody", () => {
     });
   });
 
+  it("erro com vários campos (ex.: encerramento da visita) repassa a lista inteira", () => {
+    const errors = [
+      { path: "summary", message: "Informe o resumo." },
+      { path: "conclusion", message: "Informe a conclusão." },
+    ];
+    expect(buildErrorBody({ status: 422, message: "Complete o relatório.", errors })).toEqual({
+      detail: "Complete o relatório.",
+      errors,
+    });
+  });
+
   it("erro comum continua só com `detail`", () => {
     expect(buildErrorBody({ status: 403, message: "Sem permissão." })).toEqual({ detail: "Sem permissão." });
   });

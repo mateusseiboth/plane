@@ -216,6 +216,12 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(donosDe("role.manage")).toEqual(["admin", "gestor_projeto"]);
     expect(donosDe("label.sla")).toEqual(["admin", "gestor_projeto"]);
   });
+
+  it("visita: quem opera registra; trocar técnico e data e cancelar é de Gestor e admin", () => {
+    expect(donosDe("visit.manage")).toEqual(["admin", "atendimento", "gestor_projeto", "member", "qualidade", "ti"]);
+    // No SAC só a gestão de projetos cancelava e trocava técnico ou data.
+    expect(donosDe("visit.manage.all")).toEqual(["admin", "gestor_projeto"]);
+  });
 });
 
 describe("applyMemberOverrides", () => {

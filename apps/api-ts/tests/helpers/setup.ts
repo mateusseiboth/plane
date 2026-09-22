@@ -24,6 +24,7 @@ export async function cleanDb() {
     "slackIntegrationConfig",
     // SAC-specific
     "technicalVisitIssue",
+    "technicalVisitCounter",
     "technicalVisit",
     "entity",
     // Issue property tables

@@ -155,6 +155,7 @@ model Workspace {
   pages              Page[]
   entities           Entity[]
   technicalVisits    TechnicalVisit[]
+  visitCounters      TechnicalVisitCounter[]
   webhooks           Webhook[]
   customWebhooks     CustomWebhook[]
   analyticViews      AnalyticView[]
@@ -1700,11 +1701,27 @@ model TechnicalVisit {
   visitNumber         String?                 @map("visit_number") @db.VarChar(50)
   legacyId            Int?                    @map("legacy_id")
   projectIds          Json?                   @default("[]") @map("project_ids")
+  /// Funcionalidades atendidas: módulos dos sistemas em `projectIds` (o "menu do
+  /// sistema" do SAC virou módulo do Plane).
+  moduleIds           Json                    @default("[]") @map("module_ids")
   visitIssues         TechnicalVisitIssue[]
   contactRecords      TechnicalVisitContact[]
 
   @@index([visitNumber])
   @@map("technical_visits")
+}
+
+/// Último número N-AAAA dado por espaço e ano. O incremento é um upsert só, então
+/// duas visitas criadas ao mesmo tempo nunca recebem o mesmo número.
+model TechnicalVisitCounter {
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String    @map("workspace_id") @db.Uuid
+  year        Int
+  lastNumber  Int       @default(0) @map("last_number")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@id([workspaceId, year])
+  @@map("technical_visit_counters")
 }
 
 model TechnicalVisitIssue {
