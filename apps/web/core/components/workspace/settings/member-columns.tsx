@@ -4,11 +4,12 @@
  * See the LICENSE file for details.
  */
 
-import { KeyRound } from "lucide-react";
+import { KeyRound, Snowflake } from "lucide-react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { mutate } from "swr";
 
 import { Disclosure } from "@headlessui/react";
 // plane imports
@@ -22,10 +23,14 @@ import { CustomSelect, PopoverMenu } from "@plane/ui";
 // helpers
 import { getFileURL } from "@plane/utils";
 // components
+import { FreezeDialog } from "@/components/freeze/freeze-dialog";
 import { ResetMemberPasswordModal } from "@/components/workspace/reset-member-password-modal";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { FROZEN_MEMBERS_KEY } from "@/hooks/use-freeze";
+
+type TMemberAction = "reset-password" | "freeze" | "remove";
 
 export interface RowData {
   member: IWorkspaceMember;
@@ -50,6 +55,10 @@ export function NameColumn(props: NameProps) {
   const { rowData, workspaceSlug, isAdmin, currentUser, setRemoveMemberModal } = props;
   // states
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isFreezeOpen, setIsFreezeOpen] = useState(false);
+  const {
+    workspace: { fetchWorkspaceMembers },
+  } = useMember();
   // derived values
   const { avatar_url, display_name, email, first_name, id, last_name } = rowData.member;
   const isSuspended = rowData.is_active === false;
@@ -57,9 +66,22 @@ export function NameColumn(props: NameProps) {
   // Admins can reset other members' passwords; the remove/leave action stays for
   // admins (any row) and for the current user (their own row).
   const canResetPassword = isAdmin && !isCurrentUser && !isSuspended;
-  const menuActions: ("reset-password" | "remove")[] = [];
-  if (canResetPassword) menuActions.push("reset-password");
+  const menuActions: TMemberAction[] = [];
+  if (canResetPassword) menuActions.push("reset-password", "freeze");
   if (isAdmin || isCurrentUser) menuActions.push("remove");
+  const displayName = display_name || `${first_name} ${last_name}`.trim() || email || "";
+
+  const openAction: Record<TMemberAction, () => void> = {
+    "reset-password": () => setIsResetPasswordOpen(true),
+    freeze: () => setIsFreezeOpen(true),
+    remove: () => setRemoveMemberModal(rowData),
+  };
+
+  // Congelado some da lista de membros e aparece na de congelados.
+  const onFrozen = () => {
+    void fetchWorkspaceMembers(workspaceSlug);
+    void mutate(FROZEN_MEMBERS_KEY(workspaceSlug));
+  };
 
   return (
     <>
@@ -67,79 +89,94 @@ export function NameColumn(props: NameProps) {
         isOpen={isResetPasswordOpen}
         onClose={() => setIsResetPasswordOpen(false)}
         workspaceSlug={workspaceSlug}
-        userDetails={{ id, display_name: display_name || `${first_name} ${last_name}`.trim() || email || "" }}
+        userDetails={{ id, display_name: displayName }}
+      />
+      <FreezeDialog
+        open={isFreezeOpen}
+        onClose={() => setIsFreezeOpen(false)}
+        workspaceSlug={workspaceSlug}
+        subject="member"
+        id={id}
+        name={displayName}
+        isFrozen={false}
+        onDone={onFrozen}
       />
       <Disclosure>
-      {() => (
-        <div className="group relative">
-          <div className="flex w-72 items-center justify-between gap-x-4 gap-y-2">
-            <div className="flex flex-1 items-center gap-x-2 gap-y-2">
-              {isSuspended ? (
-                <div className="rounded-full bg-layer-1">
-                  <SuspendedUserIcon className="size-6 text-placeholder" />
-                </div>
-              ) : avatar_url && avatar_url.trim() !== "" ? (
-                <Link href={`/${workspaceSlug}/profile/${id}`}>
-                  <span className="relative flex size-6 items-center justify-center rounded-full text-on-color capitalize">
-                    <img
-                      src={getFileURL(avatar_url)}
-                      className="absolute top-0 left-0 h-full w-full rounded-full object-cover"
-                      alt={display_name || email}
-                    />
-                  </span>
-                </Link>
-              ) : (
-                <Link href={`/${workspaceSlug}/profile/${id}`}>
-                  <span className="relative flex size-6 items-center justify-center rounded-full bg-layer-3 text-11 text-tertiary capitalize">
-                    {(email ?? display_name ?? "?")[0]}
-                  </span>
-                </Link>
-              )}
-              <span className={isSuspended ? "text-placeholder" : ""}>
-                {first_name} {last_name}
-              </span>
-            </div>
+        {() => (
+          <div className="group relative">
+            <div className="flex w-72 items-center justify-between gap-x-4 gap-y-2">
+              <div className="flex flex-1 items-center gap-x-2 gap-y-2">
+                {isSuspended ? (
+                  <div className="rounded-full bg-layer-1">
+                    <SuspendedUserIcon className="size-6 text-placeholder" />
+                  </div>
+                ) : avatar_url && avatar_url.trim() !== "" ? (
+                  <Link href={`/${workspaceSlug}/profile/${id}`}>
+                    <span className="relative flex size-6 items-center justify-center rounded-full text-on-color capitalize">
+                      <img
+                        src={getFileURL(avatar_url)}
+                        className="absolute top-0 left-0 h-full w-full rounded-full object-cover"
+                        alt={display_name || email}
+                      />
+                    </span>
+                  </Link>
+                ) : (
+                  <Link href={`/${workspaceSlug}/profile/${id}`}>
+                    <span className="relative flex size-6 items-center justify-center rounded-full bg-layer-3 text-11 text-tertiary capitalize">
+                      {(email ?? display_name ?? "?")[0]}
+                    </span>
+                  </Link>
+                )}
+                <span className={isSuspended ? "text-placeholder" : ""}>
+                  {first_name} {last_name}
+                </span>
+              </div>
 
-            {menuActions.length > 0 && (
-              <PopoverMenu
-                data={menuActions}
-                keyExtractor={(item) => item}
-                popoverClassName="justify-end"
-                buttonClassName="outline-none	origin-center rotate-90 size-8 aspect-square flex-shrink-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity"
-                render={(action) => {
-                  const handle = () =>
-                    action === "reset-password" ? setIsResetPasswordOpen(true) : setRemoveMemberModal(rowData);
-                  return (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="flex cursor-pointer items-center gap-x-3"
-                      onClick={handle}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handle();
-                        }
-                      }}
-                      data-ph-element={MEMBER_TRACKER_ELEMENTS.WORKSPACE_MEMBER_TABLE_CONTEXT_MENU}
-                    >
-                      {action === "reset-password" ? (
-                        <>
-                          <KeyRound className="size-3.5 align-middle" /> Redefinir senha
-                        </>
-                      ) : (
-                        <>
-                          <TrashIcon className="size-3.5 align-middle" /> {isCurrentUser ? "Leave " : "Remove "}
-                        </>
-                      )}
-                    </div>
-                  );
-                }}
-              />
-            )}
+              {menuActions.length > 0 && (
+                <PopoverMenu
+                  data={menuActions}
+                  keyExtractor={(item) => item}
+                  popoverClassName="justify-end"
+                  buttonClassName="outline-none	origin-center rotate-90 size-8 aspect-square flex-shrink-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  render={(action) => {
+                    const handle = openAction[action];
+                    return (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="flex cursor-pointer items-center gap-x-3"
+                        onClick={handle}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handle();
+                          }
+                        }}
+                        data-ph-element={MEMBER_TRACKER_ELEMENTS.WORKSPACE_MEMBER_TABLE_CONTEXT_MENU}
+                      >
+                        {action === "reset-password" && (
+                          <>
+                            <KeyRound className="size-3.5 align-middle" /> Redefinir senha
+                          </>
+                        )}
+                        {action === "freeze" && (
+                          <>
+                            <Snowflake className="size-3.5 align-middle" /> Congelar
+                          </>
+                        )}
+                        {action === "remove" && (
+                          <>
+                            <TrashIcon className="size-3.5 align-middle" /> {isCurrentUser ? "Leave " : "Remove "}
+                          </>
+                        )}
+                      </div>
+                    );
+                  }}
+                />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </Disclosure>
     </>
   );

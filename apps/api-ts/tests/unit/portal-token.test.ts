@@ -7,15 +7,20 @@
  */
 import { describe, expect, it } from "bun:test";
 import { SignJWT } from "jose";
-import { assinarTokenDoPortal, lerTokenDoPortal } from "@modules/portal/token";
+import { signTokenDoPortal, readTokenDoPortal } from "@modules/portal/token";
 
 const CONTA = "3b0f4d2e-1c2a-4b5c-8d9e-0f1a2b3c4d5e";
 const ESPACO = "9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d";
 
 describe("token do portal", () => {
-  it("volta a dizer de quem é e de que espaço", async () => {
-    const lido = await lerTokenDoPortal(await assinarTokenDoPortal(CONTA, ESPACO));
-    expect(lido).toEqual({ contaId: CONTA, workspaceId: ESPACO });
+  it("volta a dizer de quem é, de que espaço e de que versão da sessão", async () => {
+    const lido = await readTokenDoPortal(await signTokenDoPortal(CONTA, ESPACO, 1_700_000_000_000));
+    expect(lido).toEqual({ contaId: CONTA, workspaceId: ESPACO, versao: 1_700_000_000_000 });
+  });
+
+  it("conta que nunca trocou a senha sai com versão 0", async () => {
+    const lido = await readTokenDoPortal(await signTokenDoPortal(CONTA, ESPACO, null));
+    expect(lido?.versao).toBe(0);
   });
 
   it("recusa token do Plane, que não traz o papel do portal", async () => {
@@ -25,12 +30,12 @@ describe("token do portal", () => {
       .setIssuedAt()
       .setExpirationTime("7d")
       .sign(new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production"));
-    expect(await lerTokenDoPortal(doPlane)).toBeNull();
+    expect(await readTokenDoPortal(doPlane)).toBeNull();
   });
 
   it("recusa token adulterado, vazio ou ausente", async () => {
-    expect(await lerTokenDoPortal("nada disso")).toBeNull();
-    expect(await lerTokenDoPortal("")).toBeNull();
-    expect(await lerTokenDoPortal(null)).toBeNull();
+    expect(await readTokenDoPortal("nada disso")).toBeNull();
+    expect(await readTokenDoPortal("")).toBeNull();
+    expect(await readTokenDoPortal(null)).toBeNull();
   });
 });

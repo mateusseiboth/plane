@@ -37,3 +37,16 @@ export const useEntities = (workspaceSlug: string | undefined) => {
     refetch,
   };
 };
+
+export const ALL_WORKSPACE_ENTITIES_KEY = (workspaceSlug: string) => `ALL_WORKSPACE_ENTITIES_${workspaceSlug}`;
+
+/** Todas as entidades (ativas, inativas e congeladas): a lista da tela de cadastro. */
+export const useAllEntities = (workspaceSlug: string | undefined) => {
+  const key = workspaceSlug ? ALL_WORKSPACE_ENTITIES_KEY(workspaceSlug) : null;
+  const { data, error, isLoading, isValidating, mutate } = useSWR<TEntity[]>(
+    key,
+    key ? () => entityService.listAll(workspaceSlug!) : null,
+    { revalidateOnFocus: false }
+  );
+  return { entities: data ?? [], data, error, isLoading, isFetching: isValidating, refetch: mutate };
+};

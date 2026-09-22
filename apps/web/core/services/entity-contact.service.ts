@@ -22,6 +22,8 @@ export type TEntityContactFilters = {
   search?: string;
   is_active?: boolean;
   has_phone?: boolean;
+  /** Sistema (projeto) de que o contato cuida. */
+  project_id?: string;
 };
 
 /** Uma página da listagem. `cursor` é opaco: veio do servidor, volta pra ele. */
@@ -49,6 +51,7 @@ export type TEntityContactPayload = Partial<
     | "is_active"
     | "receive_messages"
     | "notes"
+    | "project_ids"
   >
 >;
 
@@ -71,6 +74,16 @@ function toList(data: unknown): TEntityContact[] {
   const results = (data as { results?: TEntityContact[] } | null)?.results;
   return Array.isArray(results) ? results : [];
 }
+
+/** Contato com o mesmo telefone ou e-mail de quem está sendo cadastrado. */
+export type TContactDuplicate = {
+  id: string;
+  name: string;
+  entity_name: string | null;
+  matches: ("phone" | "email")[];
+};
+
+export type TContactDuplicateQuery = { phone?: string; email?: string; exclude_id?: string };
 
 export class EntityContactService extends APIService {
   constructor() {
@@ -115,6 +128,14 @@ export class EntityContactService extends APIService {
   }
 
   /** Atalho do contrato; mesma forma da listagem. */
+  async findDuplicates(workspaceSlug: string, query: TContactDuplicateQuery): Promise<TContactDuplicate[]> {
+    return this.get(`/api/workspaces/${workspaceSlug}/entity-contacts/duplicates/${toQuery(query)}`)
+      .then((res) => res?.data ?? [])
+      .catch((err) => {
+        throw err?.response?.data;
+      });
+  }
+
   async listByEntity(workspaceSlug: string, entityId: string): Promise<TEntityContact[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/entities/${entityId}/contacts/`)
       .then((res) => toList(res?.data))

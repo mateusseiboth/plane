@@ -194,7 +194,14 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
   });
 
   it("configuração do espaço, membros, auditoria, plugins e portal ficam só com o admin", () => {
-    for (const acao of ["workspace.settings", "workspace.members", "audit.view", "plugin.manage", "portal.manage"]) {
+    for (const acao of [
+      "workspace.settings",
+      "workspace.members",
+      "audit.view",
+      "plugin.manage",
+      "portal.manage",
+      "entity.freeze",
+    ]) {
       expect(donosDe(acao)).toEqual(["admin"]);
     }
   });

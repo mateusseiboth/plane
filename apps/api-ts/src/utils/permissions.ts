@@ -98,6 +98,7 @@ export const ACTION_CATALOG = {
   PAGE_MANAGE_ALL: {key: "page.manage.all", label: "Travar, arquivar e excluir páginas de outros", group: G.ESPACO, scope: "workspace", roles: SO_ADMIN},
   LABEL_SLA: {key: "label.sla", label: "Configurar o prazo das etiquetas", group: G.ESPACO, scope: "workspace", roles: GESTOR},
   ENTITY_MANAGE: {key: "entity.manage", label: "Cadastrar entidades", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
+  ENTITY_FREEZE: {key: "entity.freeze", label: "Congelar e descongelar entidades", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
   VISIT_MANAGE: {key: "visit.manage", label: "Registrar visitas técnicas", group: G.CADASTROS, scope: "workspace", roles: OPERAM},
   ISSUE_TYPE_MANAGE: {key: "issue.type.manage", label: "Gerenciar tipos e propriedades de chamado", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   IMPORT_MANAGE: {key: "import.manage", label: "Importar dados", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},

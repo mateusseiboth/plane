@@ -45,6 +45,11 @@ export interface IUser extends IUserLite {
   is_password_autoset: boolean;
   is_tour_completed: boolean;
   mobile_number: string | null;
+  phone?: string | null;
+  mobile_phone?: string | null;
+  /** ISO date, no time. */
+  birth_date?: string | null;
+  nickname?: string | null;
   last_workspace_id: string;
   user_timezone: string;
   username: string;

@@ -1,321 +1,86 @@
-import {NotAuthorizedView} from "@/components/auth-screens/not-authorized-view";
-import {PageHead} from "@/components/core/page-title";
-import {SettingsContentWrapper} from "@/components/settings/content-wrapper";
-import {useWorkspace} from "@/hooks/store/use-workspace";
-import {useUserPermissions} from "@/hooks/store/user";
-import entityService, {type TEntity, entityTypeLabel} from "@/services/entity.service";
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
-import {Button} from "@plane/propel/button";
-import {Dialog, EDialogWidth} from "@plane/propel/dialog";
-import {TOAST_TYPE, setToast} from "@plane/propel/toast";
-import {Building2, Pencil, Plus, Search, Trash2, X} from "lucide-react";
-import {observer} from "mobx-react";
-import {useCallback, useEffect, useState} from "react";
-import type {Route} from "./+types/page";
-import {SelectPesquisavel} from "@/components/common/select-pesquisavel";
-import {ContatosDaEntidade} from "@/components/entity-contacts";
+import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
+import { PageHead } from "@/components/core/page-title";
+import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
+import { useWorkspace } from "@/hooks/store/use-workspace";
+import { useUserPermissions } from "@/hooks/store/user";
+import entityService, { type TEntity, entityTypeLabel } from "@/services/entity.service";
+import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { Button } from "@plane/propel/button";
+import { TOAST_TYPE, setToast } from "@plane/propel/toast";
+import { Building2, Pencil, Plus, Search, Snowflake, Sun, Trash2 } from "lucide-react";
+import { observer } from "mobx-react";
+import { useState } from "react";
+import type { Route } from "./+types/page";
+import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
+import { ENTITY_TYPES, EntityFormModal } from "@/components/entities/entity-form-modal";
+import { FreezeDialog } from "@/components/freeze/freeze-dialog";
+import { useAllEntities } from "@/hooks/use-entities";
 
-const ENTITY_TYPES: {value: number; label: string}[] = [
-  {value: 0, label: "Prefeitura"},
-  {value: 1, label: "Câmara"},
-  {value: 2, label: "Outros"},
-  {value: 3, label: "Escola"},
-  {value: 4, label: "Autarquia"},
-  {value: 5, label: "RPPS"},
-  {value: 6, label: "SAAE"},
-  {value: 7, label: "Consórcio"},
+type TStatusFilter = "all" | "active" | "inactive" | "frozen";
+
+const STATUS_FILTERS: { value: TStatusFilter; label: string }[] = [
+  { value: "all", label: "Todas as situações" },
+  { value: "active", label: "Ativas" },
+  { value: "inactive", label: "Inativas" },
+  { value: "frozen", label: "Congeladas" },
 ];
 
-type TEntityForm = {
-  name: string;
-  entity_type: number | null;
-  city: string;
-  state: string;
-  email: string;
-  phone: string;
-  cnpj: string;
-  is_active: boolean;
+const STATUS_MATCHERS: Record<TStatusFilter, (e: TEntity) => boolean> = {
+  all: () => true,
+  active: (e) => Boolean(e.is_active) && !e.is_frozen,
+  inactive: (e) => !e.is_active,
+  frozen: (e) => Boolean(e.is_frozen),
 };
 
-const EMPTY_FORM: TEntityForm = {
-  name: "",
-  entity_type: null,
-  city: "",
-  state: "",
-  email: "",
-  phone: "",
-  cnpj: "",
-  is_active: true,
+type TStatusBadge = { label: string; className: string };
+
+const BADGE_FROZEN: TStatusBadge = {
+  label: "Congelada",
+  className: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
+};
+const BADGE_ACTIVE: TStatusBadge = {
+  label: "Ativa",
+  className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+};
+const BADGE_INACTIVE: TStatusBadge = {
+  label: "Inativa",
+  className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
-function EntityModal({
-  entity,
-  workspaceSlug,
-  open,
-  onClose,
-  onSaved,
-}: {
-  entity?: TEntity | null;
-  workspaceSlug: string;
-  open: boolean;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [form, setForm] = useState<TEntityForm>(
-    entity
-      ? {
-          name: entity.name ?? "",
-          entity_type: entity.entity_type ?? null,
-          city: entity.city ?? "",
-          state: entity.state ?? "",
-          email: entity.email ?? "",
-          phone: entity.phone ?? "",
-          cnpj: entity.cnpj ?? "",
-          is_active: entity.is_active ?? true,
-        }
-      : {...EMPTY_FORM},
-  );
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setForm(
-      entity
-        ? {
-            name: entity.name ?? "",
-            entity_type: entity.entity_type ?? null,
-            city: entity.city ?? "",
-            state: entity.state ?? "",
-            email: entity.email ?? "",
-            phone: entity.phone ?? "",
-            cnpj: entity.cnpj ?? "",
-            is_active: entity.is_active ?? true,
-          }
-        : {...EMPTY_FORM},
-    );
-  }, [entity, open]);
-
-  const handle = (field: keyof TEntityForm, value: any) => setForm((f) => ({...f, [field]: value}));
-
-  const submit = async () => {
-    if (!form.name.trim()) {
-      setToast({type: TOAST_TYPE.ERROR, title: "Erro", message: "Nome é obrigatório."});
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        name: form.name.trim(),
-        entity_type: form.entity_type,
-        city: form.city || null,
-        state: form.state || null,
-        email: form.email || null,
-        phone: form.phone || null,
-        cnpj: form.cnpj || null,
-        is_active: form.is_active,
-      };
-      if (entity) {
-        await entityService.update(workspaceSlug, entity.id, payload);
-        setToast({type: TOAST_TYPE.SUCCESS, title: "Salvo", message: "Entidade atualizada."});
-      } else {
-        await fetch(`/api/workspaces/${workspaceSlug}/entities/`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
-        setToast({type: TOAST_TYPE.SUCCESS, title: "Criado", message: "Entidade criada."});
-      }
-      onSaved();
-      onClose();
-    } catch {
-      setToast({type: TOAST_TYPE.ERROR, title: "Erro", message: "Falha ao salvar entidade."});
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
-      <Dialog.Panel width={EDialogWidth.LG}>
-        <div className="p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <Dialog.Title>{entity ? "Editar Entidade" : "Nova Entidade"}</Dialog.Title>
-            <button
-              onClick={onClose}
-              className="rounded p-1 text-secondary-text hover:bg-surface-2 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-secondary-text">Nome *</label>
-              <input
-                value={form.name}
-                onChange={(e) => handle("name", e.target.value)}
-                className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-primary"
-                placeholder="Nome da entidade"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-secondary-text">Tipo</label>
-              <SelectPesquisavel
-                value={form.entity_type ?? ""}
-                onChange={(valor) => handle("entity_type", valor !== "" ? Number(valor) : null)}
-                opcoes={ENTITY_TYPES.map((t) => ({value: t.value, label: t.label}))}
-                opcaoVazia={{value: "", label: "Selecione o tipo"}}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-secondary-text">Cidade</label>
-                <input
-                  value={form.city}
-                  onChange={(e) => handle("city", e.target.value)}
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-primary"
-                  placeholder="Cidade"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-secondary-text">UF</label>
-                <input
-                  value={form.state}
-                  onChange={(e) => handle("state", e.target.value)}
-                  maxLength={2}
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-primary"
-                  placeholder="UF"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-secondary-text">E-mail</label>
-                <input
-                  value={form.email}
-                  onChange={(e) => handle("email", e.target.value)}
-                  type="email"
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-primary"
-                  placeholder="contato@entidade.gov.br"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-secondary-text">Telefone</label>
-                <input
-                  value={form.phone}
-                  onChange={(e) => handle("phone", e.target.value)}
-                  className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-primary"
-                  placeholder="(67) 3XXX-XXXX"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-secondary-text">CNPJ</label>
-              <input
-                value={form.cnpj}
-                onChange={(e) => handle("cnpj", e.target.value)}
-                className="w-full rounded border border-subtle bg-surface-2 px-3 py-2 text-sm text-primary outline-none focus:border-accent-primary"
-                placeholder="00.000.000/0001-00"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                id="is_active"
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => handle("is_active", e.target.checked)}
-                className="h-4 w-4 rounded accent-accent-primary"
-              />
-              <label
-                htmlFor="is_active"
-                className="text-sm text-primary"
-              >
-                Ativa
-              </label>
-            </div>
-
-            {/* As pessoas dentro do órgão só existem depois que ele existe. */}
-            {entity && (
-              <ContatosDaEntidade
-                workspaceSlug={workspaceSlug}
-                entityId={entity.id}
-                className="border-t border-subtle pt-4"
-              />
-            )}
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={onClose}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={submit}
-              loading={saving}
-            >
-              {saving ? "Salvando..." : "Salvar"}
-            </Button>
-          </div>
-        </div>
-      </Dialog.Panel>
-    </Dialog>
-  );
+function readStatusBadge(entity: TEntity): TStatusBadge {
+  if (entity.is_frozen) return BADGE_FROZEN;
+  return entity.is_active ? BADGE_ACTIVE : BADGE_INACTIVE;
 }
 
-const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({params}: Route.ComponentProps) {
-  const {workspaceSlug} = params;
-  const {allowPermissions} = useUserPermissions();
-  const {currentWorkspace} = useWorkspace();
+function matchesSearch(entity: TEntity, search: string): boolean {
+  if (!search) return true;
+  const s = search.toLowerCase();
+  return [entity.name, entity.city, entity.cnpj].some((value) => (value ?? "").toLowerCase().includes(s));
+}
+
+const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({ params }: Route.ComponentProps) {
+  const { workspaceSlug } = params;
+  const { allowPermissions } = useUserPermissions();
+  const { currentWorkspace } = useWorkspace();
+  const { entities, isLoading, refetch } = useAllEntities(workspaceSlug);
 
   const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
 
-  const [entities, setEntities] = useState<TEntity[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<number | null>(null);
-  const [modal, setModal] = useState<{open: boolean; entity?: TEntity | null}>({open: false});
+  const [filterStatus, setFilterStatus] = useState<TStatusFilter>("all");
+  const [modal, setModal] = useState<{ open: boolean; entity?: TEntity | null }>({ open: false });
+  const [freezeTarget, setFreezeTarget] = useState<TEntity | null>(null);
   const [syncing, setSyncing] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/workspaces/${workspaceSlug}/entities/?cursor=5000:0:0`, {credentials: "include"});
-      const data = await res.json();
-      setEntities(Array.isArray(data) ? data : (data.results ?? []));
-    } catch {
-      setEntities([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceSlug]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const handleDelete = async (entityId: string) => {
     if (!confirm("Confirmar exclusão desta entidade?")) return;
     try {
-      await fetch(`/api/workspaces/${workspaceSlug}/entities/${entityId}/`, {method: "DELETE", credentials: "include"});
-      setToast({type: TOAST_TYPE.SUCCESS, title: "Excluído", message: "Entidade removida."});
-      load();
+      await entityService.remove(workspaceSlug, entityId);
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Excluído", message: "Entidade removida." });
+      await refetch();
     } catch {
-      setToast({type: TOAST_TYPE.ERROR, title: "Erro", message: "Falha ao excluir entidade."});
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "Não foi possível excluir a entidade." });
     }
   };
 
@@ -334,51 +99,34 @@ const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({params}: 
         message: `${data.synced_projects} projetos e ${data.synced_members} membros sincronizados.`,
       });
     } catch {
-      setToast({type: TOAST_TYPE.ERROR, title: "Erro", message: "Falha ao sincronizar membros."});
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "Falha ao sincronizar membros." });
     } finally {
       setSyncing(false);
     }
   };
 
-  if (!isAdmin)
-    return (
-      <NotAuthorizedView
-        section="settings"
-        className="h-auto"
-      />
-    );
+  if (!isAdmin) return <NotAuthorizedView section="settings" className="h-auto" />;
 
-  const filtered = entities.filter((e) => {
-    if (filterType !== null && e.entity_type !== filterType) return false;
-    if (search) {
-      const s = search.toLowerCase();
-      return e.name.toLowerCase().includes(s) || (e.city ?? "").toLowerCase().includes(s) || (e.cnpj ?? "").includes(s);
-    }
-    return true;
-  });
+  const filtered = entities.filter(
+    (e) =>
+      (filterType === null || e.entity_type === filterType) &&
+      STATUS_MATCHERS[filterStatus](e) &&
+      matchesSearch(e, search)
+  );
 
   return (
     <SettingsContentWrapper
       header={
         <div className="flex h-full items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-secondary-text" />
+            <Building2 className="h-5 w-5 text-secondary" />
             <h3 className="text-lg font-semibold">Entidades</h3>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={handleSyncMembers}
-              loading={syncing}
-            >
+            <Button variant="secondary" size="lg" onClick={handleSyncMembers} loading={syncing}>
               Sincronizar Membros
             </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => setModal({open: true, entity: null})}
-            >
+            <Button variant="primary" size="lg" onClick={() => setModal({ open: true, entity: null })}>
               <Plus className="mr-1 h-4 w-4" /> Nova Entidade
             </Button>
           </div>
@@ -387,20 +135,34 @@ const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({params}: 
     >
       <PageHead title={`${currentWorkspace?.name ?? ""} - Entidades`} />
 
-      <EntityModal
+      <EntityFormModal
         entity={modal.entity}
+        entities={entities}
         workspaceSlug={workspaceSlug}
         open={modal.open}
-        onClose={() => setModal({open: false})}
-        onSaved={load}
+        onClose={() => setModal({ open: false })}
+        onSaved={() => refetch()}
       />
+
+      {freezeTarget && (
+        <FreezeDialog
+          open
+          onClose={() => setFreezeTarget(null)}
+          workspaceSlug={workspaceSlug}
+          subject="entity"
+          id={freezeTarget.id}
+          name={freezeTarget.name}
+          isFrozen={Boolean(freezeTarget.is_frozen)}
+          onDone={() => refetch()}
+        />
+      )}
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 rounded-md border border-subtle bg-surface-2 px-2.5 py-1.5 flex-1 min-w-[200px]">
-            <Search className="h-3.5 w-3.5 text-secondary-text" />
+          <div className="flex min-w-[200px] flex-1 items-center gap-1.5 rounded-md border border-subtle bg-surface-2 px-2.5 py-1.5">
+            <Search className="h-3.5 w-3.5 text-secondary" />
             <input
-              className="w-full border-none bg-transparent text-xs text-primary outline-none placeholder:text-secondary-text"
+              className="text-xs w-full border-none bg-transparent text-primary outline-none placeholder:text-secondary"
               placeholder="Buscar por nome, cidade ou CNPJ..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -409,77 +171,94 @@ const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({params}: 
           <SelectPesquisavel
             value={filterType ?? ""}
             onChange={(valor) => setFilterType(valor !== "" ? Number(valor) : null)}
-            opcoes={ENTITY_TYPES.map((t) => ({value: t.value, label: t.label}))}
-            opcaoVazia={{value: "", label: "Todos os tipos"}}
+            opcoes={ENTITY_TYPES}
+            opcaoVazia={{ value: "", label: "Todos os tipos" }}
+            className="w-44"
+            buttonClassName="h-8 text-xs"
+          />
+          <SelectPesquisavel
+            value={filterStatus}
+            onChange={(valor) => setFilterStatus(valor)}
+            opcoes={STATUS_FILTERS}
             className="w-44"
             buttonClassName="h-8 text-xs"
           />
         </div>
 
-        <p className="text-xs text-secondary-text">{filtered.length} entidade(s)</p>
+        <p className="text-xs text-secondary">{filtered.length} entidade(s)</p>
 
-        {loading ? (
-          <div className="py-8 text-center text-secondary-text text-sm">Carregando...</div>
+        {isLoading ? (
+          <div className="text-sm py-8 text-center text-secondary">Carregando...</div>
         ) : filtered.length === 0 ? (
-          <div className="py-8 text-center text-secondary-text text-sm">
+          <div className="text-sm py-8 text-center text-secondary">
             {entities.length === 0
               ? 'Nenhuma entidade cadastrada. Clique em "Nova Entidade" para começar.'
               : "Nenhuma entidade encontrada com os filtros atuais."}
           </div>
         ) : (
           <div className="overflow-hidden rounded-lg border border-subtle">
-            <table className="w-full text-xs">
-              <thead className="bg-surface-2 text-secondary-text">
+            <table className="text-xs w-full">
+              <thead className="bg-surface-2 text-secondary">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-medium">Nome</th>
                   <th className="px-4 py-2.5 text-left font-medium">Tipo</th>
                   <th className="px-4 py-2.5 text-left font-medium">Cidade/UF</th>
                   <th className="px-4 py-2.5 text-left font-medium">Contato</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Situação</th>
                   <th className="px-4 py-2.5 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle">
-                {filtered.map((entity) => (
-                  <tr
-                    key={entity.id}
-                    className="hover:bg-surface-2 transition-colors"
-                  >
-                    <td className="px-4 py-2.5 font-medium text-primary">{entity.name}</td>
-                    <td className="px-4 py-2.5 text-secondary-text">{entityTypeLabel(entity.entity_type) || "—"}</td>
-                    <td className="px-4 py-2.5 text-secondary-text">{[entity.city, entity.state].filter(Boolean).join("/") || "—"}</td>
-                    <td className="px-4 py-2.5 text-secondary-text">{entity.email || entity.phone || "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          entity.is_active
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                        }`}
-                      >
-                        {entity.is_active ? "Ativa" : "Inativa"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => setModal({open: true, entity})}
-                          className="rounded p-1 text-secondary-text hover:bg-surface-3 hover:text-primary transition-colors"
-                          title="Editar"
+                {filtered.map((entity) => {
+                  const badge = readStatusBadge(entity);
+                  const FreezeIcon = entity.is_frozen ? Sun : Snowflake;
+                  return (
+                    <tr key={entity.id} className="transition-colors hover:bg-surface-2">
+                      <td className="px-4 py-2.5 font-medium text-primary">{entity.name}</td>
+                      <td className="px-4 py-2.5 text-secondary">{entityTypeLabel(entity.entity_type) || "—"}</td>
+                      <td className="px-4 py-2.5 text-secondary">
+                        {[entity.city, entity.state].filter(Boolean).join("/") || "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-secondary">{entity.email || entity.phone || "—"}</td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`text-xs inline-flex rounded-full px-2 py-0.5 font-medium ${badge.className}`}
+                          title={entity.frozen_reason ?? undefined}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(entity.id)}
-                          className="rounded p-1 text-secondary-text hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setModal({ open: true, entity })}
+                            className="hover:bg-surface-3 rounded p-1 text-secondary transition-colors hover:text-primary"
+                            title="Editar"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFreezeTarget(entity)}
+                            className="hover:bg-surface-3 rounded p-1 text-secondary transition-colors hover:text-primary"
+                            title={entity.is_frozen ? "Descongelar" : "Congelar"}
+                          >
+                            <FreezeIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(entity.id)}
+                            className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 rounded p-1 text-secondary transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

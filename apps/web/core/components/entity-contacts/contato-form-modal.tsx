@@ -13,13 +13,17 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TEntityContact } from "@plane/types";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
+// helpers
+import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
 // hooks
 import { useEntities } from "@/hooks/use-entities";
 import { useEntityContactTypes } from "@/hooks/use-entity-contacts";
 // services
 import entityContactService, { type TEntityContactPayload } from "@/services/entity-contact.service";
 // local imports
-import { mascararTelefone, mensagemDeErro, paraCampoDeData, telefoneInvalido } from "./helpers";
+import { formatTelefone, toCampoDeData, telefoneInvalido } from "./helpers";
+import { AvisoDeRepetido } from "./aviso-de-repetido";
+import { SeletorDeSistemas } from "./seletor-de-sistemas";
 
 type TFormulario = {
   name: string;
@@ -31,6 +35,7 @@ type TFormulario = {
   notes: string;
   is_active: boolean;
   receive_messages: boolean;
+  project_ids: string[];
 };
 
 const FORMULARIO_VAZIO: TFormulario = {
@@ -43,9 +48,10 @@ const FORMULARIO_VAZIO: TFormulario = {
   notes: "",
   is_active: true,
   receive_messages: true,
+  project_ids: [],
 };
 
-function paraFormulario(contact: TEntityContact | null | undefined, entidadePadrao: string): TFormulario {
+function toFormulario(contact: TEntityContact | null | undefined, entidadePadrao: string): TFormulario {
   if (!contact) return { ...FORMULARIO_VAZIO, entity_id: entidadePadrao };
   return {
     name: contact.name ?? "",
@@ -53,15 +59,16 @@ function paraFormulario(contact: TEntityContact | null | undefined, entidadePadr
     type_id: contact.type_id ?? "",
     email: contact.email ?? "",
     phone: contact.phone ?? "",
-    birth_date: paraCampoDeData(contact.birth_date),
+    birth_date: toCampoDeData(contact.birth_date),
     notes: contact.notes ?? "",
     is_active: contact.is_active ?? true,
     receive_messages: contact.receive_messages ?? true,
+    project_ids: contact.project_ids ?? [],
   };
 }
 
 /** `phone_digits` é derivado no servidor — o cliente nunca o envia. */
-function paraPayload(form: TFormulario): TEntityContactPayload {
+function buildPayload(form: TFormulario): TEntityContactPayload {
   return {
     name: form.name.trim(),
     entity_id: form.entity_id || null,
@@ -72,6 +79,7 @@ function paraPayload(form: TFormulario): TEntityContactPayload {
     notes: form.notes.trim() || null,
     is_active: form.is_active,
     receive_messages: form.receive_messages,
+    project_ids: form.project_ids,
   };
 }
 
@@ -115,19 +123,21 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
   const { entities } = useEntities(workspaceSlug);
   const { types } = useEntityContactTypes(workspaceSlug);
 
-  const [form, setForm] = useState<TFormulario>(() => paraFormulario(contact, entityId ?? ""));
+  const [form, setForm] = useState<TFormulario>(() => toFormulario(contact, entityId ?? ""));
   const [salvando, setSalvando] = useState(false);
+  const [erroDeSistemas, setErroDeSistemas] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
-    const inicial = paraFormulario(contact, entityId ?? "");
+    const inicial = toFormulario(contact, entityId ?? "");
     // Ao EDITAR, o cadastro manda; os valores sugeridos só preenchem o que
     // estaria em branco num cadastro novo.
+    setErroDeSistemas(undefined);
     if (contact) return setForm(inicial);
     setForm({
       ...inicial,
       name: nomeInicial || inicial.name,
-      phone: mascararTelefone(telefoneInicial || inicial.phone),
+      phone: formatTelefone(telefoneInicial || inicial.phone),
     });
   }, [open, contact, entityId, nomeInicial, telefoneInicial]);
 
@@ -146,7 +156,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
     }
     setSalvando(true);
     try {
-      const payload = paraPayload(form);
+      const payload = buildPayload(form);
       const salvo = contact
         ? await entityContactService.update(workspaceSlug, contact.id, payload)
         : await entityContactService.create(workspaceSlug, payload);
@@ -158,11 +168,12 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
       onSaved(salvo);
       onClose();
     } catch (erro) {
-      setToast({
-        type: TOAST_TYPE.ERROR,
-        title: "Erro",
-        message: mensagemDeErro(erro, "Falha ao salvar o contato."),
-      });
+      const message = applyApiFieldErrors(
+        erro,
+        (path, texto) => path === "project_ids" && setErroDeSistemas(texto),
+        "Falha ao salvar o contato."
+      );
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message });
     } finally {
       setSalvando(false);
     }
@@ -182,7 +193,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-secondary-text transition-colors hover:bg-surface-2"
+              className="text-secondary-text rounded p-1 transition-colors hover:bg-surface-2"
             >
               <X className="h-4 w-4" />
             </button>
@@ -241,7 +252,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                 <label className={rotulo}>Telefone</label>
                 <input
                   value={form.phone}
-                  onChange={(e) => alterar("phone", mascararTelefone(e.target.value))}
+                  onChange={(e) => alterar("phone", formatTelefone(e.target.value))}
                   className={campoTexto}
                   placeholder="(67) 99999-0000"
                   inputMode="tel"
@@ -250,7 +261,7 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                   maxLength={15}
                 />
                 {telefoneInvalido(form.phone) && (
-                  <p className="mt-1 text-11 text-danger-text">{telefoneInvalido(form.phone)}</p>
+                  <p className="text-danger-text mt-1 text-11">{telefoneInvalido(form.phone)}</p>
                 )}
               </div>
             </div>
@@ -262,6 +273,25 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                 value={form.birth_date}
                 onChange={(e) => alterar("birth_date", e.target.value)}
                 className={campoTexto}
+              />
+            </div>
+
+            <AvisoDeRepetido
+              workspaceSlug={workspaceSlug}
+              phone={form.phone}
+              email={form.email}
+              contactId={contact?.id}
+            />
+
+            <div>
+              <span className={rotulo}>Sistemas de que cuida</span>
+              <SeletorDeSistemas
+                value={form.project_ids}
+                onChange={(ids) => {
+                  alterar("project_ids", ids);
+                  setErroDeSistemas(undefined);
+                }}
+                error={erroDeSistemas}
               />
             </div>
 
@@ -277,21 +307,21 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
             </div>
 
             <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm text-primary">
+              <label className="text-sm flex items-center gap-2 text-primary">
                 <input
                   type="checkbox"
                   checked={form.is_active}
                   onChange={(e) => alterar("is_active", e.target.checked)}
-                  className="h-4 w-4 rounded accent-accent-primary"
+                  className="accent-accent-primary h-4 w-4 rounded"
                 />
                 Ativo
               </label>
-              <label className="flex items-center gap-2 text-sm text-primary">
+              <label className="text-sm flex items-center gap-2 text-primary">
                 <input
                   type="checkbox"
                   checked={form.receive_messages}
                   onChange={(e) => alterar("receive_messages", e.target.checked)}
-                  className="h-4 w-4 rounded accent-accent-primary"
+                  className="accent-accent-primary h-4 w-4 rounded"
                 />
                 Recebe mensagens
               </label>

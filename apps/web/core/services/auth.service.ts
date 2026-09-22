@@ -51,6 +51,13 @@ export class AuthService extends APIService {
       });
   }
 
+  /** Encerra todas as sessões do usuário, inclusive a atual. */
+  async signOutEverywhere(): Promise<void> {
+    await this.post("/auth/sign-out-everywhere/", {}).catch((error) => {
+      throw error?.response?.data;
+    });
+  }
+
   async generateUniqueCode(data: { email: string }): Promise<any> {
     return this.post("/auth/magic-generate/", data, { headers: {} })
       .then((response) => response?.data)

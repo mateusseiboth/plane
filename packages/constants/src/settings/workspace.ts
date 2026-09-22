@@ -104,6 +104,13 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/storage/`,
   },
+  email: {
+    key: "email",
+    i18n_label: "workspace_settings.settings.email.title",
+    href: `/settings/email`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/email/`,
+  },
   chat: {
     key: "chat",
     i18n_label: "workspace_settings.settings.chat.title",
@@ -148,6 +155,7 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     // WORKSPACE_SETTINGS["billing-and-plans"], // Not implemented yet
     WORKSPACE_SETTINGS["export"],
     WORKSPACE_SETTINGS["storage"],
+    WORKSPACE_SETTINGS["email"],
     WORKSPACE_SETTINGS["chat"],
     WORKSPACE_SETTINGS["ia-requisitos"],
     WORKSPACE_SETTINGS["print"],
