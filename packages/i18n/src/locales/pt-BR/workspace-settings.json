@@ -542,6 +542,9 @@
       },
       "email": {
         "title": "E-mail (SMTP)"
+      },
+      "portal": {
+        "title": "Portal do cliente"
       }
     },
     "empty_state": {

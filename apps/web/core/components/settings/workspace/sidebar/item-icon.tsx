@@ -5,7 +5,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { ArrowUpToLine, Bot, Building, Building2, Clock, CreditCard, Database, Link2, Mail, MessageSquare, Printer, Shield, ShieldCheck, Sparkles, Users, Webhook } from "lucide-react";
+import { ArrowUpToLine, Bot, Building, Building2, Clock, CreditCard, Database, Link2, Mail, MessageSquare, DoorOpen, Printer, Shield, ShieldCheck, Sparkles, Users, Webhook } from "lucide-react";
 // plane imports
 import type { ISvgIcons } from "@plane/propel/icons";
 import type { TWorkspaceSettingsTabs } from "@plane/types";
@@ -27,4 +27,5 @@ export const WORKSPACE_SETTINGS_ICONS: Record<TWorkspaceSettingsTabs, LucideIcon
   print: Printer,
   auditoria: ShieldCheck,
   email: Mail,
+  portal: DoorOpen,
 };

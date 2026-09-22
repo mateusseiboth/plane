@@ -43,9 +43,24 @@ export async function requestPortalReset(slug: string, email: unknown, requestIp
     select: { id: true, email: true, name: true },
   });
   if (!conta) return;
+  await sendPortalResetLink({ slug, nome: espaco.name }, conta, requestIp);
+}
+
+type ContaDoLink = { id: string; email: string; name: string };
+
+/**
+ * Emite o token e manda o link de nova senha. Usado pelo "esqueci minha senha"
+ * do cliente e pelo "redefinir senha" da tela de contas.
+ */
+export async function sendPortalResetLink(
+  espaco: { slug: string; nome: string },
+  conta: ContaDoLink,
+  requestIp: string | null
+): Promise<void> {
+  const { slug } = espaco;
   const token = await issueResetToken(KIND, conta.id, requestIp);
   await sendEmail(conta.email, {
-    subject: `${espaco.name}: nova senha do portal`,
+    subject: `${espaco.nome}: nova senha do portal`,
     title: `Olá, ${conta.name}`,
     paragraphs: [
       "Recebemos um pedido para criar uma nova senha de acesso ao portal de solicitações.",
