@@ -20,6 +20,19 @@ export async function requireWorkspaceMember(workspaceId: string, userId: string
   return m;
 }
 
+/**
+ * Projetos de que o usuário é membro ativo no workspace. É o recorte de
+ * visibilidade da listagem de chamados do workspace: quem participa do projeto vê
+ * todos os chamados dele, e só dele.
+ */
+export async function findMemberProjectIds(workspaceId: string, userId: string): Promise<string[]> {
+  const membros = await prisma.projectMember.findMany({
+    where: {workspaceId, memberId: userId, isActive: true, deletedAt: null},
+    select: {projectId: true},
+  });
+  return membros.map((m) => m.projectId);
+}
+
 /** Administrador do espaço (papel 20). Configuração do espaço não é de membro. */
 export async function requireWorkspaceAdmin(workspaceId: string, userId: string) {
   const m = await requireWorkspaceMember(workspaceId, userId);

@@ -3,10 +3,32 @@ import { swagger } from "@elysiajs/swagger";
 import { createHmac, createHash, randomUUID } from "crypto";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
-import { getWorkspaceOrFail } from "@utils/workspace";
-
-// Shared secret platform↔plugin-backend (HMAC of the per-plugin key). Set in env.
-const BRIDGE_SECRET = process.env.PLUGIN_BRIDGE_SECRET ?? "plugin-bridge-secret-change-me";
+import { readBridgeSecret } from "@modules/plugin-sdk-gateway/bridge-secret";
+import {
+  findAction,
+  findActions,
+  findCurrentUser,
+  findEntities,
+  findEntity,
+  findIntake,
+  findIntakes,
+  findUser,
+  findUsers,
+  findWorkerItem,
+  findWorkerItems,
+  getActionStats,
+  getEntityStats,
+  getIntakeStats,
+  getPeriodStats,
+  getStatsOverview,
+  getWorkerItemStats,
+} from "@utils/sdk-gateway-data";
+import {
+  readWorkspaceSlug,
+  requireMemberWorkspaceId,
+  requireSdkGatewayScope,
+  resolveOptionalWorkspaceId,
+} from "@utils/sdk-gateway-scope";
 
 // ── Generic helpers for the SDK evolution (config / permissions / backend) ──────
 function manifestOf(plugin: any): any {
@@ -53,16 +75,6 @@ async function canAdminPlugin(plugin: any, user: any, workspaceId: string | null
   if (user?.isInstanceAdmin || user?.isSuperuser) return true;
   const perms = await resolvePluginPermissions(plugin, user, workspaceId);
   return perms.some((p) => p.endsWith(".admin"));
-}
-
-async function workspaceIdFromQuery(q: any): Promise<string | null> {
-  const slug = q?.workspace_slug;
-  if (!slug) return null;
-  try {
-    return (await getWorkspaceOrFail(slug)).id;
-  } catch {
-    return null;
-  }
 }
 
 // G4 — entity external identifiers. Expose every identifier-ish field plus an
@@ -117,7 +129,10 @@ function serializeEntity(e: any) {
 // ── Plugin auth middleware ──────────────────────────────────────────────────────
 // Validates that the request comes from an active plugin with the required permission.
 
-const pluginAuthPlugin = new Elysia({ name: "plugin-auth" }).use(authPlugin).derive({ as: "global" }, async (ctx) => {
+// `scoped`, não `global`: o derive global vazava para todo módulo montado depois
+// no src/index.ts. O do widget (montado antes) exigia X-Widget-Id até nas rotas
+// deste gateway, que respondiam 400 "Cabeçalho X-Widget-Id ausente." para plugin.
+const pluginAuthPlugin = new Elysia({ name: "plugin-auth" }).use(authPlugin).derive({ as: "scoped" }, async (ctx) => {
   const pluginId = ctx.headers["x-plugin-id"];
   if (!pluginId) {
     ctx.set.status = 400;
@@ -144,6 +159,13 @@ function isoDate(d: any) {
   if (!d) return null;
   return d instanceof Date ? d.toISOString() : String(d);
 }
+
+function respondNotFound(set: any, detail: string) {
+  set.status = 404;
+  return { detail };
+}
+
+const ENTITY_CONTRACT = { select: ENTITY_SELECT, serialize: serializeEntity };
 
 // ── Gateway module ────────────────────────────────────────────────────────────
 
@@ -179,475 +201,104 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
   .use(pluginAuthPlugin)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  //  WORKER ITEMS API
+  //  DATA APIs — todas exigem workspace_slug + membro (@utils/sdk-gateway-scope)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  .get("/worker-items", async ({ query, plugin, set }) => {
+  .get("/worker-items", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "worker-items.read", set);
-    const q = query as any;
-
-    const ws = q.workspace_slug ? await getWorkspaceOrFail(q.workspace_slug) : null;
-
-    const where: any = { deletedAt: null, isDraft: false };
-    if (ws) where.workspaceId = ws.id;
-    if (q.entity_id) where.entityId = q.entity_id;
-    if (q.status) where.state = { group: q.status };
-    if (q.assignee_id) where.assignees = { some: { assigneeId: q.assignee_id } };
-    if (q.search) {
-      where.OR = [
-        { name: { contains: q.search, mode: "insensitive" } },
-        { sequenceId: isNaN(Number(q.search)) ? undefined : Number(q.search) },
-      ].filter((c) => Object.values(c)[0] !== undefined);
-    }
-
-    const perPage = Math.min(Number(q.limit ?? 20), 100);
-    const page = Math.max(Number(q.page ?? 0), 0);
-
-    const [items, total] = await Promise.all([
-      prisma.issue.findMany({
-        where,
-        skip: page * perPage,
-        take: perPage,
-        orderBy: { updatedAt: "desc" },
-        include: {
-          state: { select: { id: true, name: true, group: true, color: true } },
-          assignees: { include: { assignee: { select: { id: true, displayName: true, email: true } } } },
-          labels: { include: { label: { select: { id: true, name: true, color: true } } } },
-        },
-      }),
-      prisma.issue.count({ where }),
-    ]);
-
-    return {
-      data: items.map((i: any) => ({
-        id: i.id,
-        sequence_id: i.sequenceId,
-        name: i.name,
-        priority: i.priority,
-        state: i.state ? { id: i.state.id, name: i.state.name, group: i.state.group } : null,
-        assignees: (i.assignees ?? []).map((a: any) => ({
-          id: a.assignee?.id,
-          display_name: a.assignee?.displayName,
-          email: a.assignee?.email,
-        })),
-        labels: (i.labels ?? []).map((l: any) => ({ id: l.label?.id, name: l.label?.name, color: l.label?.color })),
-        entity_id: i.entityId ?? null,
-        created_at: isoDate(i.createdAt),
-        updated_at: isoDate(i.updatedAt),
-        completed_at: isoDate(i.completedAt),
-      })),
-      page,
-      total,
-      total_pages: Math.ceil(total / perPage),
-    };
+    return findWorkerItems(await requireSdkGatewayScope(query, user.id), query as any);
   })
 
-  .get("/worker-items/stats", async ({ query, plugin, set }) => {
+  .get("/worker-items/stats", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "worker-items.read", set);
-    const q = query as any;
-    const where: any = { deletedAt: null, isDraft: false };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-    }
-    if (q.entity_id) where.entityId = q.entity_id;
-
-    const [total, open, closed, byPriority] = await Promise.all([
-      prisma.issue.count({ where }),
-      prisma.issue.count({ where: { ...where, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
-      prisma.issue.count({ where: { ...where, state: { group: "completed" } } }),
-      prisma.issue.groupBy({ by: ["priority"], where, _count: { id: true } }),
-    ]);
-
-    return {
-      total,
-      open,
-      closed,
-      by_priority: byPriority.reduce((acc: any, r) => {
-        acc[r.priority ?? "none"] = r._count.id;
-        return acc;
-      }, {}),
-    };
+    return getWorkerItemStats(await requireSdkGatewayScope(query, user.id), query as any);
   })
 
-  .get("/worker-items/:id", async ({ params: { id }, plugin, set }) => {
+  .get("/worker-items/:id", async ({ params: { id }, query, user, plugin, set }) => {
     requirePermission(plugin, "worker-items.read", set);
-    const issue = await prisma.issue.findFirst({
-      where: { id, deletedAt: null },
-      include: {
-        state: { select: { id: true, name: true, group: true, color: true } },
-        assignees: { include: { assignee: { select: { id: true, displayName: true, email: true } } } },
-        labels: { include: { label: { select: { id: true, name: true, color: true } } } },
-      },
-    });
-    if (!issue) {
-      set.status = 404;
-      return { detail: "Chamado não encontrado." };
-    }
-    const i = issue as any;
-    return {
-      id: i.id,
-      sequence_id: i.sequenceId,
-      name: i.name,
-      description_html: i.descriptionHtml ?? null,
-      priority: i.priority,
-      state: i.state ? { id: i.state.id, name: i.state.name, group: i.state.group } : null,
-      assignees: (i.assignees ?? []).map((a: any) => ({ id: a.assignee?.id, display_name: a.assignee?.displayName })),
-      labels: (i.labels ?? []).map((l: any) => ({ id: l.label?.id, name: l.label?.name, color: l.label?.color })),
-      entity_id: i.entityId ?? null,
-      project_id: i.projectId,
-      workspace_id: i.workspaceId,
-      created_at: isoDate(i.createdAt),
-      updated_at: isoDate(i.updatedAt),
-      completed_at: isoDate(i.completedAt),
-    };
+    const item = await findWorkerItem(await requireSdkGatewayScope(query, user.id), id);
+    return item ?? respondNotFound(set, "Chamado não encontrado.");
   })
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  INTAKES API
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  .get("/intakes", async ({ query, plugin, set }) => {
+  .get("/intakes", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "intakes.read", set);
-    const q = query as any;
-    const where: any = { deletedAt: null };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-    }
-    if (q.project_id) where.projectId = q.project_id;
-    if (q.status) where.status = Number(q.status);
-
-    const perPage = Math.min(Number(q.limit ?? 20), 100);
-    const page = Math.max(Number(q.page ?? 0), 0);
-
-    const [items, total] = await Promise.all([
-      prisma.intake.findMany({ where, skip: page * perPage, take: perPage, orderBy: { createdAt: "desc" } }),
-      prisma.intake.count({ where }),
-    ]);
-
-    return {
-      data: items.map((i: any) => ({
-        id: i.id,
-        name: i.name,
-        description: i.description ?? null,
-        project_id: i.projectId,
-        workspace_id: i.workspaceId,
-        created_at: isoDate(i.createdAt),
-        updated_at: isoDate(i.updatedAt),
-      })),
-      page,
-      total,
-      total_pages: Math.ceil(total / perPage),
-    };
+    return findIntakes(await requireSdkGatewayScope(query, user.id), query as any);
   })
 
-  .get("/intakes/stats", async ({ query, plugin, set }) => {
+  .get("/intakes/stats", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "intakes.read", set);
-    const q = query as any;
-    const where: any = { deletedAt: null };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-    }
-    const total = await prisma.intake.count({ where });
-    return { total };
+    return getIntakeStats(await requireSdkGatewayScope(query, user.id));
   })
 
-  .get("/intakes/:id", async ({ params: { id }, plugin, set }) => {
+  .get("/intakes/:id", async ({ params: { id }, query, user, plugin, set }) => {
     requirePermission(plugin, "intakes.read", set);
-    const intake = await prisma.intake.findFirst({ where: { id, deletedAt: null } });
-    if (!intake) {
-      set.status = 404;
-      return { detail: "Solicitação não encontrada." };
-    }
-    const i = intake as any;
-    return {
-      id: i.id,
-      name: i.name,
-      description: i.description ?? null,
-      project_id: i.projectId,
-      workspace_id: i.workspaceId,
-      created_at: isoDate(i.createdAt),
-      updated_at: isoDate(i.updatedAt),
-    };
+    const intake = await findIntake(await requireSdkGatewayScope(query, user.id), id);
+    return intake ?? respondNotFound(set, "Solicitação não encontrada.");
   })
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  ACTIONS API  (uses Issues as the action model)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  .get("/actions", async ({ query, plugin, set }) => {
+  .get("/actions", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "actions.read", set);
-    const q = query as any;
-    const where: any = { deletedAt: null, isDraft: false };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-    }
-    if (q.entity_id) where.entityId = q.entity_id;
-    if (q.assignee_id) where.assignees = { some: { assigneeId: q.assignee_id } };
-
-    const perPage = Math.min(Number(q.limit ?? 20), 100);
-    const page = Math.max(Number(q.page ?? 0), 0);
-
-    const [items, total] = await Promise.all([
-      prisma.issue.findMany({
-        where,
-        skip: page * perPage,
-        take: perPage,
-        orderBy: { updatedAt: "desc" },
-        include: { state: { select: { id: true, name: true, group: true } } },
-      }),
-      prisma.issue.count({ where }),
-    ]);
-
-    return {
-      data: items.map((i: any) => ({
-        id: i.id,
-        name: i.name,
-        priority: i.priority,
-        state: i.state ? { id: i.state.id, name: i.state.name, group: i.state.group } : null,
-        entity_id: i.entityId ?? null,
-        created_at: isoDate(i.createdAt),
-        updated_at: isoDate(i.updatedAt),
-      })),
-      page,
-      total,
-      total_pages: Math.ceil(total / perPage),
-    };
+    return findActions(await requireSdkGatewayScope(query, user.id), query as any);
   })
 
-  .get("/actions/stats", async ({ query, plugin, set }) => {
+  .get("/actions/stats", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "actions.read", set);
-    const q = query as any;
-    const where: any = { deletedAt: null, isDraft: false };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-    }
-    const [total, open, closed] = await Promise.all([
-      prisma.issue.count({ where }),
-      prisma.issue.count({ where: { ...where, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
-      prisma.issue.count({ where: { ...where, state: { group: "completed" } } }),
-    ]);
-    return { total, open, closed };
+    return getActionStats(await requireSdkGatewayScope(query, user.id));
   })
 
-  .get("/actions/:id", async ({ params: { id }, plugin, set }) => {
+  .get("/actions/:id", async ({ params: { id }, query, user, plugin, set }) => {
     requirePermission(plugin, "actions.read", set);
-    const issue = await prisma.issue.findFirst({
-      where: { id, deletedAt: null },
-      include: { state: { select: { id: true, name: true, group: true } } },
-    });
-    if (!issue) {
-      set.status = 404;
-      return { detail: "Ação não encontrada." };
-    }
-    const i = issue as any;
-    return {
-      id: i.id,
-      name: i.name,
-      priority: i.priority,
-      state: i.state ? { id: i.state.id, name: i.state.name, group: i.state.group } : null,
-      entity_id: i.entityId ?? null,
-      created_at: isoDate(i.createdAt),
-      updated_at: isoDate(i.updatedAt),
-    };
+    const action = await findAction(await requireSdkGatewayScope(query, user.id), id);
+    return action ?? respondNotFound(set, "Ação não encontrada.");
   })
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  STATS API
-  // ═══════════════════════════════════════════════════════════════════════════
+  .get("/stats/overview", async ({ query, user, plugin, set }) => {
+    requirePermission(plugin, "stats.read", set);
+    return getStatsOverview(await requireSdkGatewayScope(query, user.id));
+  })
 
-  .get("/stats/overview", async ({ query, plugin, set }) => {
+  .get("/stats/period", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "stats.read", set);
     const q = query as any;
-    const where: any = { deletedAt: null, isDraft: false };
-    const intakeWhere: any = { deletedAt: null };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-      intakeWhere.workspaceId = ws.id;
-    }
-
-    const [workerItemsTotal, workerItemsOpen, workerItemsClosed, intakesTotal, actionsTotal] = await Promise.all([
-      prisma.issue.count({ where }),
-      prisma.issue.count({ where: { ...where, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
-      prisma.issue.count({ where: { ...where, state: { group: "completed" } } }),
-      prisma.intake.count({ where: intakeWhere }),
-      prisma.issue.count({ where }),
-    ]);
-
-    return {
-      worker_items_total: workerItemsTotal,
-      worker_items_open: workerItemsOpen,
-      worker_items_closed: workerItemsClosed,
-      intakes_total: intakesTotal,
-      actions_total: actionsTotal,
-    };
-  })
-
-  .get("/stats/period", async ({ query, plugin, set }) => {
-    requirePermission(plugin, "stats.read", set);
-    const q = query as any;
+    const scope = await requireSdkGatewayScope(q, user.id);
     if (!q.start_date || !q.end_date) {
       set.status = 400;
       return { detail: "start_date e end_date são obrigatórios." };
     }
-    const where: any = {
-      deletedAt: null,
-      isDraft: false,
-      createdAt: { gte: new Date(q.start_date), lte: new Date(q.end_date) },
-    };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-    }
-    const [created, completed] = await Promise.all([
-      prisma.issue.count({ where }),
-      prisma.issue.count({ where: { ...where, completedAt: { not: null } } }),
-    ]);
-    return {
-      start_date: q.start_date,
-      end_date: q.end_date,
-      worker_items_created: created,
-      worker_items_completed: completed,
-    };
+    return getPeriodStats(scope, q.start_date, q.end_date);
   })
 
-  .get("/stats/entity/:entity_id", async ({ params: { entity_id }, plugin, set }) => {
+  .get("/stats/entity/:entity_id", async ({ params: { entity_id }, query, user, plugin, set }) => {
     requirePermission(plugin, "stats.read", set);
-    const where = { deletedAt: null, isDraft: false, entityId: entity_id };
-    const [total, open, closed] = await Promise.all([
-      prisma.issue.count({ where }),
-      prisma.issue.count({ where: { ...where, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
-      prisma.issue.count({ where: { ...where, state: { group: "completed" } } }),
-    ]);
-    return { entity_id, total, open, closed };
+    return getEntityStats(await requireSdkGatewayScope(query, user.id), entity_id);
   })
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  USERS API
-  // ═══════════════════════════════════════════════════════════════════════════
-
+  // O próprio usuário não depende de workspace.
   .get("/users/me", async ({ user, plugin, set }) => {
     requirePermission(plugin, "users.read", set);
-    const u = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { id: true, email: true, displayName: true, firstName: true, lastName: true, avatarUrl: true },
-    });
-    if (!u) {
-      set.status = 404;
-      return { detail: "Usuário não encontrado." };
-    }
-    return {
-      id: u.id,
-      email: u.email,
-      display_name: u.displayName,
-      first_name: (u as any).firstName ?? "",
-      last_name: (u as any).lastName ?? "",
-      avatar_url: (u as any).avatarUrl ?? null,
-    };
+    return (await findCurrentUser(user.id)) ?? respondNotFound(set, "Usuário não encontrado.");
   })
 
-  .get("/users", async ({ query, plugin, set }) => {
+  .get("/users", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "users.read", set);
-    const q = query as any;
-    const where: any = { isActive: true, deletedAt: null };
-    if (q.search) {
-      where.OR = [
-        { email: { contains: q.search, mode: "insensitive" } },
-        { displayName: { contains: q.search, mode: "insensitive" } },
-      ];
-    }
-    const perPage = Math.min(Number(q.limit ?? 20), 100);
-    const page = Math.max(Number(q.page ?? 0), 0);
-
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        skip: page * perPage,
-        take: perPage,
-        orderBy: { displayName: "asc" },
-        select: { id: true, email: true, displayName: true, avatarUrl: true },
-      }),
-      prisma.user.count({ where }),
-    ]);
-
-    return {
-      data: users.map((u) => ({
-        id: u.id,
-        email: u.email,
-        display_name: u.displayName,
-        avatar_url: (u as any).avatarUrl ?? null,
-      })),
-      page,
-      total,
-      total_pages: Math.ceil(total / perPage),
-    };
+    return findUsers(await requireSdkGatewayScope(query, user.id), query as any);
   })
 
-  .get("/users/:id", async ({ params: { id }, plugin, set }) => {
+  .get("/users/:id", async ({ params: { id }, query, user, plugin, set }) => {
     requirePermission(plugin, "users.read", set);
-    const u = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, email: true, displayName: true, avatarUrl: true },
-    });
-    if (!u) {
-      set.status = 404;
-      return { detail: "Usuário não encontrado." };
-    }
-    return { id: u.id, email: u.email, display_name: u.displayName, avatar_url: (u as any).avatarUrl ?? null };
+    const found = await findUser(await requireSdkGatewayScope(query, user.id), id);
+    return found ?? respondNotFound(set, "Usuário não encontrado.");
   })
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  ENTITIES API
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  .get("/entities", async ({ query, plugin, set }) => {
+  .get("/entities", async ({ query, user, plugin, set }) => {
     requirePermission(plugin, "entities.read", set);
-    const q = query as any;
-    const where: any = { deletedAt: null };
-    if (q.workspace_slug) {
-      const ws = await getWorkspaceOrFail(q.workspace_slug);
-      where.workspaceId = ws.id;
-    }
-    if (q.search) where.name = { contains: q.search, mode: "insensitive" };
-
-    const perPage = Math.min(Number(q.limit ?? 20), 100);
-    const page = Math.max(Number(q.page ?? 0), 0);
-
-    const [entities, total] = await Promise.all([
-      prisma.entity.findMany({
-        where,
-        skip: page * perPage,
-        take: perPage,
-        orderBy: { name: "asc" },
-        select: ENTITY_SELECT,
-      }),
-      prisma.entity.count({ where }),
-    ]);
-
-    return {
-      data: entities.map(serializeEntity),
-      page,
-      total,
-      total_pages: Math.ceil(total / perPage),
-    };
+    return findEntities(await requireSdkGatewayScope(query, user.id), query as any, ENTITY_CONTRACT);
   })
 
-  .get("/entities/:id", async ({ params: { id }, plugin, set }) => {
+  .get("/entities/:id", async ({ params: { id }, query, user, plugin, set }) => {
     requirePermission(plugin, "entities.read", set);
-    const entity = await prisma.entity.findFirst({
-      where: { id, deletedAt: null },
-      select: ENTITY_SELECT,
-    });
-    if (!entity) {
-      set.status = 404;
-      return { detail: "Entidade não encontrada." };
-    }
-    return serializeEntity(entity);
+    const entity = await findEntity(await requireSdkGatewayScope(query, user.id), id, ENTITY_CONTRACT);
+    return entity ?? respondNotFound(set, "Entidade não encontrada.");
   })
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -656,16 +307,12 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
 
   .get("/config/schema", async ({ plugin }) => configSchemaOf(plugin))
 
-  .get("/config", async ({ query, plugin, set }) => {
+  .get("/config", async ({ query, plugin, user }) => {
     const q = query as any;
     const scope = q.scope === "instance" ? "instance" : "workspace";
     let scopeId: string | null = null;
     if (scope === "workspace") {
-      scopeId = await workspaceIdFromQuery(q);
-      if (!scopeId) {
-        set.status = 400;
-        return { detail: "workspace_slug é obrigatório para o escopo de workspace." };
-      }
+      scopeId = await requireMemberWorkspaceId(readWorkspaceSlug(q), user.id);
     }
     const row = await prisma.pluginConfig.findFirst({ where: { pluginId: plugin.id, scope, scopeId } });
     const defaults: Record<string, unknown> = {};
@@ -679,11 +326,8 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
     const scope = b.scope === "instance" ? "instance" : "workspace";
     let scopeId: string | null = null;
     if (scope === "workspace") {
-      scopeId = await workspaceIdFromQuery({ workspace_slug: b.workspace_slug ?? (query as any).workspace_slug });
-      if (!scopeId) {
-        set.status = 400;
-        return { detail: "workspace_slug é obrigatório para o escopo de workspace." };
-      }
+      const slug = readWorkspaceSlug({ workspace_slug: b.workspace_slug ?? (query as any).workspace_slug });
+      scopeId = await requireMemberWorkspaceId(slug, user.id);
     }
     if (!(await canAdminPlugin(plugin, user, scopeId))) {
       set.status = 403;
@@ -716,7 +360,7 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
   // ═══════════════════════════════════════════════════════════════════════════
 
   .get("/me/permissions", async ({ query, plugin, user }) => {
-    const workspaceId = await workspaceIdFromQuery(query as any);
+    const workspaceId = await resolveOptionalWorkspaceId(query, user.id);
     return resolvePluginPermissions(plugin, user, workspaceId);
   })
 
@@ -734,8 +378,20 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       return { detail: "O plugin não possui backend configurado." };
     }
 
+    // Workspace alheio é 403: sem isso o proxy assinaria X-Plugin-Workspace de
+    // um workspace de que o usuário não participa, e o backend confiaria nele.
+    const workspaceId = await resolveOptionalWorkspaceId(query, user.id);
+
+    const bridgeSecret = readBridgeSecret();
+    if (!bridgeSecret) {
+      console.error(
+        "[plugin-sdk] PLUGIN_BRIDGE_SECRET não configurado: o proxy para o backend do plugin está desligado."
+      );
+      set.status = 503;
+      return { detail: "A integração deste plugin está indisponível. Avise o administrador do sistema." };
+    }
+
     const subPath = "/" + String((params as any)["*"] ?? "").replace(/^\/+/, "");
-    const workspaceId = await workspaceIdFromQuery(query as any);
     const perms = await resolvePluginPermissions(plugin, user, workspaceId);
 
     const url = new URL(backend.baseUrl + subPath);
@@ -759,7 +415,7 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
     const bodyHash = createHash("sha256")
       .update(bodyBuf ?? Buffer.alloc(0))
       .digest("hex");
-    const pluginKey = createHmac("sha256", BRIDGE_SECRET).update(plugin.id).digest("hex");
+    const pluginKey = createHmac("sha256", bridgeSecret).update(plugin.id).digest("hex");
     const sigBase = [method, subPath, user.id, workspaceId ?? "", ts, bodyHash].join("|");
     const signature = createHmac("sha256", pluginKey).update(sigBase).digest("hex");
     const correlationId = request.headers.get("x-correlation-id") ?? randomUUID();
@@ -780,7 +436,11 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
 
     let resp: Response;
     try {
-      resp = await fetch(url.toString(), { method, headers: fwdHeaders, body: bodyBuf });
+      resp = await fetch(url.toString(), {
+        method,
+        headers: fwdHeaders,
+        body: bodyBuf ? new Uint8Array(bodyBuf) : undefined,
+      });
     } catch {
       set.status = 502;
       return { detail: "Backend do plugin inacessível." };
