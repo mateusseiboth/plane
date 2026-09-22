@@ -247,6 +247,15 @@ if (import.meta.main) {
   console.log(`📖 Swagger: http://localhost:${PORT}/api/v1/schema`);
 }
 
+// Funções de sistema gravadas em todo espaço, e ações novas do catálogo levadas
+// às funções já existentes (idempotente; edições do admin sobrevivem).
+if (import.meta.main) {
+  import("@utils/seed-funcoes")
+    .then(({seedWorkflowRolesForAllWorkspaces}) => seedWorkflowRolesForAllWorkspaces())
+    .then((n) => console.log(`🛡️  Funções sincronizadas em ${n} espaço(s)`))
+    .catch((e) => console.warn("🛡️  Falha ao sincronizar funções:", e?.message ?? e));
+}
+
 // Ensure full-text search extensions/indexes exist (idempotent, best-effort).
 // Skip the ANALYZE pass on boot to keep startup cheap; the reindex route runs it.
 import("@utils/search")

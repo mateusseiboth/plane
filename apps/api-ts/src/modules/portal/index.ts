@@ -14,10 +14,10 @@ import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
-import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
+import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 import { publishRealtime } from "@utils/realtime";
 import { checkRateLimit } from "@utils/rate-limiter";
-import { getWorkspaceOrFail, requireWorkspaceAdmin } from "@utils/workspace";
+import { getWorkspaceOrFail } from "@utils/workspace";
 import {
   conferirArquivo,
   contarAnexos,
@@ -326,7 +326,7 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
 
   .get("/", async ({ params: { slug }, user }: any) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAdmin(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
     const contas = await prisma.portalAccount.findMany({
       where: { workspaceId: ws.id, deletedAt: null },
       include: { projects: { select: { projectId: true } } },
@@ -337,7 +337,7 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
 
   .post("/", async ({ params: { slug }, body, user, set, headers }: any) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAdmin(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
     const b = (body ?? {}) as any;
     const email = normalizarEmail(b.email);
     const senha = String(b.password ?? "");
@@ -383,7 +383,7 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
 
   .patch("/:id", async ({ params: { slug, id }, body, user, set, headers }: any) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAdmin(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
     const b = (body ?? {}) as any;
     const existente = await prisma.portalAccount.findFirst({ where: { id, workspaceId: ws.id, deletedAt: null } });
     if (!existente) {
@@ -423,7 +423,7 @@ export const portalAdminModule = new Elysia({ prefix: "/workspaces/:slug/portal-
 
   .delete("/:id", async ({ params: { slug, id }, user, set, headers }: any) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAdmin(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PORTAL_MANAGE);
     const existente = await prisma.portalAccount.findFirst({ where: { id, workspaceId: ws.id, deletedAt: null } });
     if (!existente) {
       set.status = 404;

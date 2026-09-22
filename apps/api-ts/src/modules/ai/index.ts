@@ -6,8 +6,8 @@ import {projetoDoChamado} from "@modules/ia-requisitos/contexto";
 import {normalizarCampoDeMelhoria} from "@modules/ia-requisitos/tipos";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit} from "@utils/audit";
 import {paginate} from "@utils/pagination";
-import {EProjectAction, requireProjectAnyAction} from "@utils/permission-checks";
-import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
+import {EProjectAction, requireProjectAnyAction, requireWorkspaceAction} from "@utils/permission-checks";
+import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import Elysia from "elysia";
 
 /** Quem pode abrir chamado no projeto — a mesma régua das rotas de IA irmãs. */
@@ -90,7 +90,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .get("/ai-providers/", async ({params: {slug}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.AI_CONFIG);
     const where = {workspaceId: ws.id, deletedAt: null};
     return paginate({
       query: async (skip, take) =>
@@ -122,7 +122,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .post("/ai-providers/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.AI_CONFIG);
     const b = body as any;
     if (!b.name || !b.provider_type) {
       set.status = 400;
@@ -163,14 +163,14 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .get("/ai-providers/:provider_id/", async ({params: {slug, provider_id}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.AI_CONFIG);
     const p = await prisma.aiProvider.findFirstOrThrow({where: {id: provider_id, workspaceId: ws.id, deletedAt: null}});
     return serializeProvider(p);
   })
 
   .patch("/ai-providers/:provider_id/", async ({params: {slug, provider_id}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.AI_CONFIG);
     const b = body as any;
     if (b.is_default) {
       await prisma.aiProvider.updateMany({where: {workspaceId: ws.id, deletedAt: null}, data: {isDefault: false}});
@@ -195,7 +195,7 @@ export const aiModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .delete("/ai-providers/:provider_id/", async ({params: {slug, provider_id}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.AI_CONFIG);
     await prisma.aiProvider.update({where: {id: provider_id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;

@@ -50,6 +50,7 @@ async function getUserWithLastWorkspace(userId: string) {
 
 async function formatWorkspace(ws: any, memberRole: number) {
   const adminMember = await prisma.workspaceMember.findFirst({
+    // permissao-estrutural: dono exibido no cabeçalho do espaço, não checagem de acesso.
     where: { workspaceId: ws.id, role: { gte: 20 }, deletedAt: null },
     include: { member: { select: { id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true } } },
   });

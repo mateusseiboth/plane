@@ -49,8 +49,11 @@ async function visaoGeral(workspaceId: string, where: any) {
       // Níveis do fork: 5 visualizador · 6 atendimento · 8 qualidade · 12 TI
       // · 15 membro · 18 gestor · 20 admin. De 6 para cima a pessoa trabalha
       // nos chamados; abaixo disso só consulta.
+      // permissao-estrutural: contagem para o painel, não checagem de acesso.
       prisma.workspaceMember.count({ where: { ...membros, role: { gte: 20 } } }),
+      // permissao-estrutural: contagem para o painel.
       prisma.workspaceMember.count({ where: { ...membros, role: { gte: 6, lt: 20 } } }),
+      // permissao-estrutural: contagem para o painel.
       prisma.workspaceMember.count({ where: { ...membros, role: { lt: 6 } } }),
       prisma.project.count({ where: { workspaceId, deletedAt: null, archivedAt: null } }),
       prisma.issue.count({ where }),

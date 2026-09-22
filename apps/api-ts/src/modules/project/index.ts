@@ -6,7 +6,7 @@ import { publishRealtime } from "@utils/realtime";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { nextSequenceId } from "@utils/sequence";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
-import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
+import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 import { notifyQualityOfIntake } from "@utils/notifications";
 import { findOrCreateIntake, findTriageState } from "@utils/intake";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
@@ -71,6 +71,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .get("/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     const wsMember = await requireWorkspaceMember(ws.id, user.id);
+    // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
     const isAdmin = wsMember.role >= 20;
 
     const where: any = { workspaceId: ws.id, deletedAt: null, archivedAt: null };
@@ -94,6 +95,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .get("/details/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     const wsMember = await requireWorkspaceMember(ws.id, user.id);
+    // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
     const isAdmin = wsMember.role >= 20;
 
     const where: any = { workspaceId: ws.id, deletedAt: null };
@@ -114,7 +116,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .post("/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.PROJECT_CREATE);
 
     const b = body as any;
     if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
@@ -189,8 +191,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .patch("/:project_id/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    const { member } = await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_SETTINGS);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -213,8 +214,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   // Trailing-slash-optional alias
   .patch("/:project_id", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    const { member } = await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_SETTINGS);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -231,8 +231,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .delete("/:project_id/", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir projetos." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_DELETE);
     await prisma.project.update({ where: { id: project_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -240,8 +239,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .delete("/:project_id", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir projetos." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_DELETE);
     await prisma.project.update({ where: { id: project_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -255,8 +253,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .post("/:project_id/archive/", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_SETTINGS);
 
     const archivedAt = new Date();
     await prisma.$transaction([
@@ -268,8 +265,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .delete("/:project_id/archive/", async ({ params: { slug, project_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.PROJECT_SETTINGS);
 
     await prisma.project.update({ where: { id: project_id }, data: { archivedAt: null } });
     set.status = 204;
@@ -299,8 +295,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .post("/:project_id/members/", async ({ params: { slug, project_id }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    const { project, member } = await requireProjectAction(ws.id, project_id, user.id, EProjectAction.MEMBER_MANAGE);
     const b = body as any;
     const members: Array<{ member_id: string; role: number }> = Array.isArray(b) ? b : b.members ?? [b];
     const results = [];
@@ -347,8 +342,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .patch("/:project_id/members/:pk/", async ({ params: { slug, project_id, pk }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    const { project, member } = await requireProjectAction(ws.id, project_id, user.id, EProjectAction.MEMBER_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = b.role;
@@ -361,8 +355,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .delete("/:project_id/members/:pk/", async ({ params: { slug, project_id, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    const { project } = await requireProjectAction(ws.id, project_id, user.id, EProjectAction.MEMBER_MANAGE);
     await prisma.projectMember.updateMany({
       where: { projectId: project.id, memberId: pk },
       data: { isActive: false, deletedAt: new Date() },
@@ -394,6 +387,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     if (m) return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
     // Check if workspace admin
     const wsAdmin = await prisma.workspaceMember.findFirst({
+      // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
       where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
     });
     if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
@@ -409,6 +403,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     if (m) return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
     // Check if workspace admin
     const wsAdmin = await prisma.workspaceMember.findFirst({
+      // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
       where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
     });
     if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
@@ -430,9 +425,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .delete("/:project_id/invitations/:pk/", async ({ params: { slug, project_id, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { project, member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
-    await prisma.projectMemberInvite.delete({ where: { id: pk } }).catch(() => {});
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.MEMBER_MANAGE);
+    await prisma.projectMemberInvite.deleteMany({ where: { id: pk, projectId: project_id, workspaceId: ws.id } });
     set.status = 204;
     return null;
   })
@@ -898,16 +892,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .post("/sync-members/", async ({ params: { slug }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const requester = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
-    });
-    if (!requester || requester.role < 20) {
-      set.status = 403;
-      return { detail: "Apenas administradores do workspace podem sincronizar membros do projeto." };
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
 
     const [wsMembers, projects] = await Promise.all([
       prisma.workspaceMember.findMany({
+        // permissao-estrutural: seleção de quem entra nos sistemas, não checagem de acesso.
         where: { workspaceId: ws.id, isActive: true, deletedAt: null, role: { gte: 10 } },
         select: { memberId: true, role: true },
       }),

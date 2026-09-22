@@ -197,6 +197,24 @@ describe("seedWorkflowRoles", () => {
     expect(after.permissions).toEqual(["issue.view"]);
   });
 
+  it("função gravada antes do catálogo recebe as ações novas uma vez, sem perder edições", async () => {
+    const atend = await prisma.workflowRole.findFirstOrThrow({where: {workspaceId, key: "atendimento"}});
+    await prisma.workflowRole.update({
+      where: {id: atend.id},
+      data: {permissions: ["issue.view"], knownActions: null as any},
+    });
+    await seedWorkflowRoles(prisma, workspaceId);
+    const depois = await prisma.workflowRole.findFirstOrThrow({where: {id: atend.id}});
+    expect(depois.permissions).toContain("chat.atender");
+    expect(depois.permissions).not.toContain("comment.create");
+    expect(depois.knownActions).toEqual(ALL_ACTIONS);
+
+    await prisma.workflowRole.update({where: {id: atend.id}, data: {permissions: ["issue.view"]}});
+    await seedWorkflowRoles(prisma, workspaceId);
+    const deNovo = await prisma.workflowRole.findFirstOrThrow({where: {id: atend.id}});
+    expect(deNovo.permissions).toEqual(["issue.view"]);
+  });
+
   it("RESEED_WORKFLOW=true devolve os defaults do código", async () => {
     process.env.RESEED_WORKFLOW = "true";
     try {

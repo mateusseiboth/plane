@@ -28,6 +28,7 @@ import { IssueLabel } from "@/components/issues/issue-detail/label";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
 type Props = {
   workspaceSlug: string;
@@ -42,6 +43,8 @@ type Props = {
 export const InboxIssueContentProperties = observer(function InboxIssueContentProperties(props: Props) {
   const { workspaceSlug, projectId, issue, issueOperations, isEditable, duplicateIssueDetails, isIntakeAccepted } =
     props;
+  // Prioridade é permissão própria (Gestor e admin; demais por concessão na tela de Funções).
+  const { canChangePriority } = useProjectRolePermissions(projectId);
 
   const router = useAppRouter();
   // store hooks
@@ -126,7 +129,7 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
                 onChange={(val) =>
                   issue?.id && issueOperations.update(workspaceSlug, projectId, issue?.id, { priority: val })
                 }
-                disabled={!isEditable}
+                disabled={!isEditable || !canChangePriority}
                 buttonVariant="border-with-text"
                 className="w-3/5 flex-grow rounded-sm px-2 hover:bg-layer-1"
                 buttonContainerClassName="w-full text-left"

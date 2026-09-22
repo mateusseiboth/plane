@@ -2,7 +2,8 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
-import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter } from "@utils/workspace";
+import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 /**
  * O restante da API responde em snake_case (é o que o frontend `TEntity`
@@ -49,7 +50,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/entities/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     const b = body as any;
     if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     // Nome de entidade é único por workspace (não há índice único no banco, então
@@ -103,7 +104,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .patch("/entities/:entity_id/", async ({ params: { slug, entity_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -119,7 +120,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .delete("/entities/:entity_id/", async ({ params: { slug, entity_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     await prisma.entity.update({ where: { id: entity_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;

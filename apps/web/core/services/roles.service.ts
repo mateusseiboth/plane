@@ -27,6 +27,35 @@ export type TWorkflowRole = {
   transitions: TRoleTransition[];
 };
 
+/** Uma ação do catálogo do backend (`GET /roles/actions/`), já com rótulo pt-BR. */
+export type TRoleAction = {
+  key: string;
+  label: string;
+  group: string;
+  scope: "project" | "workspace";
+};
+
+/** O que quem está logado pode no espaço: função + exceções por pessoa. */
+export type TMyActions = {
+  role: { id: string | null; key: string; level: number };
+  permissions: string[];
+  granted: string[];
+  revoked: string[];
+};
+
+/** Exceções por pessoa sobre a função (`/roles/members/`). */
+export type TMemberOverrides = {
+  member_id: string;
+  display_name: string;
+  email: string;
+  role_id: string | null;
+  role_key: string;
+  role_name: string;
+  role_level: number;
+  granted: string[];
+  revoked: string[];
+};
+
 export class RolesService extends APIService {
   constructor() {
     super(API_BASE_URL);
@@ -38,10 +67,30 @@ export class RolesService extends APIService {
       .catch(() => []);
   }
 
-  actions(slug: string): Promise<{ key: string }[]> {
+  actions(slug: string): Promise<TRoleAction[]> {
     return this.get(`/api/workspaces/${slug}/roles/actions/`)
-      .then((r) => (r?.data as { key: string }[]) ?? [])
+      .then((r) => (r?.data as TRoleAction[]) ?? [])
       .catch(() => []);
+  }
+
+  me(slug: string): Promise<TMyActions | undefined> {
+    return this.get(`/api/workspaces/${slug}/roles/me/`)
+      .then((r) => r?.data as TMyActions)
+      .catch(() => undefined);
+  }
+
+  members(slug: string): Promise<TMemberOverrides[]> {
+    return this.get(`/api/workspaces/${slug}/roles/members/`)
+      .then((r) => (r?.data as TMemberOverrides[]) ?? [])
+      .catch(() => []);
+  }
+
+  setMemberOverrides(
+    slug: string,
+    memberId: string,
+    data: Pick<TMemberOverrides, "granted" | "revoked">
+  ): Promise<TMemberOverrides> {
+    return this.put(`/api/workspaces/${slug}/roles/members/${memberId}/`, data).then((r) => r?.data);
   }
 
   create(slug: string, data: Partial<TWorkflowRole>): Promise<TWorkflowRole> {

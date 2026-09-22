@@ -18,6 +18,7 @@ import { authPlugin } from "@middleware/auth";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit, serializeAuditLog } from "@utils/audit";
+import {EProjectAction, hasWorkspaceAction} from "@utils/permission-checks";
 
 const CLIENT_REPORTABLE_ACTIONS = new Set<string>([
   AUDIT_ACTIONS.PRINT,
@@ -67,8 +68,8 @@ export const auditModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/audit-logs/", async ({ params: { slug }, user, query, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await requireWorkspaceMember(ws.id, user.id);
-    if (member.role < 20 && !user.isInstanceAdmin) {
+    await requireWorkspaceMember(ws.id, user.id);
+    if (!user.isInstanceAdmin && !(await hasWorkspaceAction(ws.id, user.id, EProjectAction.AUDIT_VIEW))) {
       set.status = 403;
       return { detail: "Apenas administradores podem ver os registros de auditoria." };
     }
@@ -96,8 +97,8 @@ export const auditModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/audit-logs/export/", async ({ params: { slug }, user, query, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const member = await requireWorkspaceMember(ws.id, user.id);
-    if (member.role < 20 && !user.isInstanceAdmin) {
+    await requireWorkspaceMember(ws.id, user.id);
+    if (!user.isInstanceAdmin && !(await hasWorkspaceAction(ws.id, user.id, EProjectAction.AUDIT_VIEW))) {
       set.status = 403;
       return { detail: "Apenas administradores podem exportar os registros de auditoria." };
     }

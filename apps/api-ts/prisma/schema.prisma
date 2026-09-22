@@ -185,6 +185,10 @@ model WorkspaceMember {
   // Configurable role (H1). When set, it overrides the legacy `role` Int.
   workflowRole   WorkflowRole? @relation(fields: [workflowRoleId], references: [id])
   workflowRoleId String?       @map("workflow_role_id") @db.Uuid
+  // Exceções por pessoa sobre a função (ações do catálogo). Valem no espaço e em
+  // todos os sistemas dele; a negação vence a concessão e a função.
+  grantedActions Json          @default("[]") @map("granted_actions")
+  revokedActions Json          @default("[]") @map("revoked_actions")
 
   @@unique([workspaceId, memberId, deletedAt])
   @@map("workspace_members")
@@ -1079,6 +1083,10 @@ model WorkflowRole {
   level            Int                   @default(10) // hierarchy & legacy role-Int compatibility
   isSystem         Boolean               @default(false) @map("is_system")
   permissions      Json                  @default("[]") // array of EProjectAction strings
+  // Ações do catálogo que esta função já "viu". Ação nova fora desta lista entra
+  // uma vez, se estiver no padrão da função (mergeNewActions); nulo = funções
+  // gravadas antes do catálogo (BASELINE_KNOWN_ACTIONS).
+  knownActions     Json?                 @map("known_actions")
   transitions      RoleStateTransition[]
   workspaceMembers WorkspaceMember[]
   projectMembers   ProjectMember[]

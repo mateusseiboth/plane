@@ -10,6 +10,7 @@
 import { Elysia } from "elysia";
 import prisma from "@db";
 import { resolveAttendant } from "@/auth";
+import { CHAT_ACTION, hasChatAction } from "@/permissoes";
 
 async function requireUser(headers: any, set: any) {
   const user = await resolveAttendant(headers);
@@ -20,22 +21,10 @@ async function requireUser(headers: any, set: any) {
   return user;
 }
 
-// Admin check against the shared Plane DB (workspace role >= 20). workspaceId here
-// is the Plane workspace SLUG (what the chat uses everywhere).
-async function isWorkspaceAdmin(slug: string, userId: string): Promise<boolean> {
-  try {
-    const rows = (await prisma.$queryRaw`
-      SELECT wm.role AS role
-      FROM workspace_members wm
-      JOIN workspaces w ON w.id = wm.workspace_id
-      WHERE w.slug = ${slug} AND wm.member_id::text = ${userId}
-        AND wm.deleted_at IS NULL AND wm.is_active = true
-      LIMIT 1`) as Array<{ role: number }>;
-    return Number(rows[0]?.role ?? 0) >= 20;
-  } catch {
-    return false;
-  }
-}
+// Configurar o chat é `chat.administrar` na matriz de ações do Plane (lida do
+// banco compartilhado). workspaceId aqui é o SLUG do workspace do Plane.
+const isWorkspaceAdmin = (slug: string, userId: string): Promise<boolean> =>
+  hasChatAction(slug, userId, CHAT_ACTION.ADMINISTRAR);
 
 async function requireAdmin(slug: string, headers: any, set: any) {
   const user = await requireUser(headers, set);

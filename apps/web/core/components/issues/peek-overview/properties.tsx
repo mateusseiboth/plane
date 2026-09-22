@@ -46,6 +46,7 @@ import {IssueCycleSelect} from "../issue-detail/cycle-select";
 import {IssueEntitySelect} from "../issue-detail/entity-select";
 import {IssueLabel} from "../issue-detail/label";
 import {IssueModuleSelect} from "../issue-detail/module-select";
+import {useProjectRolePermissions} from "@/hooks/use-project-role-permissions";
 
 interface IPeekOverviewProperties {
   workspaceSlug: string;
@@ -57,6 +58,8 @@ interface IPeekOverviewProperties {
 
 export const PeekOverviewProperties = observer(function PeekOverviewProperties(props: IPeekOverviewProperties) {
   const {workspaceSlug, projectId, issueId, issueOperations, disabled} = props;
+  // Prioridade é permissão própria (Gestor e admin; demais por concessão na tela de Funções).
+  const {canChangePriority} = useProjectRolePermissions(projectId);
   const {t} = useTranslation();
   // store hooks
   const {getProjectById} = useProject();
@@ -129,7 +132,7 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
           <PriorityDropdown
             value={issue?.priority}
             onChange={(val) => issueOperations.update(workspaceSlug, projectId, issueId, {priority: val})}
-            disabled={disabled}
+            disabled={disabled || !canChangePriority}
             buttonVariant="transparent-with-text"
             className="h-7.5 w-full grow rounded-sm"
             buttonContainerClassName="w-full text-left h-7.5"

@@ -10,76 +10,85 @@ import { EUserProjectRoles } from "@plane/types";
 
 // ── Granular action catalogue ─────────────────────────────────────────────────
 
-export enum EProjectAction {
+/**
+ * Espelho das ações de sistema do catálogo do backend
+ * (`apps/api-ts/src/utils/permissions.ts`, `ACTION_CATALOG`). A tela de Funções
+ * lê o catálogo COMPLETO de `GET /roles/actions/`; aqui ficam só as ações que a
+ * interface consulta por nome. Objeto `as const` + tipo (o projeto não usa enum).
+ */
+export const EProjectAction = {
   // ── Viewing ────────────────────────────────────────────────────────────────
   /** See work items / issues */
-  ISSUE_VIEW           = "issue.view",
+  ISSUE_VIEW: "issue.view",
   /** See comments on work items */
-  COMMENT_READ         = "comment.read",
+  COMMENT_READ: "comment.read",
   /** See attachments */
-  ATTACHMENT_VIEW      = "attachment.view",
+  ATTACHMENT_VIEW: "attachment.view",
 
   // ── Work-item mutations ────────────────────────────────────────────────────
   /** Create a new work item */
-  ISSUE_CREATE         = "issue.create",
+  ISSUE_CREATE: "issue.create",
   /** Edit work items you created */
-  ISSUE_EDIT_OWN       = "issue.edit.own",
+  ISSUE_EDIT_OWN: "issue.edit.own",
   /** Edit any work item (regardless of creator) */
-  ISSUE_EDIT_ALL       = "issue.edit.all",
+  ISSUE_EDIT_ALL: "issue.edit.all",
   /** Delete work items you created */
-  ISSUE_DELETE_OWN     = "issue.delete.own",
+  ISSUE_DELETE_OWN: "issue.delete.own",
   /** Delete any work item */
-  ISSUE_DELETE_ALL     = "issue.delete.all",
+  ISSUE_DELETE_ALL: "issue.delete.all",
   /** Assign yourself to a work item */
-  ISSUE_ASSIGN_SELF    = "issue.assign.self",
+  ISSUE_ASSIGN_SELF: "issue.assign.self",
   /** Assign other users to a work item */
-  ISSUE_ASSIGN_OTHERS  = "issue.assign.others",
+  ISSUE_ASSIGN_OTHERS: "issue.assign.others",
+  /** Change a work item's priority (legado: permissão por usuário) */
+  ISSUE_PRIORITY: "issue.priority",
 
   // ── State transitions (each step of the workflow) ──────────────────────────
   /** Triagem → Avaliando (quality review begins) */
-  STATE_MOVE_UNRESTRICTED       = "state.unrestricted",
+  STATE_MOVE_UNRESTRICTED: "state.unrestricted",
 
   // ── Comments ───────────────────────────────────────────────────────────────
   /** Add a comment */
-  COMMENT_CREATE       = "comment.create",
+  COMMENT_CREATE: "comment.create",
   /** Edit your own comments */
-  COMMENT_EDIT_OWN     = "comment.edit.own",
+  COMMENT_EDIT_OWN: "comment.edit.own",
   /** Delete your own comments */
-  COMMENT_DELETE_OWN   = "comment.delete.own",
+  COMMENT_DELETE_OWN: "comment.delete.own",
   /** Delete anyone's comments */
-  COMMENT_DELETE_ALL   = "comment.delete.all",
+  COMMENT_DELETE_ALL: "comment.delete.all",
 
   // ── Attachments ────────────────────────────────────────────────────────────
   /** Upload attachments to work items */
-  ATTACHMENT_UPLOAD    = "attachment.upload",
+  ATTACHMENT_UPLOAD: "attachment.upload",
   /** Remove your own attachments */
-  ATTACHMENT_DELETE_OWN = "attachment.delete.own",
+  ATTACHMENT_DELETE_OWN: "attachment.delete.own",
   /** Remove any attachment */
-  ATTACHMENT_DELETE_ALL = "attachment.delete.all",
+  ATTACHMENT_DELETE_ALL: "attachment.delete.all",
 
   // ── Intake ─────────────────────────────────────────────────────────────────
   /** Submit an intake / open a chamado */
-  INTAKE_CREATE        = "intake.create",
+  INTAKE_CREATE: "intake.create",
   /** Accept, decline, duplicate or snooze intake issues */
-  INTAKE_REVIEW        = "intake.review",
+  INTAKE_REVIEW: "intake.review",
 
   // ── Cycles / Modules / Labels ──────────────────────────────────────────────
-  CYCLE_MANAGE         = "cycle.manage",
-  MODULE_MANAGE        = "module.manage",
-  LABEL_MANAGE         = "label.manage",
+  CYCLE_MANAGE: "cycle.manage",
+  MODULE_MANAGE: "module.manage",
+  LABEL_MANAGE: "label.manage",
 
   // ── Views / Pages ──────────────────────────────────────────────────────────
-  VIEW_CREATE          = "view.create",
-  PAGE_CREATE          = "page.create",
+  VIEW_CREATE: "view.create",
+  PAGE_CREATE: "page.create",
 
   // ── Project administration ─────────────────────────────────────────────────
   /** Add / remove / change roles of project members */
-  MEMBER_MANAGE        = "member.manage",
+  MEMBER_MANAGE: "member.manage",
   /** Create, edit or delete project states */
-  STATE_MANAGE         = "state.manage",
+  STATE_MANAGE: "state.manage",
   /** Rename, archive or delete the project and its settings */
-  PROJECT_SETTINGS     = "project.settings",
-}
+  PROJECT_SETTINGS: "project.settings",
+} as const;
+export type EProjectAction = (typeof EProjectAction)[keyof typeof EProjectAction];
 
 // ── Role → allowed actions ────────────────────────────────────────────────────
 
@@ -138,6 +147,8 @@ export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
     EProjectAction.LABEL_MANAGE,
     EProjectAction.VIEW_CREATE,
     EProjectAction.PAGE_CREATE,
+    EProjectAction.STATE_MANAGE,
+    EProjectAction.PROJECT_SETTINGS,
   ],
 
   // ── TI (12): IT team — executes work from A Fazer through completion ────────
@@ -167,10 +178,13 @@ export const ROLE_PERMISSIONS: Record<EUserProjectRoles, EProjectAction[]> = {
     EProjectAction.VIEW_CREATE,
     EProjectAction.PAGE_CREATE,
     EProjectAction.MEMBER_MANAGE,
+    EProjectAction.STATE_MANAGE,
+    EProjectAction.PROJECT_SETTINGS,
+    EProjectAction.ISSUE_PRIORITY,
   ],
 
   // ── ADMIN (20): full access ────────────────────────────────────────────────
-  [EUserProjectRoles.ADMIN]: Object.values(EProjectAction) as EProjectAction[],
+  [EUserProjectRoles.ADMIN]: Object.values(EProjectAction),
 };
 
 // ── Core check helpers ────────────────────────────────────────────────────────
@@ -265,6 +279,7 @@ export const PROJECT_ACTION_LABELS: Record<EProjectAction, string> = {
   [EProjectAction.ISSUE_DELETE_ALL]:            "Excluir qualquer chamado",
   [EProjectAction.ISSUE_ASSIGN_SELF]:           "Atribuir-se a um chamado",
   [EProjectAction.ISSUE_ASSIGN_OTHERS]:         "Atribuir outros usuários",
+  [EProjectAction.ISSUE_PRIORITY]:              "Alterar a prioridade do chamado",
   [EProjectAction.STATE_MOVE_UNRESTRICTED]:     "Mover para qualquer etapa",
   [EProjectAction.COMMENT_CREATE]:              "Comentar",
   [EProjectAction.COMMENT_EDIT_OWN]:            "Editar os próprios comentários",
@@ -311,6 +326,7 @@ export const PROJECT_ACTION_GROUPS: { label: string; actions: EProjectAction[] }
       EProjectAction.ISSUE_ASSIGN_SELF,
       EProjectAction.ISSUE_ASSIGN_OTHERS,
       EProjectAction.STATE_MOVE_UNRESTRICTED,
+      EProjectAction.ISSUE_PRIORITY,
     ],
   },
   {

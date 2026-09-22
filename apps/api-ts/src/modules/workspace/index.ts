@@ -4,15 +4,16 @@ import {serializarCiclos} from "@modules/cycle";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
 import {resolverOrdenacao} from "@utils/issue-order";
 import {paginate} from "@utils/pagination";
-import {sincronizarFuncaoNosProjetos} from "@utils/permissions";
+import {seedWorkflowRoles, syncFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {buscarChamados, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
 import {dataLocal} from "@utils/prazo";
-import {getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter} from "@utils/workspace";
+import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 type QuickLinkRecord = {
   id: string;
@@ -203,6 +204,7 @@ function serializeRecentProject(project: any) {
 
 async function workspaceDto(ws: any, memberRole?: number) {
   const adminMember = await prisma.workspaceMember.findFirst({
+    // permissao-estrutural: dono exibido no cabeçalho do espaço, não checagem de acesso.
     where: {workspaceId: ws.id, role: {gte: 20}, deletedAt: null},
     include: {member: {select: {id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true}}},
   });
@@ -314,6 +316,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       await tx.workspaceMember.create({
         data: {workspaceId: w.id, memberId: user.id, role: 20, isActive: true},
       });
+      // O espaço nasce com as funções gravadas: sem elas a tela de Funções abre
+      // vazia e as regras de etapa caem nos padrões em memória.
+      await seedWorkflowRoles(tx, w.id);
       return w;
     });
     set.status = 201;
@@ -330,11 +335,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .patch("/:slug/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const m = await requireWorkspaceWriter(ws.id, user.id);
-    if (m.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem atualizar as configurações do workspace."};
-    }
+    const m = await requireWorkspaceMember(ws.id, user.id);    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -349,11 +350,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .delete("/:slug/", async ({params: {slug}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const m = await requireWorkspaceWriter(ws.id, user.id);
-    if (m.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem excluir workspaces."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     await prisma.workspace.update({where: {id: ws.id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
@@ -395,11 +392,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .post("/:slug/invitations/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const m = await requireWorkspaceWriter(ws.id, user.id);
-    if (m.role < 15) {
-      set.status = 403;
-      return {detail: "Apenas membros podem convidar outras pessoas."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
 
     const emails: Array<{email: string; role: number}> = (body as any).emails ?? [];
     const invites = await prisma.workspaceMemberInvite.createMany({
@@ -416,8 +409,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .delete("/:slug/invitations/:pk/", async ({params: {slug, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
-    await prisma.workspaceMemberInvite.delete({where: {id: pk}}).catch(() => {});
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
+    await prisma.workspaceMemberInvite.deleteMany({where: {id: pk, workspaceId: ws.id}});
     set.status = 204;
     return null;
   })
@@ -772,7 +765,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // GIN indexes, then refreshes planner statistics. Requires workspace admin.
   .post("/:slug/search/reindex/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const result = await ensureSearchIndexes(true);
     return result;
   })
@@ -795,7 +788,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/invitations/:pk/", async ({params: {slug, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const invite = await prisma.workspaceMemberInvite.findUnique({where: {id: pk}});
+    const invite = await prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
     if (!invite) {
       set.status = 404;
       return {detail: "Não encontrado."};
@@ -805,16 +798,17 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .patch("/:slug/invitations/:pk/", async ({params: {slug, pk}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = b.role;
-    return prisma.workspaceMemberInvite.update({where: {id: pk}, data});
+    await prisma.workspaceMemberInvite.updateMany({where: {id: pk, workspaceId: ws.id}, data});
+    return prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
   })
 
   .post("/:slug/invitations/:pk/join/", async ({params: {slug, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const invite = await prisma.workspaceMemberInvite.findUnique({where: {id: pk}});
+    const invite = await prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
     if (!invite) {
       set.status = 400;
       return {detail: "Convite inválido."};
@@ -884,11 +878,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .patch("/:slug/members/:pk/", async ({params: {slug, pk}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const caller = await requireWorkspaceWriter(ws.id, user.id);
-    if (caller.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem alterar funções de membros."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = parseInt(b.role, 10);
@@ -906,7 +896,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           where: {workspaceId: ws.id, memberId: pk},
           data: {workflowRoleId: (await tx.workflowRole.findFirst({where: {workspaceId: ws.id, level: data.role, deletedAt: null}}))?.id ?? null},
         });
-        await sincronizarFuncaoNosProjetos(tx as any, ws.id, pk, data.role);
+        await syncFuncaoNosProjetos(tx as any, ws.id, pk, data.role);
       }
       return atualizado;
     });
@@ -914,11 +904,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .delete("/:slug/members/:pk/", async ({params: {slug, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const caller = await requireWorkspaceWriter(ws.id, user.id);
-    if (caller.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem remover membros."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     await prisma.workspaceMember.updateMany({
       where: {workspaceId: ws.id, memberId: pk},
       data: {isActive: false, deletedAt: new Date()},
@@ -932,11 +918,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // echoes the password back so the admin can hand it to the user.
   .post("/:slug/members/:pk/reset-password/", async ({params: {slug, pk}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const caller = await requireWorkspaceWriter(ws.id, user.id);
-    if (caller.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem redefinir senhas."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     const target = await prisma.workspaceMember.findFirst({
       where: {workspaceId: ws.id, memberId: pk, deletedAt: null},
       select: {member: {select: {id: true, isInstanceAdmin: true}}},
@@ -980,11 +962,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // returned — the GET only reports whether one is set.
   .get("/:slug/storage-config/", async ({params: {slug}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const caller = await requireWorkspaceMember(ws.id, user.id);
-    if (caller.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem ver a configuração de armazenamento."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const instance = await prisma.instance.findFirst({select: {configurations: true}});
     const cfg = ((instance?.configurations as any)?.s3 ?? {}) as S3Config;
     const isConfigured = Boolean(cfg.endpoint && cfg.bucket && cfg.access_key && cfg.secret_key);
@@ -1001,11 +979,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .patch("/:slug/storage-config/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const caller = await requireWorkspaceMember(ws.id, user.id);
-    if (caller.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem alterar a configuração de armazenamento."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const b = (body as any) ?? {};
     const instance = await prisma.instance.findFirst();
     if (!instance) {
@@ -1055,11 +1029,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   .patch("/:slug/print-settings/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const caller = await requireWorkspaceMember(ws.id, user.id);
-    if (caller.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem alterar as configurações de impressão."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const existing = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY}});
     const next = mergePrintSettings(existing?.value, body);
     await prisma.workspaceSetting.upsert({
@@ -1086,11 +1056,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   })
   .patch("/:slug/chat-config/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const caller = await requireWorkspaceMember(ws.id, user.id);
-    if (caller.role < 20) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem alterar a configuração do chat."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.CHAT_ADMINISTRAR);
     const b = (body as any) ?? {};
     const instance = await prisma.instance.findFirst();
     if (!instance) {
@@ -1197,11 +1163,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // Update SLA (and color) by label name across every project in the workspace.
   .put("/:slug/label-sla/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const m = await requireWorkspaceMember(ws.id, user.id);
-    if (m.role < 18) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem configurar SLA de etiquetas."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.LABEL_SLA);
     const rows: any[] = (body as any)?.labels ?? [];
     for (const r of rows) {
       if (!r?.name) continue;

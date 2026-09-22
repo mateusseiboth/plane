@@ -2,6 +2,7 @@ import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
+import {EProjectAction, requireProjectAction} from "@utils/permission-checks";
 
 function fmtEstimate(e: any) {
   return {
@@ -51,8 +52,7 @@ export const estimateModule = new Elysia()
 
   .post("/workspaces/:slug/projects/:project_id/estimates/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ESTIMATE_MANAGE);
     const b = body as any;
     // Nome é obrigatório, como nas demais entidades — antes um POST sem nome
     // criava silenciosamente uma estimativa chamada "Estimate".
@@ -99,8 +99,7 @@ export const estimateModule = new Elysia()
 
   .patch("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/", async ({ params: { slug, project_id, estimate_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ESTIMATE_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -128,8 +127,7 @@ export const estimateModule = new Elysia()
 
   .delete("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/", async ({ params: { slug, project_id, estimate_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ESTIMATE_MANAGE);
     await prisma.estimate.update({ where: { id: estimate_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -138,8 +136,7 @@ export const estimateModule = new Elysia()
   // ── Estimate points ───────────────────────────────────────────────────────────
   .post("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/estimate-points/", async ({ params: { slug, project_id, estimate_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ESTIMATE_MANAGE);
     const b = body as any;
     const point = await prisma.estimatePoint.create({
       data: { estimateId: estimate_id, workspaceId: ws.id, projectId: project_id, key: b.key ?? 0, value: String(b.value ?? b.key ?? 0), description: b.description ?? "" },
@@ -150,8 +147,7 @@ export const estimateModule = new Elysia()
 
   .patch("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/estimate-points/:point_id/", async ({ params: { slug, project_id, estimate_id, point_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ESTIMATE_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.key !== undefined) data.key = b.key;
@@ -163,8 +159,7 @@ export const estimateModule = new Elysia()
 
   .delete("/workspaces/:slug/projects/:project_id/estimates/:estimate_id/estimate-points/:point_id/", async ({ params: { slug, project_id, estimate_id, point_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ESTIMATE_MANAGE);
     await prisma.estimatePoint.delete({ where: { id: point_id } });
     set.status = 204;
     return null;

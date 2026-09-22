@@ -10,7 +10,7 @@ import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@prisma/client";
 import {Pool} from "pg";
 import {CHAVE_CONFIG_IA, CONFIG_IA_PADRAO} from "../src/modules/ia-requisitos/configuracao";
-import {seedWorkflowRoles, sincronizarFuncaoNosProjetos} from "../src/utils/permissions";
+import {seedWorkflowRoles, syncFuncaoNosProjetos} from "../src/utils/permissions";
 import {ensureProjectDefaults} from "../src/utils/project-defaults";
 
 const pool = new Pool({connectionString: process.env.DATABASE_URL});
@@ -352,7 +352,7 @@ async function main() {
     GROUP BY pm.member_id, wm.role
   `;
   for (const {member_id, role} of desalinhados) {
-    await sincronizarFuncaoNosProjetos(prisma, workspace.id, member_id, role);
+    await syncFuncaoNosProjetos(prisma, workspace.id, member_id, role);
     const funcao = await prisma.workflowRole.findFirst({where: {workspaceId: workspace.id, level: role, deletedAt: null}});
     if (funcao) {
       await prisma.workspaceMember.updateMany({

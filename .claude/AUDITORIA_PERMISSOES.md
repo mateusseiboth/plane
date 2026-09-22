@@ -418,3 +418,15 @@ que **o backend nunca conheceu**, usada como fallback no `use-project-role-permi
 matriz exibida na tela de permissões por projeto. Tudo removido em favor da configuração real.
 
 Cobertura: `apps/api-ts/tests/contract/state-visibility.test.ts`.
+
+---
+
+## 8. Permissões v2 (22/09/2026)
+
+As checagens por número de papel (`role < 15`, `requireWorkspaceWriter`, `requireRoleAdmin`,
+`isAdmin` inline, `ehAtendente`/`podeGerenciar` no chat) foram trocadas pela matriz de ações com
+exceções por pessoa. Estado atual, varredura completa, como adicionar ação e pendências:
+**`.claude/permissoes-v2.md`**. As pendências P1 (Qualidade x ciclos) e P5 (configuração aberta a
+Membro) seguem como estavam; P2 foi reduzida (o backend é a fonte única, o pacote de constantes é
+só fallback); P3 continua (rotas duplicadas de membros), mas as duas usam `member.manage`; P6: páginas
+e visitas passaram para a matriz (`page.manage.all`, `visit.manage`).

@@ -17,7 +17,7 @@ import { startTimers } from "@/timers";
 import { requestRating, handleRatingReply, submitRating, randomDog } from "@/rating";
 import { attendantName } from "@/users";
 import { ratingsReport, slaReport } from "@/reports";
-import { ehAdmin, listarAtendentes, papelNoEspaco, podeGerenciar } from "@/papeis";
+import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
 import { semAvaliacao, serializeSession } from "@/sessoes";
 import {
   register,
@@ -96,7 +96,7 @@ async function closeSession(sessionId: string, closedById?: string | null) {
 
 /** Transfere atendimento e lê relatórios. `slug` é o slug do workspace do Plane. */
 async function isWorkspaceManager(slug: string, userId: string): Promise<boolean> {
-  return podeGerenciar(await papelNoEspaco(slug, userId));
+  return hasChatAction(slug, userId, CHAT_ACTION.GERENCIAR);
 }
 
 // ── WebSocket dispatch ──────────────────────────────────────────────────────────
@@ -263,6 +263,12 @@ const app = new Elysia()
       set.status = 401;
       return { detail: "Não autenticado." };
     }
+    // Só conecta como atendente quem atende neste espaço. Antes qualquer conta do
+    // Plane pedia ticket para qualquer slug e entrava na sala do atendimento.
+    if (!(await hasChatAction(slug, user.id, CHAT_ACTION.ATENDER))) {
+      set.status = 403;
+      return { detail: "Você não atende no chat deste espaço de trabalho." };
+    }
     const ticket = await signWsTicket(user.id, slug);
     return { ticket };
   })
@@ -381,7 +387,7 @@ const app = new Elysia()
     });
     // Staff transcript (shared via copy-link): show deleted originals + history.
     const serializada = serializeSession(session);
-    const podeVerAvaliacao = ehAdmin(viewer ? await papelNoEspaco(session.workspaceId, viewer.id) : 0);
+    const podeVerAvaliacao = viewer ? await hasChatAction(session.workspaceId, viewer.id, CHAT_ACTION.ADMINISTRAR) : false;
     return {
       session: podeVerAvaliacao ? serializada : semAvaliacao(serializada),
       results: messages.map((m) => serializeMessage(m, { full: true })),
@@ -401,7 +407,7 @@ const app = new Elysia()
     //   ONLY workspace admins see the bot + queue and unassigned chats.
     //   Everyone else (managers included) sees ONLY chats assigned to them and never
     //   anything still in "bot" or "queued" — e sem a avaliação que o cliente deu.
-    const isAdmin = ehAdmin(await papelNoEspaco(slug, user.id));
+    const isAdmin = await hasChatAction(slug, user.id, CHAT_ACTION.ADMINISTRAR);
 
     const requested = status ? status.split(",") : null;
     // A aba de encerrados mostra só o DIA CORRENTE: com o histórico do SAC são
@@ -586,7 +592,7 @@ const app = new Elysia()
       set.status = 401;
       return { detail: "Não autenticado." };
     }
-    const members = await listarAtendentes(slug);
+    const members = await listAtendentes(slug);
     const online = new Set(connectedUserIds(slug));
     return {
       results: members.map((m) => ({ user_id: m.id, name: m.name ?? "Atendente", online: online.has(m.id) })),
@@ -880,7 +886,7 @@ console.log(`💬 chat-backend listening on :${PORT}`);
 /** A avaliação do cliente é leitura de gestão: só o administrador do espaço. */
 async function ehAdminDaConversa(session: { workspaceId: string }, headers: any): Promise<boolean> {
   const user = await resolveAttendant(headers);
-  return user ? ehAdmin(await papelNoEspaco(session.workspaceId, user.id)) : false;
+  return user ? hasChatAction(session.workspaceId, user.id, CHAT_ACTION.ADMINISTRAR) : false;
 }
 
 // ── auth helper for history endpoint ──

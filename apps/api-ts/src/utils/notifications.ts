@@ -23,6 +23,7 @@ export async function notifyQualityOfIntake(opts: {
 
   const receivers = members
     .filter((m) => m.memberId !== opts.actorId)
+    // permissao-estrutural: escolhe QUEM é avisado (o setor Qualidade), não quem pode agir.
     .filter((m) => m.workflowRole?.key === "qualidade" || m.workflowRole?.level === 8 || m.role === 8)
     .map((m) => m.memberId);
 

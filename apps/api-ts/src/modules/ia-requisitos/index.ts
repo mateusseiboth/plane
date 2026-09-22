@@ -48,15 +48,12 @@ import {
   type RespostaIa,
 } from "@modules/ia-requisitos/tipos";
 import {AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit} from "@utils/audit";
-import {EProjectAction, requireProjectAnyAction} from "@utils/permission-checks";
+import {EProjectAction, requireProjectAnyAction, requireWorkspaceAction} from "@utils/permission-checks";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import Elysia from "elysia";
 
 /** Quem pode abrir chamado no projeto — nada além disso é exigido. */
 const PODE_ABRIR_CHAMADO = [EProjectAction.ISSUE_CREATE, EProjectAction.INTAKE_CREATE];
-
-/** Nível de administrador do espaço de trabalho, como no resto das configurações. */
-const NIVEL_ADMIN = 20;
 
 /**
  * Tetos do texto que sai da aplicação. Generosos — a análise precisa do chamado
@@ -331,11 +328,7 @@ export const iaRequisitosModule = new Elysia({prefix: "/workspaces/:slug"})
 
   .patch("/ia/configuracao/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    const membro = await requireWorkspaceMember(ws.id, user.id);
-    if (membro.role < NIVEL_ADMIN) {
-      set.status = 403;
-      return {detail: "Apenas administradores podem alterar a configuração da IA."};
-    }
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
 
     const gravado = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: CHAVE_CONFIG_IA}});
     const proxima = mesclarConfigIa(gravado?.value, body);

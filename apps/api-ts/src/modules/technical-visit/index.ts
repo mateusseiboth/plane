@@ -6,6 +6,7 @@ import {paginate} from "@utils/pagination";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import {getVisitStatusLabel, VISIT_STATUS} from "@modules/technical-visit/visit-status";
 import Elysia from "elysia";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 function isoDate(d: any) {
   return d ? (d instanceof Date ? d.toISOString() : String(d)) : null;
@@ -134,7 +135,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
 
   .post("/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.VISIT_MANAGE);
     // Accept both the current snake_case names and the Django-legacy aliases
     // (`technician`, `technician_2`, `entity`) still sent by older clients.
     const {issue_ids = [], contact_ids, ...b} = body as any;
@@ -261,7 +262,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
 
   .patch("/:visit_id/", async ({params: {slug, visit_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.VISIT_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.status !== undefined) {
@@ -299,7 +300,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
 
   .delete("/:visit_id/", async ({params: {slug, visit_id}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.VISIT_MANAGE);
     await prisma.technicalVisit.update({where: {id: visit_id}, data: {deletedAt: new Date()}});
     set.status = 204;
     return null;
@@ -308,7 +309,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
   // ── Link a work item to a visit ───────────────────────────────────────────────
   .post("/:visit_id/issues/", async ({params: {slug, visit_id}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.VISIT_MANAGE);
     const b = body as any;
     try {
       const link = await prisma.technicalVisitIssue.create({
@@ -324,7 +325,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
 
   .delete("/:visit_id/issues/:issue_id/", async ({params: {slug, visit_id, issue_id}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.VISIT_MANAGE);
     const link = await prisma.technicalVisitIssue.findFirst({
       where: {visitId: visit_id, issueId: issue_id, deletedAt: null},
     });
