@@ -25,3 +25,5 @@ apps/chat-backend/media/
 apps/chat-backend/generated/
 docs/manual/img/
 *.log
+# Worktrees dos agentes paralelos (git worktree): nunca vão para o servidor.
+.claude/worktrees/
