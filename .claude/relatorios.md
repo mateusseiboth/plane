@@ -38,10 +38,15 @@ não o id; o grupo vem de `findGrupoDaEtapa` (etapas do espaço, pelo nome).
 | encerrado | última entrada em etapa encerrada, só se o chamado CONTINUA encerrado; sem histórico, `completed_at` |
 | devolução | cada volta "Em Teste" → "Em Desenvolvimento" |
 
-**Armadilha: `completed_at` só é gravado pelo importador do SAC.** Mover o card para Concluído
-na tela não grava. Por isso encerramento e balanço usam o motor, e não `completed_at`. Os
-relatórios antigos que calculam "tempo médio de resolução" por `completed_at` só enxergam
-chamados migrados (pendência abaixo).
+**`completed_at` é gravado pelo banco.** Gatilho `issues_sync_completed_at` (migração
+`20260923090000_data_de_conclusao`, helper `@utils/data-de-conclusao`): entrou numa etapa do
+grupo `completed`, grava agora; saiu, limpa; data enviada junto na gravação (importador) vale.
+Mesma regra do Plane original: **cancelado não é conclusão**. Vale para todo caminho (PATCH,
+edição em massa, triagem, solicitação, criação, rascunho, importação). O backfill
+(`backfill_issue_completed_at()`, `scripts/backfill-completed-at.ts`, roda na migração) usa a
+última entrada na etapa atual pelo histórico, ou `updated_at` sem histórico, e limpa quem estava
+reaberto. O motor de marcos continua tratando cancelado como encerrado (é o "encerrado" do SAC).
+A edição em massa passou a gravar a mudança de etapa no histórico.
 
 O "tempo em cada etapa" (`time-in-state`) lê o mesmo `findTransicoesDeEtapa`.
 
@@ -113,9 +118,9 @@ Relatórios estendidos:
 
 ## 6. Pendências
 
-1. Relatórios antigos (`tickets-overview`, `by-system`, `by-entity`, `by-priority`, `sla`,
-   `executive`, `trends` concluídos) calculam resolução por `completed_at`, que a tela não grava.
-   Caminhos: gravar `completed_at` no PATCH de etapa ou migrar esses cálculos para o motor.
+1. (Resolvido) `completed_at` agora é gravado pelo gatilho; as médias dos relatórios antigos
+   contam os chamados concluídos pela tela. Chamado sem histórico recebe o `updated_at` no
+   backfill, que é aproximação.
 2. A matriz sistema × tipo e a visão por sistema carregam os chamados do filtro em memória
    (sem `_count` de relação). Para bases muito grandes, trocar por `groupBy` por etapa+etiqueta.
 3. Painel: "fora do horário" do SAC e ícone por sistema não foram trazidos.

@@ -155,4 +155,5 @@ Detalhes, regras dos marcos e decisões: `.claude/relatorios.md`.
 - [x] Impressão do chamado com número anual, encerramento e histórico.
 - [x] Horas analíticas por analista, com os lançamentos (`time-tracking.by_analyst`).
 - [x] Painel de TV do TI e da Qualidade (`/:workspace/painel/:setor`, `tv-panel`): SSE e alerta de urgente.
-- [ ] Resolução média dos relatórios antigos usa `completed_at`, que a tela não grava (ver `.claude/relatorios.md` §6).
+- [x] `completed_at` gravado por gatilho em todo caminho de mudança de etapa, com backfill pelo histórico
+      (as médias de resolução dos relatórios antigos passam a contar os chamados concluídos pela tela).
