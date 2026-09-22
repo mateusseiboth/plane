@@ -4,6 +4,7 @@ import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { publishRealtime } from "@utils/realtime";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
+import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
 import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
 import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 import { createSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
@@ -521,7 +522,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         next_page_results: false, prev_page_results: false,
         results: issues.map((i: any) => ({
           id: i.id, status: -2, snoozed_till: null, duplicate_to: undefined, source: "IN_APP", created_by: i.createdById,
-          issue: {id: i.id, name: i.name, state_id: i.stateId, priority: i.priority, project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId, description_html: i.descriptionHtml ?? "<p></p>", created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString()},
+          issue: {id: i.id, name: i.name, state_id: i.stateId, priority: i.priority, project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId, ticket_number: formatNumeroDoChamado(i), description_html: i.descriptionHtml ?? "<p></p>", created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString()},
         })),
       };
     }
@@ -546,6 +547,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
           issue: {
             id: i.id, name: i.name, state_id: i.stateId, priority: i.priority,
             project_id: i.projectId, workspace_id: i.workspaceId, sequence_id: i.sequenceId,
+            ticket_number: formatNumeroDoChamado(i),
             description_html: i.descriptionHtml ?? "<p></p>",
             created_at: i.createdAt?.toISOString(), updated_at: i.updatedAt?.toISOString(),
           },
@@ -609,6 +611,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         id: issue.id, name: issue.name, state_id: issue.stateId,
         priority: issue.priority, project_id: issue.projectId,
         workspace_id: issue.workspaceId, sequence_id: issue.sequenceId,
+        ticket_number: formatNumeroDoChamado(issue),
         description_html: issue.descriptionHtml ?? "<p></p>",
         created_at: issue.createdAt?.toISOString(), updated_at: issue.updatedAt?.toISOString(),
       },

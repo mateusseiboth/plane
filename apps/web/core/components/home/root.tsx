@@ -16,6 +16,7 @@ import { useUserProfile } from "@/hooks/store/user";
 import { HomePeekOverviewsRoot } from "@/plane-web/components/home";
 import { TourRoot } from "@/plane-web/components/onboarding/tour/root";
 // local imports
+import { MuralHomeSection } from "@/components/mural/home-section";
 import { DashboardWidgets } from "./home-dashboard-widgets";
 
 export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
@@ -57,6 +58,7 @@ export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
             largura útil, com um teto que evita linhas longas demais. */}
         <ContentWrapper className="scrollbar-hide gap-6 bg-surface-1 px-page-x">
           <div className="mx-auto w-full max-w-[1440px] pb-10">
+            {workspaceSlug && <MuralHomeSection workspaceSlug={workspaceSlug.toString()} />}
             <DashboardWidgets />
           </div>
         </ContentWrapper>

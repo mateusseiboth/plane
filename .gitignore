@@ -127,3 +127,6 @@ old_intranet/
 .deploy/
 # Prisma client gerado por app (evita colisao no store compartilhado do pnpm)
 apps/chat-backend/generated/
+
+# Worktrees dos agentes paralelos
+.claude/worktrees/

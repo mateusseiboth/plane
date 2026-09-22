@@ -14,7 +14,8 @@ import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import type { IEmailCheckData } from "@plane/types";
 import { Input, Spinner } from "@plane/ui";
-import { cn, checkEmailValidity } from "@plane/utils";
+import { cn } from "@plane/utils";
+import { isLoginIdentifierValid } from "@/helpers/login-identifier.helper";
 // helpers
 type TAuthEmailForm = {
   defaultEmail: string;
@@ -29,7 +30,7 @@ export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailFo
   // plane hooks
   const { t } = useTranslation();
   const emailError = useMemo(
-    () => (email && !checkEmailValidity(email) ? { email: "auth.common.email.errors.invalid" } : undefined),
+    () => (email && !isLoginIdentifierValid(email) ? { email: "auth.common.email.errors.invalid" } : undefined),
     [email]
   );
 
@@ -37,7 +38,7 @@ export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailFo
     event.preventDefault();
     setIsSubmitting(true);
     const payload: IEmailCheckData = {
-      email: email,
+      email: email.trim(),
     };
     await onSubmit(payload);
     setIsSubmitting(false);
@@ -52,7 +53,7 @@ export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailFo
     <form onSubmit={handleFormSubmit} className="space-y-4">
       <div className="space-y-1">
         <label htmlFor="email" className="text-13 font-medium text-tertiary">
-          {t("auth.common.email.label")}
+          {t("auth.common.email_or_username.label")}
         </label>
         <div
           className={cn(
@@ -69,10 +70,10 @@ export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailFo
           <Input
             id="email"
             name="email"
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder={t("auth.common.email.placeholder")}
+            placeholder={t("auth.common.email_or_username.placeholder")}
             className={`h-10 w-full border-0 disable-autofill-style placeholder:text-placeholder autofill:bg-danger-primary focus:bg-none active:bg-transparent`}
             autoComplete="off"
             autoFocus

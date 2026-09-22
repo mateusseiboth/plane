@@ -9,6 +9,7 @@
 
 import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
+import { markChamadoNaoLido } from "@utils/chamado-nao-lido";
 import { notifyQualityOfIntake } from "@utils/notifications";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
@@ -120,6 +121,7 @@ export async function createSolicitacao(dados: NovaSolicitacaoDoTime) {
     data: Array.from(assigneeSet).map((uid) => ({ issueId: issue.id, assigneeId: uid, workspaceId, projectId })),
     skipDuplicates: true,
   });
+  await markChamadoNaoLido({ issueId: issue.id, actorId: user.id });
   await notifyQualityOfIntake({ workspaceId, projectId, issueId: issue.id, actorId: user.id, issueName: issue.name });
   publishRealtime(workspaceId, {
     entity: "intake",

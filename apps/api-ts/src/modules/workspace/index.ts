@@ -1,4 +1,6 @@
 import prisma from "@db";
+import {revokeUserSessions} from "@utils/session";
+import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit} from "@utils/audit";
 import {authPlugin} from "@middleware/auth";
 import {serializarCiclos} from "@modules/cycle";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
@@ -6,6 +8,7 @@ import {resolverOrdenacao} from "@utils/issue-order";
 import {paginate} from "@utils/pagination";
 import {seedWorkflowRoles, syncFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
+import {whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {buscarChamados, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
@@ -675,6 +678,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           project__identifier: c.project_identifier,
           workspace__slug: ws.slug,
           legacy_ticket_number: c.legacy_ticket_number,
+          ticket_number: c.ticket_number,
           is_intake: c.state_group === "triage",
           type_id: null,
         })),
@@ -740,6 +744,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           type: "issue",
           sequence_id: r.sequence_id,
           legacy_ticket_number: r.legacy_ticket_number ?? null,
+          ticket_number: r.ticket_number ?? null,
           priority: r.priority,
           state: r.state_name ? {name: r.state_name, group: r.state_group} : null,
           project: toProject(r),
@@ -750,6 +755,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           type: "intake",
           sequence_id: r.sequence_id,
           legacy_ticket_number: r.legacy_ticket_number ?? null,
+          ticket_number: r.ticket_number ?? null,
           project: toProject(r),
         })),
         projects: projects.map((p: any) => ({...p, type: "project"})),
@@ -806,7 +812,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
   })
 
-  .post("/:slug/invitations/:pk/join/", async ({params: {slug, pk}, user, set}) => {
+  .post("/:slug/invitations/:pk/join/", async ({params: {slug, pk}, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     const invite = await prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
     if (!invite) {
@@ -828,6 +834,15 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           data: {workspaceId: ws.id, memberId: user.id, role: invite.role, isActive: true},
         });
       }
+    });
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.MEMBER,
+      entityId: user.id,
+      action: AUDIT_ACTIONS.CREATE,
+      actor: user,
+      headers,
+      metadata: {role: invite.role, por_convite: true},
     });
     return {detail: "Você entrou no workspace."};
   })
@@ -876,12 +891,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return m;
   })
 
-  .patch("/:slug/members/:pk/", async ({params: {slug, pk}, body, user, set}) => {
+  .patch("/:slug/members/:pk/", async ({params: {slug, pk}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = parseInt(b.role, 10);
+    const antes = await prisma.workspaceMember.findFirst({where: {workspaceId: ws.id, memberId: pk, deletedAt: null}});
+    if (data.role !== undefined && antes && antes.role !== data.role) {
+      recordAudit({
+        workspaceId: ws.id,
+        entity: AUDIT_ENTITIES.MEMBER,
+        entityId: pk,
+        action: AUDIT_ACTIONS.PERMISSION_CHANGE,
+        actor: user,
+        headers,
+        changes: auditDiff(antes, data, ["role"]),
+      });
+    }
 
     // Quem manda no que a pessoa pode arrastar no quadro é a função do
     // PROJETO, não a do espaço de trabalho. Sem propagar, o administrador
@@ -902,13 +929,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     });
   })
 
-  .delete("/:slug/members/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .delete("/:slug/members/:pk/", async ({params: {slug, pk}, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     await prisma.workspaceMember.updateMany({
       where: {workspaceId: ws.id, memberId: pk},
       data: {isActive: false, deletedAt: new Date()},
     });
+    recordAudit({workspaceId: ws.id, entity: AUDIT_ENTITIES.MEMBER, entityId: pk, action: AUDIT_ACTIONS.DELETE, actor: user, headers});
     set.status = 204;
     return null;
   })
@@ -916,12 +944,12 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // Admin-only: reset another member's password to a known value. Clears
   // isPasswordAutoset so the seeder won't overwrite it on the next restart, and
   // echoes the password back so the admin can hand it to the user.
-  .post("/:slug/members/:pk/reset-password/", async ({params: {slug, pk}, body, user, set}) => {
+  .post("/:slug/members/:pk/reset-password/", async ({params: {slug, pk}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     const target = await prisma.workspaceMember.findFirst({
       where: {workspaceId: ws.id, memberId: pk, deletedAt: null},
-      select: {member: {select: {id: true, isInstanceAdmin: true}}},
+      select: {member: {select: {id: true, isInstanceAdmin: true, frozenAt: true}}},
     });
     if (!target?.member) {
       set.status = 404;
@@ -940,18 +968,35 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       return {detail: "A senha precisa ter ao menos 4 caracteres."};
     }
     const hash = await Bun.password.hash(newPassword, {algorithm: "bcrypt", cost: 12});
-    await prisma.user.update({
-      where: {id: pk},
-      data: {password: hash, isPasswordAutoset: false, isActive: true},
+    // Senha nova derruba as sessões abertas; usuário congelado continua congelado.
+    await revokeUserSessions(pk, {password: hash, isPasswordAutoset: false, isActive: !target.member.frozenAt});
+    // A senha nunca entra na trilha: só o fato e quem fez.
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: pk,
+      action: AUDIT_ACTIONS.PASSWORD_CHANGE,
+      actor: user,
+      headers,
+      metadata: {por_admin: true},
     });
     return {detail: "Senha redefinida com sucesso.", password: newPassword};
   })
 
-  .post("/:slug/members/leave/", async ({params: {slug}, user, set}) => {
+  .post("/:slug/members/leave/", async ({params: {slug}, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await prisma.workspaceMember.updateMany({
       where: {workspaceId: ws.id, memberId: user.id},
       data: {isActive: false, deletedAt: new Date()},
+    });
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.MEMBER,
+      entityId: user.id,
+      action: AUDIT_ACTIONS.DELETE,
+      actor: user,
+      headers,
+      metadata: {saiu: true},
     });
     set.status = 204;
     return null;
@@ -2183,6 +2228,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
     if (query.entity_id) where.entityId = query.entity_id;
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.unread === "true") Object.assign(where, whereNaoLidoPor(user.id));
 
     // Parse the frontend `filters` JSON param (+ loose params) and apply it.
     const filters = normalizeFilters(query as Record<string, unknown>);
@@ -2276,7 +2322,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           groupWhere.stateId = restringirAoGrupo(where.stateId, stateIds.map((s) => s.id));
         }
         const [groupIssues, groupCount] = await Promise.all([
-          prisma.issue.findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage}),
+          prisma.issue
+            .findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage})
+            .then((chamados) => withNaoLido(user.id, chamados)),
           prisma.issue.count({where: groupWhere}),
         ]);
         results[gv ?? "none"] = {
@@ -2295,7 +2343,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
       count: () => prisma.issue.count({where}),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeIssue),
+      transform: async (items) => (await withNaoLido(user.id, items)).map(serializeIssue),
     });
   })
 
@@ -2319,6 +2367,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
 
     if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.unread === "true") Object.assign(where, whereNaoLidoPor(user.id));
 
     const filters = normalizeFilters(query as Record<string, unknown>);
     await applyIssueFilters(where, filters, {workspaceId: ws.id});
@@ -2332,7 +2381,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
       count: () => prisma.issue.count({where}),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeIssue),
+      transform: async (items) => (await withNaoLido(user.id, items)).map(serializeIssue),
     });
   })
 

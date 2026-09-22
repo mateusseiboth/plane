@@ -40,6 +40,8 @@ import {
 import { clientPage } from "@/client-page";
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
+import { ligacoesModule } from "@/ligacoes/routes";
+import { parseChannelFilter } from "@/canais";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
 
@@ -409,9 +411,11 @@ const app = new Elysia()
           ],
         }
       : {};
+    // `?channel=phone` (ligações) ou `?channel=whatsapp,native` (conversas).
+    const filtroDeCanal = parseChannelFilter((query as any).channel);
     let whereFilter: any;
     if (isAdmin) {
-      whereFilter = { workspaceId: slug, ...(requested ? { status: { in: requested } } : {}), ...recorteDeHoje, ...recorteDaBusca };
+      whereFilter = { workspaceId: slug, ...(requested ? { status: { in: requested } } : {}), ...recorteDeHoje, ...recorteDaBusca, ...filtroDeCanal };
     } else {
       // Own chats only; bot/queued are never visible to non-admins.
       const allowed = (requested ?? []).filter((s) => s !== "bot" && s !== "queued");
@@ -421,6 +425,7 @@ const app = new Elysia()
         status: requested ? { in: allowed } : { notIn: ["bot", "queued"] },
         ...recorteDeHoje,
         ...recorteDaBusca,
+        ...filtroDeCanal,
       };
     }
 
@@ -670,6 +675,9 @@ const app = new Elysia()
 
   // ── Config & registries (bot, menu, flows, queues, schedules, contacts, provider) ──
   .use(configModule)
+
+  // ── Ligações do FreePBX (entrada do PBX, atendente, telefonia, relatório) ──
+  .use(ligacoesModule)
 
   // ── WebSocket hub ──
   .ws("/ws", {

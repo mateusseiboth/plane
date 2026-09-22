@@ -20,6 +20,7 @@ import { MembersSettingsLoader } from "@/components/ui/loader/settings/members";
 import { useMember } from "@/hooks/store/use-member";
 // local imports
 import { WorkspaceInvitationsListItem } from "./invitations-list-item";
+import { FrozenMembersList } from "./frozen-members-list";
 import { WorkspaceMembersListItem } from "./members-list-item";
 
 export const WorkspaceMembersList = observer(function WorkspaceMembersList(props: {
@@ -78,6 +79,7 @@ export const WorkspaceMembersList = observer(function WorkspaceMembersList(props
           <h4 className="mt-16 text-center text-body-xs-regular text-placeholder">{t("no_matching_members")}</h4>
         )}
       </div>
+      {isAdmin && workspaceSlug && <FrozenMembersList workspaceSlug={workspaceSlug.toString()} />}
       {isAdmin && searchedInvitationsIds && searchedInvitationsIds.length > 0 && (
         <Collapsible
           isOpen={showPendingInvites}

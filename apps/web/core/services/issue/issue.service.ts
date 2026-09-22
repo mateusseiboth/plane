@@ -126,6 +126,15 @@ export class IssueService extends APIService {
       });
   }
 
+  /** Marca o chamado como lido por quem pergunta. A rota existe só em /issues/. */
+  async markAsRead(workspaceSlug: string, projectId: string, issueId: string): Promise<void> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/read/`)
+      .then(() => undefined)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async retrieveIssues(workspaceSlug: string, projectId: string, issueIds: string[]): Promise<TIssue[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/${this.serviceType}/list/`, {
       params: { issues: issueIds.join(",") },

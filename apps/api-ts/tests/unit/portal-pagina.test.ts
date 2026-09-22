@@ -23,6 +23,14 @@ describe("página do portal", () => {
     expect(contem('id="senha"')).toBe(true);
   });
 
+  it("oferece esqueci minha senha e a tela de criar a senha nova", () => {
+    expect(contem('id="link-esqueci"')).toBe(true);
+    expect(contem('id="tela-esqueci"')).toBe(true);
+    expect(contem('id="tela-redefinir"')).toBe(true);
+    expect(contem("/esqueci-senha")).toBe(true);
+    expect(contem("/redefinir-senha")).toBe(true);
+  });
+
   it("abre a solicitação escolhendo o sistema", () => {
     expect(contem('id="sistema"')).toBe(true);
     expect(contem('id="titulo"')).toBe(true);

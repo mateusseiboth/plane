@@ -1,7 +1,8 @@
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
+import { buildProfileDto, readProfileData } from "@modules/user/profile";
 
 function userDto(u: any, lastWorkspaceId?: string | null) {
   return {
@@ -20,7 +21,7 @@ function userDto(u: any, lastWorkspaceId?: string | null) {
     is_email_verified: u.isEmailVerified ?? true,
     is_password_autoset: u.isPasswordAutoset ?? false,
     is_tour_completed: true,
-    mobile_number: null,
+    ...buildProfileDto(u),
     last_workspace_id: lastWorkspaceId ?? null,
     user_timezone: u.userTimezone ?? "UTC",
     last_login_medium: u.lastLoginMedium ?? "email",
@@ -52,7 +53,19 @@ async function formatWorkspace(ws: any, memberRole: number) {
   const adminMember = await prisma.workspaceMember.findFirst({
     // permissao-estrutural: dono exibido no cabeçalho do espaço, não checagem de acesso.
     where: { workspaceId: ws.id, role: { gte: 20 }, deletedAt: null },
-    include: { member: { select: { id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true } } },
+    include: {
+      member: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          displayName: true,
+          avatar: true,
+          avatarUrl: true,
+        },
+      },
+    },
   });
   const [totalMembers, totalProjects] = await Promise.all([
     prisma.workspaceMember.count({ where: { workspaceId: ws.id, isActive: true, deletedAt: null } }),
@@ -99,7 +112,7 @@ export const userModule = new Elysia({ prefix: "/users" })
 
   .patch("/me/", async ({ user, body }) => {
     const b = body as any;
-    const data: any = {};
+    const data: any = readProfileData(b ?? {});
     if (b.first_name !== undefined) data.firstName = b.first_name;
     if (b.last_name !== undefined) data.lastName = b.last_name;
     if (b.display_name !== undefined) data.displayName = b.display_name;
@@ -196,7 +209,7 @@ export const userModule = new Elysia({ prefix: "/users" })
       orderBy: { createdAt: "desc" },
       select: { workspaceId: true },
     });
-    const meta = (fresh as any)?.metadata ?? {} as any;
+    const meta = (fresh as any)?.metadata ?? ({} as any);
     return {
       id: user.id,
       user: user.id,
@@ -230,7 +243,7 @@ export const userModule = new Elysia({ prefix: "/users" })
 
   .patch("/me/profile/", async ({ user, body }) => {
     const b = body as any;
-    const data: any = {};
+    const data: any = readProfileData(b ?? {});
     if (b.first_name !== undefined) data.firstName = b.first_name;
     if (b.last_name !== undefined) data.lastName = b.last_name;
     if (b.display_name !== undefined) data.displayName = b.display_name;
@@ -294,9 +307,15 @@ export const userModule = new Elysia({ prefix: "/users" })
 
   .get("/me/accounts/", async () => [])
 
-  .get("/me/accounts/:pk/", async ({ set }) => { set.status = 404; return { detail: "Não encontrado." }; })
+  .get("/me/accounts/:pk/", async ({ set }) => {
+    set.status = 404;
+    return { detail: "Não encontrado." };
+  })
 
-  .delete("/me/accounts/:pk/", async ({ set }) => { set.status = 404; return { detail: "Não encontrado." }; })
+  .delete("/me/accounts/:pk/", async ({ set }) => {
+    set.status = 404;
+    return { detail: "Não encontrado." };
+  })
 
   // ── Instance admin check ──────────────────────────────────────────────────────
 
@@ -330,9 +349,9 @@ export const userModule = new Elysia({ prefix: "/users" })
     return { detail: "Onboarding concluído com sucesso." };
   })
 
-  .post("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marcado como concluído." }))
+  .post("/me/tour-completed/", async () => ({ detail: "Tour marcado como concluído." }))
 
-  .patch("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marcado como concluído." }))
+  .patch("/me/tour-completed/", async () => ({ detail: "Tour marcado como concluído." }))
 
   // ── Update onboarding step ────────────────────────────────────────────────────
 
@@ -353,8 +372,7 @@ export const userModule = new Elysia({ prefix: "/users" })
   .get("/me/activities/", async ({ user, query }) => {
     const where = { actorId: user.id };
     return paginate({
-      query: (skip, take) =>
-        prisma.issueActivity.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
+      query: (skip, take) => prisma.issueActivity.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
       count: () => prisma.issueActivity.count({ where }),
       cursor: query.cursor as string | undefined,
     });
@@ -368,7 +386,7 @@ export const userModule = new Elysia({ prefix: "/users" })
       include: { workspace: true },
       orderBy: { createdAt: "desc" },
     });
-    return Promise.all(memberships.map(m => formatWorkspace(m.workspace, m.role)));
+    return Promise.all(memberships.map((m) => formatWorkspace(m.workspace, m.role)));
   })
 
   // ── Workspace invitations ─────────────────────────────────────────────────────
@@ -379,7 +397,7 @@ export const userModule = new Elysia({ prefix: "/users" })
       include: { workspace: { select: { id: true, name: true, slug: true, logo: true } } },
       orderBy: { createdAt: "desc" },
     });
-    return invites.map(i => ({
+    return invites.map((i) => ({
       id: i.id,
       email: i.email,
       token: i.token,
@@ -399,10 +417,16 @@ export const userModule = new Elysia({ prefix: "/users" })
       where: { token: b.token },
       include: { workspace: true },
     });
-    if (!invite) { set.status = 400; return { detail: "Token de convite inválido." }; }
-    if (invite.email !== user.email) { set.status = 400; return { detail: "O convite não é para este e-mail." }; }
+    if (!invite) {
+      set.status = 400;
+      return { detail: "Token de convite inválido." };
+    }
+    if (invite.email !== user.email) {
+      set.status = 400;
+      return { detail: "O convite não é para este e-mail." };
+    }
 
-    await prisma.$transaction(async tx => {
+    await prisma.$transaction(async (tx) => {
       await tx.workspaceMemberInvite.update({ where: { id: invite.id }, data: { accepted: true } });
       const existing = await tx.workspaceMember.findFirst({
         where: { workspaceId: invite.workspaceId, memberId: user.id, deletedAt: null },
@@ -423,7 +447,8 @@ export const userModule = new Elysia({ prefix: "/users" })
     if (!ws) return { issues: [], recent: [] };
     const recentIssues = await prisma.issue.findMany({
       where: {
-        workspaceId: ws.id, deletedAt: null,
+        workspaceId: ws.id,
+        deletedAt: null,
         assignees: { some: { assigneeId: user.id, deletedAt: null } },
       },
       include: { state: { select: { name: true, group: true, color: true } } },
@@ -442,7 +467,7 @@ export const userModule = new Elysia({ prefix: "/users" })
       where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
       select: { projectId: true, role: true },
     });
-    return Object.fromEntries(memberships.map(m => [m.projectId, m.role]));
+    return Object.fromEntries(memberships.map((m) => [m.projectId, m.role]));
   })
 
   // ── Last visited workspace ────────────────────────────────────────────────────

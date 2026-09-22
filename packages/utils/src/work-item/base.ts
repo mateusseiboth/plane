@@ -278,6 +278,7 @@ export const getComputedDisplayFilters = (
     sub_group_by: filters?.sub_group_by || null,
     sub_issue: filters?.sub_issue || false,
     show_empty_groups: filters?.show_empty_groups || false,
+    unread: filters?.unread || false,
   };
 };
 
@@ -353,3 +354,18 @@ export const getIssuePriorityFilters = (priorityKey: TIssuePriorities): TIssueFi
   if (currentIssuePriority) return currentIssuePriority;
   return undefined;
 };
+
+type TComNumerosDoChamado = {
+  ticket_number?: string | null;
+  legacy_ticket_number?: string | null;
+};
+
+/**
+ * Números do chamado para exibir: o anual ("12-2026") e, só quando for outro
+ * número, o legado do SAC. Chamado migrado com legado N-AAAA recebe o mesmo
+ * número como anual, e mostrar os dois seria repetir o número.
+ */
+export const getNumerosDoChamado = ({ ticket_number, legacy_ticket_number }: TComNumerosDoChamado) => ({
+  numero: ticket_number || null,
+  legado: legacy_ticket_number && legacy_ticket_number !== ticket_number ? legacy_ticket_number : null,
+});

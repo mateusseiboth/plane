@@ -135,8 +135,14 @@ export const coreRoutes: RouteConfigEntry[] = [
         route(":workspaceSlug/visits", "./(all)/[workspaceSlug]/(projects)/visits/page.tsx"),
         route(":workspaceSlug/visits/:visitId", "./(all)/[workspaceSlug]/(projects)/visits/[visitId]/page.tsx"),
 
+        // Mural de recados (a seção da home abre daqui o histórico)
+        route(":workspaceSlug/mural", "./(all)/[workspaceSlug]/(projects)/mural/page.tsx"),
+
         // Contatos (responsáveis das entidades)
         route(":workspaceSlug/contatos", "./(all)/[workspaceSlug]/(projects)/contatos/page.tsx"),
+
+        // Telefones (agenda dos colegas)
+        route(":workspaceSlug/telefones", "./(all)/[workspaceSlug]/(projects)/telefones/page.tsx"),
 
         // Chat / Atendimento (plugin)
         route(":workspaceSlug/chat", "./(all)/[workspaceSlug]/(projects)/chat/page.tsx"),
@@ -344,6 +350,10 @@ export const coreRoutes: RouteConfigEntry[] = [
           route(
             ":workspaceSlug/settings/storage",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/storage/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/settings/email",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/email/page.tsx"
           ),
           route(":workspaceSlug/settings/chat", "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/chat/page.tsx"),
           route(

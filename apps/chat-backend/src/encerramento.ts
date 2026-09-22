@@ -125,6 +125,18 @@ async function saveResponsavel(
   return responsavel;
 }
 
+/**
+ * Só o cadastro de quem estava do outro lado, sem classificar nem encerrar: a
+ * conclusão da ligação (src/ligacoes) encerra por conta própria.
+ */
+export async function saveContatoDoAtendimento(
+  sessionId: string,
+  cadastro: CadastroDoEncerramento,
+  atendenteId?: string | null
+): Promise<Responsavel | null> {
+  return saveResponsavel(await readSessao(sessionId), cadastro, atendenteId);
+}
+
 /** A entidade existe NESTE espaço? Id de outro espaço não entra no registro. */
 async function hasEntidade(slug: string, entityId: string): Promise<boolean> {
   const workspaceId = await workspaceIdDoSlug(slug);

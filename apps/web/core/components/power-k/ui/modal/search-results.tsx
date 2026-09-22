@@ -67,6 +67,11 @@ export const PowerKModalSearchResults = observer(function PowerKModalSearchResul
                 value = `${value}-${item.legacy_ticket_number}`;
               }
 
+              // Número anual ("12-2026"): mesma razão da chave composta acima.
+              if ("ticket_number" in item && item.ticket_number) {
+                value = `${value}-${item.ticket_number}`;
+              }
+
               return (
                 <PowerKModalCommandItem
                   key={item.id}

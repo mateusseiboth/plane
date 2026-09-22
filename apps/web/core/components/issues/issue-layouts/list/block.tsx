@@ -22,6 +22,7 @@ import { cn, generateWorkItemLink } from "@plane/utils";
 // components
 import { MultipleSelectEntityAction } from "@/components/core/multiple-select";
 import { IssueProperties } from "@/components/issues/issue-layouts/properties";
+import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
 // helpers
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
@@ -282,13 +283,15 @@ export const IssueBlock = observer(function IssueBlock(props: IssueBlockProps) {
               disabled={isCurrentBlockDragging}
               renderByDefault={false}
             >
-              <p className="cursor-pointer truncate text-body-xs-medium text-primary">{issue.name}</p>
+              <p
+                className={cn("cursor-pointer truncate text-body-xs-medium text-primary", {
+                  "font-bold": issue.is_unread,
+                })}
+              >
+                {issue.name}
+              </p>
             </Tooltip>
-            {issue.legacy_ticket_number && (
-              <span className="ml-1.5 shrink-0 rounded bg-amber-100 px-1 py-0.5 text-10 font-mono font-semibold text-amber-800 ring-1 ring-amber-300">
-                #{issue.legacy_ticket_number}
-              </span>
-            )}
+            <NumerosDoChamado issue={issue} className="ml-1.5" />
             {isEpic && displayProperties && (
               <WithDisplayPropertiesHOC
                 displayProperties={displayProperties}

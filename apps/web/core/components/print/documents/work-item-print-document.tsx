@@ -8,7 +8,7 @@ import { observer } from "mobx-react";
 // plane imports
 import { ISSUE_PRIORITIES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
-import { renderFormattedDate, renderFormattedDateTime } from "@plane/utils";
+import { getNumerosDoChamado, renderFormattedDate, renderFormattedDateTime } from "@plane/utils";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useLabel } from "@/hooks/store/use-label";
@@ -45,6 +45,7 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
 
   const identifier = `${getProjectIdentifierById(issue.project_id) ?? ""}-${issue.sequence_id}`;
   const priority = ISSUE_PRIORITIES.find((item) => item.key === issue.priority);
+  const numeros = getNumerosDoChamado(issue);
   const commentIds = getCommentsByIssueId(issueId) ?? [];
   const attachmentIds = getAttachmentsByIssueId(issueId) ?? [];
 
@@ -64,6 +65,8 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
       title={`${identifier} — ${issue.name}`}
       subtitle={getProjectById(issue.project_id)?.name}
       meta={[
+        { label: "Número", value: numeros.numero ?? undefined },
+        { label: "Número antigo", value: numeros.legado ?? undefined },
         { label: "Estado", value: getStateById(issue.state_id)?.name },
         { label: "Prioridade", value: priority ? t(priority.titleTranslationKey) : undefined },
       ]}

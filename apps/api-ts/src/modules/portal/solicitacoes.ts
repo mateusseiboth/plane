@@ -19,7 +19,7 @@ import { notifyQualityOfIntake } from "@utils/notifications";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
 import type { ContaDoPortal } from "@modules/portal/conta";
-import { ehUuid } from "@modules/portal/conta";
+import { isUuid } from "@modules/portal/conta";
 import { anexoDoChamado } from "@modules/portal/anexos";
 import { RESPOSTA_INCLUDE, serializarResposta } from "@modules/portal/resposta";
 import { situacaoDaSolicitacao } from "@modules/portal/situacao";
@@ -174,7 +174,7 @@ export async function chamadoDaConta(
   conta: ContaDoPortal,
   issueId: string
 ): Promise<{ issueId: string; projectId: string; workspaceId: string } | null> {
-  if (!ehUuid(issueId)) return null;
+  if (!isUuid(issueId)) return null;
   const pedido = await prisma.portalRequest.findFirst({
     where: { accountId: conta.id, issueId, issue: { deletedAt: null } },
     select: { issue: { select: { id: true, projectId: true, workspaceId: true } } },
@@ -185,7 +185,7 @@ export async function chamadoDaConta(
 
 /** Uma solicitação da conta. `null` quando não é dela — e não 403, que confirmaria a existência. */
 export async function solicitacaoDaConta(conta: ContaDoPortal, issueId: string) {
-  if (!ehUuid(issueId)) return null;
+  if (!isUuid(issueId)) return null;
   const pedido = await prisma.portalRequest.findFirst({
     where: { accountId: conta.id, issueId, issue: { deletedAt: null } },
     include: SOLICITACAO_INCLUDE,

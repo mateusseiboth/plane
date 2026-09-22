@@ -45,6 +45,10 @@ import { ChatDashboard } from "@/components/chat/chat-dashboard";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
 import {ModalDeEncerramento, type DadosDoEncerramento} from "@/components/chat/modal-de-encerramento";
 import {AcoesDaConversa, FalhaDeEnvio} from "@/components/chat/acoes-da-conversa";
+import { FiltroDeCanal, MarcaDeLigacao } from "@/components/chat/ligacoes/filtro-de-canal";
+import { HistoricoDoCliente } from "@/components/chat/ligacoes/historico-do-cliente";
+import { isLigacao } from "@/components/chat/ligacoes/ligacao-helpers";
+import { PainelDaLigacao } from "@/components/chat/ligacoes/painel-da-ligacao";
 
 const chatService = new ChatService();
 
@@ -457,6 +461,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [search, setSearch] = useState("");
   // Which status tab is selected (always one — clear visual indication of where you are).
   const [listFilter, setListFilter] = useState<string>("active");
+  // Tipo de atendimento: "" (todos), "whatsapp,native" (conversas) ou "phone" (ligações).
+  const [canal, setCanal] = useState("");
   // Sessions freshly assigned to me that I haven't opened yet (new-arrival highlight).
   const [newAssigned, setNewAssigned] = useState<Set<string>>(new Set());
   // The open client is typing right now (auto-clears after a few seconds).
@@ -501,7 +507,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     const { results } = await api.listSessions(
       slug,
       soEncerrados ? "closed" : undefined,
-      soEncerrados ? searchRef.current : undefined
+      soEncerrados ? searchRef.current : undefined,
+      canalRef.current
     );
     setSessions(results);
   }, [api, slug]);
@@ -531,6 +538,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const activeRef = useRef<string | null>(null);
   const listFilterRef = useRef<string>("active");
   const searchRef = useRef<string>("");
+  const canalRef = useRef<string>("");
   const refreshSessionsRef = useRef<typeof refreshSessions>();
   const sessionsRef = useRef<ChatSession[]>([]);
   useEffect(() => {
@@ -548,9 +556,10 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   useEffect(() => {
     listFilterRef.current = listFilter;
     searchRef.current = search;
+    canalRef.current = canal;
     const t = setTimeout(() => void refreshSessionsRef.current?.(), 300);
     return () => clearTimeout(t);
-  }, [listFilter, search]);
+  }, [listFilter, search, canal]);
 
   // Ask once for desktop-notification permission so inbound messages can alert
   // the attendant even when this tab is in the background.
@@ -1078,6 +1087,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
           </div>
         </div>
 
+        <FiltroDeCanal value={canal} onChange={setCanal} />
+
         {/* Stats row — click a tab to filter; click again to clear (back to abertos). */}
         <div className="flex border-b border-subtle">
           {[
@@ -1146,6 +1157,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                       WA
                     </span>
                   )}
+                  {isLigacao(s) && <MarcaDeLigacao />}
                   {s.project_identifier && (
                     <span className="rounded bg-indigo-100 px-1 py-0.5 text-9 font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
                       {s.project_identifier}
@@ -1244,7 +1256,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5 ml-3">
-                {!SEM_ASSUMIR.includes(activeSession.status) && (
+                {!SEM_ASSUMIR.includes(activeSession.status) && !isLigacao(activeSession) && (
                   <button
                     onClick={assign}
                     className="rounded-md bg-primary px-3 py-1.5 text-12 font-medium text-on-color hover:bg-primary/90 transition-colors"
@@ -1259,14 +1271,17 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 >
                   Link
                 </button>
-                <AcoesDaConversa
-                  sessao={activeSession}
-                  slug={slug}
-                  apiUrl={config.api_url}
-                  projetos={projetos}
-                  chatUrl={chatUrl}
-                  onAtualizada={replaceSession}
-                />
+                {/* Ligação tem o próprio painel, com chamado (W06). */}
+                {!isLigacao(activeSession) && (
+                  <AcoesDaConversa
+                    sessao={activeSession}
+                    slug={slug}
+                    apiUrl={config.api_url}
+                    projetos={projetos}
+                    chatUrl={chatUrl}
+                    onAtualizada={replaceSession}
+                  />
+                )}
                 {isManager && activeSession.status !== "closed" && activeSession.status !== "bot" && (
                   <button
                     onClick={() => setShowTransfer(true)}
@@ -1277,7 +1292,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                     Transferir
                   </button>
                 )}
-                {(activeSession.status === "active" || activeSession.status === "paused") && (
+                {(activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
                   <button
                     onClick={closeChat}
                     className="flex items-center gap-1 rounded-md border border-red-300 px-2.5 py-1.5 text-12 text-red-600 hover:bg-red-50 transition-colors dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
@@ -1290,8 +1305,19 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               </div>
             </header>
 
+            {/* Ligação do PBX: dados, assumir, concluir e abrir chamado ficam no painel. */}
+            {isLigacao(activeSession) && (
+              <PainelDaLigacao
+                slug={slug}
+                apiUrl={config.api_url}
+                session={activeSession}
+                projetos={(joinedProjectIds ?? []).map((pid) => ({value: pid, label: getProjectById(pid)?.name ?? pid}))}
+                onChanged={() => void refreshSessions()}
+              />
+            )}
+
             {/* Queued banner — prominent call to action */}
-            {activeSession.status === "queued" && (
+            {activeSession.status === "queued" && !isLigacao(activeSession) && (
               <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-900/20">
                 <div className="flex items-center gap-2 text-13 text-amber-800 dark:text-amber-400">
                   <span className="font-semibold">Aguardando atendente.</span>
@@ -1539,7 +1565,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
 
             {/* Input */}
-            {activeSession.status !== "closed" && (
+            {activeSession.status !== "closed" && !isLigacao(activeSession) && (
               <footer className="flex items-end gap-2 border-t border-subtle bg-surface-1 p-3">
                 <input
                   ref={fileRef}
@@ -1694,11 +1720,18 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
           )}
 
+          <HistoricoDoCliente
+            slug={slug}
+            apiUrl={config.api_url}
+            sessionId={activeSession.id}
+            versao={`${activeSession.status}:${activeSession.last_message_at ?? ""}`}
+          />
+
           {/* Quick actions */}
           <div className="p-4">
             <div className="mb-2 text-11 font-semibold uppercase tracking-wider text-tertiary">Ações rápidas</div>
             <div className="flex flex-col gap-1.5">
-              {!SEM_ASSUMIR.includes(activeSession.status) && (
+              {!SEM_ASSUMIR.includes(activeSession.status) && !isLigacao(activeSession) && (
                 <button
                   onClick={assign}
                   className="flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-13 text-secondary hover:bg-layer-1 transition-colors text-left"
@@ -1714,7 +1747,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 Copiar link do chat
               </button>
-              {activeSession.status === "active" && (
+              {(activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
                 <button
                   onClick={closeChat}
                   className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-13 text-red-600 hover:bg-red-50 transition-colors text-left dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"

@@ -17,7 +17,49 @@ export type TEntity = {
   email?: string | null;
   phone?: string | null;
   cnpj?: string | null;
+  /** With a third-party CNPJ, the responsible entity's CNPJ. Read-only. */
+  effective_cnpj?: string | null;
+  street?: string | null;
+  address_number?: string | null;
+  complement?: string | null;
+  district?: string | null;
+  /** Digits only. */
+  zip_code?: string | null;
+  fax?: string | null;
+  state_registration?: string | null;
+  website?: string | null;
+  /** Sales representative: a workspace member. */
+  representative_id?: string | null;
+  representative_name?: string | null;
+  /** Responsible entity; its CNPJ is used when `uses_third_party_cnpj`. */
+  related_entity_id?: string | null;
+  related_entity_name?: string | null;
+  uses_third_party_cnpj?: boolean;
   is_active?: boolean;
+  is_frozen?: boolean;
+  frozen_at?: string | null;
+  frozen_reason?: string | null;
+};
+
+/** One freeze/unfreeze entry (entity or member). */
+export type TFreezeEvent = {
+  id: string;
+  action: "freeze" | "unfreeze";
+  reason: string | null;
+  actor_id: string | null;
+  actor_name: string | null;
+  created_at: string;
+};
+
+/** Frozen workspace member, as listed on the members settings screen. */
+export type TFrozenMember = {
+  id: string;
+  email: string;
+  display_name: string;
+  is_active: boolean;
+  is_frozen: boolean;
+  frozen_at: string | null;
+  frozen_reason: string | null;
 };
 
 /**
@@ -46,6 +88,10 @@ export type TEntityContact = {
   is_active?: boolean;
   receive_messages?: boolean;
   notes?: string | null;
+  /** Systems (projects) the person looks after at the client. */
+  project_ids?: string[];
+  /** Read convenience sent by the server; send `project_ids` instead. */
+  projects?: { id: string; name: string; identifier: string }[];
   created_at?: string;
   updated_at?: string;
 };

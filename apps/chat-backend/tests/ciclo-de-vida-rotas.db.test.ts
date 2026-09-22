@@ -25,6 +25,7 @@ const slug = uniqueWorkspace("wsrotas");
 let zapi: FakeZapi;
 let token: string;
 let estranho: string;
+let estranhoId: string;
 let entidade: string;
 
 type Modulo = { handle: (r: Request) => Promise<Response> };
@@ -59,7 +60,16 @@ beforeAll(async () => {
   const user = await resolveTestAttendant();
   await ensureAtendenteNoEspaco(slug, user.id);
   token = await signPlaneToken(user.id, user.email);
-  estranho = await signPlaneToken(crypto.randomUUID(), "estranho@teste.local");
+  // Conta real fora do espaço: um id que não existe em `users` agora dá 401 (sessão revogada).
+  const email = `estranho-${slug}@teste.local`;
+  const [fora] = (await prisma.$queryRaw`
+    INSERT INTO users (id, created_at, updated_at, email, username, display_name, first_name, last_name, password,
+                       is_active, is_email_verified, is_password_autoset, is_instance_admin, is_superuser, is_staff)
+    VALUES (gen_random_uuid(), now(), now(), ${email}, ${email}, 'Estranho', 'Estranho', '', 'x',
+            true, true, false, false, false, false)
+    RETURNING id::text AS id`) as Array<{ id: string }>;
+  estranhoId = fora!.id;
+  estranho = await signPlaneToken(estranhoId, email);
   const [ws] = (await prisma.$queryRaw`SELECT id::text AS id FROM workspaces WHERE slug = ${slug}`) as Array<{
     id: string;
   }>;
@@ -70,6 +80,7 @@ afterAll(async () => {
   zapi?.stop();
   await cleanWorkspace(slug);
   await limparWorkspacePlane(slug);
+  await prisma.$executeRaw`DELETE FROM users WHERE id::text = ${estranhoId}`;
 });
 
 describe("encerrar pela API", () => {

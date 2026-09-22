@@ -11,6 +11,7 @@
  */
 
 import prisma from "@db";
+import { WITHOUT_PHONE } from "@/canais";
 import { CAUSA_DO_FIM } from "@/ciclo-de-vida/abandono";
 import { closeAtendimento } from "@/ciclo-de-vida/encerrar";
 import {
@@ -24,8 +25,6 @@ import {
 import { persistAndBroadcast } from "@/messages";
 import { deliverOutbound } from "@/outbound";
 import { runInSequence } from "@/sequencia";
-
-const CANAIS_SEM_INATIVIDADE = ["phone"];
 
 const PERGUNTA_DO_ROBO = "Você ainda precisa de ajuda?";
 const PERGUNTA_EM_ATENDIMENTO =
@@ -108,7 +107,7 @@ export async function runInatividade(agora = Date.now(), workspaceId?: string) {
   const sessoes = await prisma.chatSession.findMany({
     where: {
       status: { in: Object.keys(VERIFICACAO_POR_STATUS) },
-      channel: { notIn: CANAIS_SEM_INATIVIDADE },
+      ...WITHOUT_PHONE,
       ...(workspaceId ? { workspaceId } : {}),
     },
     select: SELECT,

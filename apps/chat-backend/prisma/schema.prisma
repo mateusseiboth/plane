@@ -103,8 +103,10 @@ model ChatSession {
   issueLabel         String?       @map("issue_label")
   messages           ChatMessage[]
   readStates         ChatReadState[]
+  ligacao            ChatLigacao?
 
   @@index([workspaceId, status])
+  @@index([workspaceId, channel])
   @@index([assignedAttendantId])
   @@index([clientBrowserId])
   @@index([clientPhone])
@@ -306,4 +308,62 @@ model ProtocolCounter {
 
   @@unique([workspaceId, day])
   @@map("chat_protocol_counters")
+}
+
+// ── Ligações (FreePBX) ────────────────────────────────────────────────────────
+// A ligação é uma ChatSession com channel = "phone"; aqui fica o que é só dela:
+// os dados do PBX e o que o atendente registrou ao concluir. Ver
+// .claude/ligacoes-freepbx.md.
+model ChatLigacao {
+  id              String      @id @default(uuid()) @db.Uuid
+  sessionId       String      @unique @map("session_id") @db.Uuid
+  session         ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workspaceId     String      @map("workspace_id")
+  // Identificador da chamada no PBX (uniqueid/linkedid do CDR). Torna o envio idempotente.
+  callId          String      @map("call_id")
+  caller          String?
+  extension       String?
+  status          String      @default("answered") // answered | missed
+  startedAt       DateTime?   @map("started_at")
+  endedAt         DateTime?   @map("ended_at")
+  durationSec     Int?        @map("duration_sec")
+  recordingUrl    String?     @map("recording_url")
+  descricao       String?
+  concludedById   String?     @map("concluded_by_id")
+  concludedAt     DateTime?   @map("concluded_at")
+  // Chamado aberto a partir da ligação (issue ou solicitação do api-ts). Sem FK:
+  // a tabela é da API principal.
+  ticketKind      String?     @map("ticket_kind") // issue | intake
+  ticketId        String?     @map("ticket_id") @db.Uuid
+  ticketProjectId String?     @map("ticket_project_id") @db.Uuid
+  ticketLabel     String?     @map("ticket_label")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, callId])
+  @@index([workspaceId, createdAt])
+  @@map("chat_ligacoes")
+}
+
+// Token de serviço do PBX por espaço: só o hash e os 4 últimos caracteres.
+model ChatTelefoniaConfig {
+  workspaceId String   @id @map("workspace_id")
+  tokenHash   String?  @map("token_hash")
+  tokenLast4  String?  @map("token_last4")
+  updatedById String?  @map("updated_by_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("chat_telefonia_config")
+}
+
+// Ramal do PBX → atendente (usuário do Plane).
+model ChatRamal {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id")
+  extension   String
+  userId      String   @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([workspaceId, extension])
+  @@map("chat_ramais")
 }

@@ -54,7 +54,17 @@ model User {
   isPasswordAutoset        Boolean                      @default(false) @map("is_password_autoset")
   isEmailVerified          Boolean                      @default(false) @map("is_email_verified")
   password                 String?                      @map("password")
+  // Sessões emitidas ANTES deste instante deixam de valer (relogin forçado,
+  // congelamento, troca e redefinição de senha). Ver utils/session.ts.
   tokenUpdatedAt           DateTime?                    @map("token_updated_at")
+  // Perfil (legado intra_usuario*.php): telefone, celular, aniversário, apelido.
+  phone                    String?                      @db.VarChar(30)
+  mobilePhone              String?                      @map("mobile_phone") @db.VarChar(30)
+  birthDate                DateTime?                    @map("birth_date") @db.Date
+  nickname                 String?                      @db.VarChar(60)
+  // Congelado: não entra e perde as sessões. O histórico fica em freeze_events.
+  frozenAt                 DateTime?                    @map("frozen_at")
+  frozenReason             String?                      @map("frozen_reason")
   apiTokens                ApiToken[]
   workspaceMembers         WorkspaceMember[]
   projectMembers           ProjectMember[]
@@ -87,6 +97,7 @@ model User {
   createdWidgets           Widget[]
   createdPlugins           Plugin[]
   entityContacts           EntityContact[]              @relation("EntityContactUser")
+  representedEntities      Entity[]                     @relation("EntityRepresentative")
 
   @@map("users")
 }
@@ -144,6 +155,7 @@ model Workspace {
   pages              Page[]
   entities           Entity[]
   technicalVisits    TechnicalVisit[]
+  visitCounters      TechnicalVisitCounter[]
   webhooks           Webhook[]
   customWebhooks     CustomWebhook[]
   analyticViews      AnalyticView[]
@@ -166,6 +178,8 @@ model Workspace {
   entityContactTypes EntityContactType[]
   entityContacts     EntityContact[]
   portalAccounts     PortalAccount[]
+  freezeEvents       FreezeEvent[]
+  muralRecados       MuralRecado[]
 
   @@map("workspaces")
 }
@@ -189,6 +203,10 @@ model WorkspaceMember {
   // todos os sistemas dele; a negação vence a concessão e a função.
   grantedActions Json          @default("[]") @map("granted_actions")
   revokedActions Json          @default("[]") @map("revoked_actions")
+  // Congelado NESTE espaço (o vínculo fica inativo). A conta segue valendo nos
+  // outros espaços; congelar a conta inteira é do admin da instância (users.frozen_at).
+  frozenAt       DateTime?     @map("frozen_at")
+  frozenReason   String?       @map("frozen_reason")
 
   @@unique([workspaceId, memberId, deletedAt])
   @@map("workspace_members")
@@ -262,6 +280,7 @@ model Project {
   importJobs            ImportJob[]
   deployBoards          DeployBoard[]
   portalAccess          PortalAccountProject[]
+  entityContacts        EntityContactProject[]
 
   @@unique([workspaceId, identifier, deletedAt])
   @@unique([workspaceId, name, deletedAt])
@@ -415,6 +434,10 @@ model Issue {
   externalSource      String?               @map("external_source")
   externalId          String?               @map("external_id")
   legacyTicketNumber  String?               @map("legacy_ticket_number") @db.VarChar(50)
+  /// Número anual do chamado ("12-2026"): preenchido pelo gatilho `issues_assign_ticket_number`.
+  /// Nunca grave à mão: ver @utils/numero-do-chamado.
+  ticketSequence      Int?                  @map("ticket_sequence")
+  ticketYear          Int?                  @map("ticket_year")
   assignees           IssueAssignee[]
   labels              IssueLabel[]
   comments            IssueComment[]
@@ -437,9 +460,35 @@ model Issue {
   versions            IssueVersion[]
   gitLinks            GitIssueLink[]
   portalRequest       PortalRequest?
+  unreads             IssueUnread[]
 
   @@index([legacyTicketNumber])
+  @@index([workspaceId, ticketYear, ticketSequence])
   @@map("issues")
+}
+
+/// Contador do número anual do chamado, por espaço de trabalho e ano.
+/// Só o gatilho de `issues` e o backfill escrevem aqui.
+model IssueTicketCounter {
+  workspaceId String @map("workspace_id") @db.Uuid
+  year        Int
+  lastNumber  Int    @map("last_number")
+
+  @@id([workspaceId, year])
+  @@map("issue_ticket_counters")
+}
+
+/// Marca de não lido: existe enquanto o responsável não abrir o chamado depois
+/// da última alteração relevante feita por outra pessoa. Ver @utils/chamado-nao-lido.
+model IssueUnread {
+  issueId   String   @map("issue_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, userId])
+  @@index([userId])
+  @@map("issue_unreads")
 }
 
 model IssueAssignee {
@@ -1572,29 +1621,50 @@ model WorkspaceUserProperties {
 }
 
 model Entity {
-  id              String           @id @default(uuid()) @db.Uuid
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-  deletedAt       DateTime?        @map("deleted_at")
-  createdById     String?          @map("created_by_id") @db.Uuid
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workspaceId     String           @map("workspace_id") @db.Uuid
-  createdBy       User?            @relation("EntityCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  name            String
-  entityType      Int?             @map("entity_type")
-  cnpj            String?          @db.VarChar(20)
-  city            String?
-  state           String?          @db.VarChar(2)
-  email           String?
-  phone           String?          @db.VarChar(30)
-  isActive        Boolean          @default(true) @map("is_active")
-  legacyId        Int?             @map("legacy_id")
-  externalSource  String?          @map("external_source")
-  externalId      String?          @map("external_id")
-  issues          Issue[]
-  technicalVisits TechnicalVisit[]
-  contacts        EntityContact[]
-  portalAccounts  PortalAccount[]
+  id                 String           @id @default(uuid()) @db.Uuid
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  deletedAt          DateTime?        @map("deleted_at")
+  createdById        String?          @map("created_by_id") @db.Uuid
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId        String           @map("workspace_id") @db.Uuid
+  createdBy          User?            @relation("EntityCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  name               String
+  entityType         Int?             @map("entity_type")
+  cnpj               String?          @db.VarChar(20)
+  city               String?
+  state              String?          @db.VarChar(2)
+  email              String?
+  phone              String?          @db.VarChar(30)
+  isActive           Boolean          @default(true) @map("is_active")
+  legacyId           Int?             @map("legacy_id")
+  externalSource     String?          @map("external_source")
+  externalId         String?          @map("external_id")
+  // Endereço completo e dados cadastrais do legado (intra_entidade*.php).
+  street             String?
+  addressNumber      String?          @map("address_number") @db.VarChar(20)
+  complement         String?
+  district           String?
+  zipCode            String?          @map("zip_code") @db.VarChar(10)
+  fax                String?          @db.VarChar(30)
+  stateRegistration  String?          @map("state_registration") @db.VarChar(30)
+  website            String?
+  // Representante comercial: um usuário do sistema.
+  representative     User?            @relation("EntityRepresentative", fields: [representativeId], references: [id], onDelete: SetNull)
+  representativeId   String?          @map("representative_id") @db.Uuid
+  // Entidade responsável. Com `usesThirdPartyCnpj`, o CNPJ que vale é o dela
+  // (legado `entidades_tipo_cnpj = 2`).
+  relatedEntity      Entity?          @relation("EntityRelated", fields: [relatedEntityId], references: [id], onDelete: SetNull)
+  relatedEntityId    String?          @map("related_entity_id") @db.Uuid
+  relatedEntities    Entity[]         @relation("EntityRelated")
+  usesThirdPartyCnpj Boolean          @default(false) @map("uses_third_party_cnpj")
+  // Congelada: não some, mas deixa de atender. O histórico fica em freeze_events.
+  frozenAt           DateTime?        @map("frozen_at")
+  frozenReason       String?          @map("frozen_reason")
+  issues             Issue[]
+  technicalVisits    TechnicalVisit[]
+  contacts           EntityContact[]
+  portalAccounts     PortalAccount[]
 
   @@map("entities")
 }
@@ -1632,11 +1702,27 @@ model TechnicalVisit {
   visitNumber         String?                 @map("visit_number") @db.VarChar(50)
   legacyId            Int?                    @map("legacy_id")
   projectIds          Json?                   @default("[]") @map("project_ids")
+  /// Funcionalidades atendidas: módulos dos sistemas em `projectIds` (o "menu do
+  /// sistema" do SAC virou módulo do Plane).
+  moduleIds           Json                    @default("[]") @map("module_ids")
   visitIssues         TechnicalVisitIssue[]
   contactRecords      TechnicalVisitContact[]
 
   @@index([visitNumber])
   @@map("technical_visits")
+}
+
+/// Último número N-AAAA dado por espaço e ano. O incremento é um upsert só, então
+/// duas visitas criadas ao mesmo tempo nunca recebem o mesmo número.
+model TechnicalVisitCounter {
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String    @map("workspace_id") @db.Uuid
+  year        Int
+  lastNumber  Int       @default(0) @map("last_number")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@id([workspaceId, year])
+  @@map("technical_visit_counters")
 }
 
 model TechnicalVisitIssue {
@@ -1874,6 +1960,7 @@ model EntityContact {
   externalSource  String?                 @map("external_source")
   externalId      String?                 @map("external_id")
   visits          TechnicalVisitContact[]
+  projects        EntityContactProject[]
 
   @@unique([workspaceId, legacyId])
   @@index([workspaceId, entityId])
@@ -1902,23 +1989,25 @@ model TechnicalVisitContact {
 // cadeira e não enxerga nada do produto além do que abriu.
 
 model PortalAccount {
-  id          String                 @id @default(uuid()) @db.Uuid
-  createdAt   DateTime               @default(now()) @map("created_at")
-  updatedAt   DateTime               @updatedAt @map("updated_at")
-  deletedAt   DateTime?              @map("deleted_at")
-  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workspaceId String                 @map("workspace_id") @db.Uuid
-  email       String
+  id             String                 @id @default(uuid()) @db.Uuid
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  deletedAt      DateTime?              @map("deleted_at")
+  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId    String                 @map("workspace_id") @db.Uuid
+  email          String
   /// Hash bcrypt — a senha em claro nunca é gravada.
-  password    String
-  name        String
+  password       String
+  name           String
   /// Entidade (prefeitura, câmara) que a pessoa representa, quando cadastrada.
-  entity      Entity?                @relation(fields: [entityId], references: [id], onDelete: SetNull)
-  entityId    String?                @map("entity_id") @db.Uuid
-  isActive    Boolean                @default(true) @map("is_active")
-  lastLoginAt DateTime?              @map("last_login_at")
-  projects    PortalAccountProject[]
-  requests    PortalRequest[]
+  entity         Entity?                @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  entityId       String?                @map("entity_id") @db.Uuid
+  isActive       Boolean                @default(true) @map("is_active")
+  lastLoginAt    DateTime?              @map("last_login_at")
+  /// Versão da sessão do portal: trocar a senha derruba os crachás anteriores.
+  tokenUpdatedAt DateTime?              @map("token_updated_at")
+  projects       PortalAccountProject[]
+  requests       PortalRequest[]
 
   @@unique([workspaceId, email])
   @@map("portal_accounts")
@@ -1949,4 +2038,98 @@ model PortalRequest {
   issueId   String        @unique @map("issue_id") @db.Uuid
 
   @@map("portal_requests")
+}
+
+// ── Contato ↔ sistema ─────────────────────────────────────────────────────────
+// Legado `responsavel_sistema`: de quais sistemas (projetos) a pessoa cuida no
+// cliente. N:N, e é por aqui que a lista de contatos filtra por sistema.
+model EntityContactProject {
+  id          String        @id @default(uuid()) @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at")
+  contact     EntityContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId   String        @map("contact_id") @db.Uuid
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String        @map("project_id") @db.Uuid
+  workspaceId String        @map("workspace_id") @db.Uuid
+
+  @@unique([contactId, projectId])
+  @@index([workspaceId, projectId])
+  @@map("entity_contact_projects")
+}
+
+// ── Congelamento (usuário e entidade) ─────────────────────────────────────────
+// Histórico de congelar/descongelar com o motivo (legado `congelamento`, que
+// APAGAVA o motivo ao descongelar). `affected` guarda o que o congelamento
+// desligou junto (contatos e contas do portal da entidade), para que
+// descongelar religue exatamente isso e nada mais.
+model FreezeEvent {
+  id          String     @id @default(uuid()) @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at")
+  // Nulo no congelamento da conta inteira, que é da instância e não de um espaço.
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String?    @map("workspace_id") @db.Uuid
+  subjectKind String     @map("subject_kind") @db.VarChar(20)
+  subjectId   String     @map("subject_id") @db.Uuid
+  action      String     @db.VarChar(20)
+  reason      String?
+  actorId     String?    @map("actor_id") @db.Uuid
+  affected    Json       @default("{}")
+
+  @@index([subjectKind, subjectId, createdAt])
+  @@map("freeze_events")
+}
+
+// ── Redefinição de senha ──────────────────────────────────────────────────────
+// Token de uso único e com validade, para o usuário do Plane (`kind = user`) e
+// para a conta do portal do cliente (`kind = portal`). Só o HASH é gravado: o
+// token em claro existe apenas no link do e-mail.
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  kind      String    @db.VarChar(20)
+  subjectId String    @map("subject_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  requestIp String?   @map("request_ip")
+
+  @@index([kind, subjectId])
+  @@map("password_reset_tokens")
+}
+
+/// Recado do mural da home. Só quem tem `mural.publish` grava; todo membro lê.
+/// Autor e anexo ficam sem relação no Prisma (como `issue_unreads`): o recado
+/// sobrevive à conta desativada e ao anexo apagado. Ver .claude/mural.md.
+model MuralRecado {
+  id                  String         @id @default(uuid()) @db.Uuid
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  workspace           Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId         String         @map("workspace_id") @db.Uuid
+  authorId            String         @map("author_id") @db.Uuid
+  title               String         @db.VarChar(200)
+  descriptionHtml     String         @default("<p></p>") @map("description_html")
+  descriptionStripped String         @default("") @map("description_stripped")
+  publishedAt         DateTime       @default(now()) @map("published_at")
+  expiresAt           DateTime?      @map("expires_at")
+  isPinned            Boolean        @default(false) @map("is_pinned")
+  isRequired          Boolean        @default(false) @map("is_required")
+  isActive            Boolean        @default(true) @map("is_active")
+  attachmentId        String?        @map("attachment_id") @db.Uuid
+  leituras            MuralLeitura[]
+
+  @@index([workspaceId, isActive, publishedAt])
+  @@map("mural_recados")
+}
+
+/// Leitura de um recado por pessoa (a antiga `mural_lido`). Existe = leu.
+model MuralLeitura {
+  recadoId String      @map("recado_id") @db.Uuid
+  userId   String      @map("user_id") @db.Uuid
+  readAt   DateTime    @default(now()) @map("read_at")
+  recado   MuralRecado @relation(fields: [recadoId], references: [id], onDelete: Cascade)
+
+  @@id([recadoId, userId])
+  @@index([userId])
+  @@map("mural_leituras")
 }

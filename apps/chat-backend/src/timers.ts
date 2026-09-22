@@ -5,6 +5,7 @@
 //    atendimento; pausa vencida (3 dias); fim do dia do WhatsApp.
 
 import prisma from "@db";
+import { WITHOUT_PHONE } from "@/canais";
 import { runFimDoDia } from "@/ciclo-de-vida/fim-do-dia";
 import { runInatividade } from "@/ciclo-de-vida/inatividade";
 import { runPausasVencidas } from "@/ciclo-de-vida/pausa";
@@ -12,9 +13,11 @@ import { sendToSession, sendToUser } from "@/ws/hub";
 
 const TEN_MIN = 10 * 60 * 1000;
 
-async function checkSla() {
+// Ligação (channel "phone") fica fora do SLA e da inatividade: não há cliente
+// digitando do outro lado. A inatividade usa o mesmo WITHOUT_PHONE.
+export async function checkSla() {
   const active = await prisma.chatSession.findMany({
-    where: { status: "active", assignedAttendantId: { not: null } },
+    where: { status: "active", assignedAttendantId: { not: null }, ...WITHOUT_PHONE },
     select: { id: true, assignedAttendantId: true, lastClientMessageAt: true, lastAttendantMessageAt: true },
   });
   const now = Date.now();

@@ -142,6 +142,8 @@ export interface IWorkspaceIssueSearchResult {
   /** True when the work item sits in a triage/intake state. Used to route search hits to the intake view. */
   is_intake?: boolean;
   legacy_ticket_number?: string | null;
+  /** Número anual do chamado ("12-2026"). */
+  ticket_number?: string | null;
 }
 
 export interface IWorkspacePageSearchResult {
