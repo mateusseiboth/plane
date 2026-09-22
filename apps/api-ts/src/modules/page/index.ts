@@ -249,11 +249,10 @@ const CAMPOS_DO_PATCH: Record<string, (valor: any) => Record<string, unknown>> =
 };
 
 function buildPatchData(corpo: Record<string, unknown>, userId: string) {
-  return Object.entries(CAMPOS_DO_PATCH)
+  const colunas = Object.entries(CAMPOS_DO_PATCH)
     .filter(([campo]) => corpo[campo] !== undefined)
-    .reduce<Record<string, unknown>>((data, [campo, paraColuna]) => ({ ...data, ...paraColuna(corpo[campo]) }), {
-      updatedById: userId,
-    });
+    .map(([campo, paraColuna]) => paraColuna(corpo[campo]));
+  return Object.assign({ updatedById: userId }, ...colunas);
 }
 
 /** O frontend manda o pai como `parent_id`; chamadas antigas, como `parent`. */
