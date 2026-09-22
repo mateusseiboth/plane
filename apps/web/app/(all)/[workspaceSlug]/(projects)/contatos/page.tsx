@@ -16,6 +16,7 @@ import { ContatoFormModal, mensagemDeErro } from "@/components/entity-contacts";
 import useDebounce from "@/hooks/use-debounce";
 import { useEntities } from "@/hooks/use-entities";
 import { useEntityContactsPage, useEntityContactTypes } from "@/hooks/use-entity-contacts";
+import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 // services
 import entityContactService, { type TEntityContactFilters } from "@/services/entity-contact.service";
@@ -124,6 +125,7 @@ function ContatosPage() {
   const [busca, setBusca] = useState("");
   const [entidadeId, setEntidadeId] = useState("");
   const [tipoId, setTipoId] = useState("");
+  const [sistemaId, setSistemaId] = useState("");
   const [situacao, setSituacao] = useState<TSituacao>("todos");
   const [modal, setModal] = useState<{ open: boolean; contact?: TEntityContact | null }>({ open: false });
 
@@ -134,9 +136,10 @@ function ContatosPage() {
       search: buscaAdiada.trim() || undefined,
       entity_id: entidadeId || undefined,
       type_id: tipoId || undefined,
+      project_id: sistemaId || undefined,
       is_active: paraFiltroDeSituacao(situacao),
     }),
-    [buscaAdiada, entidadeId, tipoId, situacao]
+    [buscaAdiada, entidadeId, tipoId, sistemaId, situacao]
   );
 
   // Mudou o filtro, volta para a primeira página: o cursor da anterior aponta
@@ -148,6 +151,11 @@ function ContatosPage() {
     useEntityContactsPage(slug, filtros, POR_PAGINA, cursor);
   const { entities } = useEntities(slug);
   const { types } = useEntityContactTypes(slug);
+  const { workspaceProjectIds, getProjectById } = useProject();
+  const sistemas = (workspaceProjectIds ?? [])
+    .map((id) => getProjectById(id))
+    .filter((projeto): projeto is NonNullable<typeof projeto> => Boolean(projeto))
+    .map((projeto) => ({ value: projeto.id, label: projeto.name }));
 
   const abrirEdicao = useCallback((contact: TEntityContact) => setModal({ open: true, contact }), []);
 
@@ -174,7 +182,8 @@ function ContatosPage() {
   );
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Contatos` : "Contatos";
-  const semFiltros = !filtros.search && !filtros.entity_id && !filtros.type_id && situacao === "todos";
+  const semFiltros =
+    !filtros.search && !filtros.entity_id && !filtros.type_id && !filtros.project_id && situacao === "todos";
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
@@ -227,6 +236,14 @@ function ContatosPage() {
           onChange={setTipoId}
           opcoes={types.map((tipo) => ({ value: tipo.id, label: tipo.name }))}
           opcaoVazia={{ value: "", label: "Todos os tipos" }}
+          className="w-48"
+          buttonClassName="h-8 text-xs"
+        />
+        <SelectPesquisavel
+          value={sistemaId}
+          onChange={setSistemaId}
+          opcoes={sistemas}
+          opcaoVazia={{ value: "", label: "Todos os sistemas" }}
           className="w-48"
           buttonClassName="h-8 text-xs"
         />

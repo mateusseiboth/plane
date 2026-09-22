@@ -22,6 +22,8 @@ export type TEntityContactFilters = {
   search?: string;
   is_active?: boolean;
   has_phone?: boolean;
+  /** Sistema (projeto) de que o contato cuida. */
+  project_id?: string;
 };
 
 /** Uma página da listagem. `cursor` é opaco: veio do servidor, volta pra ele. */
@@ -49,6 +51,7 @@ export type TEntityContactPayload = Partial<
     | "is_active"
     | "receive_messages"
     | "notes"
+    | "project_ids"
   >
 >;
 

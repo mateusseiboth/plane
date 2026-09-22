@@ -13,13 +13,16 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TEntityContact } from "@plane/types";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
+// helpers
+import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
 // hooks
 import { useEntities } from "@/hooks/use-entities";
 import { useEntityContactTypes } from "@/hooks/use-entity-contacts";
 // services
 import entityContactService, { type TEntityContactPayload } from "@/services/entity-contact.service";
 // local imports
-import { mascararTelefone, mensagemDeErro, paraCampoDeData, telefoneInvalido } from "./helpers";
+import { mascararTelefone, paraCampoDeData, telefoneInvalido } from "./helpers";
+import { SeletorDeSistemas } from "./seletor-de-sistemas";
 
 type TFormulario = {
   name: string;
@@ -31,6 +34,7 @@ type TFormulario = {
   notes: string;
   is_active: boolean;
   receive_messages: boolean;
+  project_ids: string[];
 };
 
 const FORMULARIO_VAZIO: TFormulario = {
@@ -43,6 +47,7 @@ const FORMULARIO_VAZIO: TFormulario = {
   notes: "",
   is_active: true,
   receive_messages: true,
+  project_ids: [],
 };
 
 function paraFormulario(contact: TEntityContact | null | undefined, entidadePadrao: string): TFormulario {
@@ -57,6 +62,7 @@ function paraFormulario(contact: TEntityContact | null | undefined, entidadePadr
     notes: contact.notes ?? "",
     is_active: contact.is_active ?? true,
     receive_messages: contact.receive_messages ?? true,
+    project_ids: contact.project_ids ?? [],
   };
 }
 
@@ -72,6 +78,7 @@ function paraPayload(form: TFormulario): TEntityContactPayload {
     notes: form.notes.trim() || null,
     is_active: form.is_active,
     receive_messages: form.receive_messages,
+    project_ids: form.project_ids,
   };
 }
 
@@ -117,12 +124,14 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
 
   const [form, setForm] = useState<TFormulario>(() => paraFormulario(contact, entityId ?? ""));
   const [salvando, setSalvando] = useState(false);
+  const [erroDeSistemas, setErroDeSistemas] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
     const inicial = paraFormulario(contact, entityId ?? "");
     // Ao EDITAR, o cadastro manda; os valores sugeridos só preenchem o que
     // estaria em branco num cadastro novo.
+    setErroDeSistemas(undefined);
     if (contact) return setForm(inicial);
     setForm({
       ...inicial,
@@ -158,11 +167,12 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
       onSaved(salvo);
       onClose();
     } catch (erro) {
-      setToast({
-        type: TOAST_TYPE.ERROR,
-        title: "Erro",
-        message: mensagemDeErro(erro, "Falha ao salvar o contato."),
-      });
+      const message = applyApiFieldErrors(
+        erro,
+        (path, texto) => path === "project_ids" && setErroDeSistemas(texto),
+        "Falha ao salvar o contato."
+      );
+      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message });
     } finally {
       setSalvando(false);
     }
@@ -262,6 +272,18 @@ export const ContatoFormModal = observer(function ContatoFormModal(props: Props)
                 value={form.birth_date}
                 onChange={(e) => alterar("birth_date", e.target.value)}
                 className={campoTexto}
+              />
+            </div>
+
+            <div>
+              <span className={rotulo}>Sistemas de que cuida</span>
+              <SeletorDeSistemas
+                value={form.project_ids}
+                onChange={(ids) => {
+                  alterar("project_ids", ids);
+                  setErroDeSistemas(undefined);
+                }}
+                error={erroDeSistemas}
               />
             </div>
 

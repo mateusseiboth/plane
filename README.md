@@ -71,6 +71,8 @@ We have evolved Plane Community Edition in two major directions:
 | **Whitelabel branding** | Hardcoded "Plane" | **Single switch point** (`APP_NAME` / `VITE_APP_NAME`) — defaults to **"Avião"**; titles, metadata and chrome derive from it. |
 | **Developer docs** | — | In-app **Widgets & Custom Integrations** docs page (`/<workspace>/developers/widgets`), linked from the home "Manage widgets" dialog. |
 | **Client portal** | — | **Public request portal** (`/portal?workspace=<slug>`) with its own login: the client picks a system, opens a request and follows its status. Own account model (no Plane seat), requests land in the project's **intake/triage**. |
+| **Accounts & sessions** | Forgot-password needs Django's SMTP setup | **Forgot password by e-mail** (single-use, expiring, hashed token), **session revocation** (changing or resetting the password, freezing the user or "sign out everywhere" drops every open session), **freeze/unfreeze users** with reason and history, extra profile fields (phone, mobile, birthday, nickname). SMTP is set in workspace settings or via `SMTP_*` env vars. |
+| **Entity registry** | — | Full entity record (address, state registration, website, sales representative, **responsible entity** for third-party CNPJ), **freeze/unfreeze** that also switches off the entity's contacts and portal accounts and restores exactly those, and **contacts linked to systems** (projects) with a system filter. |
 
 > A living backlog of these features lives in [`ToDo.md`](./ToDo.md),
 > [`RELATORIOS_TODO.md`](./RELATORIOS_TODO.md) and
@@ -112,6 +114,14 @@ apps/
   entity, technical-visit, asset, invite, analytics, reports, webhook, notification, ai,
   premium, intake-work-item, work-item, widget / widget-sdk-gateway / custom-widget, plugin,
   and integrations (Git, Slack).
+- **E-mail:** SMTP config lives on the instance (`configurations.smtp`, edited in
+  *Settings → E-mail*); when absent, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+  `SMTP_FROM`, `SMTP_FROM_NAME` and `SMTP_SECURITY` (`none` | `starttls` | `ssl`) are used.
+  `EMAIL_TRANSPORT=fake` writes messages to `EMAIL_OUTBOX_DIR` instead of sending (tests).
+  Links in e-mails point to `APP_BASE_URL`.
+- **Sessions:** the JWT carries the user's session version (`users.token_updated_at`); bumping
+  it revokes every token issued before. The chat backend validates the JWT on its own and does
+  not see revocations yet.
 
 > **Django is no longer used.** Per project policy, no new code, bug fixes, endpoints,
 > migrations, or model changes are made in `apps/api/`. Treat it as read-only documentation of

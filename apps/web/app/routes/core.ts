@@ -345,6 +345,10 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/storage",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/storage/page.tsx"
           ),
+          route(
+            ":workspaceSlug/settings/email",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/email/page.tsx"
+          ),
           route(":workspaceSlug/settings/chat", "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/chat/page.tsx"),
           route(
             ":workspaceSlug/settings/ia-requisitos",
