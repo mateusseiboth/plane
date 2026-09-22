@@ -35,9 +35,12 @@ describe("nextProtocol", () => {
     expect(new Set(protocolos).size).toBe(20);
   });
 
+  // O salto é pequeno de propósito: o contador é global e outros testes do
+  // mesmo banco esperam protocolo de 4 dígitos.
   test("continua depois do maior protocolo já gravado no dia", async () => {
-    const existente = `${hoje()}-${String(987654).padStart(4, "0")}`;
+    const adiante = sequencia(await nextProtocol()) + 5;
+    const existente = `${hoje()}-${String(adiante).padStart(4, "0")}`;
     await prisma.chatSession.create({ data: { workspaceId: espacoA, channel: "native", protocol: existente } });
-    expect(sequencia(await nextProtocol())).toBeGreaterThan(987654);
+    expect(sequencia(await nextProtocol())).toBeGreaterThan(adiante);
   });
 });
