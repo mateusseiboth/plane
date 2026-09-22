@@ -100,6 +100,10 @@ services:
       NODE_ENV: development
       # Onde a API busca os arquivos da conversa ao abrir chamado a partir do chat.
       CHAT_INTERNAL_URL: ${CHAT_INTERNAL_URL:-http://chat-backend:8002}
+      # Segredo das rotas internas que o robô do chat chama (ouvidoria, currículo,
+      # e-mail do responsável). Vazio = rotas desligadas (503). O MESMO valor vai
+      # no chat-backend. Gere com: openssl rand -hex 32
+      CHAT_SERVICE_TOKEN: ${CHAT_SERVICE_TOKEN:-}
       CORS_ALLOWED_ORIGINS: http://localhost,http://localhost:80,http://localhost:3000
       JWT_SECRET: ${SECRET_KEY:-plane-jwt-secret}
       # IA de levantamento de requisitos ("texto fantasma"). Sem URL o recurso
@@ -161,6 +165,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
       CHAT_PORT: 8002
       JWT_SECRET: ${SECRET_KEY:-plane-jwt-secret}
+      # Rotas internas do api-ts para o passo "ação" do robô (mesmo segredo do api-ts).
+      API_TS_INTERNAL_URL: ${API_TS_INTERNAL_URL:-http://api-ts:8001}
+      CHAT_SERVICE_TOKEN: ${CHAT_SERVICE_TOKEN:-}
       NODE_ENV: development
       # Public base for media links forwarded to WhatsApp (Z-API needs a URL).
       CHAT_PUBLIC_URL: ${CHAT_PUBLIC_URL:-http://localhost/chat-api}

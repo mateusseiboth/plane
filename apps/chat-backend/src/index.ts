@@ -41,6 +41,7 @@ import { clientPage } from "@/client-page";
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
 import { ligacoesModule } from "@/ligacoes/routes";
+import { destinosModule } from "@/bot/acao/rotas";
 import { parseChannelFilter } from "@/canais";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
@@ -678,6 +679,9 @@ const app = new Elysia()
 
   // ── Ligações do FreePBX (entrada do PBX, atendente, telefonia, relatório) ──
   .use(ligacoesModule)
+
+  // ── Destinos do passo "ação" do robô (ouvidoria, currículo, e-mail) ──
+  .use(destinosModule)
 
   // ── WebSocket hub ──
   .ws("/ws", {
