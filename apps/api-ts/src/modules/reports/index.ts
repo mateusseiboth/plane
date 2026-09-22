@@ -1,12 +1,36 @@
 import Elysia from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
-// Reports are restricted to [ADMIN, MEMBER] (workspace role >= 15) — mirrors the
-// `reports`/`analytics` sidebar gate in packages/constants/src/workspace.ts.
-import { PRIORIDADES, ROTULO_DE_PRIORIDADE } from "@utils/prioridade";
+// Relatórios exigem a ação `report.view` da matriz (.claude/permissoes-v2.md).
+import { PRIORIDADES } from "@utils/prioridade";
 import { getWorkspaceOrFail } from "@utils/workspace";
 import { Prisma } from "@prisma/client";
 import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
+import {
+  issueSqlFilter,
+  issueWhere,
+  parseFilters,
+  projectNameMap,
+  readTexto,
+  round,
+  userNameMap,
+  withoutPeriodo,
+} from "@modules/reports/comum/filtros";
+import { GROUP_LABELS, PRIORITY_LABELS } from "@modules/reports/comum/rotulos";
+import { resolvePeriodo, resolveUltimos12Meses } from "@modules/reports/comum/periodo";
+import { findHorasPorAnalista } from "@modules/reports/horas-analiticas/horas-analiticas.service";
+import { findTransicoesDeEtapa } from "@modules/reports/marcos/marcos.dao";
+import {
+  findMatrizSistemaPorTipo,
+  findVisaoPorSistema,
+  serializeSituacoesDoSistema,
+} from "@modules/reports/visao-por-sistema/visao-por-sistema.service";
+import { filterVisitas } from "@modules/reports/visitas/visitas";
+import {
+  findVisitasPorSistema,
+  readFiltroDeVisitas,
+  toVisitaDoRecorte,
+} from "@modules/reports/visitas/visitas.service";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Relatórios gerenciais (SAC) — agregações sobre chamados, visitas, sistemas,
@@ -17,113 +41,6 @@ import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks
 
 const PRIORITIES = PRIORIDADES;
 const STATE_GROUPS = ["backlog", "unstarted", "started", "completed", "cancelled"] as const;
-
-// Os rótulos são os mesmos do resto do sistema (@utils/prioridade); só a
-// ausência muda de nome: numa legenda de relatório "Sem prioridade" diz mais
-// que o "Nenhum" do seletor.
-const PRIORITY_LABELS: Record<string, string> = { ...ROTULO_DE_PRIORIDADE, none: "Sem prioridade" };
-
-const GROUP_LABELS: Record<string, string> = {
-  triage: "Triagem",
-  backlog: "Backlog",
-  unstarted: "Não iniciado",
-  started: "Em andamento",
-  completed: "Concluído",
-  cancelled: "Cancelado",
-};
-
-type Filters = {
-  projectIds?: string[];
-  entityId?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-};
-
-function parseFilters(query: any): Filters {
-  const f: Filters = {};
-  if (query.project_ids) {
-    const ids = String(query.project_ids)
-      .split(",")
-      .map((s: string) => s.trim())
-      .filter(Boolean);
-    if (ids.length) f.projectIds = ids;
-  } else if (query.project_id) {
-    f.projectIds = [String(query.project_id)];
-  }
-  if (query.entity_id) f.entityId = String(query.entity_id);
-  if (query.date_from) {
-    const d = new Date(String(query.date_from));
-    if (!isNaN(d.getTime())) f.dateFrom = d;
-  }
-  if (query.date_to) {
-    const d = new Date(String(query.date_to));
-    if (!isNaN(d.getTime())) f.dateTo = d;
-  }
-  return f;
-}
-
-// Prisma `where` para a tabela Issue a partir dos filtros comuns.
-function issueWhere(wsId: string, f: Filters, extra: Record<string, any> = {}) {
-  const where: any = { workspaceId: wsId, deletedAt: null, isDraft: false, ...extra };
-  if (f.projectIds) where.projectId = { in: f.projectIds };
-  if (f.entityId) where.entityId = f.entityId;
-  if (f.dateFrom || f.dateTo) {
-    where.createdAt = {};
-    if (f.dateFrom) where.createdAt.gte = f.dateFrom;
-    if (f.dateTo) where.createdAt.lte = f.dateTo;
-  }
-  return where;
-}
-
-// Fragmento SQL com os mesmos filtros, para os $queryRaw (médias temporais).
-function issueSqlFilter(wsId: string, f: Filters): Prisma.Sql {
-  const clauses: Prisma.Sql[] = [
-    Prisma.sql`workspace_id = ${wsId}::uuid`,
-    Prisma.sql`deleted_at IS NULL`,
-    Prisma.sql`is_draft = false`,
-  ];
-  if (f.projectIds)
-    clauses.push(Prisma.sql`project_id IN (${Prisma.join(f.projectIds.map((id) => Prisma.sql`${id}::uuid`))})`);
-  if (f.entityId) clauses.push(Prisma.sql`entity_id = ${f.entityId}::uuid`);
-  if (f.dateFrom) clauses.push(Prisma.sql`created_at >= ${f.dateFrom}`);
-  if (f.dateTo) clauses.push(Prisma.sql`created_at <= ${f.dateTo}`);
-  return Prisma.join(clauses, " AND ");
-}
-
-function userName(
-  u: { firstName?: string; lastName?: string; displayName?: string; email?: string } | null | undefined
-) {
-  if (!u) return "—";
-  const full = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
-  return full || u.displayName || u.email || "—";
-}
-
-function round(n: number | null | undefined, digits = 2) {
-  if (n === null || n === undefined || isNaN(Number(n))) return null;
-  const f = 10 ** digits;
-  return Math.round(Number(n) * f) / f;
-}
-
-// Helper p/ mapa de nomes de usuários a partir de uma lista de ids.
-async function userNameMap(ids: (string | null | undefined)[]) {
-  const clean = [...new Set(ids.filter((x): x is string => !!x))];
-  if (!clean.length) return new Map<string, string>();
-  const users = await prisma.user.findMany({
-    where: { id: { in: clean } },
-    select: { id: true, firstName: true, lastName: true, displayName: true, email: true },
-  });
-  return new Map(users.map((u) => [u.id, userName(u)]));
-}
-
-// Helper p/ mapa de nomes de projetos.
-async function projectNameMap(wsId: string, ids: string[]) {
-  if (!ids.length) return new Map<string, { name: string; identifier: string }>();
-  const projects = await prisma.project.findMany({
-    where: { id: { in: ids }, workspaceId: wsId },
-    select: { id: true, name: true, identifier: true },
-  });
-  return new Map(projects.map((p) => [p.id, { name: p.name, identifier: p.identifier }]));
-}
 
 export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   .use(authPlugin)
@@ -186,7 +103,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
 
     const grouped = await prisma.issue.groupBy({ by: ["projectId"], where, _count: { id: true } });
     const projectIds = grouped.map((g) => g.projectId);
-    const projMap = await projectNameMap(ws.id, projectIds);
+    const [projMap, visao] = await Promise.all([projectNameMap(ws.id, projectIds), findVisaoPorSistema(where)]);
     const total = grouped.reduce((acc, g) => acc + g._count.id, 0);
 
     const rows = await Promise.all(
@@ -208,6 +125,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
           completed,
           open: g._count.id - completed,
           avg_resolution_days: round(avgRow[0]?.avg),
+          ...serializeSituacoesDoSistema(visao.get(g.projectId)),
         };
       })
     );
@@ -396,7 +314,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
       }))
       .sort((a, b) => b.total - a.total);
 
-    return { total_issues: issues.length, untagged, rows };
+    return { total_issues: issues.length, untagged, rows, by_system: await findMatrizSistemaPorTipo(ws.id, where) };
   })
 
   // ── 6. Produtividade por usuário/técnico ────────────────────────────────────
@@ -479,18 +397,22 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
 
-    // filtro adicional por loggedDate dentro do período (se informado)
-    const logWhere: any = { issue: issueWhere(ws.id, f) };
+    // O período vale para a data do lançamento, não para a abertura do chamado:
+    // hora lançada hoje num chamado antigo é hora deste período.
+    const logWhere: any = { issue: issueWhere(ws.id, withoutPeriodo(f)) };
     if (f.dateFrom || f.dateTo) {
       logWhere.loggedDate = {};
       if (f.dateFrom) logWhere.loggedDate.gte = f.dateFrom;
       if (f.dateTo) logWhere.loggedDate.lte = f.dateTo;
     }
+    const analista = readTexto(query.user_id);
+    if (analista) logWhere.memberId = analista;
 
-    const [totalAgg, byUser, byProject] = await Promise.all([
+    const [totalAgg, byUser, byProject, byAnalyst] = await Promise.all([
       prisma.issueTimeLog.aggregate({ where: logWhere, _sum: { durationMinutes: true }, _count: { id: true } }),
       prisma.issueTimeLog.groupBy({ by: ["memberId"], where: logWhere, _sum: { durationMinutes: true } }),
       prisma.issueTimeLog.groupBy({ by: ["projectId"], where: logWhere, _sum: { durationMinutes: true } }),
+      findHorasPorAnalista(logWhere),
     ]);
 
     const userNames = await userNameMap(byUser.map((u) => u.memberId));
@@ -557,6 +479,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
           hours: round((t._sum.durationMinutes ?? 0) / 60, 1),
         };
       }),
+      by_analyst: byAnalyst,
     };
   })
 
@@ -655,7 +578,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
       5: "Cancelada",
     };
 
-    const visits = await prisma.technicalVisit.findMany({
+    const lidas = await prisma.technicalVisit.findMany({
       where,
       select: {
         id: true,
@@ -666,15 +589,18 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
         startedAt: true,
         finishedAt: true,
         scheduledDate: true,
+        projectIds: true,
         motUpdate: true,
         motBugFix: true,
         motTraining: true,
         motImprovement: true,
         motCommercial: true,
         motOther: true,
-        entity: { select: { name: true } },
+        entity: { select: { name: true, city: true, state: true } },
       },
     });
+    // UF, cidade e sistema: recorte em memória (a UF é da entidade e os sistemas são JSON).
+    const visits = filterVisitas(lidas.map(toVisitaDoRecorte), readFiltroDeVisitas(query, f));
 
     const byStatus: Record<number, number> = {};
     const byCity = new Map<string, number>();
@@ -702,7 +628,10 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
       }
     }
 
-    const techNames = await userNameMap([...byTech.keys()]);
+    const [techNames, bySystem] = await Promise.all([
+      userNameMap([...byTech.keys()]),
+      findVisitasPorSistema(ws.id, visits),
+    ]);
 
     return {
       kpis: {
@@ -730,6 +659,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
         .sort((a, b) => b.count - a.count),
       by_entity: [...byEntity.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
       by_city: [...byCity.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      by_system: bySystem,
     };
   })
 
@@ -738,14 +668,16 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
-    // janela padrão: últimos 12 meses se não informado
-    const filter = issueSqlFilter(ws.id, { projectIds: f.projectIds, entityId: f.entityId });
+    // Período livre; sem ele, os últimos 12 meses. O mês é o de Brasília.
+    const { inicio, fim } = resolvePeriodo(f, () => resolveUltimos12Meses(new Date()));
+    const filter = issueSqlFilter(ws.id, withoutPeriodo(f));
+    const mesLocal = (coluna: Prisma.Sql) => Prisma.sql`date_trunc('month', ${coluna} - INTERVAL '3 hours')`;
 
     const created = await prisma.$queryRaw<{ bucket: Date; count: bigint }[]>(
-      Prisma.sql`SELECT date_trunc('month', created_at) AS bucket, COUNT(*) AS count FROM issues WHERE ${filter} AND created_at >= (NOW() - INTERVAL '12 months') GROUP BY bucket ORDER BY bucket`
+      Prisma.sql`SELECT ${mesLocal(Prisma.sql`created_at`)} AS bucket, COUNT(*) AS count FROM issues WHERE ${filter} AND created_at BETWEEN ${inicio} AND ${fim} GROUP BY bucket ORDER BY bucket`
     );
     const completed = await prisma.$queryRaw<{ bucket: Date; count: bigint }[]>(
-      Prisma.sql`SELECT date_trunc('month', completed_at) AS bucket, COUNT(*) AS count FROM issues WHERE ${filter} AND completed_at IS NOT NULL AND completed_at >= (NOW() - INTERVAL '12 months') GROUP BY bucket ORDER BY bucket`
+      Prisma.sql`SELECT ${mesLocal(Prisma.sql`completed_at`)} AS bucket, COUNT(*) AS count FROM issues WHERE ${filter} AND completed_at BETWEEN ${inicio} AND ${fim} GROUP BY bucket ORDER BY bucket`
     );
 
     const createdMap = new Map(created.map((r) => [new Date(r.bucket).toISOString().slice(0, 7), Number(r.count)]));
@@ -965,18 +897,8 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
     });
     if (!issues.length) return { by_state: [], by_group: [] };
 
-    const issueIds = issues.map((i) => i.id);
-    const activities = await prisma.issueActivity.findMany({
-      where: { issueId: { in: issueIds }, field: "state", deletedAt: null },
-      select: { issueId: true, oldValue: true, newValue: true, createdAt: true },
-      orderBy: { createdAt: "asc" },
-    });
-    const actsByIssue = new Map<string, typeof activities>();
-    for (const a of activities) {
-      const arr = actsByIssue.get(a.issueId) ?? [];
-      arr.push(a);
-      actsByIssue.set(a.issueId, arr);
-    }
+    // Mesmo histórico de etapa que os marcos leem (@modules/reports/marcos).
+    const actsByIssue = await findTransicoesDeEtapa(issues.map((i) => i.id));
 
     // name → group (for labelling); built from current states + activity history
     const nameToGroup = new Map<string, string>();
@@ -997,13 +919,13 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
       const acts = actsByIssue.get(issue.id) ?? [];
       let lastTs = new Date(issue.createdAt).getTime();
       // Estado inicial: o oldValue da primeira atividade, ou o estado atual se não houver histórico
-      let currentName: string | null = acts.length ? acts[0].oldValue : (issue.state?.name ?? null);
+      let currentName: string | null = acts.length ? acts[0].de : (issue.state?.name ?? null);
       // Estado terminal (completed/cancelled) "congela" o tempo na conclusão
       const endTs = issue.completedAt ? new Date(issue.completedAt).getTime() : now;
       for (const a of acts) {
-        const ts = new Date(a.createdAt).getTime();
+        const ts = a.em.getTime();
         add(currentName, lastTs, ts, issue.id);
-        currentName = a.newValue;
+        currentName = a.para;
         lastTs = ts;
       }
       add(currentName, lastTs, endTs, issue.id);
