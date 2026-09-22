@@ -5,6 +5,7 @@
  */
 
 import {
+  BookOpen,
   Contact,
   FileBarChart,
   FileUser,
@@ -75,5 +76,7 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <FileUser className={cn("size-4 flex-shrink-0", className)} />;
     case "reports":
       return <FileBarChart className={cn("size-4 flex-shrink-0", className)} />;
+    case "wiki":
+      return <BookOpen className={cn("size-4 flex-shrink-0", className)} />;
   }
 };

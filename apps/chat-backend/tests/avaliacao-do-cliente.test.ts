@@ -10,7 +10,7 @@
  *    pesquisa é instrumento de gestão: quem lê é o administrador.
  */
 import { describe, expect, it } from "bun:test";
-import { houveAtendimento, semAvaliacao, serializeSession } from "@/sessoes";
+import { hasAtendimento, withoutAvaliacao, serializeSession } from "@/sessoes";
 
 type ConversaDoBanco = {
   id: string;
@@ -39,26 +39,26 @@ const conversa = (extra: Partial<ConversaDoBanco> = {}): ConversaDoBanco => ({
   ...extra,
 });
 
-describe("houveAtendimento", () => {
+describe("hasAtendimento", () => {
   it("é falso enquanto ninguém assumiu a conversa", () => {
-    expect(houveAtendimento(conversa({ assignedAttendantId: null }))).toBe(false);
+    expect(hasAtendimento(conversa({ assignedAttendantId: null }))).toBe(false);
   });
 
   it("é verdadeiro quando um atendente assumiu", () => {
-    expect(houveAtendimento(conversa({ assignedAttendantId: "u-1" }))).toBe(true);
+    expect(hasAtendimento(conversa({ assignedAttendantId: "u-1" }))).toBe(true);
   });
 });
 
-describe("semAvaliacao", () => {
+describe("withoutAvaliacao", () => {
   it("apaga nota e comentário", () => {
-    const vista = semAvaliacao(serializeSession(conversa({ assignedAttendantId: "u-1" })));
+    const vista = withoutAvaliacao(serializeSession(conversa({ assignedAttendantId: "u-1" })));
     expect(vista.rating_score).toBeNull();
     expect(vista.rating_comment).toBeNull();
   });
 
   it("não mexe em mais nada da conversa", () => {
     const completa = serializeSession(conversa({ assignedAttendantId: "u-1" }));
-    const vista = semAvaliacao(completa);
+    const vista = withoutAvaliacao(completa);
     expect(vista.protocol).toBe(completa.protocol);
     expect(vista.status).toBe(completa.status);
     expect(vista.assigned_attendant_id).toBe(completa.assigned_attendant_id);

@@ -88,6 +88,8 @@ Todos aceitam filtros de período (`date_from`, `date_to`), projeto(s) e entidad
   - [ ] `/backlog-aging/`
   - [ ] `/sla/`
   - [ ] `/executive/`
+  - Novos (W14): `/milestones-by-user/`, `/returned/`, `/weekly-summary/`, `/balance/`,
+    `/ticket-log/`, `/tv-panel/` em `rotas-de-chamados.ts` (um service e um DAO por relatório).
 - [ ] Registrar `reportsModule` em `apps/api-ts/src/index.ts`.
 
 ## 3. Frontend — `apps/web`
@@ -130,6 +132,28 @@ Todos aceitam filtros de período (`date_from`, `date_to`), projeto(s) e entidad
 ### Próximos passos sugeridos
 - [ ] Testar endpoints com workspace real e ajustar performance (índices) para grandes volumes.
 - [ ] (Opcional) Export branded em `.pdf` via `@react-pdf/renderer` além do print nativo.
-- [ ] (Opcional) Filtro multi-projeto (atualmente seleção única por sistema).
+- [x] Filtro de vários sistemas na tela (`project_ids` em csv; `ProjectDropdownBase` múltiplo).
 - [ ] (Opcional) Gráficos (linhas/pizza) com biblioteca de charts no lugar das barras.
-- [ ] Cobrir o módulo `reports` com testes de contrato (`apps/api-ts/tests/contract`).
+- [x] Testes do módulo `reports`: `tests/unit/relatorio-*.test.ts` e
+      `tests/contract/relatorios-de-chamados.test.ts` (os 14 antigos seguem sem contrato próprio).
+
+## 6. Lacunas da intranet (W14, 2026-09-22)
+
+Detalhes, regras dos marcos e decisões: `.claude/relatorios.md`.
+
+- [x] Motor de marcos por etapa sobre `issue_activities` (atribuído, finalizado TI, homologado,
+      encerrado, devolvido), reaproveitado pelo `time-in-state`.
+- [x] Chamados por usuário com os marcos (`milestones-by-user`): por responsável ou por quem homologou.
+- [x] Chamados devolvidos por período (`returned`).
+- [x] Sintético semanal responsável × sistema × tipo (`weekly-summary`).
+- [x] Por sistema com pendente / em andamento / a homologar / concluído e cruzamento com o tipo;
+      por tipo com a matriz sistema × tipo.
+- [x] Balanço mensal e anual com saldo acumulado e período livre (`balance`); `trends` respeita o período.
+- [x] Visitas: `by_system`, filtros UF, cidade e sistema (tela e impressão).
+- [x] Log consolidado de chamados (`ticket-log`) com etapa, função, pessoa, período e sistema.
+- [x] Impressão da auditoria filtrada por usuário (Configurações > Auditoria).
+- [x] Impressão do chamado com número anual, encerramento e histórico.
+- [x] Horas analíticas por analista, com os lançamentos (`time-tracking.by_analyst`).
+- [x] Painel de TV do TI e da Qualidade (`/:workspace/painel/:setor`, `tv-panel`): SSE e alerta de urgente.
+- [x] `completed_at` gravado por gatilho em todo caminho de mudança de etapa, com backfill pelo histórico
+      (as médias de resolução dos relatórios antigos passam a contar os chamados concluídos pela tela).

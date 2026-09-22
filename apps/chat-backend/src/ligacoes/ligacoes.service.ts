@@ -38,9 +38,9 @@ import { CHAT_ACTION, hasChatAction } from "@/permissoes";
 import { nextProtocol } from "@/protocol";
 import { assignSessionToAttendant } from "@/queue/router";
 import {
-  buscarResponsavelPorId,
-  buscarResponsavelPorTelefone,
-  telefoneComDdi,
+  findResponsavelPorId,
+  findResponsavelPorTelefone,
+  telefoneWithDdi,
   variantesDeTelefone,
 } from "@/responsaveis";
 import { attendantName } from "@/users";
@@ -90,7 +90,7 @@ async function updateFromPbx(slug: string, ligacaoId: string, sessionId: string,
 
 async function createFromPbx(slug: string, l: LigacaoRecebida) {
   const [responsavel, atendenteId, protocol] = await Promise.all([
-    buscarResponsavelPorTelefone(slug, l.caller),
+    findResponsavelPorTelefone(slug, l.caller),
     findAtendenteDoRamal(slug, l.extension),
     nextProtocol(slug),
   ]);
@@ -100,7 +100,7 @@ async function createFromPbx(slug: string, l: LigacaoRecebida) {
       workspaceId: slug,
       channel: PHONE_CHANNEL,
       protocol,
-      clientPhone: telefoneComDdi(l.caller) || null,
+      clientPhone: telefoneWithDdi(l.caller) || null,
       clientName: responsavel?.name ?? null,
       entityContactId: responsavel?.id ?? null,
       botState: "done",
@@ -177,7 +177,7 @@ async function requireLigacaoAcessivel(slug: string, sessionId: string, atendent
 
 export async function readLigacaoDetalhe(slug: string, sessionId: string, atendente: Atendente) {
   const sessao = await requireLigacaoAcessivel(slug, sessionId, atendente);
-  const responsavel = sessao.entityContactId ? await buscarResponsavelPorId(slug, sessao.entityContactId) : null;
+  const responsavel = sessao.entityContactId ? await findResponsavelPorId(slug, sessao.entityContactId) : null;
   return {
     ...serializeSessaoComLigacao(sessao),
     responsavel: responsavel && {

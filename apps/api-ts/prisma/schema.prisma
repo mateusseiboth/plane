@@ -464,6 +464,7 @@ model Issue {
   versions            IssueVersion[]
   gitLinks            GitIssueLink[]
   portalRequest       PortalRequest?
+  portalEvaluations   PortalEvaluation[]
   unreads             IssueUnread[]
 
   @@index([legacyTicketNumber])
@@ -2013,6 +2014,7 @@ model PortalAccount {
   tokenUpdatedAt DateTime?              @map("token_updated_at")
   projects       PortalAccountProject[]
   requests       PortalRequest[]
+  evaluations    PortalEvaluation[]
 
   @@unique([workspaceId, email])
   @@map("portal_accounts")
@@ -2043,6 +2045,30 @@ model PortalRequest {
   issueId   String        @unique @map("issue_id") @db.Uuid
 
   @@map("portal_requests")
+}
+
+/// Avaliação que o cliente faz no portal ao concluir a solicitação (paridade
+/// com o Service Desk antigo). Uma por conclusão: reabrir marca a vigente como
+/// substituída (`superseded_at`) e a próxima conclusão pede outra.
+model PortalEvaluation {
+  id            String        @id @default(uuid()) @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at")
+  workspaceId   String        @map("workspace_id") @db.Uuid
+  projectId     String        @map("project_id") @db.Uuid
+  issue         Issue         @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issueId       String        @map("issue_id") @db.Uuid
+  account       PortalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId     String        @map("account_id") @db.Uuid
+  /// 1 Ruim, 2 Bom, 3 Ótimo.
+  serviceRating Int           @map("service_rating")
+  /// 1 Não era o que eu precisava, 2 Não, 3 Parcialmente, 4 Sim.
+  expectation   Int
+  comment       String?
+  supersededAt  DateTime?     @map("superseded_at")
+
+  @@index([issueId])
+  @@index([workspaceId, createdAt])
+  @@map("portal_evaluations")
 }
 
 // ── Contato ↔ sistema ─────────────────────────────────────────────────────────

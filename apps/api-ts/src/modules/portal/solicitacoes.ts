@@ -21,7 +21,10 @@ import { nextSequenceId } from "@utils/sequence";
 import type { ContaDoPortal } from "@modules/portal/conta";
 import { isUuid } from "@modules/portal/conta";
 import { anexoDoChamado } from "@modules/portal/anexos";
-import { RESPOSTA_INCLUDE, serializarResposta } from "@modules/portal/resposta";
+import { AVALIACAO_VIGENTE_INCLUDE, serializarAvaliacao } from "@modules/portal/avaliacao";
+import { CONVERSA_INCLUDE, filterRespostaVigente, serializarConversa } from "@modules/portal/conversa";
+import { readAcoesDoCliente } from "@modules/portal/regras-do-cliente";
+import { serializarResposta } from "@modules/portal/resposta";
 import { situacaoDaSolicitacao } from "@modules/portal/situacao";
 import { limparTextoDoCliente, textoSemMarcacao } from "@modules/portal/texto-rico";
 
@@ -30,14 +33,17 @@ const ORIGEM = "portal";
 
 const LIMITE = { titulo: 250 } as const;
 
-const SOLICITACAO_INCLUDE = {
+export const SOLICITACAO_INCLUDE = {
+  account: { select: { name: true } },
   issue: {
     include: {
       state: { select: { name: true, group: true, color: true, isTriage: true } },
       project: { select: { name: true, identifier: true } },
       intakeIssues: { where: { deletedAt: null }, select: { status: true }, orderBy: { createdAt: "desc" }, take: 1 },
-      // A resposta que a equipe escreveu ao concluir. Ver @modules/portal/resposta.
-      comments: RESPOSTA_INCLUDE,
+      // A conversa com o cliente: o que ele escreveu e as respostas da equipe.
+      // Ver @modules/portal/conversa.
+      comments: CONVERSA_INCLUDE,
+      portalEvaluations: AVALIACAO_VIGENTE_INCLUDE,
       // Os arquivos que o cliente anexou. Ver @modules/portal/anexos.
       attachments: {
         where: { deletedAt: null },
@@ -55,10 +61,11 @@ function texto(valor: unknown, limite: number): string {
 }
 
 /** O chamado como o cliente o vê: sem responsável, sem etiqueta, sem histórico interno. */
-function serializar(pedido: any) {
+export function serializar(pedido: any) {
   const chamado = pedido.issue;
   const intakeStatus = chamado.intakeIssues[0]?.status ?? -2;
   const situacao = situacaoDaSolicitacao({ intakeStatus, estado: chamado.state });
+  const avaliacao = chamado.portalEvaluations?.[0];
   return {
     id: chamado.id,
     codigo: `${chamado.project?.identifier ?? ""}-${chamado.sequenceId}`,
@@ -67,7 +74,10 @@ function serializar(pedido: any) {
     descricao_html: chamado.descriptionHtml ?? "<p></p>",
     situacao: situacao.rotulo,
     grupo: situacao.grupo,
-    resposta: serializarResposta(chamado.comments),
+    resposta: serializarResposta(filterRespostaVigente(chamado.comments)),
+    interacoes: serializarConversa(chamado.comments, pedido.account?.name ?? ""),
+    avaliacao: serializarAvaliacao(avaliacao),
+    acoes: readAcoesDoCliente({ intakeStatus, grupo: chamado.state?.group ?? "triage", avaliada: Boolean(avaliacao) }),
     anexos: (chamado.attachments ?? []).map(anexoDoChamado),
     aberta_em: chamado.createdAt?.toISOString() ?? null,
     atualizada_em: chamado.updatedAt?.toISOString() ?? null,

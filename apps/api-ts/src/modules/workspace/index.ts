@@ -10,7 +10,7 @@ import {seedWorkflowRoles, syncFuncaoNosProjetos} from "@utils/permissions";
 import {nextSequenceId} from "@utils/sequence";
 import {whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
-import {buscarChamados, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
+import {findChamados, findPaginasDaPessoa, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
 import {dataLocal} from "@utils/prazo";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
@@ -648,7 +648,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Busca da paleta ⌘K ───────────────────────────────────────────────────
   //
-  // Mesma busca de `/global-search/` (ver `buscarChamados`), só que agrupada no
+  // Mesma busca de `/global-search/` (ver `findChamados`), só que agrupada no
   // formato antigo que a paleta consome. Esta rota tinha uma busca própria, curta
   // — título e número legado, nada mais —, e por isso "ALMOXA-954" não achava o
   // chamado que a outra rota devolvia em primeiro lugar.
@@ -660,13 +660,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // assim que a pessoa copia e cola. A coluna guarda o valor puro.
     const q = (((query as any).search ?? (query as any).query ?? "") as string).trim().replace(/^#/, "");
     if (!q) return {results: {issue: [], project: [], page: [], cycle: [], module: [], workspace: [], issue_view: []}};
-    const [chamados, projects] = await Promise.all([
-      buscarChamados(ws.id, q, 10),
+    const [chamados, projects, paginas] = await Promise.all([
+      findChamados(ws.id, q, 10),
       prisma.project.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
         select: {id: true, name: true, identifier: true},
         take: 5,
       }),
+      findPaginasDaPessoa({workspaceId: ws.id, userId: user.id, termo: q, limite: 5}),
     ]);
     return {
       results: {
@@ -683,7 +684,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           type_id: null,
         })),
         project: projects.map((p: any) => ({id: p.id, name: p.name, identifier: p.identifier, workspace__slug: ws.slug})),
-        page: [],
+        // Página sem sistema (`project_ids` vazio) é da wiki: a paleta abre /wiki/.
+        page: paginas.map((p) => ({
+          id: p.id,
+          name: p.name,
+          project_ids: p.project_ids,
+          project__identifiers: p.project_identifiers,
+          workspace__slug: ws.slug,
+        })),
         cycle: [],
         module: [],
         workspace: [],
@@ -708,17 +716,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const limit = Math.min(Math.max(Number(query.limit) || 100, 1), 250);
 
     const [issueRows, projects, pages, cycles, modules] = await Promise.all([
-      buscarChamados(ws.id, q, limit),
+      findChamados(ws.id, q, limit),
       prisma.project.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
         select: {id: true, name: true, identifier: true},
         take: 5,
       }),
-      prisma.page.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
-        select: {id: true, name: true},
-        take: 5,
-      }),
+      findPaginasDaPessoa({workspaceId: ws.id, userId: user.id, termo: q, limite: 5}),
       prisma.cycle.findMany({
         where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
         select: {id: true, name: true, projectId: true},
@@ -759,7 +763,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           project: toProject(r),
         })),
         projects: projects.map((p: any) => ({...p, type: "project"})),
-        pages: pages.map((p: any) => ({...p, type: "page"})),
+        pages: pages.map((p) => ({id: p.id, name: p.name, project_ids: p.project_ids, type: "page"})),
         cycles: cycles.map((c: any) => ({...c, type: "cycle"})),
         modules: modules.map((m: any) => ({...m, type: "module"})),
       },

@@ -193,6 +193,11 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,'Segoe UI',san
 .bubble audio{width:180px;height:36px;margin-bottom:4px}
 .bubble a{color:inherit;font-weight:600;text-decoration:underline;word-break:break-all}
 .bubble .file-row{display:flex;align-items:center;gap:8px;padding:4px 0}
+/* Chave de acesso remoto (mensagem do tipo "chave"): código e botão de copiar. */
+.chave-label{font-size:12px;opacity:.8;margin-bottom:4px}
+.chave-row{display:flex;align-items:center;gap:8px}
+.chave-code{font-family:ui-monospace,monospace;font-size:15px;font-weight:700;letter-spacing:.5px;word-break:break-all}
+.chave-copy{border:1px solid var(--border,#d4d4d8);background:transparent;color:inherit;border-radius:8px;padding:3px 8px;font-size:12px;cursor:pointer}
 .file-icon{width:32px;height:32px;border-radius:8px;background:rgba(79,70,229,.12);display:grid;place-items:center;color:var(--brand);font-size:14px;flex-shrink:0}
 
 /* ── Typing indicator ─────────────────────────────────────────── */
@@ -571,11 +576,9 @@ function buildRow(m) {
     b.appendChild(row);
   }
 
-  if (m.text) {
-    const span = document.createElement("span");
-    span.textContent = m.text;
-    b.appendChild(span);
-  }
+  const texto = m.text ? Object.assign(document.createElement("span"), { textContent: m.text }) : null;
+  const conteudo = m.type === "chave" ? buildChave(m.text || "") : texto;
+  if (conteudo) b.appendChild(conteudo);
   r.appendChild(b);
 
   // Ações da própria mensagem de texto: editar e apagar.
@@ -591,6 +594,27 @@ function buildRow(m) {
     r.appendChild(ts);
   }
   return r;
+}
+
+// ── Chave de acesso remoto: o código em destaque e um botão de copiar ─
+function buildChave(chave) {
+  const box = document.createElement("div");
+  box.appendChild(Object.assign(document.createElement("div"), { className: "chave-label", textContent: "Chave de acesso remoto" }));
+  const row = document.createElement("div");
+  row.className = "chave-row";
+  row.appendChild(Object.assign(document.createElement("span"), { className: "chave-code", textContent: chave }));
+  const copiar = Object.assign(document.createElement("button"), { className: "chave-copy", type: "button", textContent: "Copiar" });
+  copiar.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(chave);
+      copiar.textContent = "Copiada";
+    } catch {
+      copiar.textContent = "Selecione e copie";
+    }
+  };
+  row.appendChild(copiar);
+  box.appendChild(row);
+  return box;
 }
 
 // ── Editar / apagar a própria mensagem ────────────────────────────
@@ -806,6 +830,20 @@ const PREFILL = {
   project: params.get("project") || "", // project uuid (alternative to system)
 };
 
+// Dados técnicos que o sistema que embute o widget pode mandar na URL: um a um
+// (?versao=&computador=&navegador=&so=&resolucao=&motivo=) ou juntos em
+// ?info={"versao":"..."}. Navegador e resolução, se não vierem, saem daqui.
+// O servidor só guarda as chaves que conhece (src/atendente/client-info.ts).
+const CAMPOS_DO_CLIENTE = ["versao", "computador", "navegador", "so", "resolucao", "motivo"];
+function readClientInfo() {
+  let info = {};
+  try { info = JSON.parse(params.get("info") || "{}") || {}; } catch { info = {}; }
+  CAMPOS_DO_CLIENTE.forEach((campo) => { if (params.get(campo)) info[campo] = params.get(campo); });
+  if (!info.navegador) info.navegador = navigator.userAgent;
+  if (!info.resolucao && window.screen) info.resolucao = screen.width + "x" + screen.height;
+  return info;
+}
+
 function showChat() {
   $("prechat").classList.remove("on");
   $("ended").style.display = "none";
@@ -870,6 +908,7 @@ $("pc-submit").onclick = async () => {
         browser_id: browserId(),
         name: name || null,
         project_id: projectId || null,
+        client_info: readClientInfo(),
       }),
     });
     if (!res.ok) throw new Error("Falha ao iniciar sessão (" + res.status + ")");

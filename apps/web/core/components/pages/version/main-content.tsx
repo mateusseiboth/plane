@@ -114,7 +114,7 @@ export const PageVersionsMainContent = observer(function PageVersionsMainContent
             </div>
             {restoreEnabled && (
               <Button variant="primary" className="flex-shrink-0" onClick={handleRestoreVersion} loading={isRestoring}>
-                {isRestoring ? "Restoring" : "Restore"}
+                {isRestoring ? "Restaurando" : "Restaurar"}
               </Button>
             )}
           </div>

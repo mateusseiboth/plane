@@ -19,6 +19,7 @@ import { useProjectState } from "@/hooks/store/use-project-state";
 import { PrintDocument } from "../print-document";
 import { PrintHtml } from "../print-html";
 import { PrintFields, PrintSection } from "../print-section";
+import { buildHistoricoDoChamado, readEncerramento } from "./historico-do-chamado";
 
 type Props = {
   issueId: string;
@@ -34,6 +35,7 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
     issue: { getIssueById },
     comment: { getCommentsByIssueId, getCommentById },
     attachment: { getAttachmentsByIssueId, getAttachmentById },
+    activity: { getActivitiesByIssueId, getActivityById },
   } = useIssueDetail();
   const { getStateById } = useProjectState();
   const { getProjectById, getProjectIdentifierById } = useProject();
@@ -48,6 +50,10 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
   const numeros = getNumerosDoChamado(issue);
   const commentIds = getCommentsByIssueId(issueId) ?? [];
   const attachmentIds = getAttachmentsByIssueId(issueId) ?? [];
+  const atividades = (getActivitiesByIssueId(issueId) ?? []).map((id) => getActivityById(id)).filter((a) => !!a);
+  const historico = buildHistoricoDoChamado(atividades);
+  const etapaAtual = getStateById(issue.state_id);
+  const encerramento = readEncerramento(atividades, etapaAtual, issue.completed_at);
 
   const memberNames = (ids: string[] | null | undefined) =>
     (ids ?? [])
@@ -62,10 +68,11 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
 
   return (
     <PrintDocument
-      title={`${identifier} — ${issue.name}`}
+      title={`${numeros.numero ?? identifier}: ${issue.name}`}
       subtitle={getProjectById(issue.project_id)?.name}
       meta={[
         { label: "Número", value: numeros.numero ?? undefined },
+        { label: "Identificador", value: identifier },
         { label: "Número antigo", value: numeros.legado ?? undefined },
         { label: "Estado", value: getStateById(issue.state_id)?.name },
         { label: "Prioridade", value: priority ? t(priority.titleTranslationKey) : undefined },
@@ -91,6 +98,18 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
         <PrintHtml html={issue.description_html} fallback="Sem descrição." />
       </PrintSection>
 
+      {encerramento && (
+        <PrintSection title="Encerramento">
+          <PrintFields
+            items={[
+              { label: "Etapa", value: encerramento.etapa },
+              { label: "Encerrado em", value: formatDateTime(encerramento.em) },
+              { label: "Encerrado por", value: encerramento.por ?? "—" },
+            ]}
+          />
+        </PrintSection>
+      )}
+
       <PrintSection title={`Anexos (${attachmentIds.length})`}>
         {attachmentIds.length === 0 ? (
           <p>Nenhum anexo.</p>
@@ -102,7 +121,7 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
               return (
                 <li key={attachmentId}>
                   {attachment.attributes?.name ?? attachmentId}
-                  {attachment.created_by && ` — ${getUserDetails(attachment.created_by)?.display_name ?? ""}`}
+                  {attachment.created_by && ` · ${getUserDetails(attachment.created_by)?.display_name ?? ""}`}
                 </li>
               );
             })}
@@ -119,16 +138,43 @@ export const WorkItemPrintDocument = observer(function WorkItemPrintDocument(pro
               const comment = getCommentById(commentId);
               if (!comment) return null;
               return (
-                <article key={commentId} className="print-avoid-break border-b border-neutral-200 pb-2 last:border-0">
+                <article key={commentId} className="print-avoid-break border-neutral-200 border-b pb-2 last:border-0">
                   <p className="text-[10px] font-semibold">
                     {comment.actor_detail?.display_name ?? getUserDetails(comment.actor)?.display_name ?? "—"}
-                    <span className="ml-2 font-normal text-neutral-500">{formatDateTime(comment.created_at)}</span>
+                    <span className="font-normal text-neutral-500 ml-2">{formatDateTime(comment.created_at)}</span>
                   </p>
                   <PrintHtml html={comment.comment_html} fallback={comment.comment_stripped} />
                 </article>
               );
             })}
           </div>
+        )}
+      </PrintSection>
+
+      <PrintSection title={`Histórico (${historico.length})`}>
+        {historico.length === 0 ? (
+          <p>Nenhuma alteração registrada.</p>
+        ) : (
+          <table className="w-full border-collapse text-[10px]">
+            <thead>
+              <tr className="bg-neutral-100 text-left">
+                <th className="border-neutral-300 border px-2 py-1">Data e hora</th>
+                <th className="border-neutral-300 border px-2 py-1">Usuário</th>
+                <th className="border-neutral-300 border px-2 py-1">Ação</th>
+                <th className="border-neutral-300 border px-2 py-1">Detalhe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historico.map((linha) => (
+                <tr key={linha.id} className="print-avoid-break">
+                  <td className="border-neutral-300 border px-2 py-1">{formatDateTime(linha.em)}</td>
+                  <td className="border-neutral-300 border px-2 py-1">{linha.autor}</td>
+                  <td className="border-neutral-300 border px-2 py-1">{linha.acao}</td>
+                  <td className="border-neutral-300 border px-2 py-1">{linha.detalhe || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </PrintSection>
     </PrintDocument>

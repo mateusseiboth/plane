@@ -303,6 +303,17 @@ describe("Páginas — favoritas, arquivadas, mover, menções e binário", () =
     expect(res.status).toBe(403);
   });
 
+  it("página de outro sistema não abre pela URL deste", async () => {
+    const pagina = await criarPagina("Só do Primeiro");
+    expect((await client.get(`${paginas(outroProjectId)}${pagina.id}/`)).status).toBe(404);
+    expect((await client.patch(`${paginas(outroProjectId)}${pagina.id}/`, { name: "x" })).status).toBe(404);
+  });
+
+  it("criar ignora project_ids do corpo: o vínculo vem só da URL", async () => {
+    const pagina = await criarPagina("Vínculo da URL", { project_ids: [outroProjectId] });
+    expect(pagina.project_ids).toEqual([projectId]);
+  });
+
   // ── pages/:page_id/mentions/ ──────────────────────────────────────────────
 
   it("mentions devolve os usuários citados no conteúdo, na ordem do texto", async () => {

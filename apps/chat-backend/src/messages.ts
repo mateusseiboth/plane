@@ -8,7 +8,8 @@ import { sendToSession, sendToUser, sendToWorkspace } from "@/ws/hub";
 export type SendArgs = {
   sessionId: string;
   sender: "client" | "bot" | "attendant" | "system";
-  type?: "text" | "image" | "video" | "audio" | "file" | "event";
+  /** `chave`: chave de acesso remoto (src/atendente/chave.ts). */
+  type?: "text" | "image" | "video" | "audio" | "file" | "event" | "chave";
   text?: string | null;
   senderUserId?: string | null;
   senderName?: string | null;
@@ -17,6 +18,8 @@ export type SendArgs = {
   mediaName?: string | null;
   replyToId?: string | null;
   externalId?: string | null;
+  /** O atendente pediu para enviar sem o nome dele (WhatsApp e widget). */
+  withoutSenderName?: boolean;
 };
 
 /**
@@ -29,12 +32,15 @@ export function serializeMessage(m: any, opts: { full?: boolean } = {}) {
   const full = opts.full ?? false;
   const deleted = !!m.deletedAt;
   const redact = deleted && !full;
+  // "Enviar sem o nome": o cliente não vê quem mandou; a equipe continua vendo.
+  const semNome = Boolean(m.withoutSenderName) && !full;
   return {
     id: m.id,
     session_id: m.sessionId,
     sender: m.sender,
-    sender_user_id: m.senderUserId ?? null,
-    sender_name: m.senderName ?? null,
+    sender_user_id: semNome ? null : (m.senderUserId ?? null),
+    sender_name: semNome ? null : (m.senderName ?? null),
+    without_sender_name: full ? Boolean(m.withoutSenderName) : undefined,
     type: m.type,
     text: redact ? null : m.text,
     media_key: redact ? null : m.mediaKey,
@@ -66,6 +72,7 @@ export async function persistAndBroadcast(args: SendArgs) {
       mediaName: args.mediaName ?? null,
       replyToId: args.replyToId ?? null,
       externalId: args.externalId ?? null,
+      withoutSenderName: args.withoutSenderName ?? false,
     },
   });
 
@@ -82,8 +89,14 @@ export async function persistAndBroadcast(args: SendArgs) {
     select: { workspaceId: true },
   });
 
-  const payload = { type: "message.new", message: serializeMessage(message) };
-  sendToSession(args.sessionId, payload);
+  // A equipe recebe a forma completa (inclusive o nome de quem enviou "sem o
+  // nome"); o cliente, a forma que pode ver.
+  sendToSession(
+    args.sessionId,
+    { type: "message.new", message: serializeMessage(message, { full: true }) },
+    "attendant"
+  );
+  sendToSession(args.sessionId, { type: "message.new", message: serializeMessage(message) }, "client");
   // Also fan out to the workspace so attendant list views update live.
   sendToWorkspace(session.workspaceId, { type: "session.activity", session_id: args.sessionId });
   return message;

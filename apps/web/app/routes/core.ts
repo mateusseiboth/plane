@@ -51,6 +51,9 @@ export const coreRoutes: RouteConfigEntry[] = [
     // WORKSPACE-SCOPED ROUTES
     // ======================================================================
     layout("./(all)/[workspaceSlug]/layout.tsx", [
+      // Painel de TV (tela cheia, sem o menu lateral dos sistemas)
+      route(":workspaceSlug/painel/:setor", "./(all)/[workspaceSlug]/(painel)/painel/[setor]/page.tsx"),
+
       // ====================================================================
       // PROJECTS APP SECTION - WORKSPACE LEVEL ROUTES
       // ====================================================================
@@ -106,16 +109,10 @@ export const coreRoutes: RouteConfigEntry[] = [
         ]),
 
         // Developer docs — widgets & custom integrations
-        route(
-          ":workspaceSlug/developers/widgets",
-          "./(all)/[workspaceSlug]/(projects)/developers/widgets/page.tsx"
-        ),
+        route(":workspaceSlug/developers/widgets", "./(all)/[workspaceSlug]/(projects)/developers/widgets/page.tsx"),
 
         // Plugin pages — dynamically rendered from active plugins' contributions
-        route(
-          ":workspaceSlug/plugins/:pluginSlug",
-          "./(all)/[workspaceSlug]/(projects)/plugins/[pluginSlug]/page.tsx"
-        ),
+        route(":workspaceSlug/plugins/:pluginSlug", "./(all)/[workspaceSlug]/(projects)/plugins/[pluginSlug]/page.tsx"),
 
         // Workspace Views
         layout("./(all)/[workspaceSlug]/(projects)/workspace-views/layout.tsx", [
@@ -137,6 +134,12 @@ export const coreRoutes: RouteConfigEntry[] = [
 
         // Mural de recados (a seção da home abre daqui o histórico)
         route(":workspaceSlug/mural", "./(all)/[workspaceSlug]/(projects)/mural/page.tsx"),
+
+        // Wiki do espaço (páginas sem sistema)
+        layout("./(all)/[workspaceSlug]/(projects)/wiki/layout.tsx", [
+          route(":workspaceSlug/wiki", "./(all)/[workspaceSlug]/(projects)/wiki/page.tsx"),
+          route(":workspaceSlug/wiki/:pageId", "./(all)/[workspaceSlug]/(projects)/wiki/[pageId]/page.tsx"),
+        ]),
 
         // Contatos (responsáveis das entidades)
         route(":workspaceSlug/contatos", "./(all)/[workspaceSlug]/(projects)/contatos/page.tsx"),
@@ -338,14 +341,8 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/roles",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/roles/page.tsx"
           ),
-          route(
-            ":workspaceSlug/settings/sla",
-            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/sla/page.tsx"
-          ),
-          route(
-            ":workspaceSlug/settings/ai",
-            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/ai/page.tsx"
-          ),
+          route(":workspaceSlug/settings/sla", "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/sla/page.tsx"),
+          route(":workspaceSlug/settings/ai", "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/ai/page.tsx"),
           route(
             ":workspaceSlug/settings/integrations",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/integrations/page.tsx"
@@ -362,7 +359,14 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/email",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/email/page.tsx"
           ),
-          route(":workspaceSlug/settings/chat", "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/chat/page.tsx"),
+          route(
+            ":workspaceSlug/settings/chat",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/chat/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/settings/portal",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/portal/page.tsx"
+          ),
           route(
             ":workspaceSlug/settings/ia-requisitos",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/ia-requisitos/page.tsx"

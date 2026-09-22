@@ -48,6 +48,10 @@ export type ChatSession = {
   issue_id?: string | null;
   issue_project_id?: string | null;
   issue_label?: string | null;
+  /** Ferramentas do atendente: até quando o alerta de cliente sem resposta está pausado. */
+  sla_alert_paused_until?: string | null;
+  /** Dados técnicos mandados pelo sistema que embute o widget (versão, computador, SO...). */
+  client_info?: Record<string, string>;
   unread?: number;
   last_message?: string;
   last_message_at?: string;
@@ -72,6 +76,8 @@ export type ChatMessage = {
   /** sent | delivered | read | failed. `failed` = não chegou ao WhatsApp; o atendente reenvia. */
   status?: string;
   send_error?: string | null;
+  /** Enviada sem o nome do atendente (o cliente não viu quem mandou). */
+  without_sender_name?: boolean;
   created_at: string;
 };
 
@@ -372,7 +378,7 @@ export function chatApi(apiUrl: string) {
 }
 
 /** Só os filtros preenchidos entram na URL. */
-function buildQuery(filtro: FiltroDeAtendimentos): string {
+export function buildQuery(filtro: Record<string, string | undefined>): string {
   const params = new URLSearchParams(
     Object.entries(filtro).filter((par): par is [string, string] => Boolean(par[1]))
   ).toString();

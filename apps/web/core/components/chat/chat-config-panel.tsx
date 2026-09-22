@@ -19,6 +19,8 @@ import { AbaDeEncerramento } from "@/components/chat/aba-de-encerramento";
 import { ConfigDeTelefonia } from "@/components/chat/ligacoes/config-de-telefonia";
 import { PassoDeAcao } from "@/components/chat/passo-de-acao";
 import { useDestinosDoRobo } from "@/hooks/use-destinos-do-robo";
+import { AbaDeFrases } from "@/components/chat/atendente/aba-de-frases";
+import { CalendarioDeFeriados } from "@/components/chat/atendente/calendario-de-feriados";
 import { Search } from "lucide-react";
 
 type Tab =
@@ -28,6 +30,7 @@ type Tab =
   | "flows"
   | "schedules"
   | "encerramento"
+  | "frases"
   | "attendants"
   | "provider"
   | "telefonia";
@@ -54,6 +57,7 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl,
   const TABS = isAdmin
     ? [
         ...BASE_TABS.slice(0, 6),
+        { key: "frases" as Tab, label: "Frases" },
         { key: "attendants" as Tab, label: "Atendentes" },
         BASE_TABS[6],
         { key: "telefonia" as Tab, label: "Telefonia" },
@@ -87,7 +91,8 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl,
         {tab === "menu" && <MenuTab slug={slug} api={api} />}
         {tab === "queues" && <QueuesTab slug={slug} api={api} members={members} />}
         {tab === "flows" && <FlowsTab slug={slug} api={api} />}
-        {tab === "schedules" && <SchedulesTab slug={slug} api={api} />}
+        {tab === "schedules" && <SchedulesTab slug={slug} api={api} apiUrl={apiUrl} />}
+        {tab === "frases" && <AbaDeFrases slug={slug} apiUrl={apiUrl} />}
         {tab === "encerramento" && <AbaDeEncerramento slug={slug} apiUrl={apiUrl} />}
         {tab === "attendants" && <AttendantsTab slug={slug} api={api} members={members} />}
         {tab === "provider" && <ProviderTab slug={slug} api={api} />}
@@ -417,7 +422,7 @@ function FlowsTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi>
 
 // ── Company-wide business hours (not per attendant) ───────────────────────────
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-function SchedulesTab({ slug, api }: { slug: string; api: ReturnType<typeof chatApi> }) {
+function SchedulesTab({ slug, api, apiUrl }: { slug: string; api: ReturnType<typeof chatApi>; apiUrl: string }) {
   const [hours, setHours] = useState<any[]>([]);
   const [breaks, setBreaks] = useState<any[]>([]);
   const [outsideMsg, setOutsideMsg] = useState("");
@@ -446,6 +451,7 @@ function SchedulesTab({ slug, api }: { slug: string; api: ReturnType<typeof chat
       >
         Salvar
       </button>
+      <CalendarioDeFeriados slug={slug} apiUrl={apiUrl} />
     </div>
   );
 }

@@ -17,7 +17,7 @@ import { EncerramentoError, closeWithEncerramento, type DadosDoEncerramento } fr
 import { serializeMessage } from "@/messages";
 import { resendMessage } from "@/outbound";
 import { CHAT_ACTION } from "@/permissoes";
-import { semAvaliacao, serializeSession } from "@/sessoes";
+import { withoutAvaliacao, serializeSession } from "@/sessoes";
 
 type Set = { status?: number | string };
 
@@ -32,7 +32,7 @@ const isDoEspaco = async (sessionId: string, slug: string) =>
   Boolean(await prisma.chatSession.findFirst({ where: { id: sessionId, workspaceId: slug }, select: { id: true } }));
 
 const readSessao = async (id: string) =>
-  semAvaliacao(serializeSession(await prisma.chatSession.findUniqueOrThrow({ where: { id } })));
+  withoutAvaliacao(serializeSession(await prisma.chatSession.findUniqueOrThrow({ where: { id } })));
 
 /** Pausar/retomar: 409 quando a conversa não está na situação de partida. */
 const changePausa =

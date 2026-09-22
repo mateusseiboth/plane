@@ -53,6 +53,24 @@ export function useAuditLogs(
   };
 }
 
+/** Teto da impressão: a trilha é para conferência, a exportação completa é o CSV. */
+export const LIMITE_DA_IMPRESSAO_DA_AUDITORIA = 1000;
+
+/** Busca sob demanda os registros dos filtros atuais para imprimir. */
+export function useAuditLogsParaImpressao(workspaceSlug: string | undefined) {
+  return useCallback(
+    async (filters: TAuditFilters) => {
+      if (!workspaceSlug) return [];
+      const pagina = await auditService.list(workspaceSlug, {
+        ...filters,
+        cursor: `${LIMITE_DA_IMPRESSAO_DA_AUDITORIA}:0:0`,
+      });
+      return pagina?.results ?? [];
+    },
+    [workspaceSlug]
+  );
+}
+
 /**
  * Registra ações que só existem no navegador (imprimir, exportar). Falha aqui
  * nunca interrompe o que o usuário está fazendo.

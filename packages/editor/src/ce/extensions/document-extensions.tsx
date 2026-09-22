@@ -6,7 +6,7 @@
 
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { AnyExtension } from "@tiptap/core";
-import { SlashCommands } from "@/extensions";
+import { ATTACHMENT_SLASH_COMMAND, AttachmentExtension, SlashCommands } from "@/extensions";
 // types
 import type { IEditorProps, TExtensions, TUserDetails } from "@/types";
 
@@ -24,11 +24,22 @@ export type TDocumentEditorAdditionalExtensionsRegistry = {
   getExtension: (props: TDocumentEditorAdditionalExtensionsProps) => AnyExtension;
 };
 
+/** Anexo de arquivo: só no editor de documentos (páginas e wiki). */
+const isAttachmentEnabled = (disabledExtensions: TExtensions[]) => !disabledExtensions.includes("attachment");
+
 const extensionRegistry: TDocumentEditorAdditionalExtensionsRegistry[] = [
   {
     isEnabled: (disabledExtensions) => !disabledExtensions.includes("slash-commands"),
     getExtension: ({ disabledExtensions, flaggedExtensions }) =>
-      SlashCommands({ disabledExtensions, flaggedExtensions }),
+      SlashCommands({
+        disabledExtensions,
+        flaggedExtensions,
+        additionalOptions: isAttachmentEnabled(disabledExtensions) ? [ATTACHMENT_SLASH_COMMAND] : [],
+      }),
+  },
+  {
+    isEnabled: isAttachmentEnabled,
+    getExtension: ({ fileHandler, isEditable }) => AttachmentExtension({ fileHandler, isEditable }),
   },
 ];
 

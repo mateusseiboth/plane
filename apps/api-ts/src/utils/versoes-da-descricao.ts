@@ -85,8 +85,8 @@ export function ehGravacaoAutomatica(corpo: Corpo): boolean {
   return marca === true || marca === "true";
 }
 
-/** A última versão do chamado ainda é da sessão de edição deste autor? */
-const mesmaSessao = (versao: {ownedById: string | null; lastSavedAt: Date} | null, autorId: string): boolean => {
+/** A última versão (do chamado ou da página) ainda é da sessão de edição deste autor? */
+export const isMesmaSessao = (versao: {ownedById: string | null; lastSavedAt: Date} | null, autorId: string): boolean => {
   if (!versao || versao.ownedById !== autorId) return false;
   return Date.now() - versao.lastSavedAt.getTime() <= JANELA_DE_SESSAO_MS;
 };
@@ -126,7 +126,7 @@ export async function registrarVersaoDaDescricao(params: {
     orderBy: {lastSavedAt: "desc"},
     select: {ownedById: true, lastSavedAt: true},
   });
-  if (mesmaSessao(ultima, autorId)) return false;
+  if (isMesmaSessao(ultima, autorId)) return false;
 
   await prisma.issueVersion.create({
     data: {

@@ -215,12 +215,9 @@ export interface IWorkspaceSidebarNavigationItem {
   labelTranslationKey: string;
   href: string;
   access: EUserWorkspaceRoles[];
-  /**
-   * Ação da matriz (`ACTION_CATALOG` do api-ts) exigida para o item aparecer.
-   * Vale junto com `access`; a API continua sendo quem barra de fato.
-   */
-  action?: string;
   highlight: (pathname: string, url: string) => boolean;
+  /** Ação da matriz de permissões exigida para o item aparecer (ex.: "wiki.view"). */
+  action?: string;
 }
 
 export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspaceSidebarNavigationItem> = {
@@ -347,6 +344,24 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Wiki do espaço: quem enxerga é decidido pela ação `wiki.view` da matriz,
+  // não pelo nível; por isso `access` lista todas as funções.
+  wiki: {
+    key: "wiki",
+    labelTranslationKey: "sidebar.wiki",
+    href: `/wiki/`,
+    access: [
+      EUserWorkspaceRoles.ADMIN,
+      EUserWorkspaceRoles.GESTOR_PROJETO,
+      EUserWorkspaceRoles.MEMBER,
+      EUserWorkspaceRoles.TI,
+      EUserWorkspaceRoles.QUALIDADE,
+      EUserWorkspaceRoles.ATENDIMENTO,
+      EUserWorkspaceRoles.GUEST,
+    ],
+    action: "wiki.view",
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
   // Ouvidoria (sugestões e reclamações do robô do WhatsApp): só com `ouvidoria.read`.
   ouvidoria: {
     key: "ouvidoria",
@@ -435,6 +450,7 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["contatos"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["telefones"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["mural"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["wiki"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["ouvidoria"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["denuncias"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["curriculos"],

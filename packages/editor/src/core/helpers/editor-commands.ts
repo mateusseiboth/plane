@@ -130,6 +130,32 @@ export const insertImage = ({
   return editor?.chain().focus().insertImageComponent(imageOptions).run();
 };
 
+/**
+ * Insere o bloco de anexo (menu "/" ou arquivo solto). Só existe no editor de
+ * documentos: nos demais o nó não está no esquema e nada é inserido.
+ */
+export const insertAttachment = ({
+  editor,
+  event,
+  pos,
+  file,
+  range,
+}: {
+  editor: Editor;
+  event: "insert" | "drop";
+  pos?: number | null;
+  file?: File;
+  range?: Range;
+}) => {
+  if (!editor.schema.nodes[CORE_EXTENSIONS.ATTACHMENT]) return false;
+  if (range) editor.chain().focus().deleteRange(range).run();
+  return editor
+    .chain()
+    .focus()
+    .insertAttachmentComponent({ event, file, pos: pos ?? undefined })
+    .run();
+};
+
 export const unsetLinkEditor = (editor: Editor) => {
   editor.chain().focus().unsetLink().run();
 };

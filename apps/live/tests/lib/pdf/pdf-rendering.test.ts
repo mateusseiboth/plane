@@ -396,6 +396,22 @@ describe("PDF Rendering Integration", () => {
       expect(text).toContain("text.");
     });
 
+    // Bloco de anexo da wiki: o PDF leva o nome do arquivo, não o binário.
+    it("bloco de anexo sai no PDF com o nome do arquivo", async () => {
+      const doc: TipTapDocument = {
+        type: "doc",
+        content: [
+          {
+            type: "attachmentComponent",
+            attrs: { id: "b1", src: "asset-1", name: "Manual de implantacao.pdf", size: 2048 },
+          },
+        ],
+      };
+
+      const text = await extractPdfText(await renderPlaneDocToPdfBuffer(doc));
+      expect(text).toContain("Anexo: Manual de implantacao.pdf");
+    });
+
     it("should render link marks with link text", async () => {
       const doc: TipTapDocument = {
         type: "doc",

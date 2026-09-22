@@ -93,6 +93,6 @@ export const shouldFilterPage = (page: TPage, filters: TPageFilterProps | undefi
  */
 export const getPageName = (name: string | undefined) => {
   if (name === undefined) return "";
-  if (!name || name.trim() === "") return "Untitled";
+  if (!name || name.trim() === "") return "Sem título";
   return name;
 };

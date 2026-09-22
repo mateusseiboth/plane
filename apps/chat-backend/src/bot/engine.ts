@@ -5,7 +5,7 @@
 
 import prisma from "@db";
 import { deliverOutbound } from "@/outbound";
-import { buscarResponsavelPorTelefone } from "@/responsaveis";
+import { findResponsavelPorTelefone } from "@/responsaveis";
 import { isWithinBusinessHours } from "@/presence";
 import { routeQueuedSession } from "@/queue/router";
 import { sendToWorkspace } from "@/ws/hub";
@@ -50,9 +50,9 @@ async function findContact(session: any) {
  * nome de perfil que o WhatsApp mandou ("Zé Celular"). É pelo nome do
  * responsável que o bot pergunta "Você é {name}?".
  */
-async function identificarPessoa(session: any) {
+async function identifyPessoa(session: any) {
   const [responsavel, contato] = await Promise.all([
-    buscarResponsavelPorTelefone(session.workspaceId, session.clientPhone),
+    findResponsavelPorTelefone(session.workspaceId, session.clientPhone),
     findContact(session),
   ]);
   return { responsavel, contato, nome: responsavel?.name ?? contato?.name ?? null };
@@ -80,7 +80,7 @@ export async function startBot(sessionId: string) {
   const cfg = await getConfig(session.workspaceId);
   await sendBot(session, cfg.welcomeMessage);
 
-  const { responsavel, contato, nome } = await identificarPessoa(session);
+  const { responsavel, contato, nome } = await identifyPessoa(session);
   if (!nome) {
     await sendBot(session, cfg.askNameMessage);
     await prisma.chatSession.update({ where: { id: session.id }, data: { botState: "awaiting_name" } });

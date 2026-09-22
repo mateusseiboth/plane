@@ -282,6 +282,13 @@ export const nodeRenderers: NodeRendererRegistry = {
     );
   },
 
+  // Bloco de anexo (wiki e páginas): o PDF leva o nome do arquivo; o binário fica na página.
+  attachmentComponent: (node: TipTapNode, _children: ReactElement[], ctx: PDFRenderContext): ReactElement => (
+    <View key={ctx.getKey()} style={pdfStyles.paragraphWrapper}>
+      <Text style={pdfStyles.paragraph}>Anexo: {(node.attrs?.name as string) || "arquivo"}</Text>
+    </View>
+  ),
+
   imageComponent: (node: TipTapNode, _children: ReactElement[], ctx: PDFRenderContext): ReactElement => {
     if (ctx.metadata?.noAssets) {
       return <View key={ctx.getKey()} />;
