@@ -39,6 +39,19 @@ const interno = (slug: string, caminho: string, init: RequestInit = {}, token: s
 const internoJson = (slug: string, caminho: string, body: unknown, token?: string | null) =>
   interno(slug, caminho, { body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }, token);
 
+/** Espera a contagem parar de mudar: a trilha é gravada sem bloquear a resposta. */
+const aguardarContagemEstavel = async (contar: () => Promise<number>, quieto = 400, teto = 3000) => {
+  const prazo = Date.now() + teto;
+  let anterior = await contar();
+  while (Date.now() < prazo) {
+    await Bun.sleep(quieto);
+    const agora = await contar();
+    if (agora === anterior) return agora;
+    anterior = agora;
+  }
+  return anterior;
+};
+
 const pdf = (conteudo = "%PDF-1.7\nconteudo") => new Blob([conteudo], { type: "application/pdf" });
 
 const enviarCurriculo = (slug: string, campos: Record<string, string>, arquivo: Blob = pdf()) => {
@@ -367,7 +380,9 @@ describe("ouvidoria, denúncia, currículos e lista de e-mails", () => {
       // só este espaço (outros arquivos da suíte também exportam contatos).
       const doEspaco = { workspaceId: wsId, entity: "entity_contact", action: "export" };
       const countExportacoes = () => prisma.auditLog.count({ where: doEspaco });
-      const antes = await countExportacoes();
+      // A trilha do teste ANTERIOR (a lista, que também audita) pode chegar
+      // depois: espera a contagem parar de mudar antes de tirar o retrato.
+      const antes = await aguardarContagemEstavel(countExportacoes);
       const res = await gestor.get(`/workspaces/${slug}/contact-emails/export/?entity_id=${entidadeId}`);
       expect(res.status).toBe(200);
       expect(res.headers.get("Content-Type")).toContain("text/csv");
