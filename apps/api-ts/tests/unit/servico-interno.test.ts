@@ -3,7 +3,18 @@
  * `CHAT_SERVICE_TOKEN`, comparado em tempo constante. Sem banco.
  */
 import { describe, expect, it } from "bun:test";
-import { isServiceTokenValid, requireServiceToken, SERVICE_TOKEN_HEADER } from "@utils/servico-interno";
+import { isServiceTokenValid, readServiceToken, requireServiceToken, SERVICE_TOKEN_HEADER } from "@utils/servico-interno";
+
+describe("readServiceToken", () => {
+  it("lê CHAT_SERVICE_TOKEN do ambiente dado", () => {
+    expect(readServiceToken({ CHAT_SERVICE_TOKEN: "abc" })).toBe("abc");
+  });
+
+  it("variável ausente ou em branco é ausência de token", () => {
+    expect(readServiceToken({})).toBeUndefined();
+    expect(readServiceToken({ CHAT_SERVICE_TOKEN: "   " })).toBeUndefined();
+  });
+});
 
 describe("isServiceTokenValid", () => {
   it("aceita o token igual ao configurado", () => {

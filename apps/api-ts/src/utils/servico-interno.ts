@@ -21,7 +21,13 @@ export function isServiceTokenValid(recebido: string | undefined, esperado: stri
 
 type Headers = Record<string, string | undefined>;
 
-export function requireServiceToken(headers: Headers, esperado = process.env.CHAT_SERVICE_TOKEN): void {
+export function readServiceToken(env: Record<string, string | undefined> = process.env): string | undefined {
+  return env.CHAT_SERVICE_TOKEN?.trim() || undefined;
+}
+
+// `esperado` é obrigatório de propósito: com valor padrão, passar `undefined`
+// ("não há token") voltaria a ler o ambiente.
+export function requireServiceToken(headers: Headers, esperado: string | undefined): void {
   if (!esperado) throw { status: 503, message: "Integração com o chat não configurada." };
   if (isServiceTokenValid(headers[SERVICE_TOKEN_HEADER], esperado)) return;
   throw { status: 401, message: "Credencial de serviço inválida." };

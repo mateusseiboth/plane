@@ -13,7 +13,7 @@ import { curriculoService } from "@modules/curriculo";
 import { createResponsavelEmailService, responsavelEmailDao } from "@modules/interno-chat/responsavel-email";
 import { ouvidoriaService } from "@modules/ouvidoria";
 import { recordAudit } from "@utils/audit";
-import { requireServiceToken } from "@utils/servico-interno";
+import { readServiceToken, requireServiceToken } from "@utils/servico-interno";
 import { getWorkspaceOrFail } from "@utils/workspace";
 
 const responsavelEmail = createResponsavelEmailService({ dao: responsavelEmailDao, audit: recordAudit });
@@ -21,7 +21,7 @@ const responsavelEmail = createResponsavelEmailService({ dao: responsavelEmailDa
 type Headers = Record<string, string | undefined>;
 
 async function serviceWorkspace(headers: Headers, slug: string) {
-  requireServiceToken(headers);
+  requireServiceToken(headers, readServiceToken());
   return getWorkspaceOrFail(slug);
 }
 
