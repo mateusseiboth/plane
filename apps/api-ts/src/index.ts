@@ -57,7 +57,9 @@ const corsConfig = cors({
 function errorHandler({ code, error, set }: any) {
   if (error && typeof error === "object" && "status" in error) {
     set.status = (error as any).status;
-    return { detail: (error as any).message };
+    // `errors: [{path, message}]` volta para o campo do formulário (ver VisitError).
+    const errors = (error as any).errors;
+    return { detail: (error as any).message, ...(Array.isArray(errors) ? { errors } : {}) };
   }
   if (code === "NOT_FOUND") { set.status = 404; return { detail: "Não encontrado." }; }
   if (code === "VALIDATION") { set.status = 400; return { detail: "Dados da requisição inválidos.", errors: (error as any)?.message }; }

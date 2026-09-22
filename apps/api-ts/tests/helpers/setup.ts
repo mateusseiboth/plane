@@ -21,7 +21,7 @@ export async function cleanDb() {
     "gitIssueLink", "gitRepository", "gitIntegrationConfig",
     "slackProjectChannel", "slackIntegrationConfig",
     // SAC-specific
-    "technicalVisitIssue", "technicalVisit", "entity",
+    "technicalVisitIssue", "technicalVisitCounter", "technicalVisit", "entity",
     // Issue property tables
     "issuePropertyValue", "issuePropertyOption", "issueProperty", "issueType",
     // Issue sub-tables

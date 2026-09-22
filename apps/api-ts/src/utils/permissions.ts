@@ -99,6 +99,7 @@ export const ACTION_CATALOG = {
   LABEL_SLA: {key: "label.sla", label: "Configurar o prazo das etiquetas", group: G.ESPACO, scope: "workspace", roles: GESTOR},
   ENTITY_MANAGE: {key: "entity.manage", label: "Cadastrar entidades", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   VISIT_MANAGE: {key: "visit.manage", label: "Registrar visitas técnicas", group: G.CADASTROS, scope: "workspace", roles: OPERAM},
+  VISIT_MANAGE_ALL: {key: "visit.manage.all", label: "Trocar técnico e data, cancelar e editar qualquer visita técnica", group: G.CADASTROS, scope: "workspace", roles: GESTOR},
   ISSUE_TYPE_MANAGE: {key: "issue.type.manage", label: "Gerenciar tipos e propriedades de chamado", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   IMPORT_MANAGE: {key: "import.manage", label: "Importar dados", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   INTEGRATION_MANAGE: {key: "integration.manage", label: "Gerenciar integrações e webhooks", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
