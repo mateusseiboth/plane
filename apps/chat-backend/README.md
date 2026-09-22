@@ -220,6 +220,26 @@ finas em `rotas.ts`) e migração `prisma/sql/0014_atendente.sql`.
   `entity_id`, `project_id`, `from`, `to`, `q`, `channel`, `status`, `page`, `per_page`.
 - **Monitor ao vivo** (`chat.gerenciar`): `GET /monitor/`.
 
+## Disparo em massa
+
+Contrato, regras e decisões em `.claude/chat-disparo.md`. Código em `src/disparo/`
+(`regras.ts` puro, `dao.ts`, `service.ts`, `worker.ts`, `routes.ts`) e migração
+`prisma/sql/0016_disparo.sql`. Toda rota exige `chat.disparo` (Gestor e admin por padrão).
+
+- **Mensagens**: `GET|POST /workspaces/:slug/disparo/mensagens/`, `PATCH|DELETE .../mensagens/:id/`
+  (multipart: `titulo`, `texto`, `arquivo` imagem ou PDF até 10 MB, `remover_arquivo`).
+- **Prévia**: `POST .../disparo/previa/` com `entity_type`, `entity_id`, `project_id`
+  (todos opcionais) devolve `{ total, without_telefone, repetidos }`.
+- **Envio**: `POST .../mensagens/:id/enviar/` cria a execução e um item por telefone e
+  responde na hora (201). Quem envia é o worker, dentro do processo.
+- **Histórico**: `GET .../disparo/execucoes/[?mensagem_id=]`, `GET .../execucoes/:id/[?status=]`
+  (detalhe por telefone) e `POST .../execucoes/:id/cancelar/`.
+- **Status do WhatsApp**: `POST .../mensagens/:id/status/` (só mensagem com imagem).
+- **Fila da Z-API**: `GET .../disparo/fila-zapi/`.
+- **Ritmo**: `GET|PUT .../disparo/config/` (`mensagens_por_minuto`, 1 a 60, padrão 20).
+
+Sem `CHAT_PUBLIC_URL`, o arquivo vai à Z-API em base64; com ela, pela URL pública.
+
 ## Testes
 
 Rode **arquivo por arquivo**: o `mock.module("@db")` de

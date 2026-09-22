@@ -105,4 +105,9 @@ describe("vocabulário", () => {
       expect(Object.values(AUDIT_ENTITIES)).toContain(entidade);
     }
   });
+
+  test("o disparo em massa do chat registra quem enviou o quê (mesmo vocabulário do chat-backend)", () => {
+    expect(AUDIT_ENTITIES.CHAT_DISPARO).toBe("chat_disparo");
+    expect(AUDIT_ACTIONS.SEND).toBe("send");
+  });
 });

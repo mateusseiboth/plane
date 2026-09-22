@@ -4,7 +4,13 @@
 // Webhook (on-message-received): { phone, senderName, text:{message}, image:{...},
 //        audio:{...}, video:{...}, document:{...}, messageId, fromMe, ... }
 
-import type {InboundMessage, InboundMutation, WhatsAppProvider} from "@/providers/provider";
+import type {
+  InboundMessage,
+  InboundMutation,
+  ItemDaFilaDeSaida,
+  MidiaDeSaida,
+  WhatsAppProvider,
+} from "@/providers/provider";
 
 export class ZapiProvider implements WhatsAppProvider {
   private baseUrl: string;
@@ -23,21 +29,25 @@ export class ZapiProvider implements WhatsAppProvider {
     return `${this.baseUrl}/instances/${this.instanceId}/token/${this.token}/${action}`;
   }
 
-  private async request(
-    method: "POST" | "DELETE",
-    action: string,
-    body?: Record<string, unknown>
-  ): Promise<string | null> {
+  private async call(method: "GET" | "POST" | "DELETE", action: string, body?: Record<string, unknown>): Promise<unknown> {
     const res = await fetch(this.url(action), {
       method,
       headers: {"Content-Type": "application/json", "Client-Token": this.clientToken},
-      body: body ? JSON.stringify(body) : undefined,
+      ...(body ? {body: JSON.stringify(body)} : {}),
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       throw new Error(`Z-API ${action} failed: ${res.status} ${txt}`);
     }
-    const data = (await res.json().catch(() => null)) as {messageId?: string; id?: string} | null;
+    return await res.json().catch(() => null);
+  }
+
+  private async request(
+    method: "POST" | "DELETE",
+    action: string,
+    body?: Record<string, unknown>
+  ): Promise<string | null> {
+    const data = (await this.call(method, action, body)) as {messageId?: string; id?: string} | null;
     return data?.messageId ?? data?.id ?? null;
   }
 
@@ -49,12 +59,27 @@ export class ZapiProvider implements WhatsAppProvider {
     return await this.post("send-text", {phone, message: text});
   }
 
-  async sendMedia(phone: string, media: {url?: string; base64?: string; mime: string; name?: string; type: string}): Promise<string | null> {
+  async sendMedia(phone: string, media: MidiaDeSaida): Promise<string | null> {
     const payload = media.url ?? media.base64 ?? "";
-    if (media.type === "image") return await this.post("send-image", {phone, image: payload});
-    if (media.type === "video") return await this.post("send-video", {phone, video: payload});
+    const legenda = media.caption ? {caption: media.caption} : {};
+    if (media.type === "image") return await this.post("send-image", {phone, image: payload, ...legenda});
+    if (media.type === "video") return await this.post("send-video", {phone, video: payload, ...legenda});
     if (media.type === "audio") return await this.post("send-audio", {phone, audio: payload});
-    return await this.post("send-document/" + (media.name?.split(".").pop() || "bin"), {phone, document: payload, fileName: media.name});
+    return await this.post("send-document/" + (media.name?.split(".").pop() || "bin"), {
+      phone,
+      document: payload,
+      fileName: media.name,
+      ...legenda,
+    });
+  }
+
+  async sendImageStatus(image: string): Promise<string | null> {
+    return await this.post("send-image-status", {image});
+  }
+
+  async getFilaDeSaida(): Promise<ItemDaFilaDeSaida[]> {
+    const data = await this.call("GET", "queue");
+    return Array.isArray(data) ? data.map(readItemDaFila) : [];
   }
 
   async editText(phone: string, externalId: string, text: string): Promise<void> {
@@ -114,6 +139,19 @@ export class ZapiProvider implements WhatsAppProvider {
     return leitor ? leitor[1](body, base) : null;
   }
 }
+
+const textOrNull = (valor: unknown): string | null => (valor === undefined || valor === null ? null : String(valor));
+
+/** `Created` vem em milissegundos na Z-API; texto é aceito como veio. */
+const readCriadaEm = (valor: unknown): string | null =>
+  typeof valor === "number" ? new Date(valor).toISOString() : textOrNull(valor);
+
+const readItemDaFila = (item: any): ItemDaFilaDeSaida => ({
+  criadaEm: readCriadaEm(item?.Created ?? item?.created),
+  telefone: textOrNull(item?.Phone ?? item?.phone),
+  mensagem: textOrNull(item?.Message ?? item?.message),
+  id: textOrNull(item?.ZaapId ?? item?.zaapId ?? item?.MessageId ?? item?._id),
+});
 
 type Base = Pick<InboundMessage, "externalId" | "phone" | "senderName" | "momentMs" | "photoUrl">;
 

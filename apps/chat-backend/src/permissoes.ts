@@ -3,14 +3,15 @@
  *
  * O chat perguntava pelo NÚMERO do papel (`>= 6` atende, `>= 15` gerencia,
  * `>= 20` administra) e por isso ignorava a função configurada na tela de
- * Funções e as exceções por pessoa. Agora são três ações do catálogo do api-ts
+ * Funções e as exceções por pessoa. Agora são ações do catálogo do api-ts
  * (`apps/api-ts/src/utils/permissions.ts`), lidas do banco compartilhado:
  *
  *  - `chat.atender`     aparece nas listas, recebe conversa da fila e conecta.
  *  - `chat.gerenciar`   transfere atendimento e lê os relatórios.
  *  - `chat.administrar` vê fila, robô e avaliação, e configura o chat.
+ *  - `chat.disparo`     dispara mensagens em massa (src/disparo/).
  *
- * O container do chat não leva o código do api-ts, então as três chaves e a
+ * O container do chat não leva o código do api-ts, então as chaves e a
  * regra de exceção estão repetidas aqui; `tests/permissoes-do-chat.test.ts`
  * compara as duas e quebra se divergirem. Os padrões por função são gravados
  * pelo api-ts no boot. Sem função gravada, o chat nega.
@@ -22,6 +23,7 @@ export const CHAT_ACTION = {
   ATENDER: "chat.atender",
   GERENCIAR: "chat.gerenciar",
   ADMINISTRAR: "chat.administrar",
+  DISPARO: "chat.disparo",
 } as const;
 export type ChatAction = (typeof CHAT_ACTION)[keyof typeof CHAT_ACTION];
 

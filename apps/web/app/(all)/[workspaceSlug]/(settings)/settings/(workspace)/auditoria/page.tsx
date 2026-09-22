@@ -92,6 +92,7 @@ const ACTION_LABELS: Record<string, string> = {
   unfreeze: "Descongelou",
   password_change: "Trocou a senha",
   password_reset_request: "Pediu nova senha",
+  send: "Enviou",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -110,6 +111,7 @@ const ENTITY_LABELS: Record<string, string> = {
   module: "Módulo",
   report: "Relatório",
   chat_session: "Atendimento",
+  chat_disparo: "Disparo de mensagens",
   audit_log: "Trilha de auditoria",
 };
 

@@ -90,6 +90,7 @@ export const ACTION_CATALOG = {
   CHAT_ATENDER: {key: "chat.atender", label: "Atender no chat", group: G.CHAT, scope: "workspace", roles: OPERAM},
   CHAT_GERENCIAR: {key: "chat.gerenciar", label: "Transferir atendimentos e ver relatórios do chat", group: G.CHAT, scope: "workspace", roles: MEMBRO_E_GESTOR},
   CHAT_ADMINISTRAR: {key: "chat.administrar", label: "Ver fila, robô e avaliações e configurar o chat", group: G.CHAT, scope: "workspace", roles: SO_ADMIN},
+  CHAT_DISPARO: {key: "chat.disparo", label: "Disparar mensagens em massa", group: G.CHAT, scope: "workspace", roles: GESTOR},
   PROJECT_CREATE: {key: "project.create", label: "Criar sistemas", group: G.ESPACO, scope: "workspace", roles: GESTOR},
   REPORT_VIEW: {key: "report.view", label: "Ver relatórios e análises", group: G.ESPACO, scope: "workspace", roles: MEMBRO_E_GESTOR},
   WORKSPACE_INVITE: {key: "workspace.invite", label: "Convidar pessoas", group: G.ESPACO, scope: "workspace", roles: MEMBRO_E_GESTOR},

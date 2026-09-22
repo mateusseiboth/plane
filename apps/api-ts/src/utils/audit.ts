@@ -39,6 +39,8 @@ export const AUDIT_ACTIONS = {
   UNFREEZE: "unfreeze",
   PASSWORD_CHANGE: "password_change",
   PASSWORD_RESET_REQUEST: "password_reset_request",
+  // Envio de mensagem para fora (disparo em massa do chat, Status do WhatsApp).
+  SEND: "send",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -63,6 +65,8 @@ export const AUDIT_ENTITIES = {
   MODULE: "module",
   REPORT: "report",
   CHAT_SESSION: "chat_session",
+  // Disparo em massa do chat (gravado pelo chat-backend, src/disparo/).
+  CHAT_DISPARO: "chat_disparo",
   AUDIT_LOG: "audit_log",
   OUVIDORIA: "ouvidoria",
   CURRICULO: "curriculo",

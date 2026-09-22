@@ -177,7 +177,8 @@ do banco compartilhado).
 `audit.view`, `page.manage.all`, `label.sla`, `entity.manage`, `visit.manage`, `issue.type.manage`,
 `import.manage`, `integration.manage`, `ai.config`, `plugin.manage`, `portal.manage`.
 
-Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`).
+Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`) e
+`chat.disparo` (Gestor, admin; disparo em massa no chat, ver `.claude/chat-disparo.md`).
 
 W15: `ouvidoria.read`, `denuncia.read`, `curriculo.read` e `contato.export` (Gestor, admin; ver
 `.claude/ouvidoria-denuncia-curriculos.md`). O menu lateral esconde ouvidoria e currículos de quem

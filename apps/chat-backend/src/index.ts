@@ -42,6 +42,8 @@ import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
 import { ligacoesModule } from "@/ligacoes/routes";
 import { destinosModule } from "@/bot/acao/rotas";
+import { disparoModule } from "@/disparo/routes";
+import { startDisparoWorker } from "@/disparo/worker";
 import { parseChannelFilter } from "@/canais";
 import { atendenteModule } from "@/atendente/rotas";
 import { mergeClientInfo, parseClientInfo } from "@/atendente/client-info";
@@ -694,6 +696,8 @@ const app = new Elysia()
 
   // ── Destinos do passo "ação" do robô (ouvidoria, currículo, e-mail) ──
   .use(destinosModule)
+  // ── Disparo em massa (chat.disparo; o worker envia no ritmo configurado) ──
+  .use(disparoModule)
 
   // ── Ferramentas do atendente e gestão: frases, chave, alerta, cadastro,
   //    feriados, gerenciador e monitor (src/atendente/rotas.ts) ──
@@ -810,6 +814,7 @@ const app = new Elysia()
 
 startHeartbeat();
 startTimers();
+startDisparoWorker();
 console.log(`💬 chat-backend listening on :${PORT}`);
 
 /** A avaliação do cliente é leitura de gestão: só o administrador do espaço. */

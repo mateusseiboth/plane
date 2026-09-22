@@ -17,12 +17,17 @@ export const CHAT_AUDIT_ACTIONS = {
   EXPORT: "export",
   TRANSFER: "assign",
   UPDATE: "update",
+  SEND: "send",
 } as const;
 
-/** O que foi auditado. Visibilidade do atendente é sobre a pessoa, não a conversa. */
+/**
+ * O que foi auditado. Visibilidade do atendente é sobre a pessoa, não a
+ * conversa; o disparo em massa registra a execução (ou a mensagem, no Status).
+ */
 export const CHAT_AUDIT_ENTITIES = {
   SESSION: "chat_session",
   ATTENDANT: "chat_attendant",
+  DISPARO: "chat_disparo",
 } as const;
 type ChatAuditEntity = (typeof CHAT_AUDIT_ENTITIES)[keyof typeof CHAT_AUDIT_ENTITIES];
 
@@ -47,7 +52,7 @@ function clientIp(headers: any): string | null {
 
 export async function recordChatAudit(args: {
   workspaceSlug: string;
-  /** Id do registro auditado: a conversa, ou o atendente quando `entity` é ATTENDANT. */
+  /** Id do registro auditado: a conversa, o atendente (ATTENDANT) ou o envio (DISPARO). */
   sessionId: string;
   entity?: ChatAuditEntity;
   action: string;
