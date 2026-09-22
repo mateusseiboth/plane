@@ -1,0 +1,31 @@
+--- a/apps/api-ts/scripts/migrate-sac.ts
++++ b/apps/api-ts/scripts/migrate-sac.ts
+@@ -31,6 +31,7 @@
+ import {Pool as PgPool} from "pg";
+ import {seedWorkflowRoles} from "../src/utils/permissions";
+ import {DEFAULT_STATES, ensureProjectDefaults} from "../src/utils/project-defaults";
++import {LEGACY_VISITA_STATUS_SQL, mapLegacyVisitStatus} from "@modules/technical-visit/legacy-visit-status";
+ 
+ // ── Config ────────────────────────────────────────────────────────────────────
+ 
+@@ -1110,8 +1111,8 @@
+              v.visita_conclusao, v.visita_dataprogramada, v.visita_dataexecutada,
+              v.visita_dataexecutada2, v.visita_situacao, v.visita_mot_0, v.visita_mot_1,
+              v.visita_mot_2, v.visita_mot_3, v.visita_mot_4, v.visita_mot_4_outros, v.visita_mot_5,
+-             v.visita_contato_id, v.visita_sistemas_id
+-      FROM visita v WHERE v.visita_status = 1 ORDER BY v.visita_id`);
++             v.visita_contato_id, v.visita_sistemas_id, v.visita_status
++      FROM visita v WHERE ${LEGACY_VISITA_STATUS_SQL} ORDER BY v.visita_id`);
+     log(`  Found ${visitas.length} visits`);
+ 
+     // Responsáveis da entidade: usados para preencher os contatos da visita e,
+@@ -1154,7 +1155,8 @@
+           scheduledDate: safeDate(v.visita_dataprogramada),
+           startedAt: safeDate(v.visita_dataexecutada),
+           finishedAt: safeDate(v.visita_dataexecutada2),
+-          status: v.visita_situacao === 1 ? 1 : 0,
++          // Situação + cancelamento do SAC -> VISIT_STATUS (0 agendada, 4 concluída, 5 cancelada).
++          status: mapLegacyVisitStatus(v),
+           summary: sanitizeText(v.visita_resumo),
+           conclusion: sanitizeText(v.visita_conclusao),
+           visitNumber: bounded(v.visita_numero, 50),

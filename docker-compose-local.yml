@@ -111,6 +111,9 @@ services:
       IA_REQUISITOS_ENABLED: ${IA_REQUISITOS_ENABLED:-true}
       IA_REQUISITOS_OCR_URL: ${IA_REQUISITOS_OCR_URL:-}
       IA_REQUISITOS_OCR_TIMEOUT_MS: ${IA_REQUISITOS_OCR_TIMEOUT_MS:-1500}
+      # Segredo da ponte entre a plataforma e o backend dos plugins. Sem ele o
+      # proxy /plugin-sdk/backend/* responde 503. Veja o README.
+      PLUGIN_BRIDGE_SECRET: ${PLUGIN_BRIDGE_SECRET:-}
     depends_on:
       - plane-db
       - plane-redis

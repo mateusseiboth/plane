@@ -7,6 +7,72 @@ import { extractPluginZip } from "@utils/plugin-zip";
 import { validatePluginManifest } from "@utils/plugin-manifest";
 import { checkRateLimit } from "@utils/rate-limiter";
 import { requireUploader } from "@utils/registry-access";
+import { PLUGIN_UPLOAD_ACAO, resolvePluginUploadAcao, type PluginUploadAcao } from "@utils/plugin-upload";
+import type { ValidatedPluginManifest } from "@utils/plugin-manifest";
+import type { Plugin, Prisma } from "@prisma/client";
+
+interface IPluginUpload {
+  manifest: ValidatedPluginManifest;
+  rawManifest: unknown;
+  entryFilename: string;
+  storageKey: string;
+  userId: string;
+  cadastrado: Plugin | null;
+}
+
+const buildPluginData = ({ manifest, rawManifest, entryFilename, storageKey }: IPluginUpload) => ({
+  name: manifest.name,
+  description: manifest.description || null,
+  version: manifest.version,
+  author: manifest.author,
+  entryFile: entryFilename,
+  manifest: rawManifest as any,
+  permissions: manifest.permissions,
+  contributions: manifest.contributions as any,
+  storageKey,
+});
+
+// Cadastro novo e reenvio depois de excluir entram ativos (upload por admin/TI não
+// passa por aprovação). Atualização de versão mantém o status atual: um plugin
+// desativado pelo admin da instância não volta sozinho com o upload do TI.
+const SAVE_PLUGIN_POR_ACAO: Record<PluginUploadAcao, (tx: Prisma.TransactionClient, upload: IPluginUpload) => Promise<Plugin>> = {
+  [PLUGIN_UPLOAD_ACAO.CREATE]: (tx, upload) =>
+    tx.plugin.create({
+      data: { ...buildPluginData(upload), slug: upload.manifest.slug, status: "ACTIVE", createdById: upload.userId },
+    }),
+  [PLUGIN_UPLOAD_ACAO.UPGRADE]: (tx, upload) =>
+    tx.plugin.update({ where: { id: upload.cadastrado!.id }, data: buildPluginData(upload) }),
+  [PLUGIN_UPLOAD_ACAO.REINSTALL]: (tx, upload) =>
+    tx.plugin.update({
+      where: { id: upload.cadastrado!.id },
+      data: { ...buildPluginData(upload), status: "ACTIVE", deletedAt: null },
+    }),
+};
+
+// `plugin.upload` continua sendo o nome do cadastro novo nos logs já existentes.
+const AUDIT_ACTION_POR_ACAO: Record<PluginUploadAcao, string> = {
+  [PLUGIN_UPLOAD_ACAO.CREATE]: "plugin.upload",
+  [PLUGIN_UPLOAD_ACAO.UPGRADE]: "plugin.upgrade",
+  [PLUGIN_UPLOAD_ACAO.REINSTALL]: "plugin.reinstall",
+};
+
+const STATUS_HTTP_POR_ACAO: Record<PluginUploadAcao, number> = {
+  [PLUGIN_UPLOAD_ACAO.CREATE]: 201,
+  [PLUGIN_UPLOAD_ACAO.UPGRADE]: 200,
+  [PLUGIN_UPLOAD_ACAO.REINSTALL]: 200,
+};
+
+/** Uma linha por versão: o reenvio de uma versão que já passou por aqui atualiza a linha dela. */
+async function savePluginVersion(tx: Prisma.TransactionClient, pluginId: string, upload: IPluginUpload) {
+  const data = {
+    storageKey: upload.storageKey,
+    manifest: upload.rawManifest as any,
+    contributions: upload.manifest.contributions as any,
+  };
+  const existente = await tx.pluginVersion.findFirst({ where: { pluginId, version: upload.manifest.version } });
+  if (existente) return tx.pluginVersion.update({ where: { id: existente.id }, data });
+  return tx.pluginVersion.create({ data: { ...data, pluginId, version: upload.manifest.version } });
+}
 
 function auditLog(action: string, userId: string, pluginId?: string, meta?: Record<string, unknown>) {
   console.log(JSON.stringify({
@@ -97,14 +163,11 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
     const { manifest: rawManifest, entryBuffer, entryFilename, files } = extractPluginZip(zipBuffer);
     const manifest = validatePluginManifest(rawManifest);
 
-    // Conflict check: same slug + version
-    const existing = await prisma.plugin.findFirst({
-      where: { slug: manifest.slug, version: manifest.version, deletedAt: null },
-    });
-    if (existing) {
-      set.status = 409;
-      return { detail: `O plugin "${manifest.slug}" na versão ${manifest.version} já existe.` };
-    }
+    // Slug já cadastrado (mesmo excluído): atualiza ou reativa em vez de criar.
+    // Resolvido ANTES de gravar o pacote, senão uma versão recusada sobrescreveria
+    // o bundle em uso.
+    const cadastrado = await prisma.plugin.findUnique({ where: { slug: manifest.slug } });
+    const acao = resolvePluginUploadAcao(cadastrado, manifest.version, manifest.slug);
 
     // Persist entry bundle + every additional asset bundled in the ZIP.
     const baseDir = `${manifest.slug}/${manifest.version}`;
@@ -115,38 +178,15 @@ export const pluginRegistryModule = new Elysia({ prefix: "/plugins" })
       await pluginStorage.put(`${baseDir}/${name}`, buf);
     }
 
+    const upload: IPluginUpload = { manifest, rawManifest, entryFilename, storageKey, userId: user.id, cadastrado };
     const plugin = await prisma.$transaction(async (tx) => {
-      const p = await tx.plugin.create({
-        data: {
-          name: manifest.name,
-          slug: manifest.slug,
-          description: manifest.description || null,
-          version: manifest.version,
-          author: manifest.author,
-          entryFile: entryFilename,
-          manifest: rawManifest as any,
-          permissions: manifest.permissions,
-          contributions: manifest.contributions as any,
-          // Uploads por admin/TI já entram ativos (sem aprovação).
-          status: "ACTIVE",
-          storageKey,
-          createdById: user.id,
-        },
-      });
-      await tx.pluginVersion.create({
-        data: {
-          pluginId: p.id,
-          version: manifest.version,
-          storageKey,
-          manifest: rawManifest as any,
-          contributions: manifest.contributions as any,
-        },
-      });
+      const p = await SAVE_PLUGIN_POR_ACAO[acao](tx, upload);
+      await savePluginVersion(tx, p.id, upload);
       return p;
     });
 
-    auditLog("plugin.upload", user.id, plugin.id, { slug: plugin.slug, version: plugin.version });
-    set.status = 201;
+    auditLog(AUDIT_ACTION_POR_ACAO[acao], user.id, plugin.id, { slug: plugin.slug, version: plugin.version });
+    set.status = STATUS_HTTP_POR_ACAO[acao];
     return serializePlugin(plugin);
   })
 

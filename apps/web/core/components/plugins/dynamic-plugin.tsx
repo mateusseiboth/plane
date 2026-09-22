@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, type ComponentType } from "react";
+import { useParams } from "next/navigation";
 import { initializeSDK } from "@mateusseiboth/plugins-aviao";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
 import { PluginUiBridge } from "@/components/plugins/plugin-ui-bridge";
@@ -26,6 +27,8 @@ type State =
 export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, props = {} }) => {
   const [state, setState] = useState<State>({ phase: "loading" });
   const loadedKey = useRef<string | null>(null);
+  // O SDK manda o workspace aberto em toda chamada: o gateway exige workspace_slug.
+  const workspaceSlug = useParams().workspaceSlug?.toString();
 
   // Bridge plugin SDK notifications to the host toast system.
   useEffect(() => {
@@ -45,7 +48,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
   }, []);
 
   useEffect(() => {
-    const key = `${pluginId}:${page ?? ""}`;
+    const key = `${pluginId}:${page ?? ""}:${workspaceSlug ?? ""}`;
     if (loadedKey.current === key) return;
     loadedKey.current = key;
 
@@ -66,7 +69,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
         const title = target?.title || plugin.name;
 
         // Initialize the SDK before executing the bundle so window.PluginSDK is ready.
-        initializeSDK({ baseUrl: window.location.origin, pluginId });
+        initializeSDK({ baseUrl: window.location.origin, pluginId, workspaceSlug });
 
         const url = pluginRegistry.resolveAssetUrl(plugin);
         // Carrega o bundle compartilhando o React do host (hooks funcionam).
@@ -79,7 +82,12 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
           throw new Error(`O pacote do plugin precisa exportar "${exportName}" como um componente React.`);
         }
 
-        setState({ phase: "ready", Component: candidate as ComponentType<Record<string, unknown>>, title, slug: plugin.slug });
+        setState({
+          phase: "ready",
+          Component: candidate as ComponentType<Record<string, unknown>>,
+          title,
+          slug: plugin.slug,
+        });
       } catch (e: any) {
         if (!cancelled) setState({ phase: "error", message: e?.message ?? "Falha ao carregar o plugin." });
       }
@@ -88,7 +96,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
     return () => {
       cancelled = true;
     };
-  }, [pluginId, page]);
+  }, [pluginId, page, workspaceSlug]);
 
   if (state.phase === "loading") return <PluginSkeleton />;
   if (state.phase === "error") return <PluginErrorFallback message={state.message} pluginId={pluginId} />;
@@ -111,14 +119,14 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 const PluginSkeleton: React.FC = () => (
-  <div className="animate-pulse rounded-xl bg-custom-background-80" style={{ minHeight: 240 }} />
+  <div className="bg-custom-background-80 animate-pulse rounded-xl" style={{ minHeight: 240 }} />
 );
 
 const PluginErrorFallback: React.FC<{ message: string; pluginId: string }> = ({ message, pluginId }) => (
-  <div className="flex flex-col items-center justify-center rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-    <p className="text-sm font-medium text-red-500">Falha ao carregar o plugin</p>
-    <p className="mt-1 text-xs text-red-400">{message}</p>
-    <p className="mt-2 font-mono text-xs text-custom-text-400">id: {pluginId}</p>
+  <div className="border-red-500/20 bg-red-500/5 flex flex-col items-center justify-center rounded-xl border p-6 text-center">
+    <p className="text-sm text-red-500 font-medium">Falha ao carregar o plugin</p>
+    <p className="text-xs text-red-400 mt-1">{message}</p>
+    <p className="font-mono text-xs text-custom-text-400 mt-2">id: {pluginId}</p>
   </div>
 );
 

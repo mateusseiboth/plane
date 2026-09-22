@@ -73,13 +73,14 @@ export class PluginStore {
     try {
       const plugin = await pluginService.upload(file);
       runInAction(() => {
-        this.plugins = [plugin, ...this.plugins];
+        // Versão nova de um plugin existente volta com o mesmo id: substitui a linha.
+        this.plugins = [plugin, ...this.plugins.filter((p) => p.id !== plugin.id)];
         this.isUploading = false;
       });
       return plugin;
     } catch (e: any) {
       runInAction(() => {
-        this.error = e?.response?.data?.detail ?? "Upload failed.";
+        this.error = e?.response?.data?.detail ?? "Falha ao enviar o plugin.";
         this.isUploading = false;
       });
       throw e;
