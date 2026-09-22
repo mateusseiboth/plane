@@ -17,7 +17,11 @@ function configSchemaOf(plugin: any): any[] {
   return Array.isArray(m.configSchema) ? m.configSchema : [];
 }
 function secretKeysOf(plugin: any): Set<string> {
-  return new Set(configSchemaOf(plugin).filter((f: any) => f?.secret || f?.type === "secret").map((f: any) => f.key));
+  return new Set(
+    configSchemaOf(plugin)
+      .filter((f: any) => f?.secret || f?.type === "secret")
+      .map((f: any) => f.key)
+  );
 }
 function redactSecrets(values: Record<string, unknown>, plugin: any): Record<string, unknown> {
   const secrets = secretKeysOf(plugin);
@@ -113,31 +117,26 @@ function serializeEntity(e: any) {
 // ── Plugin auth middleware ──────────────────────────────────────────────────────
 // Validates that the request comes from an active plugin with the required permission.
 
-const pluginAuthPlugin = new Elysia({ name: "plugin-auth" })
-  .use(authPlugin)
-  .derive({ as: "global" }, async (ctx) => {
-    const pluginId = ctx.headers["x-plugin-id"];
-    if (!pluginId) {
-      ctx.set.status = 400;
-      throw Object.assign(new Error("Cabeçalho X-Plugin-Id ausente."), { status: 400 });
-    }
-    const plugin = await prisma.plugin.findFirst({
-      where: { id: pluginId, status: "ACTIVE", deletedAt: null },
-    });
-    if (!plugin) {
-      ctx.set.status = 403;
-      throw Object.assign(new Error("Plugin não encontrado ou inativo."), { status: 403 });
-    }
-    return { plugin };
+const pluginAuthPlugin = new Elysia({ name: "plugin-auth" }).use(authPlugin).derive({ as: "global" }, async (ctx) => {
+  const pluginId = ctx.headers["x-plugin-id"];
+  if (!pluginId) {
+    ctx.set.status = 400;
+    throw Object.assign(new Error("Cabeçalho X-Plugin-Id ausente."), { status: 400 });
+  }
+  const plugin = await prisma.plugin.findFirst({
+    where: { id: pluginId, status: "ACTIVE", deletedAt: null },
   });
+  if (!plugin) {
+    ctx.set.status = 403;
+    throw Object.assign(new Error("Plugin não encontrado ou inativo."), { status: 403 });
+  }
+  return { plugin };
+});
 
 function requirePermission(plugin: { permissions: string[] }, permission: string, set: any) {
   if (!plugin.permissions.includes(permission)) {
     set.status = 403;
-    throw Object.assign(
-      new Error(`O plugin não possui a permissão "${permission}".`),
-      { status: 403 }
-    );
+    throw Object.assign(new Error(`O plugin não possui a permissão "${permission}".`), { status: 403 });
   }
 }
 
@@ -281,7 +280,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
         labels: { include: { label: { select: { id: true, name: true, color: true } } } },
       },
     });
-    if (!issue) { set.status = 404; return { detail: "Chamado não encontrado." }; }
+    if (!issue) {
+      set.status = 404;
+      return { detail: "Chamado não encontrado." };
+    }
     const i = issue as any;
     return {
       id: i.id,
@@ -355,7 +357,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
   .get("/intakes/:id", async ({ params: { id }, plugin, set }) => {
     requirePermission(plugin, "intakes.read", set);
     const intake = await prisma.intake.findFirst({ where: { id, deletedAt: null } });
-    if (!intake) { set.status = 404; return { detail: "Solicitação não encontrada." }; }
+    if (!intake) {
+      set.status = 404;
+      return { detail: "Solicitação não encontrada." };
+    }
     const i = intake as any;
     return {
       id: i.id,
@@ -435,7 +440,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       where: { id, deletedAt: null },
       include: { state: { select: { id: true, name: true, group: true } } },
     });
-    if (!issue) { set.status = 404; return { detail: "Ação não encontrada." }; }
+    if (!issue) {
+      set.status = 404;
+      return { detail: "Ação não encontrada." };
+    }
     const i = issue as any;
     return {
       id: i.id,
@@ -463,14 +471,13 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       intakeWhere.workspaceId = ws.id;
     }
 
-    const [workerItemsTotal, workerItemsOpen, workerItemsClosed, intakesTotal, actionsTotal] =
-      await Promise.all([
-        prisma.issue.count({ where }),
-        prisma.issue.count({ where: { ...where, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
-        prisma.issue.count({ where: { ...where, state: { group: "completed" } } }),
-        prisma.intake.count({ where: intakeWhere }),
-        prisma.issue.count({ where }),
-      ]);
+    const [workerItemsTotal, workerItemsOpen, workerItemsClosed, intakesTotal, actionsTotal] = await Promise.all([
+      prisma.issue.count({ where }),
+      prisma.issue.count({ where: { ...where, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
+      prisma.issue.count({ where: { ...where, state: { group: "completed" } } }),
+      prisma.intake.count({ where: intakeWhere }),
+      prisma.issue.count({ where }),
+    ]);
 
     return {
       worker_items_total: workerItemsTotal,
@@ -530,7 +537,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       where: { id: user.id },
       select: { id: true, email: true, displayName: true, firstName: true, lastName: true, avatarUrl: true },
     });
-    if (!u) { set.status = 404; return { detail: "Usuário não encontrado." }; }
+    if (!u) {
+      set.status = 404;
+      return { detail: "Usuário não encontrado." };
+    }
     return {
       id: u.id,
       email: u.email,
@@ -584,7 +594,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       where: { id },
       select: { id: true, email: true, displayName: true, avatarUrl: true },
     });
-    if (!u) { set.status = 404; return { detail: "Usuário não encontrado." }; }
+    if (!u) {
+      set.status = 404;
+      return { detail: "Usuário não encontrado." };
+    }
     return { id: u.id, email: u.email, display_name: u.displayName, avatar_url: (u as any).avatarUrl ?? null };
   })
 
@@ -630,7 +643,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       where: { id, deletedAt: null },
       select: ENTITY_SELECT,
     });
-    if (!entity) { set.status = 404; return { detail: "Entidade não encontrada." }; }
+    if (!entity) {
+      set.status = 404;
+      return { detail: "Entidade não encontrada." };
+    }
     return serializeEntity(entity);
   })
 
@@ -646,7 +662,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
     let scopeId: string | null = null;
     if (scope === "workspace") {
       scopeId = await workspaceIdFromQuery(q);
-      if (!scopeId) { set.status = 400; return { detail: "workspace_slug é obrigatório para o escopo de workspace." }; }
+      if (!scopeId) {
+        set.status = 400;
+        return { detail: "workspace_slug é obrigatório para o escopo de workspace." };
+      }
     }
     const row = await prisma.pluginConfig.findFirst({ where: { pluginId: plugin.id, scope, scopeId } });
     const defaults: Record<string, unknown> = {};
@@ -661,7 +680,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
     let scopeId: string | null = null;
     if (scope === "workspace") {
       scopeId = await workspaceIdFromQuery({ workspace_slug: b.workspace_slug ?? (query as any).workspace_slug });
-      if (!scopeId) { set.status = 400; return { detail: "workspace_slug é obrigatório para o escopo de workspace." }; }
+      if (!scopeId) {
+        set.status = 400;
+        return { detail: "workspace_slug é obrigatório para o escopo de workspace." };
+      }
     }
     if (!(await canAdminPlugin(plugin, user, scopeId))) {
       set.status = 403;
@@ -677,9 +699,14 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       merged[k] = v;
     }
     if (existing) {
-      await prisma.pluginConfig.update({ where: { id: existing.id }, data: { value: merged as any, updatedById: user.id } });
+      await prisma.pluginConfig.update({
+        where: { id: existing.id },
+        data: { value: merged as any, updatedById: user.id },
+      });
     } else {
-      await prisma.pluginConfig.create({ data: { pluginId: plugin.id, scope, scopeId, value: merged as any, updatedById: user.id } });
+      await prisma.pluginConfig.create({
+        data: { pluginId: plugin.id, scope, scopeId, value: merged as any, updatedById: user.id },
+      });
     }
     return { ok: true };
   })
@@ -702,7 +729,10 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
   //  phase (or via the verifiable-token path).
   .all("/backend/*", async ({ plugin, user, params, query, body, request, set }) => {
     const backend = manifestOf(plugin).backend;
-    if (!backend?.baseUrl) { set.status = 400; return { detail: "O plugin não possui backend configurado." }; }
+    if (!backend?.baseUrl) {
+      set.status = 400;
+      return { detail: "O plugin não possui backend configurado." };
+    }
 
     const subPath = "/" + String((params as any)["*"] ?? "").replace(/^\/+/, "");
     const workspaceId = await workspaceIdFromQuery(query as any);
@@ -717,12 +747,18 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       if (typeof body === "string") bodyBuf = Buffer.from(body);
       else if (body && typeof body === "object") bodyBuf = Buffer.from(JSON.stringify(body));
       else {
-        try { bodyBuf = Buffer.from(await request.arrayBuffer()); } catch { bodyBuf = undefined; }
+        try {
+          bodyBuf = Buffer.from(await request.arrayBuffer());
+        } catch {
+          bodyBuf = undefined;
+        }
       }
     }
 
     const ts = Date.now().toString();
-    const bodyHash = createHash("sha256").update(bodyBuf ?? Buffer.alloc(0)).digest("hex");
+    const bodyHash = createHash("sha256")
+      .update(bodyBuf ?? Buffer.alloc(0))
+      .digest("hex");
     const pluginKey = createHmac("sha256", BRIDGE_SECRET).update(plugin.id).digest("hex");
     const sigBase = [method, subPath, user.id, workspaceId ?? "", ts, bodyHash].join("|");
     const signature = createHmac("sha256", pluginKey).update(sigBase).digest("hex");
@@ -752,7 +788,8 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
 
     const outHeaders: Record<string, string> = {};
     resp.headers.forEach((v, k) => {
-      if (!["transfer-encoding", "content-encoding", "connection", "content-length"].includes(k.toLowerCase())) outHeaders[k] = v;
+      if (!["transfer-encoding", "content-encoding", "connection", "content-length"].includes(k.toLowerCase()))
+        outHeaders[k] = v;
     });
     outHeaders["X-Correlation-Id"] = correlationId;
     return new Response(resp.body, { status: resp.status, headers: outHeaders });
