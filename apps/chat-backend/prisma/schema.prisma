@@ -367,3 +367,82 @@ model ChatRamal {
   @@unique([workspaceId, extension])
   @@map("chat_ramais")
 }
+
+// ── Disparo em massa (src/disparo/, migration 0016) ──────────────────────────
+// Só quem tem `chat.disparo`. A mensagem é o cadastro; cada envio é uma
+// execução com a cópia do texto e do arquivo daquele momento, e um item por
+// telefone (sem repetir número) que o worker processa no ritmo configurado.
+
+model ChatDisparoMensagem {
+  id          String                @id @default(uuid()) @db.Uuid
+  workspaceId String                @map("workspace_id")
+  titulo      String
+  texto       String?
+  mediaKey    String?               @map("media_key")
+  mediaMime   String?               @map("media_mime")
+  mediaName   String?               @map("media_name")
+  createdById String                @map("created_by_id")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  deletedAt   DateTime?             @map("deleted_at")
+  execucoes   ChatDisparoExecucao[]
+
+  @@index([workspaceId, deletedAt])
+  @@map("chat_disparo_mensagens")
+}
+
+model ChatDisparoExecucao {
+  id          String              @id @default(uuid()) @db.Uuid
+  workspaceId String              @map("workspace_id")
+  mensagemId  String              @map("mensagem_id") @db.Uuid
+  mensagem    ChatDisparoMensagem @relation(fields: [mensagemId], references: [id], onDelete: Cascade)
+  titulo      String
+  texto       String?
+  mediaKey    String?             @map("media_key")
+  mediaMime   String?             @map("media_mime")
+  mediaName   String?             @map("media_name")
+  // {entity_type, entity_id, project_id} como foram escolhidos na tela.
+  filtros     Json                @default("{}")
+  total       Int                 @default(0)
+  semTelefone Int                 @default(0) @map("sem_telefone")
+  repetidos   Int                 @default(0)
+  status      String              @default("em_andamento") // em_andamento | concluida | cancelada
+  createdById String              @map("created_by_id")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  finishedAt  DateTime?           @map("finished_at")
+  itens       ChatDisparoItem[]
+
+  @@index([workspaceId, createdAt])
+  @@index([status])
+  @@map("chat_disparo_execucoes")
+}
+
+model ChatDisparoItem {
+  id          String              @id @default(uuid()) @db.Uuid
+  execucaoId  String              @map("execucao_id") @db.Uuid
+  execucao    ChatDisparoExecucao @relation(fields: [execucaoId], references: [id], onDelete: Cascade)
+  workspaceId String              @map("workspace_id")
+  telefone    String
+  contactId   String?             @map("contact_id")
+  contactName String?             @map("contact_name")
+  entityName  String?             @map("entity_name")
+  status      String              @default("pendente") // pendente | processando | enviado | falhou | cancelado
+  erro        String?
+  externalId  String?             @map("external_id")
+  tentadoEm   DateTime?           @map("tentado_em")
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  @@unique([execucaoId, telefone])
+  @@index([workspaceId, status])
+  @@index([workspaceId, tentadoEm])
+  @@map("chat_disparo_itens")
+}
+
+model ChatDisparoConfig {
+  workspaceId        String   @id @map("workspace_id")
+  mensagensPorMinuto Int      @default(20) @map("mensagens_por_minuto")
+  updatedById        String?  @map("updated_by_id")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("chat_disparo_config")
+}

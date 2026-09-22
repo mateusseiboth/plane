@@ -24,10 +24,20 @@ export type InboundMutation =
   | { kind: "edit"; phone: string; externalId: string; text: string }
   | { kind: "delete"; phone?: string; externalIds: string[] };
 
+/** Mídia de saída. `caption` é a legenda (imagem, vídeo e documento). */
+export type MidiaDeSaida = { url?: string; base64?: string; mime: string; name?: string; type: string; caption?: string };
+
+/** Uma mensagem parada na fila de saída do provedor (diagnóstico do disparo). */
+export type ItemDaFilaDeSaida = { id: string | null; telefone: string | null; mensagem: string | null; criadaEm: string | null };
+
 export interface WhatsAppProvider {
   /** Retorna o id da mensagem no provedor (necessário para editar/apagar depois). */
   sendText(phone: string, text: string): Promise<string | null>;
-  sendMedia(phone: string, media: { url?: string; base64?: string; mime: string; name?: string; type: string }): Promise<string | null>;
+  sendMedia(phone: string, media: MidiaDeSaida): Promise<string | null>;
+  /** Publica uma imagem no Status do WhatsApp da conta. */
+  sendImageStatus(image: string): Promise<string | null>;
+  /** O que o provedor ainda não entregou. */
+  getFilaDeSaida(): Promise<ItemDaFilaDeSaida[]>;
   /** Edita uma mensagem já enviada por nós (id do provedor). */
   editText(phone: string, externalId: string, text: string): Promise<void>;
   /** Apaga uma mensagem já enviada por nós (id do provedor). */

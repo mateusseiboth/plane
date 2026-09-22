@@ -19,18 +19,18 @@ type Corpo = Record<string, unknown>;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const asCorpo = (body: unknown): Corpo => (body && typeof body === "object" ? (body as Corpo) : {});
+export const asCorpo = (body: unknown): Corpo => (body && typeof body === "object" ? (body as Corpo) : {});
 
-const isBlank = (valor: unknown): boolean => valor === undefined || valor === null || String(valor).trim() === "";
+export const isBlank = (valor: unknown): boolean => valor === undefined || valor === null || String(valor).trim() === "";
 
-const readText = (valor: unknown, max: number): string | null =>
+export const readText = (valor: unknown, max: number): string | null =>
   isBlank(valor) ? null : String(valor).trim().slice(0, max);
 
-const isUuid = (valor: unknown): valor is string => typeof valor === "string" && UUID.test(valor);
+export const isUuid = (valor: unknown): valor is string => typeof valor === "string" && UUID.test(valor);
 
-const erro = (path: string, message: string): CampoComErro => ({ path, message });
+export const erro = (path: string, message: string): CampoComErro => ({ path, message });
 
-const finish = <T>(errors: CampoComErro[], build: () => T): Resultado<T> =>
+export const finish = <T>(errors: CampoComErro[], build: () => T): Resultado<T> =>
   errors.length ? { ok: false, errors } : { ok: true, data: build() };
 
 // ── Envio do PBX ──────────────────────────────────────────────────────────────

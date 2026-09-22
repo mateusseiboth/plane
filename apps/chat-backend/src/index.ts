@@ -41,6 +41,8 @@ import { clientPage } from "@/client-page";
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { configModule } from "@/config-routes";
 import { ligacoesModule } from "@/ligacoes/routes";
+import { disparoModule } from "@/disparo/routes";
+import { startDisparoWorker } from "@/disparo/worker";
 import { parseChannelFilter } from "@/canais";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
@@ -679,6 +681,9 @@ const app = new Elysia()
   // ── Ligações do FreePBX (entrada do PBX, atendente, telefonia, relatório) ──
   .use(ligacoesModule)
 
+  // ── Disparo em massa (chat.disparo; o worker envia no ritmo configurado) ──
+  .use(disparoModule)
+
   // ── WebSocket hub ──
   .ws("/ws", {
     // IMPORTANT: Bun does NOT await an async `open` before delivering messages,
@@ -790,6 +795,7 @@ const app = new Elysia()
 
 startHeartbeat();
 startTimers();
+startDisparoWorker();
 console.log(`💬 chat-backend listening on :${PORT}`);
 
 /** A avaliação do cliente é leitura de gestão: só o administrador do espaço. */
