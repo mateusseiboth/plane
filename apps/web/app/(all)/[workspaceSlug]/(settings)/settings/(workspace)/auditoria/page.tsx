@@ -19,12 +19,13 @@ import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view
 import { PageHead } from "@/components/core/page-title";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { SettingsHeading } from "@/components/settings/heading";
+import { AuditLogsPrintDocument, usePrint, type TLinhaDaAuditoria } from "@/components/print";
 // hooks
-import { useAuditLogs } from "@/hooks/use-audit-logs";
+import { useAuditLogs, useAuditLogsParaImpressao, useAuditRecorder } from "@/hooks/use-audit-logs";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
 // services
-import { auditService, type TAuditFilters } from "@/services/audit.service";
+import { auditService, type TAuditFilters, type TAuditLog } from "@/services/audit.service";
 // local imports
 import { AuditoriaWorkspaceSettingsHeader } from "./header";
 
@@ -119,6 +120,8 @@ function formatDateTime(value: string): string {
   return isNaN(date.getTime()) ? value : date.toLocaleString("pt-BR");
 }
 
+const formatDia = (data: string) => data.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$3/$2/$1");
+
 function summarizeChanges(changes: Record<string, unknown>): string {
   const entries = Object.entries(changes ?? {});
   if (entries.length === 0) return "—";
@@ -131,6 +134,26 @@ function summarizeChanges(changes: Record<string, unknown>): string {
       return `${field}: ${String(value)}`;
     })
     .join("; ");
+}
+
+// O filtro por e-mail é local: a trilha guarda o e-mail do ator, e filtrar no
+// cliente evita mais um índice no banco para um caso de uso pontual.
+function filterPorEmail(logs: TAuditLog[], email: string): TAuditLog[] {
+  const term = email.trim().toLowerCase();
+  if (!term) return logs;
+  return logs.filter((log) => (log.actor_email ?? "").toLowerCase().includes(term));
+}
+
+function toLinhaDaAuditoria(log: TAuditLog): TLinhaDaAuditoria {
+  return {
+    id: log.id,
+    quando: formatDateTime(log.created_at),
+    usuario: log.actor_email ?? "—",
+    ip: log.actor_ip ?? "—",
+    acao: ACTION_LABELS[log.action] ?? log.action,
+    registro: `${ENTITY_LABELS[log.entity] ?? log.entity} ${log.entity_id.slice(0, 8)}`,
+    alteracoes: summarizeChanges(log.changes),
+  };
 }
 
 function AuditoriaSettingsPage() {
@@ -162,13 +185,30 @@ function AuditoriaSettingsPage() {
 
   const { logs, totalCount, hasNextPage, isLoading } = useAuditLogs(slug, filters, { enabled: isAdmin });
 
-  // O filtro por e-mail é local: a trilha guarda o e-mail do ator, e filtrar no
-  // cliente evita mais um índice no banco para um caso de uso pontual.
-  const visibleLogs = useMemo(() => {
-    const term = actorEmail.trim().toLowerCase();
-    if (!term) return logs;
-    return logs.filter((log) => (log.actor_email ?? "").toLowerCase().includes(term));
-  }, [logs, actorEmail]);
+  const visibleLogs = useMemo(() => filterPorEmail(logs, actorEmail), [logs, actorEmail]);
+
+  // Impressão: busca de uma vez os registros dos filtros atuais (não só a página
+  // na tela) e imprime. Imprimir a trilha também vai para a própria trilha.
+  const [linhasDaImpressao, setLinhasDaImpressao] = useState<TLinhaDaAuditoria[]>([]);
+  const [imprimindo, setImprimindo] = useState(false);
+  const loadParaImpressao = useAuditLogsParaImpressao(slug);
+  const recordAudit = useAuditRecorder(slug);
+  const { print } = usePrint();
+  const tituloDaImpressao = actorEmail.trim() ? `Auditoria de ${actorEmail.trim()}` : "Auditoria";
+
+  const imprimir = async () => {
+    setImprimindo(true);
+    const registros = filterPorEmail(await loadParaImpressao({ ...filters, cursor: undefined }), actorEmail);
+    setLinhasDaImpressao(registros.map(toLinhaDaAuditoria));
+    setImprimindo(false);
+    if (currentWorkspace?.id) {
+      recordAudit("print", "audit_log", currentWorkspace.id, {
+        usuario: actorEmail.trim() || null,
+        total: registros.length,
+      });
+    }
+    window.setTimeout(() => print({ documentTitle: tituloDaImpressao }), 0);
+  };
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Auditoria` : undefined;
 
@@ -263,8 +303,12 @@ function AuditoriaSettingsPage() {
             />
           </div>
 
-          <Button variant="neutral-primary" size="sm" onClick={resetFilters}>
+          <Button variant="secondary" size="sm" onClick={resetFilters}>
             Limpar
+          </Button>
+
+          <Button variant="secondary" size="sm" onClick={() => void imprimir()} disabled={imprimindo}>
+            {imprimindo ? "Preparando…" : "Imprimir"}
           </Button>
 
           {slug && (
@@ -321,7 +365,7 @@ function AuditoriaSettingsPage() {
 
         <div className="flex items-center gap-2">
           <Button
-            variant="neutral-primary"
+            variant="secondary"
             size="sm"
             disabled={page === 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -329,11 +373,26 @@ function AuditoriaSettingsPage() {
             Anterior
           </Button>
           <span className="text-13 text-secondary">Página {page + 1}</span>
-          <Button variant="neutral-primary" size="sm" disabled={!hasNextPage} onClick={() => setPage((p) => p + 1)}>
+          <Button variant="secondary" size="sm" disabled={!hasNextPage} onClick={() => setPage((p) => p + 1)}>
             Próxima
           </Button>
         </div>
       </div>
+      <AuditLogsPrintDocument
+        titulo={tituloDaImpressao}
+        linhas={linhasDaImpressao}
+        meta={[
+          { label: "Ação", value: action ? ACTION_LABELS[action] : "Todas" },
+          { label: "Tipo de registro", value: entity ? ENTITY_LABELS[entity] : "Todos" },
+          {
+            label: "Período",
+            value:
+              dateFrom || dateTo
+                ? `${dateFrom ? formatDia(dateFrom) : "início"} a ${dateTo ? formatDia(dateTo) : "hoje"}`
+                : "Todo o período",
+          },
+        ]}
+      />
     </SettingsContentWrapper>
   );
 }

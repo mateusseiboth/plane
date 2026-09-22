@@ -17,7 +17,7 @@ function ReportCard({ report, onClick }: { report: ReportMeta; onClick: () => vo
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-start gap-3 rounded-lg border border-subtle bg-surface-1 p-4 text-left transition-colors hover:border-accent-primary hover:bg-surface-2"
+      className="group hover:border-accent-primary flex w-full items-start gap-3 rounded-lg border border-subtle bg-surface-1 p-4 text-left transition-colors hover:bg-surface-2"
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-2 text-accent-primary group-hover:bg-surface-1">
         <ReportIcon name={report.icon} className="h-4.5 w-4.5" />
@@ -33,6 +33,25 @@ function ReportCard({ report, onClick }: { report: ReportMeta; onClick: () => vo
   );
 }
 
+const PAINEIS_DE_TV: ReportMeta[] = [
+  {
+    id: "ti",
+    title: "Painel do TI",
+    description: "A fazer, em desenvolvimento, em homologação e os chamados de cada desenvolvedor.",
+    category: "gerencial",
+    icon: "MonitorPlay",
+    filters: [],
+  },
+  {
+    id: "qualidade",
+    title: "Painel da Qualidade",
+    description: "Verificar, analisar e homologar, com a fatia de cada etapa e os chamados de cada analista.",
+    category: "gerencial",
+    icon: "MonitorCheck",
+    filters: [],
+  },
+];
+
 function ReportsLandingPage() {
   const { workspaceSlug } = useParams();
   const router = useRouter();
@@ -44,10 +63,28 @@ function ReportsLandingPage() {
       <PageHead title={pageTitle} />
       <div className="border-b border-subtle px-6 py-4">
         <h1 className="text-lg font-semibold">Relatórios Gerenciais</h1>
-        <p className="text-13 text-secondary">Indicadores detalhados de chamados, visitas, produtividade e SLA. Cada relatório pode ser impresso ou salvo em PDF.</p>
+        <p className="text-13 text-secondary">
+          Indicadores detalhados de chamados, visitas, produtividade e SLA. Cada relatório pode ser impresso ou salvo em
+          PDF.
+        </p>
       </div>
 
       <div className="flex-1 space-y-8 overflow-y-auto px-6 py-6">
+        <section>
+          <div className="mb-3">
+            <h2 className="text-14 font-semibold text-primary">Painéis de TV</h2>
+            <p className="text-12 text-tertiary">Chamados por etapa em tela cheia, com alerta de urgente</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {PAINEIS_DE_TV.map((painel) => (
+              <ReportCard
+                key={painel.id}
+                report={painel}
+                onClick={() => router.push(`/${workspaceSlug}/painel/${painel.id}`)}
+              />
+            ))}
+          </div>
+        </section>
         {REPORT_CATEGORIES.map((cat) => {
           const reports = REPORTS.filter((r) => r.category === cat.key);
           if (!reports.length) return null;

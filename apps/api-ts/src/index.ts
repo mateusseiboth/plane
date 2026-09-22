@@ -41,6 +41,7 @@ import { assetModule, assetV2Module, userAssetV2Module } from "@modules/asset";
 import { intakeWorkItemModule } from "@modules/intake-work-item";
 import { technicalVisitModule } from "@modules/technical-visit";
 import { reportsModule } from "@modules/reports";
+import { reportsDeChamadosModule } from "@modules/reports/rotas-de-chamados";
 import { customWidgetModule } from "@modules/custom-widget";
 import { customWebhookModule } from "@modules/custom-webhook";
 import { widgetModule } from "@modules/widget";
@@ -205,6 +206,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(intakeWorkItemModule)
   .use(technicalVisitModule)
   .use(reportsModule)
+  .use(reportsDeChamadosModule)
   // rolesModule MUST be registered before the SDK gateways: those use a
   // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
   // after them, which would make /roles/ demand an X-Widget-Id header.
