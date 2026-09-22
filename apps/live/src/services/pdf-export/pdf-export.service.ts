@@ -9,7 +9,7 @@ import sharp from "sharp";
 import { getAllDocumentFormatsFromDocumentEditorBinaryData } from "@plane/editor/lib";
 import type { PDFExportMetadata, TipTapDocument } from "@/lib/pdf";
 import { renderPlaneDocToPdfBuffer } from "@/lib/pdf";
-import { getPageService } from "@/services/page/handler";
+import { getDocumentTypeForProject, getPageService } from "@/services/page/handler";
 import type { TDocumentTypes } from "@/types";
 import {
   PdfContentFetchError,
@@ -40,9 +40,7 @@ export class PdfExportService extends Effect.Service<PdfExportService>()("PdfExp
     /**
      * Determines document type
      */
-    getDocumentType: (_input: PdfExportInput): TDocumentTypes => {
-      return "project_page";
-    },
+    getDocumentType: (input: PdfExportInput): TDocumentTypes => getDocumentTypeForProject(input.projectId),
 
     /**
      * Extracts image asset IDs from document content
