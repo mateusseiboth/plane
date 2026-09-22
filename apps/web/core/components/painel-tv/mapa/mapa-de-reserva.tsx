@@ -1,19 +1,23 @@
 /**
- * O mapa do Mato Grosso do Sul em SVG puro.
+ * O mapa de RESERVA do Mato Grosso do Sul, em SVG puro.
+ *
+ * É o que aparece quando os tiles do mapa colorido não chegam: a TV pode estar
+ * numa rede sem saída para a internet, e um mapa de tiles ficaria cinza
+ * justamente ali. Quem escolhe entre os dois é `mapa-de-ms.tsx`.
  *
  * Desenhado a partir do GeoJSON dos municípios (IBGE) que vive NO REPOSITÓRIO,
- * com `d3-geo` para a projeção: a TV pode estar numa rede sem saída para a
- * internet, e um mapa de tiles ficaria cinza justamente ali.
+ * com `d3-geo` para a projeção.
  *
  * Cada marcador é uma cidade com entidades clientes; o número em cima é o total
  * de chamados abertos. Cor por faixa de volume, anel vermelho quando algum
- * servidor da cidade está offline e um "B" quando há backup atrasado — sempre
+ * servidor da cidade está offline e um "B" quando há backup atrasado, sempre
  * com o número junto, porque cor sozinha não informa.
  */
 import { useEffect, useState } from "react";
 import { geoMercator, geoPath, type GeoPermissibleObjects } from "d3-geo";
 import { COR_DA_FAIXA, FUNDO_DO_PAINEL, STATUS } from "../cores";
 import { readFaixaDoVolume } from "../painel-helpers";
+import { DISTANCIA_MINIMA_EM_GRAUS, readRaioDoMarcador, spreadPontosProximos } from "./mapa-helpers";
 import type { TPontoDoMapa } from "./mapa-tv";
 
 /**
@@ -26,14 +30,7 @@ type MalhaDeMunicipios = { type: "FeatureCollection"; features: MunicipioDoMapa[
 const LARGURA = 1000;
 const ALTURA = 640;
 
-/** Raio do marcador pelo volume: o número dentro precisa caber. */
-const raioDoPonto = (abertos: number) => {
-  if (abertos >= 100) return 30;
-  if (abertos >= 10) return 26;
-  return 22;
-};
-
-export function MapaDeMs({ pontos, destacado }: { pontos: TPontoDoMapa[]; destacado: string | null }) {
+export function MapaDeReserva({ pontos, destacado }: { pontos: TPontoDoMapa[]; destacado: string | null }) {
   const [malha, setMalha] = useState<MalhaDeMunicipios | null>(null);
 
   useEffect(() => {
@@ -54,6 +51,9 @@ export function MapaDeMs({ pontos, destacado }: { pontos: TPontoDoMapa[]; destac
 
   const projecao = geoMercator().fitSize([LARGURA, ALTURA], malha as unknown as GeoPermissibleObjects);
   const caminho = geoPath(projecao);
+  // As mesmas posições de desenho do mapa colorido: cidade vizinha não pode
+  // sumir dentro do marcador da outra aqui também.
+  const posicoes = spreadPontosProximos(pontos, DISTANCIA_MINIMA_EM_GRAUS);
 
   return (
     <svg
@@ -76,7 +76,8 @@ export function MapaDeMs({ pontos, destacado }: { pontos: TPontoDoMapa[]; destac
 
       <g>
         {pontos.map((ponto) => {
-          const posicao = projecao([ponto.lon, ponto.lat]);
+          const lugar = posicoes.get(ponto.chave) ?? { lat: ponto.lat, lon: ponto.lon };
+          const posicao = projecao([lugar.lon, lugar.lat]);
           if (!posicao) return null;
           const [x, y] = posicao;
           const faixa = readFaixaDoVolume(ponto.abertos);
@@ -85,12 +86,12 @@ export function MapaDeMs({ pontos, destacado }: { pontos: TPontoDoMapa[]; destac
           return (
             <g key={ponto.chave} transform={`translate(${x}, ${y})`}>
               {ponto.urgentes > 0 && (
-                <circle r={raioDoPonto(ponto.abertos) + 10} fill="none" stroke={STATUS.critico} strokeWidth={2}>
+                <circle r={readRaioDoMarcador(ponto.abertos) + 10} fill="none" stroke={STATUS.critico} strokeWidth={2}>
                   <animate attributeName="opacity" values="0.9;0.1;0.9" dur="1.6s" repeatCount="indefinite" />
                 </circle>
               )}
               <circle
-                r={raioDoPonto(ponto.abertos)}
+                r={readRaioDoMarcador(ponto.abertos)}
                 fill={offline ? STATUS.critico : COR_DA_FAIXA[faixa]}
                 stroke={emDestaque ? "#ffffff" : "rgba(0,0,0,0.45)"}
                 strokeWidth={emDestaque ? 4 : 2}
@@ -105,7 +106,9 @@ export function MapaDeMs({ pontos, destacado }: { pontos: TPontoDoMapa[]; destac
                 {ponto.abertos}
               </text>
               {ponto.backups_atrasados > 0 && (
-                <g transform={`translate(${raioDoPonto(ponto.abertos) - 4}, ${-raioDoPonto(ponto.abertos) + 2})`}>
+                <g
+                  transform={`translate(${readRaioDoMarcador(ponto.abertos) - 4}, ${-readRaioDoMarcador(ponto.abertos) + 2})`}
+                >
                   <circle r={11} fill={STATUS.atencao} stroke="rgba(0,0,0,0.5)" strokeWidth={1.5} />
                   <text textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight={700} fill="#0b0b0b">
                     B
@@ -115,7 +118,7 @@ export function MapaDeMs({ pontos, destacado }: { pontos: TPontoDoMapa[]; destac
               {/* Contorno escuro no nome: cidades vizinhas se sobrepõem no mapa,
                   e sem ele o nome de uma some dentro do marcador da outra. */}
               <text
-                y={raioDoPonto(ponto.abertos) + 18}
+                y={readRaioDoMarcador(ponto.abertos) + 18}
                 textAnchor="middle"
                 fontSize={16}
                 fill={emDestaque ? "#ffffff" : "rgba(255,255,255,0.7)"}

@@ -36,6 +36,9 @@ catalogs:
     '@types/d3-geo':
       specifier: 3.1.0
       version: 3.1.0
+    '@types/leaflet':
+      specifier: 1.9.20
+      version: 1.9.20
     '@types/lodash-es':
       specifier: 4.17.12
       version: 4.17.12
@@ -63,6 +66,9 @@ catalogs:
     i18next-resources-to-backend:
       specifier: 1.2.1
       version: 1.2.1
+    leaflet:
+      specifier: 1.9.4
+      version: 1.9.4
     lucide-react:
       specifier: 0.469.0
       version: 0.469.0
@@ -770,6 +776,9 @@ importers:
       isbot:
         specifier: ^5.1.31
         version: 5.1.31
+      leaflet:
+        specifier: 'catalog:'
+        version: 1.9.4
       lodash-es:
         specifier: 4.18.1
         version: 4.18.1
@@ -861,6 +870,9 @@ importers:
       '@types/d3-geo':
         specifier: 'catalog:'
         version: 3.1.0
+      '@types/leaflet':
+        specifier: 'catalog:'
+        version: 1.9.20
       '@types/lodash-es':
         specifier: 'catalog:'
         version: 4.17.12
@@ -4584,6 +4596,9 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
+  '@types/leaflet@1.9.20':
+    resolution: {integrity: sha512-rooalPMlk61LCaLOvBF2VIf9M47HgMQqi5xQ9QRi7c8PkdIe0WrIi5IxXUXQjAdL0c+vcQ01mYWbthzmp9GHWw==}
+
   '@types/linkify-it@3.0.5':
     resolution: {integrity: sha512-yg6E+u0/+Zjva+buc3EIb+29XEg4wltq7cSmd4Uc2EE/1nUVmxyzpX6gUXD0V8jIrG0r7YeOGVIbYRkxeooCtw==}
 
@@ -6714,6 +6729,9 @@ packages:
 
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
+
+  leaflet@1.9.4:
+    resolution: {integrity: sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==}
 
   lib0@0.2.114:
     resolution: {integrity: sha512-gcxmNFzA4hv8UYi8j43uPlQ7CGcyMJ2KQb5kZASw6SnAKAf10hK12i2fjrS3Cl/ugZa5Ui6WwIu1/6MIXiHttQ==}
@@ -12278,6 +12296,10 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
+  '@types/leaflet@1.9.20':
+    dependencies:
+      '@types/geojson': 7946.0.16
+
   '@types/linkify-it@3.0.5': {}
 
   '@types/linkify-it@5.0.0': {}
@@ -14507,6 +14529,8 @@ snapshots:
   kubernetes-types@1.30.0: {}
 
   kuler@2.0.0: {}
+
+  leaflet@1.9.4: {}
 
   lib0@0.2.114:
     dependencies:

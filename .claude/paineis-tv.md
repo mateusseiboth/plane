@@ -1,7 +1,10 @@
-# Painéis de TV (W18)
+# Painéis de TV (W18, revisto em W22)
 
-Data: 2026-09-23 · Worker W18. Telas de PAREDE, em tela cheia, que abrem **sem
-login** com uma chave de API por TV — ou com a sessão de quem já está logado.
+Data: 2026-09-23 · Worker W18; revisto em 2026-09-22 pelo W22 (mapa com Leaflet,
+§8, e painel aberto a qualquer membro do espaço, §3).
+
+Telas de PAREDE, em tela cheia, que abrem **sem login** com uma chave de API por
+TV — ou com a sessão de quem já está logado.
 Substituem o antigo `/:workspaceSlug/painel/:setor`, que exigia login e só tinha
 TI e Qualidade.
 
@@ -51,7 +54,8 @@ apps/web/core/components/painel-tv/
   painel-helpers.ts (puro) · cores.ts · use-painel-tv.ts · moldura.tsx
   painel-da-tv.tsx (escolhe o painel por mapa, sem `if`)
   quadro/quadro-tv.tsx · atendimento/atendimento-tv.tsx
-  mapa/mapa-tv.tsx · mapa/mapa-svg.tsx · mapa/dados/ms-municipios.geo.json
+  mapa/mapa-tv.tsx · mapa/mapa-de-ms.tsx (Leaflet) · mapa/mapa-de-reserva.tsx (SVG)
+  mapa/mapa-helpers.ts (puro) · mapa/mapa-do-painel.css · mapa/dados/ms-municipios.geo.json
   backups/backups-tv.tsx · gestao/{chaves-de-painel,colunas-do-painel}.tsx
 apps/web/core/services/painel-tv.service.ts · core/hooks/use-paineis-de-tv.ts
 ```
@@ -173,18 +177,67 @@ está esperando resposta.
   (`dados/entidades-legado.json`); 2) o município de MS cujo nome casa com a
   cidade dela (`dados/municipios-ms.json`, IBGE, com acento e caixa
   normalizados). Sem nenhum dos dois, vai para a lista "Sem localização".
-- O desenho é SVG com `d3-geo` sobre o GeoJSON dos municípios no REPOSITÓRIO
-  (`apps/web/core/components/painel-tv/mapa/dados/ms-municipios.geo.json`): a TV
-  pode estar numa rede sem saída para a internet, e um mapa de tiles ficaria
-  cinza justamente ali.
-  - Origem: `servicodados.ibge.gov.br/api/v3/malhas/estados/50` (qualidade
-    intermediária, por município), coordenadas arredondadas em 3 casas.
-  - **Os anéis foram invertidos de propósito.** O GeoJSON do IBGE vem com o anel
-    externo no sentido horário; o `d3-geo` é ESFÉRICO e lê anel horário como "o
-    mundo inteiro menos isto" — com os anéis originais o mapa virava um
-    retângulo cinza cobrindo a tela e todos os marcadores caíam no mesmo ponto.
-    Ao regerar o arquivo, inverta cada anel (`ring[::-1]`) e confira que
-    `geoPath(geoMercator()).bounds(malha)` NÃO devolve algo do tamanho do mundo.
+
+### O desenho (W22)
+
+O mapa é **Leaflet** (`mapa/mapa-de-ms.tsx`), com camada base de TERRENO:
+
+| Item | Escolha |
+| --- | --- |
+| Tiles | **Esri World Topo Map** (`server.arcgisonline.com/.../World_Topo_Map/MapServer/tile/{z}/{y}/{x}`) |
+| Por quê | colorido, com rios, sombreamento de relevo e vegetação. Numa TV, de longe, é o que dá cara de mapa de verdade; um mapa de ruas fica branco e vazio no interior de MS |
+| Tema escuro | `filter: brightness(.78) saturate(1.2)` no `.leaflet-tile-pane`, em vez de trocar por um tile escuro, que perderia o relevo |
+| Atribuição | obrigatória, no canto, pelo controle do próprio Leaflet |
+
+Por cima do tile, tudo tirado do MESMO GeoJSON que já estava no repositório
+(`mapa/dados/ms-municipios.geo.json`):
+
+1. **Máscara do que está fora** (`buildMascaraDeFora`): um anel do tamanho do
+   mundo com cada município recortado como buraco. Funciona porque o Leaflet
+   pinta com `fill-rule: evenodd` e municípios vizinhos só ENCOSTAM, nunca se
+   sobrepõem. O estado salta, e o resto continua servindo de referência.
+2. **Grade municipal** em traço de 0,5 px: textura, e ajuda a situar a cidade
+   sem ler o nome.
+3. **Contorno do estado** (`readContornoDoEstado`): aresta que aparece em UM
+   município só é divisa com quem está de fora; aresta que aparece em dois é
+   divisa interna. Sai um desenho de 1.984 segmentos que o Leaflet traça de uma
+   vez. Só casa porque as coordenadas do arquivo estão arredondadas em 3 casas.
+
+A viewport é presa a MS: `fitBounds` no contorno e `maxBounds` com 12% de folga,
+sem arrastar, sem roda do mouse, sem teclado (a TV não tem quem devolva a tela
+para o lugar).
+
+**Marcadores** são `L.divIcon` com o número de chamados abertos dentro. As faixas
+de cor continuam vindo de `painel-helpers.ts` (vazio/baixo/médio/alto), com anel
+pulsante para urgente, vermelho para servidor offline e o selo "B" do backup
+atrasado. Cidades vizinhas são afastadas por `spreadPontosProximos` antes de
+desenhar: cada aglomerado vira uma roseta em volta do ponto do meio
+(`DISTANCIA_MINIMA_EM_GRAUS = 0,22`, uns 24 km), porque Campo Grande e
+Sidrolândia se encavalavam e um número sumia dentro do outro. O cadastro não
+muda: só a posição de DESENHO.
+
+**Sem internet o mapa cai para `MapaDeReserva`** (o desenho SVG com `d3-geo`, que
+era o mapa inteiro até W21) — a TV pode estar numa rede sem saída, e um mapa de
+tiles ficaria cinza justamente ali. Quem decide é `readFonteDoMapa`, puro:
+
+- `navigator.onLine === false` → reserva, na hora;
+- 3 `tileerror` antes do primeiro `tileload` → reserva;
+- 8 s sem nenhum tile → reserva (rede que engole o pedido não dispara
+  `tileerror`, e sem esse relógio a TV esperaria para sempre);
+- tile que JÁ pintou segura o mapa: erro depois disso é buraco de cobertura no
+  zoom, e apagar a tela por causa dele seria pior.
+
+Sobre o GeoJSON, que os dois desenhos compartilham:
+
+- Origem: `servicodados.ibge.gov.br/api/v3/malhas/estados/50` (qualidade
+  intermediária, por município), coordenadas arredondadas em 3 casas.
+- **Os anéis foram invertidos de propósito.** O GeoJSON do IBGE vem com o anel
+  externo no sentido horário; o `d3-geo` é ESFÉRICO e lê anel horário como "o
+  mundo inteiro menos isto" — com os anéis originais o mapa de reserva virava um
+  retângulo cinza cobrindo a tela e todos os marcadores caíam no mesmo ponto. Ao
+  regerar o arquivo, inverta cada anel (`ring[::-1]`) e confira que
+  `geoPath(geoMercator()).bounds(malha)` NÃO devolve algo do tamanho do mundo.
+  (O Leaflet é PLANAR e não liga para o sentido do anel; quem cobra é o d3.)
 
 ## 9. Painel de backups
 
@@ -266,6 +319,11 @@ ligada o dia inteiro e ninguém a recarrega.
 - **O painel abre para toda a equipe** (W22): ver o painel deixou de exigir
   `report.view`, basta ser membro ativo do espaço. Criar e revogar chave
   continua em `panel.manage`.
+- **O mapa virou Leaflet** (W22), com tile de terreno e o desenho SVG anterior
+  guardado como reserva para quando não houver internet. Uma dependência nova
+  (`leaflet`, no catálogo do `pnpm-workspace.yaml`); nada de
+  `leaflet.markercluster`, porque o afastamento por roseta resolve o
+  encavalamento com código puro e testável.
 
 ## 14. Testes
 
@@ -277,7 +335,10 @@ ligada o dia inteiro e ninguém a recarrega.
   logado de fora do espaço), escopo, revogação, colunas e cada rota de dados.
 - chat-backend: `tests/painel-regras.test.ts` (puro) e `tests/painel.db.test.ts`
   (abas contra o banco e o segredo da rota interna).
-- web: `core/components/painel-tv/painel-helpers.test.ts`.
+- web: `core/components/painel-tv/painel-helpers.test.ts` e
+  `core/components/painel-tv/mapa/mapa-helpers.test.ts` (tamanho do marcador,
+  afastamento de cidades vizinhas, escolha entre tiles e reserva, máscara e
+  contorno do estado). Rodar com `bun test core/components/painel-tv`.
 
 ## 15. Dados de demonstração
 
