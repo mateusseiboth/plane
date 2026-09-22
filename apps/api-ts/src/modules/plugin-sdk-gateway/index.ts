@@ -4,6 +4,7 @@ import { createHmac, createHash, randomUUID } from "crypto";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { readBridgeSecret } from "@modules/plugin-sdk-gateway/bridge-secret";
+import { buildProxyResponseHeaders, isRespostaEmFluxo } from "@utils/proxy-response";
 import {
   findAction,
   findActions,
@@ -446,11 +447,9 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       return { detail: "Backend do plugin inacessível." };
     }
 
-    const outHeaders: Record<string, string> = {};
-    resp.headers.forEach((v, k) => {
-      if (!["transfer-encoding", "content-encoding", "connection", "content-length"].includes(k.toLowerCase()))
-        outHeaders[k] = v;
-    });
-    outHeaders["X-Correlation-Id"] = correlationId;
-    return new Response(resp.body, { status: resp.status, headers: outHeaders });
+    const outHeaders = buildProxyResponseHeaders(resp.headers, correlationId);
+    // SSE segue em fluxo; o resto vai com tamanho conhecido (ver utils/proxy-response).
+    if (isRespostaEmFluxo(resp.headers.get("content-type")))
+      return new Response(resp.body, { status: resp.status, headers: outHeaders });
+    return new Response(await resp.arrayBuffer(), { status: resp.status, headers: outHeaders });
   });

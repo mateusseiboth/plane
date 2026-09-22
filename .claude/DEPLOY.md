@@ -285,6 +285,63 @@ curl -s -i -N --max-time 8 \
 `proxy_http_version 1.1` + `Upgrade`/`Connection` no location `/live/`).
 `404`/HTML = a rota `/live/` não existe e o pedido caiu no app web.
 
+## Plugin backup-manager
+
+O plugin **Backup Manager** (repositório próprio, `~/dev/backup-manager-plugin`) roda ao
+lado do Plane: o frontend é um `.zip` enviado ao registry (`POST /api/v1/plugins/`) e o
+backend é uma stack separada, com Postgres, Redis e MinIO próprios.
+
+O deploy dele tem script e receita **no repositório do plugin**:
+`backup-manager-plugin/deploy-homolog.sh` e a seção "Deploy em homologação" do README de
+lá. Nada disso entra no `./deploy-homolog.sh` do Plane.
+
+```bash
+SSHPASS='<senha do root>' PLANE_API_KEY='<chave de API de um admin>' ./deploy-homolog.sh
+```
+
+O que fica no servidor (10.1.2.12), fora do compose do Plane:
+
+| container | porta | para que |
+|---|---|---|
+| `backup-backend` | interna 8090 | backend do plugin, na rede `plane_dev_env` (o api-ts o alcança por nome) |
+| `backup-manager-bm-postgres-1` | interna | banco próprio do plugin (`bm_*`) |
+| `backup-manager-bm-redis-1` | interna | filas BullMQ |
+| `backup-manager-bm-minio-1` | 9010 / 9011 | storage S3 do plugin (o Plane já usa 9000/9001) |
+| `backup-manager-bm-nginx-1` | 8091 | só `/v1/ingest/*`, `/v1/webhooks/*` e `/health` |
+
+Pontos de contato com o Plane:
+
+- `PLUGIN_BRIDGE_SECRET` do `.env` da raiz assina o proxy `/api/v1/plugin-sdk/backend/*`.
+  O `.env` do plugin (`/root/backup-manager-plugin/infra/.env`, chmod 600) tem o **mesmo**
+  valor, copiado no próprio servidor.
+- `manifest.backend.baseUrl` é interno: `http://backup-backend:8090`. Por isso o backend
+  entra na rede docker do compose do Plane (`plane_dev_env`).
+- Permissões do plugin (`backup-manager.view/request/download/delete/admin`) são
+  concedidas por papel na tabela `plugin_permission_grants` (não há tela ainda). Estão
+  concedidas ao papel 20 (administrador) e, sem `delete`/`admin`, ao 18 (gestor de
+  projeto). Admin de instância recebe todas por definição.
+- Upload exige admin da instância, superusuário ou o grupo TI (`requireUploader`), e a
+  versão precisa ser maior que a instalada.
+
+O `api-ts` guarda a config não-secreta do plugin (`plugin_configs`, escopo `instance`) e o
+backend do plugin lê uma cópia local: o próprio plugin sincroniza ao abrir, com um
+administrador logado.
+
+### Resposta grande do proxy de plugin vinha corrompida
+
+`POST /api/v1/plugin-sdk/backend/...` com resposta de ~169 KB chegava ao navegador com um
+`Content-Length: 0` grudado no fim do JSON (`Unexpected non-whitespace character after
+JSON at position 169086`). O proxy devolvia SEMPRE o corpo em fluxo (`resp.body`), o Bun
+respondia `Transfer-Encoding: chunked` e o nginx, que falava **HTTP/1.0** com o api-ts,
+emendava aquele resto no corpo. Corrigido dos dois lados:
+
+- `apps/api-ts/src/utils/proxy-response.ts`: só resposta de fluxo contínuo (SSE) segue em
+  streaming; o resto vai com tamanho conhecido.
+- `apps/proxy-ts/nginx.conf`: `proxy_http_version 1.1` + `Connection ""` nas locations
+  `/api/v1/` e `/api/(.*)`.
+
+A segunda parte só entra em vigor com o proxy reconstruído (`build proxy` + `up -d proxy`).
+
 ## Validação pós-deploy
 
 ```bash
