@@ -9,7 +9,7 @@
 
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { PHONE_CHANNEL } from "@/canais";
-import { registrarEncerramento } from "@/encerramento";
+import { saveContatoDoAtendimento } from "@/encerramento";
 import * as dao from "@/ligacoes/ligacoes.dao";
 import {
   AtendimentoNaoEncontradoError,
@@ -222,7 +222,7 @@ export async function concludeLigacao(slug: string, sessionId: string, atendente
     projectIdentifier: projeto.identifier,
     projectName: projeto.name,
   });
-  if (conclusao.contact) await registrarEncerramento(sessionId, { contact: conclusao.contact }, atendente.id);
+  if (conclusao.contact) await saveContatoDoAtendimento(sessionId, conclusao.contact, atendente.id);
   await dao.updateLigacao(sessao.ligacao!.id, {
     descricao: conclusao.descricao,
     concludedById: atendente.id,

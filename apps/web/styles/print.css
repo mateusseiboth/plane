@@ -47,6 +47,11 @@
     width: 100% !important;
   }
 
+  /* Documento montado que não foi o escolhido para esta impressão */
+  html.print-mode-document .print-document-root[data-print-skip] {
+    display: none !important;
+  }
+
   /* Estratégia 2: imprimir apenas uma área da página atual */
   html.print-mode-area body * {
     visibility: hidden !important;

@@ -51,6 +51,7 @@ export const ChatTranscriptPrintDocument = function ChatTranscriptPrintDocument(
         { label: "Canal", value: CHANNEL_LABELS[session.channel] ?? session.channel },
         { label: "Situação", value: session.status },
         { label: "Mensagens", value: String(messages.length) },
+        ...(session.issue_label ? [{ label: "Chamado", value: session.issue_label }] : []),
       ]}
     >
       <PrintSection title="Dados do atendimento">
@@ -63,6 +64,12 @@ export const ChatTranscriptPrintDocument = function ChatTranscriptPrintDocument(
             { label: "Situação", value: session.status },
             { label: "Projeto", value: session.project_name ?? "—" },
             { label: "Aberto em", value: formatDateTime(session.created_at) },
+            { label: "Encerrado em", value: formatDateTime(session.closed_at) },
+            { label: "Chamado", value: session.issue_label ?? "—" },
+            { label: "Motivo", value: session.close_reason ?? "—" },
+            { label: "Funcionalidade", value: session.close_module_name ?? "—" },
+            { label: "Abandono", value: session.abandon_label ?? "—" },
+            { label: "Observação", value: session.close_note ?? "—" },
             { label: "Avaliação", value: session.rating_score != null ? String(session.rating_score) : "—" },
             { label: "Comentário da avaliação", value: session.rating_comment ?? "—" },
           ]}
@@ -75,13 +82,13 @@ export const ChatTranscriptPrintDocument = function ChatTranscriptPrintDocument(
         ) : (
           <div className="flex flex-col gap-2">
             {messages.map((message) => (
-              <article key={message.id} className="print-avoid-break border-b border-neutral-200 pb-1 last:border-0">
-                <p className="text-[9px] font-semibold uppercase tracking-wide text-neutral-500">
+              <article key={message.id} className="print-avoid-break border-neutral-200 border-b pb-1 last:border-0">
+                <p className="text-neutral-500 text-[9px] font-semibold tracking-wide uppercase">
                   {message.sender_name || SENDER_LABELS[message.sender] || message.sender}
-                  <span className="ml-2 font-normal normal-case tracking-normal">
+                  <span className="font-normal tracking-normal ml-2 normal-case">
                     {formatDateTime(message.created_at)}
                   </span>
-                  {message.edited_at && <span className="ml-2 font-normal normal-case">(editada)</span>}
+                  {message.edited_at && <span className="font-normal ml-2 normal-case">(editada)</span>}
                 </p>
                 <p className="whitespace-pre-wrap">{messageBody(message)}</p>
               </article>

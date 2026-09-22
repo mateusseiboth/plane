@@ -6,7 +6,8 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import prisma from "@db";
 import { routeQueuedSession } from "@/queue/router";
-import { checkIdle, checkSla } from "@/timers";
+import { runInatividade } from "@/ciclo-de-vida/inatividade";
+import { checkSla } from "@/timers";
 import { register, unregister } from "@/ws/hub";
 import { cleanWorkspace, uniqueWorkspace } from "@tests/helpers/harness";
 
@@ -32,7 +33,7 @@ afterAll(async () => {
 describe("ligações fora dos timers do chat", () => {
   test("inatividade não pergunta nem encerra ligação esperando atendente", async () => {
     const s = await createLigacao({ status: "queued" });
-    await checkIdle();
+    await runInatividade(Date.now(), workspace);
     const depois = await prisma.chatSession.findUniqueOrThrow({ where: { id: s.id } });
     expect(depois.idlePromptedAt).toBeNull();
     expect(depois.status).toBe("queued");

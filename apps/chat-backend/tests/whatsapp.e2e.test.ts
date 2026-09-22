@@ -14,6 +14,7 @@ import {
   cleanWorkspace,
   configureWorkspace,
   connectAttendant,
+  createEntidadeNoEspaco,
   prisma,
   resolveTestAttendant,
   sendWhatsAppText,
@@ -21,6 +22,7 @@ import {
   startFakeZapi,
   uniqueWorkspace,
   waitUntil,
+  WEBHOOK_TOKEN,
   type AttendantSocket,
   type FakeZapi,
 } from "@tests/helpers/harness";
@@ -34,6 +36,7 @@ const otherPhone = `5567${Math.floor(100000000 + Math.random() * 899999999)}`;
 let zapi: FakeZapi;
 let attendant: AttendantSocket;
 let attendantId: string;
+let entidadeId: string;
 
 /** Texto enviado ao WhatsApp em qualquer chamada send-text. */
 const sentTexts = () => zapi.calls.filter((c) => c.action === "send-text").map((c) => String(c.body.message ?? ""));
@@ -46,6 +49,7 @@ beforeAll(async () => {
   attendantId = user.id;
   const token = await signPlaneToken(user.id, user.email);
   attendant = await connectAttendant(workspace, token);
+  entidadeId = await createEntidadeNoEspaco(workspace);
 
   // Uma opção de menu que joga o cliente numa fila (sem membros → cai no
   // fallback de "qualquer atendente conectado").
@@ -98,13 +102,13 @@ describe("webhook Z-API → sessão", () => {
     };
     const res = await fetch(`${process.env.CHAT_URL ?? "http://localhost:8002"}/providers/zapi/webhook/${workspace}/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Client-Token": WEBHOOK_TOKEN },
       body: JSON.stringify(body),
     });
     expect(res.ok).toBe(true);
     await fetch(`${process.env.CHAT_URL ?? "http://localhost:8002"}/providers/zapi/webhook/${workspace}/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Client-Token": WEBHOOK_TOKEN },
       body: JSON.stringify(body),
     });
 
@@ -112,11 +116,21 @@ describe("webhook Z-API → sessão", () => {
     expect(count).toBe(1);
   });
 
+  test("sem o token do webhook configurado no espaço: 401", async () => {
+    const res = await fetch(`${process.env.CHAT_URL ?? "http://localhost:8002"}/providers/zapi/webhook/${workspace}/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: otherPhone, fromMe: false, messageId: "SEM-TOKEN-1", text: { message: "oi" } }),
+    });
+    expect(res.status).toBe(401);
+    expect(await prisma.chatMessage.count({ where: { externalId: "SEM-TOKEN-1" } })).toBe(0);
+  });
+
   test("eco das nossas próprias mensagens (fromMe) é ignorado", async () => {
     const before = await prisma.chatMessage.count({ where: { session: { workspaceId: workspace } } });
     await fetch(`${process.env.CHAT_URL ?? "http://localhost:8002"}/providers/zapi/webhook/${workspace}/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Client-Token": WEBHOOK_TOKEN },
       body: JSON.stringify({ phone: otherPhone, fromMe: true, messageId: "ECO-1", text: { message: "eco" } }),
     });
     const after = await prisma.chatMessage.count({ where: { session: { workspaceId: workspace } } });
@@ -206,7 +220,7 @@ describe("fluxo do bot até o atendente", () => {
     const session = await prisma.chatSession.findFirst({ where: { workspaceId: workspace, clientPhone: phone } });
     await fetch(`${process.env.CHAT_URL ?? "http://localhost:8002"}/providers/zapi/webhook/${workspace}/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Client-Token": WEBHOOK_TOKEN },
       body: JSON.stringify({
         phone,
         senderName: "Maria da Silva",
@@ -229,7 +243,7 @@ describe("encerramento", () => {
   test("atendente encerra, cliente recebe protocolo e a pesquisa é solicitada", async () => {
     zapi.reset();
     const session = await prisma.chatSession.findFirst({ where: { workspaceId: workspace, clientPhone: phone } });
-    attendant.send({ type: "agent.close", session_id: session!.id });
+    attendant.send({ type: "agent.close", session_id: session!.id, entity_id: entidadeId });
 
     const closed = await waitUntil(async () => {
       const s = await prisma.chatSession.findUnique({ where: { id: session!.id } });

@@ -8,6 +8,8 @@ import useSWR from "swr";
 import type { TEntityContact, TEntityContactType } from "@plane/types";
 // services
 import entityContactService, {
+  type TContactDuplicate,
+  type TContactDuplicateQuery,
   type TEntityContactFilters,
   type TEntityContactPage,
 } from "@/services/entity-contact.service";
@@ -93,11 +95,9 @@ export const useEntityContactsOf = (workspaceSlug: string | undefined, entityId:
     isLoading,
     isValidating,
     mutate: refetch,
-  } = useSWR<TEntityContact[]>(
-    key,
-    key ? () => entityContactService.listByEntity(workspaceSlug!, entityId!) : null,
-    { revalidateOnFocus: false }
-  );
+  } = useSWR<TEntityContact[]>(key, key ? () => entityContactService.listByEntity(workspaceSlug!, entityId!) : null, {
+    revalidateOnFocus: false,
+  });
 
   return {
     contacts: data ?? [],
@@ -130,5 +130,27 @@ export const useEntityContactTypes = (workspaceSlug: string | undefined) => {
     isLoading,
     isFetching: isValidating,
     refetch,
+  };
+};
+
+/**
+ * Contatos com o mesmo telefone ou e-mail. É só aviso: quem cadastra decide se
+ * é a mesma pessoa. Sem telefone nem e-mail, não consulta.
+ */
+export const useContactDuplicates = (workspaceSlug: string | undefined, query: TContactDuplicateQuery) => {
+  const hasCriteria = Boolean(query.phone || query.email);
+  const key = workspaceSlug && hasCriteria ? `CONTACT_DUPLICATES_${workspaceSlug}_${JSON.stringify(query)}` : null;
+  const { data, error, isLoading, isValidating, mutate } = useSWR<TContactDuplicate[]>(
+    key,
+    key ? () => entityContactService.findDuplicates(workspaceSlug!, query) : null,
+    { revalidateOnFocus: false, keepPreviousData: true }
+  );
+  return {
+    duplicates: hasCriteria ? (data ?? []) : [],
+    data,
+    error,
+    isLoading,
+    isFetching: isValidating,
+    refetch: mutate,
   };
 };

@@ -7,6 +7,8 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
+import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
+import { ProfileContactFields, readProfileContactDefaults, type TProfileContactForm } from "./contact-fields";
 import { CircleUserRound } from "lucide-react";
 // plane imports
 import { useTranslation } from "@plane/i18n";
@@ -43,7 +45,7 @@ type TUserProfileForm = {
   role: string;
   language: string;
   user_timezone: string;
-};
+} & TProfileContactForm;
 
 type Props = {
   user: IUser;
@@ -65,6 +67,7 @@ export const GeneralProfileSettingsForm = observer(function GeneralProfileSettin
     watch,
     control,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<TUserProfileForm>({
     defaultValues: {
@@ -78,6 +81,7 @@ export const GeneralProfileSettingsForm = observer(function GeneralProfileSettin
       role: profile.role || "Product / Project Manager",
       language: profile.language || "en",
       user_timezone: user.user_timezone || "Asia/Kolkata",
+      ...readProfileContactDefaults(user),
     },
   });
   // derived values
@@ -123,6 +127,10 @@ export const GeneralProfileSettingsForm = observer(function GeneralProfileSettin
       last_name: formData.last_name,
       avatar_url: formData.avatar_url,
       display_name: formData?.display_name,
+      nickname: formData.nickname,
+      phone: formData.phone,
+      mobile_phone: formData.mobile_phone,
+      birth_date: formData.birth_date,
     };
 
     try {
@@ -163,6 +171,11 @@ export const GeneralProfileSettingsForm = observer(function GeneralProfileSettin
           | PromiseRejectedResult
           | undefined;
         if (rejectedResult) {
+          applyApiFieldErrors(
+            rejectedResult.reason,
+            (path, message) => setError(path as keyof TUserProfileForm, { message }),
+            ""
+          );
           throw rejectedResult.reason ?? new Error("Falha ao atualizar o perfil");
         }
         const values = results.map(
@@ -353,6 +366,7 @@ export const GeneralProfileSettingsForm = observer(function GeneralProfileSettin
                   <span className="text-11 text-danger-primary">{errors?.display_name?.message}</span>
                 )}
               </div>
+              <ProfileContactFields control={control} errors={errors} />
               <div className="flex flex-col gap-1">
                 <h4 className="text-13 font-medium text-secondary">
                   {t("auth.common.email.label")}&nbsp;

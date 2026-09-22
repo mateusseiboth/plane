@@ -34,6 +34,20 @@ export type ChatSession = {
   rating_comment?: string | null;
   rating_state?: string | null;
   created_at: string;
+  closed_at?: string | null;
+  /** Ciclo de vida: classificação do encerramento, abandono, pausa e chamado vinculado. */
+  entity_id?: string | null;
+  close_reason?: string | null;
+  close_module_id?: string | null;
+  close_module_name?: string | null;
+  close_note?: string | null;
+  end_kind?: string | null;
+  abandon_type?: number | null;
+  abandon_label?: string | null;
+  paused_at?: string | null;
+  issue_id?: string | null;
+  issue_project_id?: string | null;
+  issue_label?: string | null;
   unread?: number;
   last_message?: string;
   last_message_at?: string;
@@ -55,7 +69,81 @@ export type ChatMessage = {
   edited_at: string | null;
   edit_history?: { text: string; edited_at: string }[];
   deleted_at: string | null;
+  /** sent | delivered | read | failed. `failed` = não chegou ao WhatsApp; o atendente reenvia. */
+  status?: string;
+  send_error?: string | null;
   created_at: string;
+};
+
+/** Item do catálogo de tipos de motivo do encerramento (configurável). */
+export type ChatMotivo = { key: string; label: string };
+
+/** O que o atendente informa ao encerrar (`POST .../sessions/:id/close/`). */
+export type DadosDoEncerramento = {
+  project_id?: string;
+  entity_id?: string;
+  motivo?: string;
+  module_id?: string;
+  note?: string;
+  contact?: { contact_id: string };
+};
+
+export type FiltroDeAtendimentos = {
+  from?: string;
+  to?: string;
+  entity_id?: string;
+  project_id?: string;
+  motivo?: string;
+};
+
+type Contagem = { total: number; finalizados: number; abandonados: number };
+
+export type RelatorioDeAtendimentos = {
+  de: string;
+  ate: string;
+  finalizacao: Contagem;
+  por_atendente: ({ user_id: string | null; name: string; duracao_media_min: number | null } & Contagem)[];
+  por_tipo_abandono: { tipo: number | null; rotulo: string; total: number }[];
+  por_sistema: ({ sistema: string } & Contagem)[];
+  por_dia_da_semana: { dia: number; rotulo: string; total: number }[];
+  por_motivo: { motivo: string; total: number }[];
+};
+
+export type RegistroDeAtendimento = {
+  id: string;
+  protocol: string;
+  channel: string;
+  client_name: string | null;
+  entity_id: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  close_reason: string | null;
+  close_module_name: string | null;
+  close_note: string | null;
+  abandonado: boolean;
+  abandono: string | null;
+  attendant_name: string | null;
+  issue_id: string | null;
+  issue_label: string | null;
+  created_at: string;
+  closed_at: string | null;
+};
+
+/** Chamado aberto a partir da conversa (`POST .../inbox-issues/from-chat/` do api-ts). */
+export type NovoChamadoDoChat = {
+  session_id: string;
+  name?: string;
+  priority: "urgent" | "none";
+  module_id?: string;
+  description_html?: string;
+  chat_url?: string;
+};
+
+export type ChamadoDoChat = {
+  id: string;
+  issue: { id: string; name: string; project_id: string; sequence_id: number; label: string };
+  anexos: number;
+  anexos_falharam: number;
 };
 
 export type RatingsReport = {
@@ -130,6 +218,15 @@ export class ChatService extends APIService {
           ws_url,
         };
       })
+      .catch((e) => {
+        throw e?.response?.data;
+      });
+  }
+
+  /** Abre o chamado a partir da conversa, com transcrição e arquivos (api-ts). */
+  async createChamadoFromChat(workspaceSlug: string, projectId: string, data: NovoChamadoDoChat): Promise<ChamadoDoChat> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/inbox-issues/from-chat/`, data)
+      .then((r) => r?.data)
       .catch((e) => {
         throw e?.response?.data;
       });
@@ -238,8 +335,38 @@ export function chatApi(apiUrl: string) {
       attendants: { user_id: string; online: boolean; invisible: boolean; active_chats: number; today_chats: number }[];
     }> => req(`/workspaces/${slug}/dashboard/`),
     ratingsReport: (slug: string): Promise<RatingsReport> => req(`/workspaces/${slug}/reports/ratings/`),
+
+    // ── ciclo de vida (src/ciclo-de-vida/rotas.ts do chat-backend) ──
+    closeSession: (slug: string, sessionId: string, dados: DadosDoEncerramento): Promise<ChatSession> =>
+      req(`/workspaces/${slug}/sessions/${sessionId}/close/`, jsonPost(dados)),
+    pauseSession: (slug: string, sessionId: string): Promise<ChatSession> =>
+      req(`/workspaces/${slug}/sessions/${sessionId}/pause/`, { method: "POST" }),
+    resumeSession: (slug: string, sessionId: string): Promise<ChatSession> =>
+      req(`/workspaces/${slug}/sessions/${sessionId}/resume/`, { method: "POST" }),
+    resendMessage: (slug: string, messageId: string): Promise<ChatMessage> =>
+      req(`/workspaces/${slug}/messages/${messageId}/resend/`, { method: "POST" }),
+    linkChamado: (slug: string, sessionId: string, issueId: string): Promise<ChatSession> =>
+      req(`/workspaces/${slug}/sessions/${sessionId}/chamado/`, jsonPost({ issue_id: issueId })),
+    closeReasons: (slug: string): Promise<{ results: ChatMotivo[] }> => req(`/workspaces/${slug}/close-reasons/`),
+
+    // ── relatórios de atendimento (src/relatorios/rotas.ts do chat-backend) ──
+    relatorioDeAtendimentos: (slug: string, filtro: FiltroDeAtendimentos): Promise<RelatorioDeAtendimentos> =>
+      req(`/workspaces/${slug}/reports/atendimentos/${buildQuery(filtro)}`),
+    registros: (
+      slug: string,
+      filtro: FiltroDeAtendimentos
+    ): Promise<{ de: string; ate: string; limite: number; results: RegistroDeAtendimento[] }> =>
+      req(`/workspaces/${slug}/registros/${buildQuery(filtro)}`),
     slaReport: (slug: string, days = 30): Promise<SlaReport> => req(`/workspaces/${slug}/reports/sla/?days=${days}`),
   };
+}
+
+/** Só os filtros preenchidos entram na URL. */
+function buildQuery(filtro: FiltroDeAtendimentos): string {
+  const params = new URLSearchParams(
+    Object.entries(filtro).filter((par): par is [string, string] => Boolean(par[1]))
+  ).toString();
+  return params ? `?${params}` : "";
 }
 
 function jsonPost(data: any): RequestInit {

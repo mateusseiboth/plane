@@ -16,6 +16,7 @@ import { EIssuesStoreType } from "@plane/types";
 import { generateWorkItemLink, copyTextToClipboard } from "@plane/utils";
 // components
 import { PrintButton, WorkItemPrintDocument } from "@/components/print";
+import { CreateVisitFromIssueButton } from "@/components/technical-visits/create-visit-from-issue-button";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
@@ -159,6 +160,17 @@ export const IssueDetailQuickActions = observer(function IssueDetailQuickActions
               auditEntityId={issueId}
             />
             <WorkItemPrintDocument issueId={issueId} />
+            {!issue?.archived_at && (
+              <CreateVisitFromIssueButton
+                workspaceSlug={workspaceSlug}
+                issue={{
+                  id: issueId,
+                  code: `${projectIdentifier ?? ""}-${issue.sequence_id}`,
+                  name: issue.name,
+                  entityId: (issue as { entity_id?: string | null }).entity_id ?? null,
+                }}
+              />
+            )}
             <WorkItemDetailQuickActions
               parentRef={parentRef}
               issue={issue}

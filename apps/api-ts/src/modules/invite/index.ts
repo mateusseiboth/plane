@@ -1,5 +1,6 @@
 import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
+import {AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit} from "@utils/audit";
 import {paginate} from "@utils/pagination";
 import {getWorkspaceOrFail} from "@utils/workspace";
 import {randomUUID} from "crypto";
@@ -86,7 +87,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
   })
 
   // Accept via token (public — no auth header required)
-  .post("/invitations/accept/", async ({params: {slug}, body, set}) => {
+  .post("/invitations/accept/", async ({params: {slug}, body, set, headers}) => {
     const b = body as any;
     if (!b.token) {
       set.status = 400;
@@ -116,6 +117,15 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
       if (!existing) {
         await prisma.workspaceMember.create({
           data: {workspaceId: ws.id, memberId: user.id, role: invite.role, isActive: true},
+        });
+        recordAudit({
+          workspaceId: ws.id,
+          entity: AUDIT_ENTITIES.MEMBER,
+          entityId: user.id,
+          action: AUDIT_ACTIONS.CREATE,
+          actor: {id: user.id, email: user.email},
+          headers,
+          metadata: {role: invite.role, por_convite: true},
         });
       }
     }

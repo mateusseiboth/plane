@@ -42,6 +42,7 @@ const telefoneSemNono = "556733320002";
 const telefoneComNono = "5567933320002";
 /** Ninguém conhece este número: é o que vira cadastro no encerramento. */
 const telefoneDesconhecido = "5567988810003";
+const telefoneDesconhecido2 = "5567988810004";
 
 let zapi: FakeZapi;
 let atendente: AttendantSocket;
@@ -182,9 +183,17 @@ describe("cadastro no encerramento", () => {
     expect(sessao!.entityContactId).toBe(responsavelId);
   }, 30000);
 
-  test("encerramento sem cadastro informado apenas fecha o atendimento", async () => {
-    const sessionId = await abrirAtendimento(telefoneComNono);
+  test("sem entidade o encerramento é recusado e o atendente é avisado", async () => {
+    const sessionId = await abrirAtendimento(telefoneDesconhecido2);
     atendente.send({ type: "agent.close", session_id: sessionId });
+    const erro = await atendente.waitFor((e) => e.type === "error" && e.action === "session.close" && e.session_id === sessionId);
+    expect(erro.detail).toBe("Informe a entidade para encerrar.");
+    expect((await prisma.chatSession.findUnique({ where: { id: sessionId } }))!.status).not.toBe("closed");
+  }, 30000);
+
+  test("encerramento sem cadastro informado, com a entidade, apenas fecha o atendimento", async () => {
+    const sessionId = await abrirAtendimento(telefoneComNono);
+    atendente.send({ type: "agent.close", session_id: sessionId, entity_id: entidadeId });
 
     const fechada = await waitUntil(async () => {
       const s = await prisma.chatSession.findUnique({ where: { id: sessionId } });

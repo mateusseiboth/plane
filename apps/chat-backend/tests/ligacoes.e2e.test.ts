@@ -102,7 +102,11 @@ describe("configuração de telefonia", () => {
   });
 
   test("quem não administra o chat não configura", async () => {
-    const estranho = await signPlaneToken(crypto.randomUUID());
+    // Conta real e ativa, mas fora deste espaço: um id inventado agora cai na
+    // revogação de sessão (401) antes de chegar à permissão.
+    const [outro] = await prisma.$queryRaw<{ id: string; email: string }[]>`
+      SELECT id::text, email FROM users WHERE id <> ${usuario.id}::uuid AND is_active LIMIT 1`;
+    const estranho = await signPlaneToken(outro!.id, outro!.email);
     const r = await call("POST", `/workspaces/${workspace}/config/telefonia/token/`, {
       headers: { Authorization: `Bearer ${estranho}` },
     });

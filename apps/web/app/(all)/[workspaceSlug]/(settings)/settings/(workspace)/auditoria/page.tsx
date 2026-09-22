@@ -88,6 +88,10 @@ const ACTION_LABELS: Record<string, string> = {
   login_failed: "Falha de login",
   logout: "Saiu do sistema",
   permission_change: "Alterou permissão",
+  freeze: "Congelou",
+  unfreeze: "Descongelou",
+  password_change: "Trocou a senha",
+  password_reset_request: "Pediu nova senha",
 };
 
 const ENTITY_LABELS: Record<string, string> = {

@@ -539,6 +539,9 @@
       },
       "auditoria": {
         "title": "Auditoria (LGPD)"
+      },
+      "email": {
+        "title": "E-mail (SMTP)"
       }
     },
     "empty_state": {

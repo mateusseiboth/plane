@@ -131,6 +131,48 @@ export async function notifyStateChange(opts: {
 }
 
 /**
+ * Avisa no sino todo membro ativo do espaço que um recado saiu no mural.
+ *
+ * O sino nasceu para chamado e solicitação: a notificação do mural vai com
+ * `entity: "mural"` e o id do recado em `entityId`, sem projeto nem chamado. A
+ * tela abre o recado por aí. Quem publicou não é avisado do próprio recado.
+ */
+export async function notifyMuralPublished(opts: {
+  workspaceId: string;
+  recadoId: string;
+  actorId: string;
+  title: string;
+}): Promise<void> {
+  const membros = await prisma.workspaceMember.findMany({
+    where: {
+      workspaceId: opts.workspaceId,
+      isActive: true,
+      deletedAt: null,
+      memberId: {not: opts.actorId},
+      member: {isActive: true, deletedAt: null, isBotUser: false},
+    },
+    select: {memberId: true},
+  });
+  const receivers = membros.map((m) => m.memberId);
+  if (!receivers.length) return;
+
+  await prisma.notification.createMany({
+    data: receivers.map((receiverId) => ({
+      workspaceId: opts.workspaceId,
+      receiverId,
+      actorId: opts.actorId,
+      title: "Novo recado no mural",
+      message: opts.title,
+      entity: "mural",
+      entityId: opts.recadoId,
+      data: {type: "mural_published"},
+      triggered: "mural",
+    })),
+  });
+  avisarSino(opts.workspaceId, receivers);
+}
+
+/**
  * Acende o sino na hora.
  *
  * Gravar a notificação não bastava: a tela só a mostrava no próximo

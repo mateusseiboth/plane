@@ -20,6 +20,12 @@ export function entityTypeLabel(type?: number | null): string {
   return ENTITY_TYPE_LABELS[type] ?? "";
 }
 
+const readResults = (data: any): TEntity[] => (Array.isArray(data) ? data : (data?.results ?? []));
+
+const rethrow = (err: any) => {
+  throw err?.response?.data;
+};
+
 export class EntityService extends APIService {
   constructor() {
     super(API_BASE_URL);
@@ -27,14 +33,31 @@ export class EntityService extends APIService {
 
   async list(workspaceSlug: string): Promise<TEntity[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/entities/?is_active=true&cursor=1000:0:0`)
-      .then((res) => res?.data?.results ?? res?.data ?? [])
+      .then((res) => readResults(res?.data))
       .catch(() => []);
+  }
+
+  /** Todas as entidades, ativas ou não: é o que a tela de cadastro lista. */
+  async listAll(workspaceSlug: string): Promise<TEntity[]> {
+    return this.get(`/api/workspaces/${workspaceSlug}/entities/?cursor=5000:0:0`)
+      .then((res) => readResults(res?.data))
+      .catch(rethrow);
+  }
+
+  async create(workspaceSlug: string, data: Partial<TEntity>): Promise<TEntity> {
+    return this.post(`/api/workspaces/${workspaceSlug}/entities/`, data)
+      .then((res) => res?.data)
+      .catch(rethrow);
   }
 
   async update(workspaceSlug: string, entityId: string, data: Partial<TEntity>): Promise<TEntity> {
     return this.patch(`/api/workspaces/${workspaceSlug}/entities/${entityId}/`, data)
       .then((res) => res?.data)
-      .catch((err) => { throw err?.response?.data; });
+      .catch(rethrow);
+  }
+
+  async remove(workspaceSlug: string, entityId: string): Promise<void> {
+    await this.delete(`/api/workspaces/${workspaceSlug}/entities/${entityId}/`).catch(rethrow);
   }
 }
 

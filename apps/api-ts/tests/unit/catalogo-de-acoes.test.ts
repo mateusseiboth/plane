@@ -194,7 +194,14 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
   });
 
   it("configuração do espaço, membros, auditoria, plugins e portal ficam só com o admin", () => {
-    for (const acao of ["workspace.settings", "workspace.members", "audit.view", "plugin.manage", "portal.manage"]) {
+    for (const acao of [
+      "workspace.settings",
+      "workspace.members",
+      "audit.view",
+      "plugin.manage",
+      "portal.manage",
+      "entity.freeze",
+    ]) {
       expect(donosDe(acao)).toEqual(["admin"]);
     }
   });
@@ -205,9 +212,20 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     }
   });
 
+  it("publicar no mural é de Gestor e admin; os demais recebem por pessoa", () => {
+    expect(donosDe("mural.publish")).toEqual(["admin", "gestor_projeto"]);
+    expect(ACTION_CATALOG.MURAL_PUBLISH).toMatchObject({ label: "Publicar recados no mural", scope: "workspace" });
+  });
+
   it("funções e SLA de etiqueta, que eram papel >= 18, ficam com Gestor e admin", () => {
     expect(donosDe("role.manage")).toEqual(["admin", "gestor_projeto"]);
     expect(donosDe("label.sla")).toEqual(["admin", "gestor_projeto"]);
+  });
+
+  it("visita: quem opera registra; trocar técnico e data e cancelar é de Gestor e admin", () => {
+    expect(donosDe("visit.manage")).toEqual(["admin", "atendimento", "gestor_projeto", "member", "qualidade", "ti"]);
+    // No SAC só a gestão de projetos cancelava e trocava técnico ou data.
+    expect(donosDe("visit.manage.all")).toEqual(["admin", "gestor_projeto"]);
   });
 });
 
