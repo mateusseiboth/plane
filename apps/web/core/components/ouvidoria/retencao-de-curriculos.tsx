@@ -10,11 +10,11 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { getFieldErrors } from "@/components/mural/helpers";
 import { botaoSecundario, campoFiltro } from "@/components/ouvidoria/comum";
 // hooks
-import { useRetencaoDeCurriculos } from "@/hooks/use-ouvidoria";
+import { useConfigDeCurriculos } from "@/hooks/use-ouvidoria";
 
 /** Prazo de guarda dos currículos (LGPD): passado o prazo, o currículo é apagado. */
 export function RetencaoDeCurriculos({ slug }: { slug: string }) {
-  const { data, save } = useRetencaoDeCurriculos(slug, true);
+  const { data, save } = useConfigDeCurriculos(slug, true);
   const [dias, setDias] = useState<string | null>(null);
   const [erro, setErro] = useState("");
   const valor = dias ?? String(data?.retention_days ?? "");
@@ -22,7 +22,7 @@ export function RetencaoDeCurriculos({ slug }: { slug: string }) {
   const onSave = async () => {
     setErro("");
     try {
-      await save(Number(valor));
+      await save({ retention_days: Number(valor) });
       setDias(null);
       setToast({ type: TOAST_TYPE.SUCCESS, title: "Salvo", message: "Prazo de guarda atualizado." });
     } catch (e) {

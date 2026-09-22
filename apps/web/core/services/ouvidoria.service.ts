@@ -56,7 +56,11 @@ export type TCurriculo = {
   received_at: string;
   name: string;
   phone: string | null;
+  email: string | null;
   position: string;
+  city: string | null;
+  /** "chat" (robô do WhatsApp) ou "site" (página Trabalhe conosco). */
+  source: string;
   message: string | null;
   file_name: string;
   file_size: number;
@@ -67,6 +71,9 @@ export type TCurriculo = {
   interviewed_at: string | null;
   interviewed_by: TPessoaResumo | null;
 };
+
+/** Prazo de guarda (LGPD) e o interruptor da página pública de inscrição. */
+export type TCurriculoConfig = { retention_days: number; site_enabled: boolean };
 
 export type TCurriculoMarcacao = Partial<{ is_read: boolean; is_interviewed: boolean }>;
 
@@ -151,15 +158,16 @@ export class OuvidoriaService extends APIService {
       .catch(rethrow);
   }
 
-  readRetencao(slug: string): Promise<{ retention_days: number }> {
+  readConfigDeCurriculos(slug: string): Promise<TCurriculoConfig> {
     return this.get(`${this.ws(slug)}/curriculos/config/`)
-      .then(dataOf<{ retention_days: number }>)
+      .then(dataOf<TCurriculoConfig>)
       .catch(rethrow);
   }
 
-  saveRetencao(slug: string, retentionDays: number): Promise<{ retention_days: number }> {
-    return this.patch(`${this.ws(slug)}/curriculos/config/`, { retention_days: retentionDays })
-      .then(dataOf<{ retention_days: number }>)
+  /** Salva só o que vem no payload: prazo de guarda e interruptor são botões diferentes. */
+  saveConfigDeCurriculos(slug: string, data: Partial<TCurriculoConfig>): Promise<TCurriculoConfig> {
+    return this.patch(`${this.ws(slug)}/curriculos/config/`, data)
+      .then(dataOf<TCurriculoConfig>)
       .catch(rethrow);
   }
 

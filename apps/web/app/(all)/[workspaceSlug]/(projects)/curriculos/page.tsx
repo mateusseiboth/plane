@@ -19,8 +19,9 @@ import {
   botaoSecundario,
   campoFiltro,
 } from "@/components/ouvidoria/comum";
+import { InscricaoPeloSite } from "@/components/ouvidoria/inscricao-pelo-site";
 import { RetencaoDeCurriculos } from "@/components/ouvidoria/retencao-de-curriculos";
-import { buildPaginaCursor, formatDataHora } from "@/components/ouvidoria/helpers";
+import { buildPaginaCursor, formatDataHora, rotuloDaOrigem } from "@/components/ouvidoria/helpers";
 // hooks
 import useDebounce from "@/hooks/use-debounce";
 import { useWorkspace } from "@/hooks/store/use-workspace";
@@ -119,6 +120,8 @@ function CurriculosPage() {
 
       {canReadCurriculos && (
         <>
+          <InscricaoPeloSite slug={slug} />
+
           <div className="flex flex-wrap items-center gap-3 border-b border-subtle px-6 py-3 text-12">
             <input
               aria-label="Vaga"
@@ -173,12 +176,19 @@ function CurriculosPage() {
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-subtle p-4"
               >
                 <div className="min-w-0 space-y-0.5">
-                  <p className="text-13 font-semibold">
-                    {c.name} · {c.position}
+                  <p className="flex flex-wrap items-center gap-2 text-13 font-semibold">
+                    <span>
+                      {c.name} · {c.position}
+                    </span>
+                    <span className="rounded-full border border-subtle px-2 py-0.5 text-11 font-medium text-secondary">
+                      {rotuloDaOrigem(c.source)}
+                    </span>
                   </p>
                   <p className="text-12 text-secondary">
                     Recebido em {formatDataHora(c.received_at)}
                     {c.phone ? ` · ${c.phone}` : ""}
+                    {c.email ? ` · ${c.email}` : ""}
+                    {c.city ? ` · ${c.city}` : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">

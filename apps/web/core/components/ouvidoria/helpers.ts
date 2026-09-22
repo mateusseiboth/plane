@@ -62,6 +62,15 @@ export const buildContatoEmailQuery = (f: TContatoEmailFiltros) =>
 export const buildPaginaCursor = (porPagina: number, pagina: number) =>
   pagina ? `${porPagina}:${pagina}:0` : undefined;
 
+/** Endereço público da inscrição de currículo, para divulgar e para copiar. */
+export const buildLinkDeInscricao = (origem: string, slug: string) =>
+  `${origem.replace(/\/+$/, "")}/trabalhe-conosco?workspace=${encodeURIComponent(slug)}`;
+
+/** Origem gravada no currículo → palavra que a tela mostra. */
+const ROTULO_DA_ORIGEM: Record<string, string> = { site: "Site", chat: "WhatsApp" };
+
+export const rotuloDaOrigem = (source: string | null | undefined) => ROTULO_DA_ORIGEM[source ?? ""] ?? "WhatsApp";
+
 /** Data e hora no fuso de quem está na tela. */
 export const formatDataHora = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";

@@ -9,10 +9,12 @@ import {
   buildContatoEmailQuery,
   buildCurriculoQuery,
   buildOuvidoriaQuery,
+  buildLinkDeInscricao,
   buildPaginaCursor,
   formatDia,
   formatEmailsParaCopiar,
   isOuvidoriaEvent,
+  rotuloDaOrigem,
   updatePassoDeAcao,
 } from "./helpers";
 
@@ -95,5 +97,25 @@ describe("updatePassoDeAcao", () => {
       mensagem: "Conte",
     });
     expect(updatePassoDeAcao(passo, { prompt: ["cnpj", ""] }).prompts).toEqual({});
+  });
+});
+
+describe("inscrição de currículo pelo site", () => {
+  it("o link público leva o espaço na consulta", () => {
+    expect(buildLinkDeInscricao("https://quality.exemplo.br", "quality")).toBe(
+      "https://quality.exemplo.br/trabalhe-conosco?workspace=quality"
+    );
+  });
+
+  it("endereço com barra no fim não vira barra dupla", () => {
+    expect(buildLinkDeInscricao("https://quality.exemplo.br/", "quality")).toBe(
+      "https://quality.exemplo.br/trabalhe-conosco?workspace=quality"
+    );
+  });
+
+  it("origem do currículo em palavra de gente", () => {
+    expect(rotuloDaOrigem("site")).toBe("Site");
+    expect(rotuloDaOrigem("chat")).toBe("WhatsApp");
+    expect(rotuloDaOrigem("qualquer-outra")).toBe("WhatsApp");
   });
 });

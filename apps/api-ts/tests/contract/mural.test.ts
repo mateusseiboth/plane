@@ -113,9 +113,7 @@ describe("mural de recados", () => {
     const { body: recado } = await publish(gestor, { title: "Para editar" });
     const res = await gestor.patch(`${base()}/${recado.id}/`, { description_html: "<p></p>" });
     expect(res.status).toBe(400);
-    expect(((await res.json()) as any).errors).toEqual([
-      { path: "description_html", message: "Escreva o recado." },
-    ]);
+    expect(((await res.json()) as any).errors).toEqual([{ path: "description_html", message: "Escreva o recado." }]);
   });
 
   it("editar troca o texto e mantém o resto do recado", async () => {

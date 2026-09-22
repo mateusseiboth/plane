@@ -13,6 +13,7 @@ apps/api-ts/src/
   modules/denuncia/         POST (qualquer membro) e lista paginada (denuncia.read)
   modules/curriculo/        lista, vagas, marcações, download, exclusão, prazo de guarda,
                             scheduleExpurgoDeCurriculos (boot + a cada 24 h)
+  modules/trabalhe-conosco/ página pública de inscrição de currículo (HTML próprio)
   modules/contato-email/    lista de e-mails e CSV (contato.export, auditado como export)
   modules/interno-chat/     rotas do robô: /api/internal/chat/workspaces/:slug/{ouvidoria,curriculos,responsavel-email}/
   utils/servico-interno.ts  X-Service-Token = CHAT_SERVICE_TOKEN (vazio = 503)
@@ -91,6 +92,33 @@ alcançadas pela rede interna (`API_TS_INTERNAL_URL`, padrão `http://api-ts:800
   roda no boot e a cada 24 h e registra `delete` com `metadata.exclusao = "prazo_de_guarda"`.
 - Vaga é texto livre informado pelo candidato; o filtro é por trecho, com as vagas já recebidas como
   sugestão.
+
+## 5.1 Inscrição pelo site (W17, 23/09/2026)
+
+Currículo também entra por uma página pública, sem login:
+`/trabalhe-conosco?workspace=<slug>` (módulo `modules/trabalhe-conosco`, HTML próprio no molde
+do portal do cliente, `location ~ ^/trabalhe-conosco` no `apps/proxy-ts/nginx.conf`).
+
+- Campos: nome, e-mail, telefone com DDD, vaga, cidade, mensagem opcional, PDF obrigatório
+  (mesma `validatePdf`: tipo + assinatura `%PDF-`, até 10 MB) e aceite da LGPD obrigatório. O
+  texto do aceite mostra o prazo de guarda DO ESPAÇO.
+- Colunas novas (migração `20260923100000_curriculo_pelo_site`): `curriculos.email`, `city`,
+  `source` (`chat` do robô ou `site`) e `consent_at`; `curriculo_config.site_enabled`. A origem
+  é objeto `as const` (`CURRICULO_ORIGEM`), nunca enum.
+- Gravação pelo MESMO service (`createDoSite` cai no mesmo `save` do robô), então prazo de
+  guarda, expurgo, download auditado e exclusão valem igual.
+- Liga/desliga por espaço na tela de Currículos (`InscricaoPeloSite`, exige `curriculo.read`),
+  junto do link para copiar. Desligado, a página mostra "As inscrições estão fechadas no
+  momento." e o POST responde 403 com a mesma frase.
+- Contra robô: 5 envios por IP por hora (`checkRateLimit`) e campo isca `sobrenome`, fora da
+  tela. Robô na isca recebe a MESMA resposta de sucesso e nada é gravado; dizer "recusado"
+  ensinaria o robô a tentar de novo sem a isca. A resposta nunca conta se o e-mail já mandou
+  currículo antes.
+- `GET /trabalhe-conosco/api/config?workspace=<slug>` devolve `{nome, aberto}`, para montar o
+  link em outro lugar.
+- Testes: `tests/contract/trabalhe-conosco.test.ts` e `tests/unit/curriculo-site.test.ts`.
+- Formato de e-mail passou a ter fonte única: `@utils/email-valido` (`isEmailValido`), usado
+  aqui e na lista de e-mails dos responsáveis.
 
 ## 6. Lista de e-mails
 

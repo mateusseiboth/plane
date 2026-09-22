@@ -21,6 +21,7 @@ import { useRealtimeRefetch } from "@/hooks/use-realtime";
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import ouvidoriaService, {
+  type TCurriculoConfig,
   type TCurriculoMarcacao,
   type TDenunciaPayload,
   type TListaDeEmails,
@@ -139,15 +140,15 @@ export function useVagas(slug: string | undefined, enabled: boolean) {
   return { vagas: data ?? [], data, error, isLoading, isFetching: isValidating, refetch: mutate };
 }
 
-export function useRetencaoDeCurriculos(slug: string | undefined, enabled: boolean) {
+export function useConfigDeCurriculos(slug: string | undefined, enabled: boolean) {
   const isPronto = !!slug && enabled;
   const { data, error, isLoading, isValidating, mutate } = useSWR(
-    isPronto ? `${CURRICULOS}RETENCAO_${slug}` : null,
-    isPronto ? () => ouvidoriaService.readRetencao(slug) : null,
+    isPronto ? `${CURRICULOS}CONFIG_${slug}` : null,
+    isPronto ? () => ouvidoriaService.readConfigDeCurriculos(slug) : null,
     OPCOES
   );
-  const save = async (dias: number) => {
-    const salvo = await ouvidoriaService.saveRetencao(slug ?? "", dias);
+  const save = async (mudanca: Partial<TCurriculoConfig>) => {
+    const salvo = await ouvidoriaService.saveConfigDeCurriculos(slug ?? "", mudanca);
     await mutate(salvo, { revalidate: false });
     return salvo;
   };

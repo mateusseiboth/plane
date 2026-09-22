@@ -157,7 +157,6 @@ export const coreRoutes: RouteConfigEntry[] = [
         route(":workspaceSlug/denuncias", "./(all)/[workspaceSlug]/(projects)/denuncias/page.tsx"),
         route(":workspaceSlug/curriculos", "./(all)/[workspaceSlug]/(projects)/curriculos/page.tsx"),
 
-
         // Chat / Atendimento (plugin)
         route(":workspaceSlug/chat", "./(all)/[workspaceSlug]/(projects)/chat/page.tsx"),
         route(":workspaceSlug/chat/disparo", "./(all)/[workspaceSlug]/(projects)/chat/disparo/page.tsx"),
