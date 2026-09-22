@@ -4,7 +4,7 @@ Homologação: `https://plane.qualitysistemas.inf.br` (mesma coisa em `http://10
 Espaço de trabalho: `quality`. Onde aparece `<slug>`, use `quality`.
 
 Este arquivo é escrito à mão: ao criar tela nova, acrescente a linha aqui.
-As linhas marcadas com **(em obra)** ainda NÃO estão no ar.
+Tudo abaixo está no ar no 10.1.2.12.
 
 ## Sem login (cliente, candidato, TV)
 
@@ -14,11 +14,12 @@ As linhas marcadas com **(em obra)** ainda NÃO estão no ar.
 | Chat do cliente (widget embutível) | `/chat-api/client?system=<sistema>&name=<nome>` | nenhum; aceita metadados do computador do cliente por query |
 | WebSocket do chat | `/chat-ws` | usado pelo widget e pela tela do atendente |
 | Transcrição de um atendimento | `/<slug>/chat-view/<protocolo>` | link compartilhado pela equipe |
-| Cadastro de currículo pelo site **(em obra)** | `/trabalhe-conosco?workspace=<slug>` | nenhum (ligado/desligado na tela de Currículos) |
-| Painel de TV: TI **(em obra)** | `/<slug>/painel/ti?key=<chave>` | chave de painel |
-| Painel de TV: Qualidade **(em obra)** | `/<slug>/painel/qualidade?key=<chave>` | chave de painel |
-| Painel de TV: Atendimento **(em obra)** | `/<slug>/painel/atendimento?key=<chave>` | chave de painel; abas trocam sozinhas |
-| Painel de TV: Mapa **(em obra)** | `/<slug>/painel/mapa?key=<chave>` | chave de painel |
+| Cadastro de currículo pelo site | `/trabalhe-conosco?workspace=<slug>` | nenhum (ligado/desligado na tela de Currículos) |
+| Painel de TV: TI | `/<slug>/painel/ti?key=<chave>` | chave de painel |
+| Painel de TV: Qualidade | `/<slug>/painel/qualidade?key=<chave>` | chave de painel |
+| Painel de TV: Atendimento | `/<slug>/painel/atendimento?key=<chave>` | chave de painel; abas trocam sozinhas |
+| Painel de TV: Mapa | `/<slug>/painel/mapa?key=<chave>` | chave de painel |
+| Painel de TV: Backups | `/<slug>/painel/backups?key=<chave>` | chave de painel; `?dias=` muda a janela |
 
 As chaves de painel são criadas em *Configurações → Painéis de TV*. Há a chave GERAL,
 que abre todos os painéis, e chaves restritas a painéis escolhidos; a chave aparece uma

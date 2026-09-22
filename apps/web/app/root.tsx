@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import Script from "next/script";
 import { Links, Meta, Outlet, Scripts } from "react-router";
 import type { LinksFunction } from "react-router";
@@ -23,7 +23,8 @@ import ogImage from "@/app/assets/og-image.png?url";
 import globalStyles from "@/styles/globals.css?url";
 import type { Route } from "./+types/root";
 // components
-import { PlaneFlightLoader } from "@/components/common/plane-flight-loader";
+import { AberturaDoAviao } from "@/components/abertura/abertura-do-aviao";
+import { prontidaoDaApp } from "@/components/abertura/prontidao-da-app";
 // local
 import { CustomErrorComponent } from "./error";
 import { AppProvider } from "./provider";
@@ -79,6 +80,9 @@ export function Layout({ children }: { children: ReactNode }) {
         <ThemeProvider themes={["light", "dark", "light-contrast", "dark-contrast", "custom"]} defaultTheme="system">
           {children}
         </ThemeProvider>
+        {/* Cobre a tela até a aplicação montar e o avião pousar. Fica fora do
+            roteador para aparecer já no HTML pré-renderizado. */}
+        <AberturaDoAviao />
         <Scripts />
         {!!isSessionRecorderEnabled && process.env.VITE_SESSION_RECORDER_KEY && (
           <Script id="clarity-tracking">
@@ -100,7 +104,8 @@ export const meta: Route.MetaFunction = () => [
   { property: "og:title", content: APP_TITLE },
   {
     property: "og:description",
-    content: "Ferramenta de gestão de projetos de código aberto para gerenciar chamados, ciclos e roadmaps de produto com facilidade",
+    content:
+      "Ferramenta de gestão de projetos de código aberto para gerenciar chamados, ciclos e roadmaps de produto com facilidade",
   },
   { property: "og:image", content: ogImage },
   { property: "og:image:width", content: "1200" },
@@ -119,6 +124,10 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 export default function Root() {
+  // A raiz montou: o bundle chegou e os loaders rodaram. A abertura sai no
+  // próximo pouso do avião.
+  useEffect(() => prontidaoDaApp.markPronta(), []);
+
   return (
     <AppProvider>
       <div className={cn("relative flex h-screen w-full flex-col overflow-hidden bg-canvas", "desktop-app-container")}>
@@ -131,24 +140,18 @@ export default function Root() {
 }
 
 /**
- * Tela exibida enquanto os loaders da rota rodam.
- *
- * A PRIMEIRA renderização no cliente precisa bater exatamente com o HTML
- * pré-renderizado (`<div></div>`) — a versão anterior decidia pelo tema
- * resolvido, que já vem preenchido no cliente, e a divergência disparava o erro
- * de hidratação #418/#423 do React a cada carregamento. Só depois de montado é
- * que trocamos pelo avião.
+ * Enquanto os loaders da rota rodam a tela fica vazia: quem cobre tudo é a
+ * `AberturaDoAviao`, no layout. Precisa bater com o HTML pré-renderizado
+ * (`<div></div>`), senão o React acusa erro de hidratação a cada carregamento.
  */
 export function HydrateFallback() {
-  const [montado, setMontado] = useState(false);
-
-  useEffect(() => setMontado(true), []);
-
-  if (!montado) return <div />;
-
-  return <PlaneFlightLoader />;
+  return <div />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // Se o loader falhou, é esta tela que aparece: a abertura precisa sair do
+  // mesmo jeito, senão a pessoa fica olhando o avião sem ver o erro.
+  useEffect(() => prontidaoDaApp.markPronta(), []);
+
   return <CustomErrorComponent error={error} />;
 }

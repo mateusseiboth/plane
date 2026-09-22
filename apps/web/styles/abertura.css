@@ -1,0 +1,466 @@
+/* Abertura do Avião: a cena de carregamento que cobre a tela em todo
+   carregamento completo da página.
+
+   Mora em CSS (e não em JS) para começar a rodar no primeiro paint: a marcação
+   está no HTML pré-renderizado e a cena anima antes de o bundle chegar. O JS só
+   decide QUANDO ela sai (ver `core/components/abertura`).
+
+   Coreografia de um ciclo (6.5 s): corrida na pista, rotação e subida, cruzeiro,
+   aproximação, toque e frenagem. O chão rola exatamente uma vez por ciclo, então
+   a pista que recebe o pouso é a mesma de onde o avião decola em seguida: o
+   ciclo fecha sem salto. A pista ocupa metade do tile do chão porque o avião
+   passa 44% do ciclo no solo (pouso do ciclo anterior + corrida do seguinte).
+
+   Camadas de paralaxe: montanhas (lentas), colinas, chão (um tile por ciclo). */
+
+.abertura {
+  --ab-ciclo: 6.5s;
+  --ab-ceu-alto: #4ea8ec;
+  --ab-ceu-baixo: #d6ecfb;
+  --ab-astro: #ffd76a;
+  --ab-halo: rgba(255, 215, 106, 0.35);
+  --ab-nuvem: #ffffff;
+  --ab-nuvem-opacidade: 0.92;
+  --ab-montanha: #8aa4c4;
+  --ab-neve: #f4f8fc;
+  --ab-colina: #78bb6f;
+  --ab-grama: #55a352;
+  --ab-grama-escura: #3f8a3f;
+  --ab-copa: #2f7f3d;
+  --ab-copa-clara: #3f9a4b;
+  --ab-tronco: #7a4d2a;
+  --ab-pista: #4b5058;
+  --ab-pista-faixa: #f4f4f4;
+  --ab-predio: #e9edf2;
+  --ab-predio-sombra: #c6ced9;
+  --ab-fuselagem: #ffffff;
+  --ab-fuselagem-sombra: #d9e2ec;
+  --ab-marca-a: #12315f;
+  --ab-marca-b: #2ba6e0;
+  --ab-janela: #9fd7f5;
+  --ab-texto: #0f2a44;
+  --ab-texto-suave: rgba(15, 42, 68, 0.65);
+  --ab-estrelas: 0;
+  --ab-lua: 0;
+
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  background: var(--ab-ceu-baixo);
+  color: var(--ab-texto);
+  font-family: "Inter Variable", "Inter", system-ui, sans-serif;
+}
+
+/* Noite: tema escuro escolhido, ou preferência do sistema sem tema escolhido. */
+.dark .abertura,
+.dark-contrast .abertura,
+[data-theme*="dark"] .abertura {
+  --ab-ceu-alto: #060d22;
+  --ab-ceu-baixo: #1b2b55;
+  --ab-astro: #eef2fa;
+  --ab-halo: rgba(238, 242, 250, 0.16);
+  --ab-nuvem: #a9b6d3;
+  --ab-nuvem-opacidade: 0.28;
+  --ab-montanha: #1f2c4a;
+  --ab-neve: #44557a;
+  --ab-colina: #173b2b;
+  --ab-grama: #133424;
+  --ab-grama-escura: #0d281b;
+  --ab-copa: #0f2d1e;
+  --ab-copa-clara: #164030;
+  --ab-tronco: #2a1b10;
+  --ab-pista: #262b36;
+  --ab-pista-faixa: #cfd6e2;
+  --ab-predio: #3a4459;
+  --ab-predio-sombra: #2a3245;
+  --ab-fuselagem: #e6ecf5;
+  --ab-fuselagem-sombra: #b8c4d6;
+  --ab-janela: #ffe9a6;
+  --ab-texto: #e6edf8;
+  --ab-texto-suave: rgba(230, 237, 248, 0.65);
+  --ab-estrelas: 1;
+  --ab-lua: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.light-contrast):not([data-theme*="light"]) .abertura {
+    --ab-ceu-alto: #060d22;
+    --ab-ceu-baixo: #1b2b55;
+    --ab-astro: #eef2fa;
+    --ab-halo: rgba(238, 242, 250, 0.16);
+    --ab-nuvem: #a9b6d3;
+    --ab-nuvem-opacidade: 0.28;
+    --ab-montanha: #1f2c4a;
+    --ab-neve: #44557a;
+    --ab-colina: #173b2b;
+    --ab-grama: #133424;
+    --ab-grama-escura: #0d281b;
+    --ab-copa: #0f2d1e;
+    --ab-copa-clara: #164030;
+    --ab-tronco: #2a1b10;
+    --ab-pista: #262b36;
+    --ab-pista-faixa: #cfd6e2;
+    --ab-predio: #3a4459;
+    --ab-predio-sombra: #2a3245;
+    --ab-fuselagem: #e6ecf5;
+    --ab-fuselagem-sombra: #b8c4d6;
+    --ab-janela: #ffe9a6;
+    --ab-texto: #e6edf8;
+    --ab-texto-suave: rgba(230, 237, 248, 0.65);
+    --ab-estrelas: 1;
+    --ab-lua: 1;
+  }
+}
+
+.abertura__cena {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.abertura__ceu-alto {
+  stop-color: var(--ab-ceu-alto);
+}
+.abertura__ceu-baixo {
+  stop-color: var(--ab-ceu-baixo);
+}
+
+/* Astro: sol de dia, lua à noite (a "mordida" só aparece à noite). */
+.abertura__halo-centro {
+  stop-color: var(--ab-halo);
+}
+.abertura__halo-borda {
+  stop-color: var(--ab-halo);
+  stop-opacity: 0;
+}
+.abertura__astro {
+  fill: var(--ab-astro);
+}
+.abertura__lua-sombra {
+  fill: var(--ab-ceu-alto);
+  opacity: var(--ab-lua);
+}
+
+.abertura__estrelas {
+  fill: #ffffff;
+  opacity: var(--ab-estrelas);
+}
+.abertura__estrela--pisca {
+  animation: abertura-piscar 2.8s ease-in-out infinite;
+}
+.abertura__estrela--pisca:nth-child(3n) {
+  animation-delay: -0.9s;
+}
+.abertura__estrela--pisca:nth-child(3n + 1) {
+  animation-delay: -1.8s;
+}
+
+.abertura__nuvem {
+  fill: var(--ab-nuvem);
+  opacity: var(--ab-nuvem-opacidade);
+}
+.abertura__montanha {
+  fill: var(--ab-montanha);
+}
+.abertura__neve {
+  fill: var(--ab-neve);
+}
+.abertura__colina {
+  fill: var(--ab-colina);
+}
+.abertura__grama {
+  fill: var(--ab-grama);
+}
+.abertura__grama-escura {
+  fill: var(--ab-grama-escura);
+}
+.abertura__copa {
+  fill: var(--ab-copa);
+}
+.abertura__copa-clara {
+  fill: var(--ab-copa-clara);
+}
+.abertura__tronco {
+  fill: var(--ab-tronco);
+}
+.abertura__pista {
+  fill: var(--ab-pista);
+}
+.abertura__pista-faixa {
+  fill: var(--ab-pista-faixa);
+  stroke: var(--ab-pista-faixa);
+}
+.abertura__predio {
+  fill: var(--ab-predio);
+}
+.abertura__predio-sombra {
+  fill: var(--ab-predio-sombra);
+}
+
+/* Camadas que rolam. Cada uma desenha o tile duas vezes (0 e 1600) e anda
+   exatamente um tile por volta, então a emenda é invisível. */
+.abertura__camada {
+  animation: abertura-rolar linear infinite;
+  will-change: transform;
+}
+.abertura__camada--nuvens {
+  animation-duration: calc(var(--ab-ciclo) * 9);
+}
+.abertura__camada--montanhas {
+  animation-duration: calc(var(--ab-ciclo) * 6);
+}
+.abertura__camada--colinas {
+  animation-duration: calc(var(--ab-ciclo) * 3);
+}
+.abertura__camada--chao {
+  animation-duration: var(--ab-ciclo);
+}
+
+/* O avião: rotação em volta do trem principal (40% da largura, base). */
+.abertura__aviao {
+  transform-box: fill-box;
+  transform-origin: 40% 100%;
+  animation: abertura-voo var(--ab-ciclo) linear infinite;
+  will-change: transform;
+}
+.abertura__fuselagem {
+  fill: var(--ab-fuselagem);
+}
+.abertura__fuselagem-sombra {
+  fill: var(--ab-fuselagem-sombra);
+}
+.abertura__janela {
+  fill: var(--ab-janela);
+}
+.abertura__marca-a {
+  stop-color: var(--ab-marca-a);
+}
+.abertura__marca-b {
+  stop-color: var(--ab-marca-b);
+}
+.abertura__trem {
+  fill: #2b2f36;
+  stroke: #2b2f36;
+  animation: abertura-trem var(--ab-ciclo) linear infinite;
+}
+.abertura__rastro {
+  animation: abertura-rastro var(--ab-ciclo) linear infinite;
+}
+.abertura__sombra {
+  fill: rgba(0, 0, 0, 0.28);
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: abertura-sombra var(--ab-ciclo) linear infinite;
+}
+
+/* Marca e legenda por cima da cena. */
+.abertura__marca {
+  position: absolute;
+  top: clamp(20px, 4vh, 44px);
+  left: clamp(20px, 4vw, 56px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.abertura__marca img {
+  width: clamp(36px, 5vw, 52px);
+  height: auto;
+}
+.abertura__nome {
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.abertura__lema {
+  font-size: clamp(12px, 1.2vw, 14px);
+  color: var(--ab-texto-suave);
+  margin-top: 4px;
+}
+.abertura__legenda {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(20px, 5vh, 48px);
+  transform: translateX(-50%);
+  font-size: clamp(13px, 1.3vw, 15px);
+  color: var(--ab-texto-suave);
+  letter-spacing: 0.02em;
+  animation: abertura-respirar 2.2s ease-in-out infinite;
+}
+
+/* Saída: a cena some quando o avião pousa. */
+.abertura--saindo {
+  animation: abertura-sair 0.7s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes abertura-rolar {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-1600px, 0, 0);
+  }
+}
+
+/* Percentuais casados com a pista do tile do chão (ver `cena.tsx`):
+   0-26% corrida, 26-34% rotação, 34-56% subida, 56-64% cruzeiro,
+   64-86% aproximação, 86-90% flare e toque, 90-100% frenagem. */
+@keyframes abertura-voo {
+  0%,
+  26% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  34% {
+    transform: translate3d(0, -34px, 0) rotate(-15deg);
+  }
+  48% {
+    transform: translate3d(0, -300px, 0) rotate(-10deg);
+  }
+  56% {
+    transform: translate3d(0, -370px, 0) rotate(0deg);
+  }
+  64% {
+    transform: translate3d(0, -372px, 0) rotate(2deg);
+  }
+  78% {
+    transform: translate3d(0, -160px, 0) rotate(6deg);
+  }
+  86% {
+    transform: translate3d(0, -26px, 0) rotate(3deg);
+  }
+  90% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  93% {
+    transform: translate3d(0, -3px, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+/* O trem recolhe logo depois da decolagem e baixa na aproximação. */
+@keyframes abertura-trem {
+  0%,
+  36% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  42%,
+  74% {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0);
+  }
+  80%,
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* O rastro só existe em voo. */
+@keyframes abertura-rastro {
+  0%,
+  34% {
+    opacity: 0;
+  }
+  44%,
+  76% {
+    opacity: 0.85;
+  }
+  86%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* A sombra no chão encolhe e some conforme o avião sobe. */
+@keyframes abertura-sombra {
+  0%,
+  28% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  56%,
+  64% {
+    opacity: 0.18;
+    transform: scale(0.45, 0.6);
+  }
+  90%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes abertura-piscar {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes abertura-respirar {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes abertura-sair {
+  to {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+}
+
+/* Indicador embutido (painéis, listas): a marca balança de leve. */
+.aviao-loader__bob {
+  animation: aviao-bob 1.6s ease-in-out infinite;
+}
+@keyframes aviao-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Acessibilidade: sem movimento, o avião fica em cruzeiro e a cena parada. */
+@media (prefers-reduced-motion: reduce) {
+  .abertura__camada,
+  .abertura__trem,
+  .abertura__rastro,
+  .abertura__sombra,
+  .abertura__estrela--pisca,
+  .abertura__legenda,
+  .aviao-loader__bob {
+    animation: none;
+  }
+  .abertura__aviao {
+    animation: none;
+    transform: translate3d(0, -370px, 0);
+  }
+  .abertura__trem {
+    opacity: 0;
+  }
+  .abertura__rastro {
+    opacity: 0.85;
+  }
+  .abertura__sombra {
+    opacity: 0.18;
+    transform: scale(0.45, 0.6);
+  }
+}
