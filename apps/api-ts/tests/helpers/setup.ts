@@ -1,4 +1,3 @@
-import prisma from "@db";
 import { prismaReal } from "@tests/helpers/prisma-real";
 import { mkdirSync } from "fs";
 import { tmpdir } from "os";
@@ -102,13 +101,17 @@ export async function cleanDb() {
     "customWebhookAuditLog",
     "customWebhook",
     // User / global tables
+    "passwordResetToken",
+    "freezeEvent",
     "fileAsset",
     "apiActivityLog",
     "apiToken",
     "user",
   ];
 
+  // Em série de propósito: a ordem da lista respeita as chaves estrangeiras.
   for (const accessor of accessors) {
+    // oxlint-disable-next-line no-await-in-loop
     await (prismaReal() as any)[accessor].deleteMany().catch(() => {});
   }
 }

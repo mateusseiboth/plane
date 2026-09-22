@@ -1,7 +1,8 @@
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
+import { buildProfileDto, readProfileData } from "@modules/user/profile";
 
 function userDto(u: any, lastWorkspaceId?: string | null) {
   return {
@@ -20,7 +21,7 @@ function userDto(u: any, lastWorkspaceId?: string | null) {
     is_email_verified: u.isEmailVerified ?? true,
     is_password_autoset: u.isPasswordAutoset ?? false,
     is_tour_completed: true,
-    mobile_number: null,
+    ...buildProfileDto(u),
     last_workspace_id: lastWorkspaceId ?? null,
     user_timezone: u.userTimezone ?? "UTC",
     last_login_medium: u.lastLoginMedium ?? "email",
@@ -110,7 +111,7 @@ export const userModule = new Elysia({ prefix: "/users" })
 
   .patch("/me/", async ({ user, body }) => {
     const b = body as any;
-    const data: any = {};
+    const data: any = readProfileData(b ?? {});
     if (b.first_name !== undefined) data.firstName = b.first_name;
     if (b.last_name !== undefined) data.lastName = b.last_name;
     if (b.display_name !== undefined) data.displayName = b.display_name;
@@ -241,7 +242,7 @@ export const userModule = new Elysia({ prefix: "/users" })
 
   .patch("/me/profile/", async ({ user, body }) => {
     const b = body as any;
-    const data: any = {};
+    const data: any = readProfileData(b ?? {});
     if (b.first_name !== undefined) data.firstName = b.first_name;
     if (b.last_name !== undefined) data.lastName = b.last_name;
     if (b.display_name !== undefined) data.displayName = b.display_name;
@@ -347,9 +348,9 @@ export const userModule = new Elysia({ prefix: "/users" })
     return { detail: "Onboarding concluído com sucesso." };
   })
 
-  .post("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marcado como concluído." }))
+  .post("/me/tour-completed/", async () => ({ detail: "Tour marcado como concluído." }))
 
-  .patch("/me/tour-completed/", async ({ user }) => ({ detail: "Tour marcado como concluído." }))
+  .patch("/me/tour-completed/", async () => ({ detail: "Tour marcado como concluído." }))
 
   // ── Update onboarding step ────────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@
  * temporária.
  */
 import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import { SignJWT } from "jose";
 
 const SEGREDO = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
@@ -88,6 +88,21 @@ describe("authPlugin", () => {
   it("usuário inexistente (ou inativo) responde 401", async () => {
     const app = await montar(async () => null);
     const res = await chamar(app, { authorization: `Bearer ${await assinar(USUARIO.id)}` });
+    expect(res.status).toBe(401);
+  });
+
+  it("sessão revogada (senha trocada, congelamento) responde 401", async () => {
+    const app = await montar(async () => ({ ...USUARIO, tokenUpdatedAt: new Date() }));
+    const res = await chamar(app, { authorization: `Bearer ${await assinar(USUARIO.id)}` });
+    expect(res.status).toBe(401);
+  });
+
+  it("chave de API de usuário congelado ou inativo responde 401", async () => {
+    const app = await montar(
+      async () => USUARIO,
+      async () => ({ id: "t1", expiredAt: null, user: { ...USUARIO, isActive: false } })
+    );
+    const res = await chamar(app, { "x-api-key": "plane_api_qualquer" });
     expect(res.status).toBe(401);
   });
 

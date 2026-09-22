@@ -2,11 +2,11 @@ import prisma from "@/db";
 import { paginate } from "@/utils/pagination";
 import { invalidatePrioritySlaCache } from "@/utils/sla";
 import { Elysia } from "elysia";
-import { SignJWT, jwtVerify } from "jose";
+import { resolveSmtpConfig, type SmtpConfig } from "@/utils/email-config";
+import { findSessionUser, readRawSessionToken, signSessionToken } from "@/utils/session";
 
 const DEFAULT_PRIORITY_SLA = { urgent: -8, high: -4, medium: 0, low: 8, none: 0 };
 
-const JWT_SECRET_BYTES = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
 function setCookieHeader(token: string): string {
@@ -17,27 +17,9 @@ function clearCookieHeader(): string {
   return `plane_auth=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
-async function signToken(sub: string, email: string): Promise<string> {
-  return new SignJWT({ sub, email })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(JWT_SECRET_BYTES);
-}
-
+/** Usuário da sessão atual; sessão revogada ou usuário congelado não passam. */
 async function resolveUser(headers: Record<string, string | undefined>) {
-  const cookieHeader = headers["cookie"] ?? "";
-  const match = cookieHeader.match(/(?:^|;\s*)plane_auth=([^;]+)/);
-  const rawToken =
-    headers["authorization"]?.replace("Bearer ", "") ?? (match?.[1] ? decodeURIComponent(match[1]) : null);
-  if (!rawToken) return null;
-  try {
-    const { payload } = await jwtVerify(rawToken, JWT_SECRET_BYTES);
-    if (!payload.sub) return null;
-    return prisma.user.findUnique({ where: { id: payload.sub as string } });
-  } catch {
-    return null;
-  }
+  return findSessionUser(readRawSessionToken(headers));
 }
 
 function userDto(u: any) {
@@ -86,6 +68,12 @@ function isTruthy(v: string | undefined): boolean {
 }
 
 // Derive the IInstanceConfig object (used by the main web app) from stored admin configs
+/** SMTP vale quando a tela de configuração ou as variáveis SMTP_* definem servidor e remetente. */
+function isSmtpConfigured(saved: Record<string, unknown>): boolean {
+  if (isTruthy(saved.IS_SMTP_CONFIGURED as string | undefined)) return true;
+  return resolveSmtpConfig(saved.smtp as SmtpConfig | undefined, process.env).origin !== "none";
+}
+
 function buildInstanceConfig(saved: Record<string, string> = {}) {
   const g = (k: string) => saved[k] ?? ADMIN_CONFIG_DEFAULTS[k] ?? "";
   return {
@@ -104,7 +92,7 @@ function buildInstanceConfig(saved: Record<string, string> = {}) {
     has_unsplash_configured: isTruthy(g("HAS_UNSPLASH_CONFIGURED")),
     has_llm_configured: isTruthy(g("HAS_LLM_CONFIGURED")),
     file_size_limit: Number(g("FILE_SIZE_LIMIT")) || 5242880,
-    is_smtp_configured: isTruthy(g("IS_SMTP_CONFIGURED")),
+    is_smtp_configured: isSmtpConfigured(saved),
     admin_base_url: g("ADMIN_BASE_URL"),
     space_base_url: g("SPACE_BASE_URL"),
     app_base_url: g("APP_BASE_URL"),
@@ -126,7 +114,7 @@ export const instanceModule = new Elysia({ prefix: "/instances" })
 
   // ── Instance ─────────────────────────────────────────────────────────────────
 
-  .get("/", async ({ set }) => {
+  .get("/", async () => {
     const instance = await prisma.instance.findFirst();
     if (!instance) return { is_activated: false, is_setup_done: false };
     const workspaceCount = await prisma.workspace.count();
@@ -240,7 +228,7 @@ export const instanceModule = new Elysia({ prefix: "/instances" })
       },
     });
 
-    const token = await signToken(user.id, user.email);
+    const token = await signSessionToken(user);
     set.headers["Set-Cookie"] = setCookieHeader(token);
     set.status = 201;
     return { ...userDto(user), token };
@@ -302,7 +290,7 @@ export const instanceModule = new Elysia({ prefix: "/instances" })
       return { error: "Credenciais inválidas." };
     }
 
-    const token = await signToken(user.id, user.email);
+    const token = await signSessionToken(user);
     set.headers["Set-Cookie"] = setCookieHeader(token);
     if (doNavegador) return paraOPainel();
     return { ...userDto(user), token };
@@ -503,7 +491,7 @@ export const instanceModule = new Elysia({ prefix: "/instances" })
 
   // ── Email credential check ────────────────────────────────────────────────────
 
-  .post("/email-credentials-check/", async ({ body, headers, set }) => {
+  .post("/email-credentials-check/", async ({ headers, set }) => {
     const caller = await resolveUser(headers as any);
     if (!caller?.isInstanceAdmin) {
       set.status = 403;

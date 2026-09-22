@@ -1,20 +1,15 @@
-import Elysia from "elysia";
-import { SignJWT, jwtVerify } from "jose";
+import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
+import { applyPasswordReset, requestPasswordReset } from "@modules/auth/password-reset";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
+import { isEmailEnabled } from "@utils/email";
 import { paginate } from "@utils/pagination";
+import { checkRateLimit } from "@utils/rate-limiter";
+import { findSessionUser, readRawSessionToken, revokeUserSessions, signSessionToken } from "@utils/session";
 
-const JWT_SECRET_BYTES = new TextEncoder().encode(process.env.JWT_SECRET ?? "plane-jwt-secret-change-in-production");
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-
-async function signToken(sub: string, email: string): Promise<string> {
-  return new SignJWT({ sub, email })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(JWT_SECRET_BYTES);
-}
+const BCRYPT = { algorithm: "bcrypt", cost: 12 } as const;
 
 function setCookieHeader(token: string): string {
   return `plane_auth=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`;
@@ -28,21 +23,71 @@ function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/** Sessão válida (token íntegro, usuário ativo e sessão não revogada) ou `null`. */
 async function resolveTokenFromRequest(
   headers: Record<string, string | undefined>
 ): Promise<{ sub: string; email: string } | null> {
-  const cookieHeader = headers["cookie"] ?? "";
-  const match = cookieHeader.match(/(?:^|;\s*)plane_auth=([^;]+)/);
-  const rawToken =
-    headers["authorization"]?.replace("Bearer ", "") ?? (match?.[1] ? decodeURIComponent(match[1]) : null);
-  if (!rawToken) return null;
-  try {
-    const { payload } = await jwtVerify(rawToken, JWT_SECRET_BYTES);
-    if (!payload.sub) return null;
-    return { sub: payload.sub as string, email: payload.email as string };
-  } catch {
-    return null;
+  const user = await findSessionUser(readRawSessionToken(headers));
+  return user ? { sub: user.id, email: user.email } : null;
+}
+
+/** Troca o marco de sessão do usuário e devolve o cookie da sessão atual, já no marco novo. */
+async function renewSessionCookie(userId: string, set: any, data: Record<string, unknown> = {}) {
+  const renewed = await revokeUserSessions(userId, data);
+  set.headers["Set-Cookie"] = setCookieHeader(await signSessionToken(renewed));
+}
+
+function readClientIp(headers: Record<string, string | undefined>): string | null {
+  return headers["x-forwarded-for"]?.split(",")[0]?.trim() || headers["x-real-ip"] || null;
+}
+
+const FORGOT_PASSWORD_DETAIL = "Se o e-mail estiver cadastrado, você vai receber o link para criar uma nova senha.";
+
+/**
+ * Pedido de link de redefinição. A resposta é a mesma para e-mail cadastrado ou
+ * não: dizer qual existe entregaria a lista de usuários a quem tentasse adivinhar.
+ */
+async function forgotPassword(body: any, headers: Record<string, string | undefined>, set: any) {
+  const email = String(body?.email ?? "")
+    .toLowerCase()
+    .trim();
+  if (!validateEmail(email)) {
+    set.status = 400;
+    return { detail: "Informe um e-mail válido.", errors: [{ path: "email", message: "Informe um e-mail válido." }] };
   }
+  const ip = readClientIp(headers);
+  if (!checkRateLimit(`forgot-password:${ip ?? "?"}`, 10) || !checkRateLimit(`forgot-password:${email}`, 5)) {
+    set.status = 429;
+    return { detail: "Muitos pedidos seguidos. Aguarde um minuto e tente de novo." };
+  }
+  if (!(await isEmailEnabled())) {
+    set.status = 400;
+    return {
+      error_code: 5007,
+      error_message: "SMTP_NOT_CONFIGURED",
+      detail: "O envio de e-mail não está configurado. Fale com o administrador.",
+    };
+  }
+  try {
+    await requestPasswordReset(email, ip);
+  } catch (e) {
+    // Falha de SMTP não muda a resposta: ela diria que o e-mail existe.
+    console.error("[forgot-password] falha ao enviar o link:", e);
+  }
+  return { detail: FORGOT_PASSWORD_DETAIL };
+}
+
+/** Formulário de nova senha (POST de navegador): sempre responde com redirecionamento. */
+async function resetPassword(params: { uidb64: string; token: string }, body: any, set: any) {
+  const outcome = await applyPasswordReset(params.uidb64, params.token, body?.password);
+  if (outcome.ok) return authRedirect(set, "/?success=true");
+  const back = new URLSearchParams({
+    uidb64: params.uidb64,
+    token: params.token,
+    email: String(body?.email ?? ""),
+    error_code: outcome.errorCode,
+  });
+  return authRedirect(set, `/accounts/reset-password?${back.toString()}`);
 }
 
 // ── Shared email-check logic ───────────────────────────────────────────────────
@@ -158,11 +203,7 @@ async function auditAuth(
 async function userFromCookie(headers: any): Promise<{ id: string; email: string } | null> {
   try {
     const cookie: string = (typeof headers?.get === "function" ? headers.get("cookie") : headers?.cookie) ?? "";
-    const match = cookie.match(/(?:^|;\s*)plane_auth=([^;]+)/);
-    if (!match?.[1]) return null;
-    const { payload } = await jwtVerify(decodeURIComponent(match[1]), JWT_SECRET_BYTES);
-    if (!payload.sub) return null;
-    return prisma.user.findUnique({ where: { id: String(payload.sub) }, select: { id: true, email: true } });
+    return await findSessionUser(readRawSessionToken({ cookie }));
   } catch {
     return null;
   }
@@ -198,7 +239,7 @@ async function signIn(b: any, set: any, json = false, headers?: any) {
     return fail();
   }
 
-  const token = await signToken(user.id, user.email);
+  const token = await signSessionToken(user);
   set.headers["Set-Cookie"] = setCookieHeader(token);
   auditAuth(AUDIT_ACTIONS.LOGIN, email, headers, user);
   return json ? authUserDto(user, token) : authRedirect(set, next);
@@ -226,7 +267,7 @@ async function signUp(b: any, set: any) {
       language: "pt-BR",
     },
   });
-  const token = await signToken(user.id, user.email);
+  const token = await signSessionToken(user);
   set.headers["Set-Cookie"] = setCookieHeader(token);
   return authRedirect(set, next);
 }
@@ -251,6 +292,25 @@ export const sessionAuthModule = new Elysia()
     set.headers["Set-Cookie"] = clearCookieHeader();
     set.headers["Location"] = "/";
     set.status = 302;
+    return null;
+  })
+  // Encerra TODAS as sessões do usuário (outros navegadores e aparelhos também).
+  .post("/auth/sign-out-everywhere/", async ({ set, headers }) => {
+    const resolved = await resolveTokenFromRequest(headers as any);
+    if (!resolved) {
+      set.status = 401;
+      return { detail: "Não autenticado." };
+    }
+    await revokeUserSessions(resolved.sub);
+    auditAuth(
+      AUDIT_ACTIONS.LOGOUT,
+      resolved.email,
+      headers,
+      { id: resolved.sub, email: resolved.email },
+      { todas_as_sessoes: true }
+    );
+    set.headers["Set-Cookie"] = clearCookieHeader();
+    set.status = 204;
     return null;
   })
 
@@ -278,52 +338,23 @@ export const sessionAuthModule = new Elysia()
       set.status = 401;
       return { detail: "Nenhum token informado." };
     }
-    try {
-      const { payload } = await jwtVerify(rawToken, JWT_SECRET_BYTES);
-      if (!payload.sub) {
-        set.status = 401;
-        return { detail: "Token inválido." };
-      }
-      const user = await prisma.user.findUnique({ where: { id: payload.sub as string } });
-      if (!user?.isActive) {
-        set.status = 401;
-        return { detail: "Usuário inativo." };
-      }
-      const newToken = await signToken(user.id, user.email);
-      set.headers["Set-Cookie"] = setCookieHeader(newToken);
-      return { token: newToken, access: newToken };
-    } catch {
+    const user = await findSessionUser(rawToken);
+    if (!user) {
       set.status = 401;
       return { detail: "Token inválido ou expirado." };
     }
+    const newToken = await signSessionToken(user);
+    set.headers["Set-Cookie"] = setCookieHeader(newToken);
+    return { token: newToken, access: newToken };
   })
 
   // ── Password management ──────────────────────────────────────────────────────
-  .post("/auth/forgot-password/", async ({ body, set }) => {
-    // SMTP not configured; instruct user to use admin
-    set.status = 400;
-    return {
-      error_code: 5007,
-      error_message: "SMTP_NOT_CONFIGURED",
-      detail: "O e-mail não está configurado. Entre em contato com o administrador.",
-    };
-  })
-  .post("/auth/spaces/forgot-password/", async ({ body, set }) => {
-    set.status = 400;
-    return {
-      error_code: 5007,
-      error_message: "SMTP_NOT_CONFIGURED",
-      detail: "O e-mail não está configurado. Entre em contato com o administrador.",
-    };
-  })
-  .post("/auth/reset-password/:uidb64/:token/", async ({ params, body, set }) => {
-    set.status = 400;
-    return { detail: "A redefinição de senha por e-mail não está disponível. Entre em contato com o administrador." };
-  })
-  .post("/auth/spaces/reset-password/:uidb64/:token/", async ({ params, body, set }) => {
-    set.status = 400;
-    return { detail: "A redefinição de senha por e-mail não está disponível. Entre em contato com o administrador." };
-  })
+  .post("/auth/forgot-password/", async ({ body, headers, set }) => forgotPassword(body, headers, set))
+  .post("/auth/spaces/forgot-password/", async ({ body, headers, set }) => forgotPassword(body, headers, set))
+  .post("/auth/reset-password/:uidb64/:token/", async ({ params, body, set }) => resetPassword(params, body, set))
+  .post("/auth/spaces/reset-password/:uidb64/:token/", async ({ params, body, set }) =>
+    resetPassword(params, body, set)
+  )
   .post("/auth/set-password/", async ({ body, headers, set }) => {
     const resolved = await resolveTokenFromRequest(headers as any);
     if (!resolved) {
@@ -335,11 +366,8 @@ export const sessionAuthModule = new Elysia()
       set.status = 400;
       return { detail: "password é obrigatório." };
     }
-    const hash = await Bun.password.hash(b.password, { algorithm: "bcrypt", cost: 12 });
-    await prisma.user.update({
-      where: { id: resolved.sub },
-      data: { password: hash, isPasswordAutoset: false },
-    });
+    const hash = await Bun.password.hash(b.password, BCRYPT);
+    await renewSessionCookie(resolved.sub, set, { password: hash, isPasswordAutoset: false });
     return { detail: "Senha definida com sucesso." };
   })
   .post("/auth/change-password/", async ({ body, headers, set }) => {
@@ -363,8 +391,10 @@ export const sessionAuthModule = new Elysia()
       set.status = 400;
       return { detail: "A senha atual está incorreta." };
     }
-    const hash = await Bun.password.hash(b.new_password, { algorithm: "bcrypt", cost: 12 });
-    await prisma.user.update({ where: { id: user.id }, data: { password: hash } });
+    const hash = await Bun.password.hash(b.new_password, BCRYPT);
+    // As outras sessões caem; a atual segue com o cookie renovado.
+    await renewSessionCookie(user.id, set, { password: hash, isPasswordAutoset: false });
+    auditAuth(AUDIT_ACTIONS.PASSWORD_CHANGE, user.email, headers, user);
     return { detail: "Senha alterada com sucesso." };
   })
 

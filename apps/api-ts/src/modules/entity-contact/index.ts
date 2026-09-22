@@ -1,9 +1,10 @@
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit } from "@utils/audit";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import { createFieldError } from "@utils/field-error";
 import { requireWorkspaceAction } from "@utils/permission-checks";
 import { EProjectAction } from "@utils/permissions";
 
@@ -13,7 +14,7 @@ import { EProjectAction } from "@utils/permissions";
 // encerrar um atendimento ou em cima de uma visita técnica) e deixa de fora o
 // Visualizador. Contato é dado pessoal de terceiro; a trilha LGPD logo abaixo
 // só serve para alguma coisa se houver a quem responsabilizar.
-const exigirEscrita = (workspaceId: string, userId: string) =>
+const requireEscrita = (workspaceId: string, userId: string) =>
   requireWorkspaceAction(workspaceId, userId, EProjectAction.INTAKE_CREATE);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,6 +22,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const INCLUDE_CONTATO = {
   entity: { select: { id: true, name: true } },
   type: { select: { id: true, name: true, isSystemUser: true } },
+  projects: { select: { project: { select: { id: true, name: true, identifier: true } } } },
 } as const;
 
 function iso(valor: any) {
@@ -33,7 +35,7 @@ function isoData(valor: any) {
   return iso(valor)?.slice(0, 10) ?? null;
 }
 
-function somenteDigitos(valor: string) {
+function onlyDigitos(valor: string) {
   return valor.replace(/\D/g, "");
 }
 
@@ -42,15 +44,15 @@ function somenteDigitos(valor: string) {
  * Número brasileiro chega sem o 55 (10 dígitos no fixo, 11 no celular) e é aqui
  * que ele é acrescentado — o cliente nunca envia `phone_digits`.
  */
-export function derivarPhoneDigits(phone: unknown): string | null {
-  const digitos = somenteDigitos(typeof phone === "string" ? phone : "");
+export function derivePhoneDigits(phone: unknown): string | null {
+  const digitos = onlyDigitos(typeof phone === "string" ? phone : "");
   if (!digitos) return null;
   if (digitos.length === 10 || digitos.length === 11) return `55${digitos}`;
   return digitos;
 }
 
 /** Parte nacional do número: sem o 55, quando o que sobra ainda faz sentido. */
-function semDdi(digitos: string) {
+function withoutDdi(digitos: string) {
   const cortado = digitos.startsWith("55") ? digitos.slice(2) : digitos;
   return cortado.length === 10 || cortado.length === 11 ? cortado : digitos;
 }
@@ -67,25 +69,26 @@ function semDdi(digitos: string) {
  * que já está gravado impediria de abrir um contato antigo só para corrigir o
  * nome. Número que não mudou passa; número que mudou entra na regra atual.
  */
-function exigirTelefoneValido(phone: unknown, anterior?: string | null) {
-  if (phone === null || phone === undefined || phone === "") return;
-  const bruto = somenteDigitos(typeof phone === "string" ? phone : "");
-  if (!bruto) return;
-  const nacional = semDdi(bruto);
-  const erro = (message: string) => {
-    throw { status: 400, message };
-  };
-  // Tamanho vale sempre: é o que impede a digitação sem fim.
-  if (nacional.length !== 10 && nacional.length !== 11) erro("Telefone deve ter 10 ou 11 dígitos, com DDD.");
-
-  const inalterado = anterior !== undefined && semDdi(somenteDigitos(anterior ?? "")) === nacional;
-  if (inalterado) return;
-  if (nacional.length === 11 && nacional[2] !== "9")
-    erro("Celular com 11 dígitos precisa começar com 9 depois do DDD.");
-  if (nacional[0] === "0") erro("DDD inválido.");
+function throwPhoneError(message: string): never {
+  throw createFieldError("phone", message);
 }
 
-function normalizarUuid(valor: unknown): string | null {
+function requireTelefoneValido(phone: unknown, anterior?: string | null) {
+  if (phone === null || phone === undefined || phone === "") return;
+  const bruto = onlyDigitos(typeof phone === "string" ? phone : "");
+  if (!bruto) return;
+  const nacional = withoutDdi(bruto);
+  // Tamanho vale sempre: é o que impede a digitação sem fim.
+  if (nacional.length !== 10 && nacional.length !== 11) throwPhoneError("Telefone deve ter 10 ou 11 dígitos, com DDD.");
+
+  const inalterado = anterior !== undefined && withoutDdi(onlyDigitos(anterior ?? "")) === nacional;
+  if (inalterado) return;
+  if (nacional.length === 11 && nacional[2] !== "9")
+    throwPhoneError("Celular com 11 dígitos precisa começar com 9 depois do DDD.");
+  if (nacional[0] === "0") throwPhoneError("DDD inválido.");
+}
+
+function normalizeUuid(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   const limpo = valor.trim();
   if (!limpo) return null;
@@ -111,6 +114,9 @@ export function entityContactDto(c: any) {
     is_active: c.isActive,
     receive_messages: c.receiveMessages,
     notes: c.notes ?? null,
+    // Sistemas (projetos) de que a pessoa cuida no cliente.
+    project_ids: (c.projects ?? []).map((v: any) => v.project.id),
+    projects: (c.projects ?? []).map((v: any) => v.project),
     legacy_id: c.legacyId ?? null,
     workspace_id: c.workspaceId,
     created_at: iso(c.createdAt),
@@ -141,7 +147,7 @@ const CAMPOS_AUDITADOS = ["name", "entityId", "typeId", "userId", "isActive", "r
  * Trilha LGPD do responsável. `changes` leva apenas identificadores e sinalizadores;
  * os campos pessoais entram como nome de campo em `metadata.campos_pessoais_alterados`.
  */
-function auditarAlteracao(before: any, after: any) {
+function auditAlteracao(before: any, after: any) {
   const alterados = CAMPOS_AUDITADOS.filter((campo) => {
     const de = before?.[campo];
     const para = after?.[campo];
@@ -180,19 +186,44 @@ function dadosDoCorpo(b: any, telefoneAnterior?: string | null) {
     if (b[entrada] !== undefined) data[coluna] = b[entrada];
   }
   for (const [entrada, coluna] of Object.entries(CAMPOS_UUID)) {
-    if (b[entrada] !== undefined) data[coluna] = normalizarUuid(b[entrada]);
+    if (b[entrada] !== undefined) data[coluna] = normalizeUuid(b[entrada]);
   }
   if (b.phone !== undefined) {
-    exigirTelefoneValido(b.phone, telefoneAnterior);
+    requireTelefoneValido(b.phone, telefoneAnterior);
     data.phone = b.phone || null;
-    data.phoneDigits = derivarPhoneDigits(b.phone);
+    data.phoneDigits = derivePhoneDigits(b.phone);
   }
   if (b.birth_date !== undefined) data.birthDate = b.birth_date ? new Date(b.birth_date) : null;
   return data;
 }
 
+/**
+ * Lista de sistemas do corpo: `undefined` quando o campo não veio (no PATCH,
+ * mantém a lista atual). Todos precisam ser projetos vivos deste espaço.
+ */
+async function readProjectIds(workspaceId: string, value: unknown): Promise<string[] | undefined> {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw createFieldError("project_ids", "Selecione os sistemas.");
+  const ids = [...new Set(value.map((v) => String(v ?? "").trim()).filter(Boolean))];
+  const invalid = ids.some((id) => !UUID_RE.test(id));
+  const found = invalid ? 0 : await prisma.project.count({ where: { id: { in: ids }, workspaceId, deletedAt: null } });
+  if (found !== ids.length) throw createFieldError("project_ids", "Sistema inválido.");
+  return ids;
+}
+
+/** Troca a lista inteira de sistemas do contato. */
+function replaceContactProjects(tx: any, workspaceId: string, contactId: string, projectIds: string[]) {
+  return [
+    tx.entityContactProject.deleteMany({ where: { contactId, projectId: { notIn: projectIds } } }),
+    tx.entityContactProject.createMany({
+      data: projectIds.map((projectId) => ({ contactId, projectId, workspaceId })),
+      skipDuplicates: true,
+    }),
+  ];
+}
+
 /** Entidade e tipo precisam ser do mesmo espaço de trabalho — a FK sozinha não sabe disso. */
-async function validarReferencias(workspaceId: string, data: any) {
+async function validateReferencias(workspaceId: string, data: any) {
   if (data.entityId) {
     const entidade = await prisma.entity.findFirst({
       where: { id: data.entityId, workspaceId, deletedAt: null },
@@ -211,16 +242,17 @@ async function validarReferencias(workspaceId: string, data: any) {
 
 function filtrosDeContato(workspaceId: string, q: any) {
   const where: any = { workspaceId, deletedAt: null };
-  if (q.entity_id) where.entityId = normalizarUuid(q.entity_id);
-  if (q.type_id) where.typeId = normalizarUuid(q.type_id);
+  if (q.entity_id) where.entityId = normalizeUuid(q.entity_id);
+  if (q.type_id) where.typeId = normalizeUuid(q.type_id);
   if (q.is_active !== undefined) where.isActive = q.is_active === "true";
   if (q.has_phone !== undefined) where.phoneDigits = q.has_phone === "true" ? { not: null } : null;
+  if (q.project_id) where.projects = { some: { projectId: normalizeUuid(q.project_id) } };
 
   const busca = typeof q.search === "string" ? q.search.trim() : "";
   if (busca) {
     // Telefone é procurado por dígitos: quem digita "(67) 99999-0000" precisa
     // achar o registro guardado como "5567999990000".
-    const digitos = somenteDigitos(busca);
+    const digitos = onlyDigitos(busca);
     where.OR = [
       { name: { contains: busca, mode: "insensitive" } },
       { email: { contains: busca, mode: "insensitive" } },
@@ -234,7 +266,7 @@ function filtrosDeContato(workspaceId: string, q: any) {
  * Sem `per_page`/`cursor` a listagem responde array puro — é o que as telas de
  * seleção consomem; com um deles, o envelope paginado dos demais módulos.
  */
-async function listarContatos(where: any, q: any) {
+async function listContatos(where: any, q: any) {
   const include = INCLUDE_CONTATO;
   const orderBy = { name: "asc" } as const;
   if (q.per_page === undefined && q.cursor === undefined) {
@@ -255,7 +287,7 @@ function totalDaListagem(resposta: unknown) {
   return Array.isArray(resposta) ? resposta.length : ((resposta as any)?.total_count ?? 0);
 }
 
-const FILTROS_REGISTRADOS = ["entity_id", "type_id", "is_active", "has_phone", "search"];
+const FILTROS_REGISTRADOS = ["entity_id", "type_id", "is_active", "has_phone", "project_id", "search"];
 
 /** Só os filtros conhecidos entram na trilha — o resto da query não interessa. */
 function filtrosDaConsulta(query: any) {
@@ -274,7 +306,7 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
   .get("/entity-contacts/", async ({ params: { slug }, user, query, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const resposta = await listarContatos(filtrosDeContato(ws.id, query), query);
+    const resposta = await listContatos(filtrosDeContato(ws.id, query), query);
     // LGPD: consultar uma lista de dados pessoais também é tratamento.
     recordAudit({
       workspaceId: ws.id,
@@ -290,16 +322,23 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/entity-contacts/", async ({ params: { slug }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await exigirEscrita(ws.id, user.id);
+    await requireEscrita(ws.id, user.id);
     const b = body as any;
     if (!b?.name || !String(b.name).trim()) {
       set.status = 400;
       return { detail: "O nome é obrigatório." };
     }
     const data = dadosDoCorpo(b);
-    await validarReferencias(ws.id, data);
+    await validateReferencias(ws.id, data);
+    const projectIds = await readProjectIds(ws.id, b.project_ids);
     const contato = await prisma.entityContact.create({
-      data: { ...data, name: String(b.name).trim(), workspaceId: ws.id, createdById: user.id },
+      data: {
+        ...data,
+        name: String(b.name).trim(),
+        workspaceId: ws.id,
+        createdById: user.id,
+        projects: { create: (projectIds ?? []).map((projectId) => ({ projectId, workspaceId: ws.id })) },
+      },
       include: INCLUDE_CONTATO,
     });
     recordAudit({
@@ -340,7 +379,7 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .patch("/entity-contacts/:contact_id/", async ({ params: { slug, contact_id }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await exigirEscrita(ws.id, user.id);
+    await requireEscrita(ws.id, user.id);
     const b = body as any;
     if (b?.name !== undefined && !String(b.name ?? "").trim()) {
       set.status = 400;
@@ -355,13 +394,15 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
     }
     const data = dadosDoCorpo(b, antes.phone);
     if (data.name !== undefined) data.name = String(data.name).trim();
-    await validarReferencias(ws.id, data);
-    const contato = await prisma.entityContact.update({
+    await validateReferencias(ws.id, data);
+    const projectIds = await readProjectIds(ws.id, b.project_ids);
+    const projectWrites = projectIds ? replaceContactProjects(prisma, ws.id, contact_id, projectIds) : [];
+    await prisma.$transaction([prisma.entityContact.update({ where: { id: contact_id }, data }), ...projectWrites]);
+    const contato = await prisma.entityContact.findUniqueOrThrow({
       where: { id: contact_id },
-      data,
       include: INCLUDE_CONTATO,
     });
-    const trilha = auditarAlteracao(antes, contato);
+    const trilha = auditAlteracao(antes, contato);
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.ENTITY_CONTACT,
@@ -377,7 +418,7 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .delete("/entity-contacts/:contact_id/", async ({ params: { slug, contact_id }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await exigirEscrita(ws.id, user.id);
+    await requireEscrita(ws.id, user.id);
     const contato = await prisma.entityContact.findFirst({
       where: { id: contact_id, workspaceId: ws.id, deletedAt: null },
       select: { id: true, entityId: true, typeId: true },
@@ -405,7 +446,7 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
   .get("/entities/:entity_id/contacts/", async ({ params: { slug, entity_id }, user, query, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const resposta = await listarContatos({ ...filtrosDeContato(ws.id, query), entityId: entity_id }, query);
+    const resposta = await listContatos({ ...filtrosDeContato(ws.id, query), entityId: entity_id }, query);
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.ENTITY_CONTACT,
@@ -452,7 +493,7 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/entity-contact-types/", async ({ params: { slug }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await exigirEscrita(ws.id, user.id);
+    await requireEscrita(ws.id, user.id);
     const b = body as any;
     const nome = String(b?.name ?? "").trim();
     if (!nome) {
@@ -492,7 +533,7 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .patch("/entity-contact-types/:type_id/", async ({ params: { slug, type_id }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await exigirEscrita(ws.id, user.id);
+    await requireEscrita(ws.id, user.id);
     const b = body as any;
     const tipo = await prisma.entityContactType.findFirst({ where: { id: type_id, workspaceId: ws.id } });
     if (!tipo) {
@@ -526,7 +567,7 @@ export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .delete("/entity-contact-types/:type_id/", async ({ params: { slug, type_id }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await exigirEscrita(ws.id, user.id);
+    await requireEscrita(ws.id, user.id);
     const tipo = await prisma.entityContactType.findFirst({
       where: { id: type_id, workspaceId: ws.id },
       select: { id: true, name: true },

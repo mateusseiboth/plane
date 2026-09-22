@@ -1,4 +1,5 @@
 import prisma from "@db";
+import {revokeUserSessions} from "@utils/session";
 import {authPlugin} from "@middleware/auth";
 import {serializarCiclos} from "@modules/cycle";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
@@ -939,7 +940,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     }
     const target = await prisma.workspaceMember.findFirst({
       where: {workspaceId: ws.id, memberId: pk, deletedAt: null},
-      select: {member: {select: {id: true, isInstanceAdmin: true}}},
+      select: {member: {select: {id: true, isInstanceAdmin: true, frozenAt: true}}},
     });
     if (!target?.member) {
       set.status = 404;
@@ -958,10 +959,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       return {detail: "A senha precisa ter ao menos 4 caracteres."};
     }
     const hash = await Bun.password.hash(newPassword, {algorithm: "bcrypt", cost: 12});
-    await prisma.user.update({
-      where: {id: pk},
-      data: {password: hash, isPasswordAutoset: false, isActive: true},
-    });
+    // Senha nova derruba as sessões abertas; usuário congelado continua congelado.
+    await revokeUserSessions(pk, {password: hash, isPasswordAutoset: false, isActive: !target.member.frozenAt});
     return {detail: "Senha redefinida com sucesso.", password: newPassword};
   })
 

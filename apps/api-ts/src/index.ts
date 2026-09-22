@@ -16,6 +16,8 @@ import { userModule } from "@modules/user";
 import { authModule, sessionAuthModule } from "@modules/auth";
 import { entityModule } from "@modules/entity";
 import { entityContactModule } from "@modules/entity-contact";
+import { emailConfigModule } from "@modules/email-config";
+import { freezeModule } from "@modules/freeze";
 // assetModule imported below (combined with v2)
 import { inviteModule } from "@modules/invite";
 import { analyticsModule } from "@modules/analytics";
@@ -46,6 +48,7 @@ import { auditModule } from "@modules/audit";
 import { portalAdminModule, portalModule, portalRespostaModule } from "@modules/portal";
 import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
+import { buildErrorBody, type HttpError } from "@utils/field-error";
 
 const PORT = Number(process.env.PORT ?? 8001);
 
@@ -57,7 +60,7 @@ const corsConfig = cors({
 function errorHandler({ code, error, set }: any) {
   if (error && typeof error === "object" && "status" in error) {
     set.status = (error as any).status;
-    return { detail: (error as any).message };
+    return buildErrorBody(error as HttpError);
   }
   if (code === "NOT_FOUND") { set.status = 404; return { detail: "Não encontrado." }; }
   if (code === "VALIDATION") { set.status = 400; return { detail: "Dados da requisição inválidos.", errors: (error as any)?.message }; }
@@ -200,6 +203,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // `.derive({ as: "global" })` widget-auth hook that leaks to any module mounted
   // after them, which would make /roles/ demand an X-Widget-Id header.
   .use(auditModule)
+  .use(emailConfigModule)
+  .use(freezeModule)
   .use(portalAdminModule)
   .use(portalRespostaModule)
   .use(rolesModule)
@@ -254,6 +259,7 @@ import("@utils/search")
   .then((r) => {
     if (r.ok) console.log("🔎 Search indexes ready");
     else console.warn("🔎 Search index setup had errors:", r.errors);
+    return r;
   })
   .catch((e) => console.warn("🔎 Search index setup failed:", e?.message ?? e));
 
