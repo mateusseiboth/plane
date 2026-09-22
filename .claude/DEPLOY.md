@@ -4,6 +4,26 @@ Servidor de teste/homologação: **10.1.2.12** (Debian 12, 2 vCPU, 8 GB, root).
 Diretório: `/root/plane`. Orquestração: `docker compose -f docker-compose-local.yml`.
 A aplicação é servida pelo proxy na porta **80** (`http://10.1.2.12`).
 
+## Caminho rápido: `deploy-homolog.sh`
+
+O script da raiz executa a receita abaixo inteira, de ponta a ponta, a partir da
+máquina de desenvolvimento (na branch que vai subir, normalmente `preview`):
+
+```bash
+SSHPASS='<senha do root>' ./deploy-homolog.sh             # tudo
+SSHPASS='<senha do root>' ./deploy-homolog.sh up check    # só algumas etapas
+```
+
+Etapas, nesta ordem: `backup sync deps packages web admin live images up migrate check`.
+Cada uma é idempotente; se uma falhar, corrija e rode dali em diante. A senha
+**nunca** vai para arquivo nem para commit: só na variável `SSHPASS` do comando.
+Um deploy completo leva ~25 min (os builds do web e das imagens dominam).
+
+> **Agentes com o hook do rtk:** o hook reescreve `rsync`, `git`, `grep`, `cat`
+> digitados no Bash e TRUNCA a saída (aparece `... (N lines truncated)` dentro
+> do próprio arquivo redirecionado). Para inspecionar um `rsync --dry-run`, use
+> `rtk proxy rsync ...`. Comandos dentro do script não passam pelo hook.
+
 ## Passo a passo
 
 ```bash
@@ -12,6 +32,12 @@ rsync -az --delete --exclude-from=deploy-excludes.txt ./ root@10.1.2.12:/root/pl
 
 # 2. Dependências (só quando package.json mudar)
 cd /root/plane && pnpm install
+
+# 2b. Pacotes do workspace (@plane/utils, constants, types, i18n, editor...).
+# O web e o admin leem o `dist` deles: sem este passo o build do web cai com
+# `"getPaginaPath" is not exported by "../../packages/utils/dist/index.js"`.
+# O dist NÃO vai mais no rsync (deploy-excludes.txt): é sempre gerado aqui.
+pnpm turbo run build --filter="web^..." --filter="admin^..." --filter="live^..."
 
 # 3. Build do frontend — os Dockerfiles .local só COPIAM build/client, não buildam
 # O web PRECISA do caminho do servidor de edição colaborativa embutido no
@@ -57,6 +83,76 @@ docker compose -f docker-compose-local.yml run --rm seeder
 > RAIZ DA TRANSFERÊNCIA. Sincronizando `apps/web/ → .../apps/web/`, o padrão
 > `apps/web/.env` não casa com nada — ali o certo é `.env`. Sempre confira
 > `ls apps/web/.env` no servidor antes de buildar.
+
+## Variáveis do `.env` da raiz no servidor
+
+O `.env` de `/root/plane` **não** vai no rsync (é do servidor). O que cada chave faz:
+
+| variável | para que serve | sem ela |
+|---|---|---|
+| `IA_REQUISITOS_*` | IA de requisitos (seção própria abaixo) | recurso desligado |
+| `CHAT_SERVICE_TOKEN` | segredo das rotas internas que o robô do chat chama no api-ts (ouvidoria, currículo, e-mail do responsável). O MESMO valor vai para os dois serviços pelo compose | essas rotas respondem 503 e o passo "ação" do robô avisa e segue |
+| `PLUGIN_BRIDGE_SECRET` | assina o proxy `/plugin-sdk/backend/*` até o backend de cada plugin (o backup-manager usa) | o proxy responde 503; não há mais valor padrão |
+| `CHAT_PUBLIC_URL` | endereço público que a Z-API usa para baixar mídia e arquivos do disparo | padrão `http://localhost/chat-api`: a Z-API não alcança, e o disparo cai para base64 |
+
+`CHAT_SERVICE_TOKEN` e `PLUGIN_BRIDGE_SECRET` foram gerados em 22/09/2026 com
+`openssl rand -hex 32`. Trocar um deles é só editar o `.env` e
+`docker compose -f docker-compose-local.yml up -d --force-recreate api-ts chat-backend`.
+O backup do `.env` anterior fica em `/root/backups/env-*.bak` a cada deploy.
+
+SMTP (e-mail de "esqueci a senha", avisos) **não** vem do `.env`: configura-se em
+*Configurações → E-mail (SMTP)* e fica no banco. As variáveis `SMTP_*` do api-ts
+são só reserva e o compose não as repassa.
+
+## Scripts de dados pós-deploy (idempotentes, rodam no `sac-migrator`)
+
+Rodados no deploy de 22/09/2026. Só repetir se a base for reimportada:
+
+```bash
+C="docker compose -f docker-compose-local.yml run --rm sac-migrator bun run"
+DRY_RUN=true $C scripts/fix-legacy-visit-status.ts   # visitas do SAC com a situação certa
+$C scripts/fix-legacy-visit-status.ts
+$C scripts/fix-papeis-legado.ts                      # papel 10 e setores de campo
+$C scripts/import-pos-atendimento.ts                 # pós-atendimento do MySQL legado
+# disco virtual → página "Processos" da wiki: os 8 arquivos do legado estão em
+# /root/legado/arquivos_disco no servidor e entram montados no container
+docker compose -f docker-compose-local.yml run --rm \
+  -v /root/legado/arquivos_disco:/legado/arquivos_disco:ro -e DISCO_DIR=/legado/arquivos_disco \
+  sac-migrator bun run scripts/import-wiki-legado.ts
+```
+
+Resultado em 22/09/2026: 730 visitas corrigidas para Concluída, 11.609 pós-atendimentos
+importados, página "Processos" com 8 anexos.
+
+**`fix-papeis-legado.ts` com `REATIVAR_CAMPO=true` NÃO foi rodado de propósito:** ele
+reativaria dezenas de contas de consultores de vendas externos como Visualizador
+(acesso de leitura aos chamados). É decisão de acesso do responsável pelo sistema.
+
+Número anual N-AAAA e `completed_at` têm backfill dentro das próprias migrations.
+
+## Anexos: volume `apimedia` (obrigatório)
+
+Sem S3 configurado (*Configurações → Armazenamento*), o api-ts grava os anexos
+em disco, em `/app/media`. Até 22/09/2026 esse caminho **não tinha volume**: os
+arquivos moravam na camada do container e sumiam a cada deploy (que recria o
+container), e o que existia lá era a pasta `apps/api-ts/media` da máquina de
+desenvolvimento embutida na imagem.
+
+Agora `api-ts` e `sac-migrator` montam o volume nomeado `plane_apimedia` em
+`/app/media` (os importadores gravam onde a API lê), e `apps/api-ts/media/` saiu
+do rsync. Conferir:
+
+```bash
+docker inspect plane-api-ts --format '{{range .Mounts}}{{.Name}} -> {{.Destination}}{{println}}{{end}}'
+# plane_apimedia -> /app/media
+```
+
+Backup dos anexos junto com o do banco:
+`docker run --rm -v plane_apimedia:/m -v /root/backups:/b alpine tar czf /b/media-$(date +%F).tgz -C /m .`
+
+O banco tem mais registros de arquivo (`file_assets`) do que arquivos no disco:
+os binários dos anexos do SAC legado nunca foram copiados (pendência antiga, ver
+`.claude/MIGRACAO_LEGADO.md`).
 
 ## Rebuild obrigatório das imagens de migração
 

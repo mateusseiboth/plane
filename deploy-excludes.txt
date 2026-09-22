@@ -32,3 +32,5 @@ docs/manual/img/
 # desenvolvimento quebrava o build do web com "X is not exported by
 # packages/utils/dist" sempre que o dist local estava velho.
 packages/*/dist/
+# Anexos do api-ts moram no volume apimedia do servidor: a pasta local é de teste.
+apps/api-ts/media/

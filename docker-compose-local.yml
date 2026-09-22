@@ -92,6 +92,10 @@ services:
       context: ./apps/api-ts
       dockerfile: Dockerfile.dev
     restart: unless-stopped
+    # Anexos (chamados, avatares, wiki, portal) ficam em disco quando não há S3.
+    # Sem volume eles moravam na camada do container e SUMIAM a cada deploy.
+    volumes:
+      - apimedia:/app/media
     networks:
       - dev_env
     environment:
@@ -293,6 +297,9 @@ services:
       context: ./apps/api-ts
       dockerfile: Dockerfile
     restart: "no"
+    # Mesmo volume do api-ts: os importadores de anexos gravam onde a API lê.
+    volumes:
+      - apimedia:/app/media
     networks:
       - dev_env
     command: ["bun", "run", "scripts/migrate-sac.ts"]
@@ -313,6 +320,7 @@ services:
       - plane-db
 
 volumes:
+  apimedia:
   redisdata:
   uploads:
   pgdata:

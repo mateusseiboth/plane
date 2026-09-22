@@ -20,3 +20,7 @@ Sempre confira a tipagem dos componentes para evitar deixar tipos errados ou pro
 Sempre gere arquivos de memória com a arquitetura criada, na pasta .claude DO PROJETO para que uso em outras IDEs consigam aproveitar a memória gerada.
 
 Sempre adicione seu conhecimento adquirido do projeto na pasta do projeto para que seja mais rápido para outros agents de IA lerem e entenderem os escopos do projeto.
+
+## Deploy
+
+Servidor de homologação 10.1.2.12: siga `.claude/DEPLOY.md` e use `./deploy-homolog.sh` (senha só pela variável `SSHPASS`, nunca em arquivo).
