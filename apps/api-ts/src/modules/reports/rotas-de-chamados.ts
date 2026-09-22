@@ -11,7 +11,7 @@
  *   ticket-log/          log consolidado (atividades e comentários)
  *   tv-panel/            painel de TV do TI ou da Qualidade
  */
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
 import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail } from "@utils/workspace";

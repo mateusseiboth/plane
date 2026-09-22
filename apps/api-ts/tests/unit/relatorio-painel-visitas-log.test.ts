@@ -126,9 +126,10 @@ describe("visitas", () => {
   });
 });
 
+const d = (dia: number) => new Date(Date.UTC(2026, 8, dia));
+
 describe("horas analíticas", () => {
   it("agrupa os lançamentos por analista, do que mais lançou ao que menos", () => {
-    const d = (dia: number) => new Date(Date.UTC(2026, 8, dia));
     const grupos = groupLancamentosPorAnalista([
       { id: "l1", usuarioId: "a", minutos: 30, data: d(3) },
       { id: "l2", usuarioId: "b", minutos: 120, data: d(1) },

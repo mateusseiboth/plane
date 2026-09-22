@@ -50,10 +50,10 @@ describe("relatórios de chamados (marcos por etapa)", () => {
     p1 = projeto.id;
     p2 = outro.id;
 
-    const etapas: Record<string, string> = {};
-    for (const s of DEFAULT_STATES) {
-      etapas[s.name] = (await createState(p1, ws.id, { name: s.name, group: s.group, sequence: s.sequence })).id;
-    }
+    const criadas = await Promise.all(
+      DEFAULT_STATES.map((s) => createState(p1, ws.id, { name: s.name, group: s.group, sequence: s.sequence }))
+    );
+    const etapas: Record<string, string> = Object.fromEntries(criadas.map((e) => [e.name, e.id]));
     const aFazerP2 = await createState(p2, ws.id, { name: STATE.A_FAZER, group: "unstarted" });
 
     const dev = await createMemberWithToken(ws.id, 12, p1, 12);
@@ -185,16 +185,16 @@ describe("relatórios de chamados (marcos por etapa)", () => {
   };
 
   it("sem report.view a função recebe 403", async () => {
-    for (const rota of [
+    const rotas = [
       "milestones-by-user/",
       "returned/",
       "weekly-summary/",
       "balance/",
       "ticket-log/",
       "tv-panel/?setor=ti",
-    ]) {
-      expect((await getJson(rota, ti)).status).toBe(403);
-    }
+    ];
+    const respostas = await Promise.all(rotas.map((rota) => getJson(rota, ti)));
+    expect(respostas.map((r) => r.status)).toEqual(rotas.map(() => 403));
   });
 
   it("analítico por usuário traz os marcos e o número anual", async () => {
@@ -215,7 +215,7 @@ describe("relatórios de chamados (marcos por etapa)", () => {
       encerrado_em: dia(10).toISOString(),
       devolucoes: 1,
     });
-    expect(dev.chamados.map((c: any) => c.id).sort()).toEqual([chamado.a, chamado.c].sort());
+    expect(new Set(dev.chamados.map((c: any) => c.id))).toEqual(new Set([chamado.a, chamado.c]));
   });
 
   it("analítico por quem homologou (visão da Qualidade)", async () => {
