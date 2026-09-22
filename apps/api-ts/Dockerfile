@@ -3,7 +3,7 @@ WORKDIR /app
 
 # Dependencies
 FROM base AS deps
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock* bun.lockb* ./
 RUN bun install --frozen-lockfile
 
 # Builder — generate Prisma client
