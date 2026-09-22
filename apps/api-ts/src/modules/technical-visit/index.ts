@@ -4,6 +4,7 @@ import {authPlugin} from "@middleware/auth";
 import {entityContactDto} from "@modules/entity-contact";
 import {paginate} from "@utils/pagination";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
+import {getVisitStatusLabel, VISIT_STATUS} from "@modules/technical-visit/visit-status";
 import Elysia from "elysia";
 
 function isoDate(d: any) {
@@ -50,16 +51,6 @@ async function sincronizarResponsaveis(
   });
 }
 
-const VISIT_STATUS = {AGENDADA: 0, EM_ANDAMENTO: 1, RELATORIO: 2, AGUARDANDO_ASSINATURA: 3, CONCLUIDA: 4, CANCELADA: 5};
-const STATUS_LABELS: Record<number, string> = {
-  0: "Agendada",
-  1: "Em Andamento",
-  2: "Relatório em Elaboração",
-  3: "Aguardando Assinatura",
-  4: "Concluída",
-  5: "Cancelada",
-};
-
 // Include usado em toda leitura de visita: `contact_records` faz parte do
 // contrato e some da resposta se a consulta não trouxer o vínculo.
 const INCLUDE_VISITA = {
@@ -95,7 +86,7 @@ function serializeVisit(v: any) {
     started_at: isoDate(v.startedAt),
     finished_at: isoDate(v.finishedAt),
     status: v.status,
-    status_label: STATUS_LABELS[v.status] ?? "Desconhecido",
+    status_label: getVisitStatusLabel(v.status),
     period: v.period ?? null,
     mot_update: v.motUpdate,
     mot_bug_fix: v.motBugFix,
@@ -160,7 +151,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
           scheduledDate: b.scheduled_date ? new Date(b.scheduled_date) : null,
           startedAt: b.started_at ? new Date(b.started_at) : null,
           finishedAt: b.finished_at ? new Date(b.finished_at) : null,
-          status: b.status ?? 0,
+          status: b.status ?? VISIT_STATUS.AGENDADA,
           period: b.period ?? null,
           motUpdate: b.mot_update ?? false,
           motBugFix: b.mot_bug_fix ?? false,
@@ -202,8 +193,8 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
 
     const [total, scheduled, completed] = await Promise.all([
       prisma.technicalVisit.count({where}),
-      prisma.technicalVisit.count({where: {...where, status: 0}}),
-      prisma.technicalVisit.count({where: {...where, status: 1}}),
+      prisma.technicalVisit.count({where: {...where, status: VISIT_STATUS.AGENDADA}}),
+      prisma.technicalVisit.count({where: {...where, status: VISIT_STATUS.CONCLUIDA}}),
     ]);
 
     const [motUpdate, motBugFix, motTraining, motImprovement, motCommercial, motOther] = await Promise.all([
@@ -232,7 +223,7 @@ export const technicalVisitModule = new Elysia({prefix: "/workspaces/:slug/techn
     });
 
     const completedVisits = await prisma.technicalVisit.findMany({
-      where: {...where, status: 1, startedAt: {not: null}, finishedAt: {not: null}},
+      where: {...where, status: VISIT_STATUS.CONCLUIDA, startedAt: {not: null}, finishedAt: {not: null}},
       select: {startedAt: true, finishedAt: true},
     });
 
