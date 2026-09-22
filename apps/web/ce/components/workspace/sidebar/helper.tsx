@@ -12,7 +12,6 @@ import {
   Megaphone,
   MessageSquare,
   MessageSquareWarning,
-  Phone,
   PhoneCall,
   ShieldAlert,
   Wrench,
@@ -65,8 +64,6 @@ export const getSidebarNavigationItemIcon = (key: string, className: string = ""
       return <MessageSquare className={cn("size-4 flex-shrink-0", className)} />;
     case "contatos":
       return <Contact className={cn("size-4 flex-shrink-0", className)} />;
-    case "telefones":
-      return <Phone className={cn("size-4 flex-shrink-0", className)} />;
     case "mural":
       return <Megaphone className={cn("size-4 flex-shrink-0", className)} />;
     case "ouvidoria":

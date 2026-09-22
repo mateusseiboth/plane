@@ -314,22 +314,6 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     ],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
-  // Agenda dos colegas (legado intra_telefones.php): todo membro vê.
-  telefones: {
-    key: "telefones",
-    labelTranslationKey: "sidebar.telefones",
-    href: `/telefones/`,
-    access: [
-      EUserWorkspaceRoles.ADMIN,
-      EUserWorkspaceRoles.GESTOR_PROJETO,
-      EUserWorkspaceRoles.MEMBER,
-      EUserWorkspaceRoles.TI,
-      EUserWorkspaceRoles.QUALIDADE,
-      EUserWorkspaceRoles.ATENDIMENTO,
-      EUserWorkspaceRoles.GUEST,
-    ],
-    highlight: (pathname: string, url: string) => pathname.includes(url),
-  },
   // Mural de recados: todo membro lê. Quem publica é decidido pela ação
   // `mural.publish` dentro da tela, não por este acesso.
   mural: {
@@ -468,7 +452,6 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebar
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["visits"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["chat"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["contatos"],
-  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["telefones"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["mural"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["wiki"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["ouvidoria"],

@@ -6,6 +6,7 @@
  * cadastro de Responsáveis já usa para "aceita receber mensagens".
  */
 import type { Prisma } from "@prisma/client";
+import { isEmailValido } from "@utils/email-valido";
 
 export type FiltrosDaLista = {
   entityId: string | null;
@@ -19,7 +20,6 @@ export type OrigemDoEmail = "responsavel" | "interno";
 export type EmailDaLista = { email: string; name: string; entity_name: string | null; origem: OrigemDoEmail };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const EMAIL = /^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/;
 
 const ROTULO_DA_ORIGEM: Record<OrigemDoEmail, string> = { responsavel: "Responsável", interno: "Interno" };
 
@@ -60,7 +60,7 @@ export function mergeEmails(itens: EmailDaLista[]): EmailDaLista[] {
   const porEmail = new Map<string, EmailDaLista>();
   for (const item of itens) {
     const email = item.email.trim().toLowerCase();
-    if (!EMAIL.test(email) || porEmail.has(email)) continue;
+    if (!isEmailValido(email) || porEmail.has(email)) continue;
     porEmail.set(email, { ...item, email });
   }
   return [...porEmail.values()].toSorted((a, b) => a.email.localeCompare(b.email));

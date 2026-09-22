@@ -87,6 +87,13 @@ export function toRecadoForm(recado: TRecadoEditavel | null | undefined): TRecad
   };
 }
 
+/**
+ * HTML com que o editor monta. Sai do MESMO estado que vira payload: o que a
+ * tela mostra é o que vai para a API. O editor não monta com conteúdo vazio,
+ * então o recado novo começa num parágrafo em branco.
+ */
+export const editorInicial = (form: TRecadoForm): string => form.description_html || "<p></p>";
+
 export function buildRecadoPayload(form: TRecadoForm): TMuralRecadoPayload {
   return {
     title: form.title.trim(),

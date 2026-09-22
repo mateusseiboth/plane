@@ -283,6 +283,7 @@ describe("ouvidoria, denúncia, currículos e lista de e-mails", () => {
     it("prazo de guarda configurável", async () => {
       expect(await (await gestor.get(`/workspaces/${slug}/curriculos/config/`)).json()).toEqual({
         retention_days: 365,
+        site_enabled: false,
       });
       const recusado = await gestor.patch(`/workspaces/${slug}/curriculos/config/`, { retention_days: 5 });
       expect(recusado.status).toBe(400);
@@ -291,6 +292,7 @@ describe("ouvidoria, denúncia, currículos e lista de e-mails", () => {
         await (await gestor.patch(`/workspaces/${slug}/curriculos/config/`, { retention_days: 90 })).json()
       ).toEqual({
         retention_days: 90,
+        site_enabled: false,
       });
     });
 

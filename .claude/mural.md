@@ -76,6 +76,20 @@ contrato snake_case em `mural.serialize.ts`.
 - Aviso de entrada: `MuralAvisoObrigatorio` montado em `workspace-wrapper.tsx`, vale em qualquer
   tela do espaço. Não fecha sem confirmar.
 
+## 5.1 Formulário: estado e editor nascem juntos (correção W17, 23/09/2026)
+
+`MuralRecadoFormModal` é só a moldura; o corpo (`RecadoForm`) é montado quando o modal abre e
+guarda o próprio estado, semeado na montagem por `toRecadoForm(recado)`.
+
+Semear por efeito DEPOIS da montagem quebrava a publicação: o editor rico não remontava (mesma
+`key`) e continuava com o texto da abertura anterior, enquanto o estado já estava vazio. O POST
+ia com `description_html` `<p></p>` e a API recusava "Escreva o recado." com o texto na tela. Na
+edição o efeito chegava tarde do mesmo jeito e o editor abria em branco.
+
+Regra: o editor monta com `editorInicial(form)` — o MESMO estado que vira payload. Erro de campo
+aparece em vermelho (`text-danger-primary`; `text-danger-text` não existe no tema) e a caixa do
+editor ganha borda vermelha.
+
 ## 6. Decisões (conservadoras) e limites
 
 - `published_at` é o momento da criação, gravado pelo servidor. Não há agendamento (o legado

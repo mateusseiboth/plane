@@ -2258,9 +2258,15 @@ model Curriculo {
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId     String    @map("workspace_id") @db.Uuid
   name            String
+  email           String?   @db.VarChar(200)
   phone           String?   @db.VarChar(30)
   position        String    @db.VarChar(120)
+  city            String?   @db.VarChar(120)
   message         String?
+  /// "chat" (robo do WhatsApp) ou "site" (pagina publica Trabalhe conosco).
+  source          String    @default("chat") @db.VarChar(20)
+  /// Momento do aceite da guarda dos dados (LGPD). So o site pede.
+  consentAt       DateTime? @map("consent_at")
   fileKey         String    @map("file_key")
   fileName        String    @map("file_name")
   fileSize        Int       @map("file_size")
@@ -2280,6 +2286,9 @@ model CurriculoConfig {
   workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId   String    @id @map("workspace_id") @db.Uuid
   retentionDays Int       @default(365) @map("retention_days")
+  /// Interruptor da pagina publica de inscricao. Desligado, ela responde que as
+  /// inscricoes estao fechadas.
+  siteEnabled   Boolean   @default(false) @map("site_enabled")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   @@map("curriculo_config")

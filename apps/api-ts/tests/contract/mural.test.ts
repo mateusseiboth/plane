@@ -97,6 +97,35 @@ describe("mural de recados", () => {
     expect(body.errors).toEqual([{ path: "title", message: "Informe o título do recado." }]);
   });
 
+  it("texto do editor rico é aceito e o resumo sai sem as marcações", async () => {
+    const html = '<p class="editor-paragraph-block" data-id="2f4c">Reunião geral na sexta.</p>';
+    const { res, body } = await publish(gestor, { title: "Reunião", description_html: html });
+    expect(res.status).toBe(201);
+    expect(body.description_html).toBe(html);
+    expect(body.description_stripped).toBe("Reunião geral na sexta.");
+  });
+
+  it("parágrafo em branco do editor volta 400 no campo do recado, na criação e na edição", async () => {
+    const vazio = await publish(gestor, { description_html: "<p></p>" });
+    expect(vazio.res.status).toBe(400);
+    expect(vazio.body.errors).toEqual([{ path: "description_html", message: "Escreva o recado." }]);
+
+    const { body: recado } = await publish(gestor, { title: "Para editar" });
+    const res = await gestor.patch(`${base()}/${recado.id}/`, { description_html: "<p></p>" });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as any).errors).toEqual([{ path: "description_html", message: "Escreva o recado." }]);
+  });
+
+  it("editar troca o texto e mantém o resto do recado", async () => {
+    const { body: recado } = await publish(gestor, { title: "Antes", is_pinned: true });
+    const html = '<p class="editor-paragraph-block">Texto novo do recado.</p>';
+    const res = await gestor.patch(`${base()}/${recado.id}/`, { description_html: html });
+    expect(res.status).toBe(200);
+    const salvo = (await res.json()) as any;
+    expect(salvo).toMatchObject({ title: "Antes", description_html: html, is_pinned: true });
+    expect(salvo.description_stripped).toBe("Texto novo do recado.");
+  });
+
   it("quem não é do espaço não lê o mural", async () => {
     expect((await estranho.get(`${base()}/`)).status).toBe(403);
   });

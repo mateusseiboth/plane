@@ -4,6 +4,7 @@
  * LGPD. Nada aqui toca o banco nem o storage.
  */
 import type { Prisma } from "@prisma/client";
+import { isEmailValido } from "@utils/email-valido";
 import type { FieldErrorItem } from "@utils/field-error";
 
 export const RETENCAO_PADRAO_DIAS = 365;
@@ -27,12 +28,20 @@ export async function validatePdf(arquivo: Blob | null | undefined): Promise<Fie
   return [];
 }
 
+/** De onde o currículo veio. Objeto `as const` no lugar de enum. */
+export const CURRICULO_ORIGEM = { CHAT: "chat", SITE: "site" } as const;
+export type CurriculoOrigem = (typeof CURRICULO_ORIGEM)[keyof typeof CURRICULO_ORIGEM];
+
 export type CurriculoData = {
   name: string;
   position: string;
   phone: string | null;
+  email: string | null;
+  city: string | null;
   message: string | null;
   chatSessionId: string | null;
+  source: CurriculoOrigem;
+  consentAt: Date | null;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -56,8 +65,62 @@ export function validateCurriculoInput(body: Record<string, unknown>): {
       name: text(body.name).slice(0, 120),
       position: text(body.position).slice(0, 120),
       phone: optionalText(body.phone, 30),
+      email: null,
+      city: null,
       message: optionalText(body.message, 2000),
       chatSessionId: UUID.test(sessao) ? sessao : null,
+      source: CURRICULO_ORIGEM.CHAT,
+      consentAt: null,
+    },
+  };
+}
+
+/** Campo isca: invisível na tela, preenchido só por robô de formulário. */
+export const ISCA = "sobrenome";
+
+export const isRoboNaIsca = (body: Record<string, unknown>): boolean => !!text(body[ISCA]);
+
+const ACEITES = new Set(["true", "on", "1", "sim"]);
+
+const isAceiteLgpd = (valor: unknown) => valor === true || ACEITES.has(text(valor).toLowerCase());
+
+const onlyDigitos = (valor: string) => valor.replace(/\D/g, "");
+
+/** Campo do formulário público → como recusá-lo. A ordem é a das mensagens. */
+const CAMPOS_DO_SITE: Array<[path: string, message: string, isValido: (valor: string) => boolean]> = [
+  ["name", "Informe seu nome.", (valor) => !!valor],
+  ["email", "Informe um e-mail válido.", (valor) => isEmailValido(valor)],
+  ["phone", "Informe o telefone com DDD.", (valor) => onlyDigitos(valor).length >= 10],
+  ["position", "Informe a vaga de interesse.", (valor) => !!valor],
+  ["city", "Informe a cidade onde mora.", (valor) => !!valor],
+];
+
+/**
+ * Inscrição da página pública: mesmos campos do robô mais e-mail, cidade e o
+ * aceite da LGPD, que é obrigatório (sem ele não se guarda dado de ninguém).
+ */
+export function validateInscricaoDoSite(
+  body: Record<string, unknown>,
+  agora: Date
+): { data: CurriculoData; errors: FieldErrorItem[] } {
+  const errors = CAMPOS_DO_SITE.filter(([path, , isValido]) => !isValido(text(body[path]))).map(([path, message]) => ({
+    path,
+    message,
+  }));
+  const isAceito = isAceiteLgpd(body.aceite_lgpd);
+  if (!isAceito) errors.push({ path: "aceite_lgpd", message: "É preciso aceitar a guarda dos seus dados." });
+  return {
+    errors,
+    data: {
+      name: text(body.name).slice(0, 120),
+      position: text(body.position).slice(0, 120),
+      phone: optionalText(body.phone, 30),
+      email: text(body.email).toLowerCase().slice(0, 200) || null,
+      city: optionalText(body.city, 120),
+      message: optionalText(body.message, 2000),
+      chatSessionId: null,
+      source: CURRICULO_ORIGEM.SITE,
+      consentAt: isAceito ? agora : null,
     },
   };
 }

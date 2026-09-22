@@ -38,11 +38,11 @@ export const curriculoDao = {
 
   findConfig: (workspaceId: string) => prisma.curriculoConfig.findUnique({ where: { workspaceId } }),
 
-  saveConfig: (workspaceId: string, retentionDays: number) =>
+  saveConfig: (workspaceId: string, data: { retentionDays: number; siteEnabled: boolean }) =>
     prisma.curriculoConfig.upsert({
       where: { workspaceId },
-      create: { workspaceId, retentionDays },
-      update: { retentionDays },
+      create: { workspaceId, ...data },
+      update: data,
     }),
 
   findConfigs: () => prisma.curriculoConfig.findMany(),

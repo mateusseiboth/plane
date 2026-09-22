@@ -2,7 +2,6 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 
-
 import { projectModule } from "@modules/project";
 import { chatChamadoModule } from "@modules/chat-chamado";
 import { stateModule } from "@modules/state";
@@ -20,7 +19,6 @@ import { entityContactModule } from "@modules/entity-contact";
 import { emailConfigModule } from "@modules/email-config";
 import { freezeModule } from "@modules/freeze";
 import { memberAccountModule } from "@modules/member-account";
-import { phoneBookModule } from "@modules/phone-book";
 // assetModule imported below (combined with v2)
 import { inviteModule } from "@modules/invite";
 import { analyticsModule } from "@modules/analytics";
@@ -49,6 +47,7 @@ import { pluginRegistryModule } from "@modules/plugin-registry";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
 import { auditModule } from "@modules/audit";
 import { portalAdminModule, portalChamadoModule, portalModule, portalRespostaModule } from "@modules/portal";
+import { trabalheConoscoModule } from "@modules/trabalhe-conosco";
 import { rolesModule } from "@modules/roles";
 import { realtimeModule } from "@modules/realtime";
 import { buildErrorBody, type HttpError } from "@utils/field-error";
@@ -72,14 +71,29 @@ function errorHandler({ code, error, set }: any) {
     set.status = (error as any).status;
     return buildErrorBody(error as HttpError);
   }
-  if (code === "NOT_FOUND") { set.status = 404; return { detail: "Não encontrado." }; }
-  if (code === "VALIDATION") { set.status = 400; return { detail: "Dados da requisição inválidos.", errors: (error as any)?.message }; }
+  if (code === "NOT_FOUND") {
+    set.status = 404;
+    return { detail: "Não encontrado." };
+  }
+  if (code === "VALIDATION") {
+    set.status = 400;
+    return { detail: "Dados da requisição inválidos.", errors: (error as any)?.message };
+  }
   // Erros do Prisma que têm equivalente HTTP direto. Sem isso, buscar um
   // registro inexistente (findFirstOrThrow/update) vira 500 em vez de 404.
   const prismaCode = (error as any)?.code;
-  if (prismaCode === "P2025") { set.status = 404; return { detail: "Não encontrado." }; }
-  if (prismaCode === "P2002") { set.status = 409; return { detail: "Registro já existe." }; }
-  if (prismaCode === "P2003") { set.status = 400; return { detail: "Referência inválida." }; }
+  if (prismaCode === "P2025") {
+    set.status = 404;
+    return { detail: "Não encontrado." };
+  }
+  if (prismaCode === "P2002") {
+    set.status = 409;
+    return { detail: "Registro já existe." };
+  }
+  if (prismaCode === "P2003") {
+    set.status = 400;
+    return { detail: "Referência inválida." };
+  }
   const msg = error?.message ?? "";
   if (msg.includes("Credenciais de autenticação") || msg.includes("Não autenticado")) {
     set.status = 401;
@@ -91,22 +105,21 @@ function errorHandler({ code, error, set }: any) {
 }
 
 // ── Auth routes live at /auth/* (no /api/v1 prefix) ──────────────────────────
-const authApp = new Elysia()
-  .use(corsConfig)
-  .onError(errorHandler)
-  .use(sessionAuthModule);
+const authApp = new Elysia().use(corsConfig).onError(errorHandler).use(sessionAuthModule);
 
 // ── All other API routes live at /api/v1/* ────────────────────────────────────
 const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(corsConfig)
-  .use(swagger({
-    path: "/schema",
-    documentation: {
-      info: { title: "Plane API", version: "1.0.0", description: "Plane TypeScript API — full CE + Premium parity" },
-      components: { securitySchemes: { ApiKeyAuth: { type: "apiKey", in: "header", name: "X-Api-Key" } } },
-      security: [{ ApiKeyAuth: [] }],
-    },
-  }))
+  .use(
+    swagger({
+      path: "/schema",
+      documentation: {
+        info: { title: "Plane API", version: "1.0.0", description: "Plane TypeScript API — full CE + Premium parity" },
+        components: { securitySchemes: { ApiKeyAuth: { type: "apiKey", in: "header", name: "X-Api-Key" } } },
+        security: [{ ApiKeyAuth: [] }],
+      },
+    })
+  )
   .onError(errorHandler)
   .get("/health/", () => ({ status: "ok", version: "1.0.0" }))
 
@@ -114,47 +127,47 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .get("/timezones/", () => {
     // Returns { timezones: TTimezoneObject[] } as expected by the frontend
     const TZ_DATA: Array<{ value: string; label: string; utc_offset: string; gmt_offset: string }> = [
-      { value: "America/Noronha",     label: "Noronha",         utc_offset: "UTC-02:00", gmt_offset: "GMT-2" },
-      { value: "America/Sao_Paulo",   label: "São Paulo",       utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "America/Bahia",       label: "Bahia",           utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "America/Fortaleza",   label: "Fortaleza",       utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "America/Recife",      label: "Recife",          utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "America/Maceio",      label: "Maceió",          utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "America/Belem",       label: "Belém",           utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "America/Cuiaba",      label: "Cuiabá",          utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
-      { value: "America/Porto_Velho", label: "Porto Velho",     utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
-      { value: "America/Manaus",      label: "Manaus",          utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
-      { value: "America/Boa_Vista",   label: "Boa Vista",       utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
-      { value: "America/Rio_Branco",  label: "Rio Branco",      utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
-      { value: "UTC",                 label: "UTC",             utc_offset: "UTC+00:00", gmt_offset: "GMT+0" },
-      { value: "America/New_York",    label: "New York",        utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
-      { value: "America/Chicago",     label: "Chicago",         utc_offset: "UTC-06:00", gmt_offset: "GMT-6" },
-      { value: "America/Denver",      label: "Denver",          utc_offset: "UTC-07:00", gmt_offset: "GMT-7" },
-      { value: "America/Los_Angeles", label: "Los Angeles",     utc_offset: "UTC-08:00", gmt_offset: "GMT-8" },
-      { value: "America/Toronto",     label: "Toronto",         utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
-      { value: "America/Mexico_City", label: "Mexico City",     utc_offset: "UTC-06:00", gmt_offset: "GMT-6" },
-      { value: "America/Buenos_Aires",label: "Buenos Aires",    utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "America/Lima",        label: "Lima",            utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
-      { value: "America/Bogota",      label: "Bogotá",          utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
-      { value: "America/Santiago",    label: "Santiago",        utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
-      { value: "Europe/London",       label: "London",          utc_offset: "UTC+00:00", gmt_offset: "GMT+0" },
-      { value: "Europe/Paris",        label: "Paris",           utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
-      { value: "Europe/Berlin",       label: "Berlin",          utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
-      { value: "Europe/Madrid",       label: "Madrid",          utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
-      { value: "Europe/Rome",         label: "Rome",            utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
-      { value: "Europe/Moscow",       label: "Moscow",          utc_offset: "UTC+03:00", gmt_offset: "GMT+3" },
-      { value: "Europe/Istanbul",     label: "Istanbul",        utc_offset: "UTC+03:00", gmt_offset: "GMT+3" },
-      { value: "Asia/Dubai",          label: "Dubai",           utc_offset: "UTC+04:00", gmt_offset: "GMT+4" },
-      { value: "Asia/Kolkata",        label: "Kolkata",         utc_offset: "UTC+05:30", gmt_offset: "GMT+5:30" },
-      { value: "Asia/Bangkok",        label: "Bangkok",         utc_offset: "UTC+07:00", gmt_offset: "GMT+7" },
-      { value: "Asia/Singapore",      label: "Singapore",       utc_offset: "UTC+08:00", gmt_offset: "GMT+8" },
-      { value: "Asia/Shanghai",       label: "Shanghai",        utc_offset: "UTC+08:00", gmt_offset: "GMT+8" },
-      { value: "Asia/Seoul",          label: "Seoul",           utc_offset: "UTC+09:00", gmt_offset: "GMT+9" },
-      { value: "Asia/Tokyo",          label: "Tokyo",           utc_offset: "UTC+09:00", gmt_offset: "GMT+9" },
-      { value: "Africa/Cairo",        label: "Cairo",           utc_offset: "UTC+02:00", gmt_offset: "GMT+2" },
-      { value: "Africa/Johannesburg", label: "Johannesburg",    utc_offset: "UTC+02:00", gmt_offset: "GMT+2" },
-      { value: "Australia/Sydney",    label: "Sydney",          utc_offset: "UTC+10:00", gmt_offset: "GMT+10" },
-      { value: "Pacific/Auckland",    label: "Auckland",        utc_offset: "UTC+12:00", gmt_offset: "GMT+12" },
+      { value: "America/Noronha", label: "Noronha", utc_offset: "UTC-02:00", gmt_offset: "GMT-2" },
+      { value: "America/Sao_Paulo", label: "São Paulo", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Bahia", label: "Bahia", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Fortaleza", label: "Fortaleza", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Recife", label: "Recife", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Maceio", label: "Maceió", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Belem", label: "Belém", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Cuiaba", label: "Cuiabá", utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Porto_Velho", label: "Porto Velho", utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Manaus", label: "Manaus", utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Boa_Vista", label: "Boa Vista", utc_offset: "UTC-04:00", gmt_offset: "GMT-4" },
+      { value: "America/Rio_Branco", label: "Rio Branco", utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "UTC", label: "UTC", utc_offset: "UTC+00:00", gmt_offset: "GMT+0" },
+      { value: "America/New_York", label: "New York", utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Chicago", label: "Chicago", utc_offset: "UTC-06:00", gmt_offset: "GMT-6" },
+      { value: "America/Denver", label: "Denver", utc_offset: "UTC-07:00", gmt_offset: "GMT-7" },
+      { value: "America/Los_Angeles", label: "Los Angeles", utc_offset: "UTC-08:00", gmt_offset: "GMT-8" },
+      { value: "America/Toronto", label: "Toronto", utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Mexico_City", label: "Mexico City", utc_offset: "UTC-06:00", gmt_offset: "GMT-6" },
+      { value: "America/Buenos_Aires", label: "Buenos Aires", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "America/Lima", label: "Lima", utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Bogota", label: "Bogotá", utc_offset: "UTC-05:00", gmt_offset: "GMT-5" },
+      { value: "America/Santiago", label: "Santiago", utc_offset: "UTC-03:00", gmt_offset: "GMT-3" },
+      { value: "Europe/London", label: "London", utc_offset: "UTC+00:00", gmt_offset: "GMT+0" },
+      { value: "Europe/Paris", label: "Paris", utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Berlin", label: "Berlin", utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Madrid", label: "Madrid", utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Rome", label: "Rome", utc_offset: "UTC+01:00", gmt_offset: "GMT+1" },
+      { value: "Europe/Moscow", label: "Moscow", utc_offset: "UTC+03:00", gmt_offset: "GMT+3" },
+      { value: "Europe/Istanbul", label: "Istanbul", utc_offset: "UTC+03:00", gmt_offset: "GMT+3" },
+      { value: "Asia/Dubai", label: "Dubai", utc_offset: "UTC+04:00", gmt_offset: "GMT+4" },
+      { value: "Asia/Kolkata", label: "Kolkata", utc_offset: "UTC+05:30", gmt_offset: "GMT+5:30" },
+      { value: "Asia/Bangkok", label: "Bangkok", utc_offset: "UTC+07:00", gmt_offset: "GMT+7" },
+      { value: "Asia/Singapore", label: "Singapore", utc_offset: "UTC+08:00", gmt_offset: "GMT+8" },
+      { value: "Asia/Shanghai", label: "Shanghai", utc_offset: "UTC+08:00", gmt_offset: "GMT+8" },
+      { value: "Asia/Seoul", label: "Seoul", utc_offset: "UTC+09:00", gmt_offset: "GMT+9" },
+      { value: "Asia/Tokyo", label: "Tokyo", utc_offset: "UTC+09:00", gmt_offset: "GMT+9" },
+      { value: "Africa/Cairo", label: "Cairo", utc_offset: "UTC+02:00", gmt_offset: "GMT+2" },
+      { value: "Africa/Johannesburg", label: "Johannesburg", utc_offset: "UTC+02:00", gmt_offset: "GMT+2" },
+      { value: "Australia/Sydney", label: "Sydney", utc_offset: "UTC+10:00", gmt_offset: "GMT+10" },
+      { value: "Pacific/Auckland", label: "Auckland", utc_offset: "UTC+12:00", gmt_offset: "GMT+12" },
     ];
     return { timezones: TZ_DATA };
   })
@@ -167,13 +180,15 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
     const slug = (query.slug as string | undefined)?.toLowerCase();
     if (!slug) return { status: false };
     const RESTRICTED = ["admin", "api", "auth", "plane", "god-mode", "spaces", "home", "login", "signup", "settings"];
-    const taken = RESTRICTED.includes(slug) || (await (await import("@db")).default.workspace.findFirst({ where: { slug } })) !== null;
+    const taken =
+      RESTRICTED.includes(slug) ||
+      (await (await import("@db")).default.workspace.findFirst({ where: { slug } })) !== null;
     return { status: !taken };
   })
   .use(instanceModule)
   .use(workspaceModule)
   .use(userModule)
-  .use(authModule)      // API token management (/users/api-tokens/)
+  .use(authModule) // API token management (/users/api-tokens/)
   .use(projectModule)
   // Chamado aberto a partir de uma conversa do chat (transcrição + arquivos).
   .use(chatChamadoModule)
@@ -218,7 +233,6 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(emailConfigModule)
   .use(freezeModule)
   .use(memberAccountModule)
-  .use(phoneBookModule)
   .use(portalAdminModule)
   .use(portalRespostaModule)
   .use(portalChamadoModule)
@@ -265,12 +279,15 @@ for (const evento of ["unhandledRejection", "uncaughtException"] as const) {
 // — não usa o `authPlugin` e não conhece o crachá do Plane.
 const portalApp = new Elysia().use(corsConfig).onError(errorHandler).use(portalModule);
 
+// ── Trabalhe conosco: inscrição pública de currículo, também fora do /api/v1 ─
+const trabalheConoscoApp = new Elysia().use(corsConfig).onError(errorHandler).use(trabalheConoscoModule);
+
 // ── Rotas internas do robô do chat: autenticação de serviço, sem usuário ─────
 // Montadas ANTES do apiApp: o `authPlugin` de lá é global e passaria a exigir
 // usuário logado de toda rota registrada depois dele.
 const internoApp = new Elysia().onError(errorHandler).use(internoChatModule);
 
-export const app = new Elysia().use(authApp).use(portalApp).use(internoApp).use(apiApp);
+export const app = new Elysia().use(authApp).use(portalApp).use(trabalheConoscoApp).use(internoApp).use(apiApp);
 
 if (import.meta.main) {
   app.listen(PORT);
@@ -286,7 +303,7 @@ if (import.meta.main) scheduleExpurgoDeCurriculos();
 // às funções já existentes (idempotente; edições do admin sobrevivem).
 if (import.meta.main) {
   import("@utils/seed-funcoes")
-    .then(({seedWorkflowRolesForAllWorkspaces}) => seedWorkflowRolesForAllWorkspaces())
+    .then(({ seedWorkflowRolesForAllWorkspaces }) => seedWorkflowRolesForAllWorkspaces())
     .then((n) => console.log(`🛡️  Funções sincronizadas em ${n} espaço(s)`))
     .catch((e) => console.warn("🛡️  Falha ao sincronizar funções:", e?.message ?? e));
 }
@@ -294,7 +311,7 @@ if (import.meta.main) {
 // Ensure full-text search extensions/indexes exist (idempotent, best-effort).
 // Skip the ANALYZE pass on boot to keep startup cheap; the reindex route runs it.
 import("@utils/search")
-  .then(({ensureSearchIndexes}) => ensureSearchIndexes(false))
+  .then(({ ensureSearchIndexes }) => ensureSearchIndexes(false))
   .then((r) => {
     if (r.ok) console.log("🔎 Search indexes ready");
     else console.warn("🔎 Search index setup had errors:", r.errors);

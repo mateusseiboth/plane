@@ -51,7 +51,17 @@ describe("validateCurriculoInput", () => {
 
   it("limpa os campos", () => {
     const { data } = validateCurriculoInput({ name: " Ana ", position: " Programador ", phone: "5567", message: "" });
-    expect(data).toEqual({ name: "Ana", position: "Programador", phone: "5567", message: null, chatSessionId: null });
+    expect(data).toEqual({
+      name: "Ana",
+      position: "Programador",
+      phone: "5567",
+      email: null,
+      city: null,
+      message: null,
+      chatSessionId: null,
+      source: "chat",
+      consentAt: null,
+    });
   });
 });
 
