@@ -27,3 +27,8 @@ docs/manual/img/
 *.log
 # Worktrees dos agentes paralelos (git worktree): nunca vão para o servidor.
 .claude/worktrees/
+# dist dos pacotes do workspace (@plane/utils, constants, types, i18n...) é
+# gerado NO SERVIDOR pelo `turbo build --filter=web^...`. Levar o da máquina de
+# desenvolvimento quebrava o build do web com "X is not exported by
+# packages/utils/dist" sempre que o dist local estava velho.
+packages/*/dist/
