@@ -4,6 +4,7 @@ Homologação: `https://plane.qualitysistemas.inf.br` (mesma coisa em `http://10
 Espaço de trabalho: `quality`. Onde aparece `<slug>`, use `quality`.
 
 Este arquivo é escrito à mão: ao criar tela nova, acrescente a linha aqui.
+As linhas marcadas com **(em obra)** ainda NÃO estão no ar.
 
 ## Sem login (cliente, candidato, TV)
 
@@ -13,14 +14,15 @@ Este arquivo é escrito à mão: ao criar tela nova, acrescente a linha aqui.
 | Chat do cliente (widget embutível) | `/chat-api/client?system=<sistema>&name=<nome>` | nenhum; aceita metadados do computador do cliente por query |
 | WebSocket do chat | `/chat-ws` | usado pelo widget e pela tela do atendente |
 | Transcrição de um atendimento | `/<slug>/chat-view/<protocolo>` | link compartilhado pela equipe |
-| Cadastro de currículo pelo site | `/trabalhe-conosco?workspace=<slug>` | nenhum (ligado/desligado na tela de Currículos) |
-| Painel de TV: TI | `/<slug>/painel/ti?key=<chave>` | chave de painel |
-| Painel de TV: Qualidade | `/<slug>/painel/qualidade?key=<chave>` | chave de painel |
-| Painel de TV: Atendimento | `/<slug>/painel/atendimento?key=<chave>` | chave de painel; abas trocam sozinhas |
-| Painel de TV: Mapa | `/<slug>/painel/mapa?key=<chave>` | chave de painel |
+| Cadastro de currículo pelo site **(em obra)** | `/trabalhe-conosco?workspace=<slug>` | nenhum (ligado/desligado na tela de Currículos) |
+| Painel de TV: TI **(em obra)** | `/<slug>/painel/ti?key=<chave>` | chave de painel |
+| Painel de TV: Qualidade **(em obra)** | `/<slug>/painel/qualidade?key=<chave>` | chave de painel |
+| Painel de TV: Atendimento **(em obra)** | `/<slug>/painel/atendimento?key=<chave>` | chave de painel; abas trocam sozinhas |
+| Painel de TV: Mapa **(em obra)** | `/<slug>/painel/mapa?key=<chave>` | chave de painel |
 
-As chaves de painel são criadas em *Configurações → Painéis de TV*, e cada uma vale só
-para os painéis escolhidos. A chave aparece uma vez na criação.
+As chaves de painel são criadas em *Configurações → Painéis de TV*. Há a chave GERAL,
+que abre todos os painéis, e chaves restritas a painéis escolhidos; a chave aparece uma
+vez, na criação. Quem já está logado no Plane abre o painel sem chave nenhuma.
 
 ## Dentro do Plane (com login)
 
@@ -72,6 +74,6 @@ para os painéis escolhidos. A chave aparece uma vez na criação.
 
 ## Observações
 
-- **Loja de plugins** (`/<slug>/plugins`): vitrine de exemplo, com catálogo fixo no código.
-  Instalar de verdade é em *Configurações → Plugins*, enviando o `.zip` do plugin.
+- **Loja de plugins:** removida. Era vitrine, com catálogo fixo no código e um "instalar"
+  que não instalava. Instalar é em *Configurações → Plugins*, enviando o `.zip`.
 - **Telefones** (`/<slug>/telefones`): em remoção, porque Contatos já cobre.
