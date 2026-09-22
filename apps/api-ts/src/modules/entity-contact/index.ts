@@ -1,11 +1,11 @@
 import Elysia from "elysia";
-import {authPlugin} from "@middleware/auth";
+import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
-import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit} from "@utils/audit";
-import {paginate} from "@utils/pagination";
-import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
-import {requireWorkspaceAction} from "@utils/permission-checks";
-import {EProjectAction} from "@utils/permissions";
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit } from "@utils/audit";
+import { paginate } from "@utils/pagination";
+import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import { requireWorkspaceAction } from "@utils/permission-checks";
+import { EProjectAction } from "@utils/permissions";
 
 // Ler é de todo mundo: o menu Contatos é visível para o espaço inteiro.
 // Escrever pede INTAKE_CREATE — a permissão de quem abre chamado. Ela cobre
@@ -19,8 +19,8 @@ const exigirEscrita = (workspaceId: string, userId: string) =>
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const INCLUDE_CONTATO = {
-  entity: {select: {id: true, name: true}},
-  type: {select: {id: true, name: true, isSystemUser: true}},
+  entity: { select: { id: true, name: true } },
+  type: { select: { id: true, name: true, isSystemUser: true } },
 } as const;
 
 function iso(valor: any) {
@@ -73,11 +73,10 @@ function exigirTelefoneValido(phone: unknown, anterior?: string | null) {
   if (!bruto) return;
   const nacional = semDdi(bruto);
   const erro = (message: string) => {
-    throw {status: 400, message};
+    throw { status: 400, message };
   };
   // Tamanho vale sempre: é o que impede a digitação sem fim.
-  if (nacional.length !== 10 && nacional.length !== 11)
-    erro("Telefone deve ter 10 ou 11 dígitos, com DDD.");
+  if (nacional.length !== 10 && nacional.length !== 11) erro("Telefone deve ter 10 ou 11 dígitos, com DDD.");
 
   const inalterado = anterior !== undefined && semDdi(somenteDigitos(anterior ?? "")) === nacional;
   if (inalterado) return;
@@ -90,7 +89,7 @@ function normalizarUuid(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   const limpo = valor.trim();
   if (!limpo) return null;
-  if (!UUID_RE.test(limpo)) throw {status: 400, message: "Identificador inválido."};
+  if (!UUID_RE.test(limpo)) throw { status: 400, message: "Identificador inválido." };
   return limpo;
 }
 
@@ -136,15 +135,7 @@ function entityContactTypeDto(t: any) {
 // Campos com conteúdo pessoal: a trilha registra QUE mudaram, nunca o valor —
 // gravar o telefone antigo no log criaria uma segunda cópia do dado.
 const CAMPOS_SENSIVEIS = new Set(["email", "phone", "phoneDigits", "birthDate", "photo", "notes"]);
-const CAMPOS_AUDITADOS = [
-  "name",
-  "entityId",
-  "typeId",
-  "userId",
-  "isActive",
-  "receiveMessages",
-  ...CAMPOS_SENSIVEIS,
-];
+const CAMPOS_AUDITADOS = ["name", "entityId", "typeId", "userId", "isActive", "receiveMessages", ...CAMPOS_SENSIVEIS];
 
 /**
  * Trilha LGPD do responsável. `changes` leva apenas identificadores e sinalizadores;
@@ -158,7 +149,11 @@ function auditarAlteracao(before: any, after: any) {
     return de !== para;
   });
   return {
-    changes: auditDiff(before, after, alterados.filter((campo) => !CAMPOS_SENSIVEIS.has(campo))),
+    changes: auditDiff(
+      before,
+      after,
+      alterados.filter((campo) => !CAMPOS_SENSIVEIS.has(campo))
+    ),
     campos_pessoais_alterados: alterados.filter((campo) => CAMPOS_SENSIVEIS.has(campo)),
   };
 }
@@ -200,26 +195,26 @@ function dadosDoCorpo(b: any, telefoneAnterior?: string | null) {
 async function validarReferencias(workspaceId: string, data: any) {
   if (data.entityId) {
     const entidade = await prisma.entity.findFirst({
-      where: {id: data.entityId, workspaceId, deletedAt: null},
-      select: {id: true},
+      where: { id: data.entityId, workspaceId, deletedAt: null },
+      select: { id: true },
     });
-    if (!entidade) throw {status: 400, message: "Entidade inválida."};
+    if (!entidade) throw { status: 400, message: "Entidade inválida." };
   }
   if (data.typeId) {
     const tipo = await prisma.entityContactType.findFirst({
-      where: {id: data.typeId, workspaceId},
-      select: {id: true},
+      where: { id: data.typeId, workspaceId },
+      select: { id: true },
     });
-    if (!tipo) throw {status: 400, message: "Tipo de responsável inválido."};
+    if (!tipo) throw { status: 400, message: "Tipo de responsável inválido." };
   }
 }
 
 function filtrosDeContato(workspaceId: string, q: any) {
-  const where: any = {workspaceId, deletedAt: null};
+  const where: any = { workspaceId, deletedAt: null };
   if (q.entity_id) where.entityId = normalizarUuid(q.entity_id);
   if (q.type_id) where.typeId = normalizarUuid(q.type_id);
   if (q.is_active !== undefined) where.isActive = q.is_active === "true";
-  if (q.has_phone !== undefined) where.phoneDigits = q.has_phone === "true" ? {not: null} : null;
+  if (q.has_phone !== undefined) where.phoneDigits = q.has_phone === "true" ? { not: null } : null;
 
   const busca = typeof q.search === "string" ? q.search.trim() : "";
   if (busca) {
@@ -227,9 +222,9 @@ function filtrosDeContato(workspaceId: string, q: any) {
     // achar o registro guardado como "5567999990000".
     const digitos = somenteDigitos(busca);
     where.OR = [
-      {name: {contains: busca, mode: "insensitive"}},
-      {email: {contains: busca, mode: "insensitive"}},
-      ...(digitos ? [{phoneDigits: {contains: digitos}}] : []),
+      { name: { contains: busca, mode: "insensitive" } },
+      { email: { contains: busca, mode: "insensitive" } },
+      ...(digitos ? [{ phoneDigits: { contains: digitos } }] : []),
     ];
   }
   return where;
@@ -241,14 +236,14 @@ function filtrosDeContato(workspaceId: string, q: any) {
  */
 async function listarContatos(where: any, q: any) {
   const include = INCLUDE_CONTATO;
-  const orderBy = {name: "asc"} as const;
+  const orderBy = { name: "asc" } as const;
   if (q.per_page === undefined && q.cursor === undefined) {
-    const itens = await prisma.entityContact.findMany({where, include, orderBy});
+    const itens = await prisma.entityContact.findMany({ where, include, orderBy });
     return itens.map(entityContactDto);
   }
   return paginate({
-    query: (skip, take) => prisma.entityContact.findMany({where, skip, take, include, orderBy}),
-    count: () => prisma.entityContact.count({where}),
+    query: (skip, take) => prisma.entityContact.findMany({ where, skip, take, include, orderBy }),
+    count: () => prisma.entityContact.count({ where }),
     cursor: q.cursor as string | undefined,
     perPage: q.per_page ? Number(q.per_page) : undefined,
     transform: (itens) => itens.map(entityContactDto),
@@ -271,12 +266,12 @@ function filtrosDaConsulta(query: any) {
   return usados;
 }
 
-export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
+export const entityContactModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
 
   // Responsáveis ──────────────────────────────────────────────────────────────
 
-  .get("/entity-contacts/", async ({params: {slug}, user, query, headers}) => {
+  .get("/entity-contacts/", async ({ params: { slug }, user, query, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const resposta = await listarContatos(filtrosDeContato(ws.id, query), query);
@@ -288,23 +283,23 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.LIST,
       actor: user,
       headers,
-      metadata: {total: totalDaListagem(resposta), filtros: filtrosDaConsulta(query)},
+      metadata: { total: totalDaListagem(resposta), filtros: filtrosDaConsulta(query) },
     });
     return resposta;
   })
 
-  .post("/entity-contacts/", async ({params: {slug}, body, user, set, headers}) => {
+  .post("/entity-contacts/", async ({ params: { slug }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await exigirEscrita(ws.id, user.id);
     const b = body as any;
     if (!b?.name || !String(b.name).trim()) {
       set.status = 400;
-      return {detail: "O nome é obrigatório."};
+      return { detail: "O nome é obrigatório." };
     }
     const data = dadosDoCorpo(b);
     await validarReferencias(ws.id, data);
     const contato = await prisma.entityContact.create({
-      data: {...data, name: String(b.name).trim(), workspaceId: ws.id, createdById: user.id},
+      data: { ...data, name: String(b.name).trim(), workspaceId: ws.id, createdById: user.id },
       include: INCLUDE_CONTATO,
     });
     recordAudit({
@@ -314,22 +309,22 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.CREATE,
       actor: user,
       headers,
-      metadata: {entity_id: contato.entityId, type_id: contato.typeId},
+      metadata: { entity_id: contato.entityId, type_id: contato.typeId },
     });
     set.status = 201;
     return entityContactDto(contato);
   })
 
-  .get("/entity-contacts/:contact_id/", async ({params: {slug, contact_id}, user, set, headers}) => {
+  .get("/entity-contacts/:contact_id/", async ({ params: { slug, contact_id }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const contato = await prisma.entityContact.findFirst({
-      where: {id: contact_id, workspaceId: ws.id, deletedAt: null},
+      where: { id: contact_id, workspaceId: ws.id, deletedAt: null },
       include: INCLUDE_CONTATO,
     });
     if (!contato) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return { detail: "Não encontrado." };
     }
     recordAudit({
       workspaceId: ws.id,
@@ -338,31 +333,31 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.VIEW,
       actor: user,
       headers,
-      metadata: {entity_id: contato.entityId},
+      metadata: { entity_id: contato.entityId },
     });
     return entityContactDto(contato);
   })
 
-  .patch("/entity-contacts/:contact_id/", async ({params: {slug, contact_id}, body, user, set, headers}) => {
+  .patch("/entity-contacts/:contact_id/", async ({ params: { slug, contact_id }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await exigirEscrita(ws.id, user.id);
     const b = body as any;
     if (b?.name !== undefined && !String(b.name ?? "").trim()) {
       set.status = 400;
-      return {detail: "O nome é obrigatório."};
+      return { detail: "O nome é obrigatório." };
     }
     const antes = await prisma.entityContact.findFirst({
-      where: {id: contact_id, workspaceId: ws.id, deletedAt: null},
+      where: { id: contact_id, workspaceId: ws.id, deletedAt: null },
     });
     if (!antes) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return { detail: "Não encontrado." };
     }
     const data = dadosDoCorpo(b, antes.phone);
     if (data.name !== undefined) data.name = String(data.name).trim();
     await validarReferencias(ws.id, data);
     const contato = await prisma.entityContact.update({
-      where: {id: contact_id},
+      where: { id: contact_id },
       data,
       include: INCLUDE_CONTATO,
     });
@@ -375,23 +370,23 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       actor: user,
       headers,
       changes: trilha.changes,
-      metadata: {campos_pessoais_alterados: trilha.campos_pessoais_alterados},
+      metadata: { campos_pessoais_alterados: trilha.campos_pessoais_alterados },
     });
     return entityContactDto(contato);
   })
 
-  .delete("/entity-contacts/:contact_id/", async ({params: {slug, contact_id}, user, set, headers}) => {
+  .delete("/entity-contacts/:contact_id/", async ({ params: { slug, contact_id }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await exigirEscrita(ws.id, user.id);
     const contato = await prisma.entityContact.findFirst({
-      where: {id: contact_id, workspaceId: ws.id, deletedAt: null},
-      select: {id: true, entityId: true, typeId: true},
+      where: { id: contact_id, workspaceId: ws.id, deletedAt: null },
+      select: { id: true, entityId: true, typeId: true },
     });
     if (!contato) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return { detail: "Não encontrado." };
     }
-    await prisma.entityContact.update({where: {id: contact_id}, data: {deletedAt: new Date()}});
+    await prisma.entityContact.update({ where: { id: contact_id }, data: { deletedAt: new Date() } });
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.ENTITY_CONTACT,
@@ -399,7 +394,7 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.DELETE,
       actor: user,
       headers,
-      metadata: {entity_id: contato.entityId, type_id: contato.typeId, logica: true},
+      metadata: { entity_id: contato.entityId, type_id: contato.typeId, logica: true },
     });
     set.status = 204;
     return null;
@@ -407,10 +402,10 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
 
   // Atalho a partir da entidade ───────────────────────────────────────────────
 
-  .get("/entities/:entity_id/contacts/", async ({params: {slug, entity_id}, user, query, headers}) => {
+  .get("/entities/:entity_id/contacts/", async ({ params: { slug, entity_id }, user, query, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const resposta = await listarContatos({...filtrosDeContato(ws.id, query), entityId: entity_id}, query);
+    const resposta = await listarContatos({ ...filtrosDeContato(ws.id, query), entityId: entity_id }, query);
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.ENTITY_CONTACT,
@@ -418,27 +413,27 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.LIST,
       actor: user,
       headers,
-      metadata: {total: totalDaListagem(resposta), filtros: {...filtrosDaConsulta(query), entity_id}},
+      metadata: { total: totalDaListagem(resposta), filtros: { ...filtrosDaConsulta(query), entity_id } },
     });
     return resposta;
   })
 
   // Tipos de responsável ──────────────────────────────────────────────────────
 
-  .get("/entity-contact-types/", async ({params: {slug}, user, query, headers}) => {
+  .get("/entity-contact-types/", async ({ params: { slug }, user, query, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const q = query as any;
-    const where: any = {workspaceId: ws.id};
+    const where: any = { workspaceId: ws.id };
     if (q.is_active !== undefined) where.isActive = q.is_active === "true";
     if (q.is_system_user !== undefined) where.isSystemUser = q.is_system_user === "true";
-    const orderBy = [{sequence: "asc"}, {name: "asc"}] as const;
+    const orderBy = [{ sequence: "asc" }, { name: "asc" }] as const;
     const resposta =
       q.per_page === undefined && q.cursor === undefined
-        ? (await prisma.entityContactType.findMany({where, orderBy: [...orderBy]})).map(entityContactTypeDto)
+        ? (await prisma.entityContactType.findMany({ where, orderBy: [...orderBy] })).map(entityContactTypeDto)
         : await paginate({
-            query: (skip, take) => prisma.entityContactType.findMany({where, skip, take, orderBy: [...orderBy]}),
-            count: () => prisma.entityContactType.count({where}),
+            query: (skip, take) => prisma.entityContactType.findMany({ where, skip, take, orderBy: [...orderBy] }),
+            count: () => prisma.entityContactType.count({ where }),
             cursor: q.cursor as string | undefined,
             perPage: q.per_page ? Number(q.per_page) : undefined,
             transform: (tipos) => tipos.map(entityContactTypeDto),
@@ -450,27 +445,27 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.LIST,
       actor: user,
       headers,
-      metadata: {total: totalDaListagem(resposta)},
+      metadata: { total: totalDaListagem(resposta) },
     });
     return resposta;
   })
 
-  .post("/entity-contact-types/", async ({params: {slug}, body, user, set, headers}) => {
+  .post("/entity-contact-types/", async ({ params: { slug }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await exigirEscrita(ws.id, user.id);
     const b = body as any;
     const nome = String(b?.name ?? "").trim();
     if (!nome) {
       set.status = 400;
-      return {detail: "O nome é obrigatório."};
+      return { detail: "O nome é obrigatório." };
     }
     const duplicado = await prisma.entityContactType.findFirst({
-      where: {workspaceId: ws.id, name: nome},
-      select: {id: true},
+      where: { workspaceId: ws.id, name: nome },
+      select: { id: true },
     });
     if (duplicado) {
       set.status = 409;
-      return {detail: "Já existe um tipo com este nome.", id: duplicado.id};
+      return { detail: "Já existe um tipo com este nome.", id: duplicado.id };
     }
     const tipo = await prisma.entityContactType.create({
       data: {
@@ -489,34 +484,34 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.CREATE,
       actor: user,
       headers,
-      metadata: {name: tipo.name},
+      metadata: { name: tipo.name },
     });
     set.status = 201;
     return entityContactTypeDto(tipo);
   })
 
-  .patch("/entity-contact-types/:type_id/", async ({params: {slug, type_id}, body, user, set, headers}) => {
+  .patch("/entity-contact-types/:type_id/", async ({ params: { slug, type_id }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await exigirEscrita(ws.id, user.id);
     const b = body as any;
-    const tipo = await prisma.entityContactType.findFirst({where: {id: type_id, workspaceId: ws.id}});
+    const tipo = await prisma.entityContactType.findFirst({ where: { id: type_id, workspaceId: ws.id } });
     if (!tipo) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return { detail: "Não encontrado." };
     }
     const data: any = {};
     if (b.name !== undefined) {
       const nome = String(b.name ?? "").trim();
       if (!nome) {
         set.status = 400;
-        return {detail: "O nome é obrigatório."};
+        return { detail: "O nome é obrigatório." };
       }
       data.name = nome;
     }
     if (b.is_active !== undefined) data.isActive = b.is_active;
     if (b.is_system_user !== undefined) data.isSystemUser = b.is_system_user;
     if (b.sequence !== undefined) data.sequence = b.sequence;
-    const atualizado = await prisma.entityContactType.update({where: {id: type_id}, data});
+    const atualizado = await prisma.entityContactType.update({ where: { id: type_id }, data });
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.ENTITY_CONTACT_TYPE,
@@ -529,20 +524,20 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
     return entityContactTypeDto(atualizado);
   })
 
-  .delete("/entity-contact-types/:type_id/", async ({params: {slug, type_id}, user, set, headers}) => {
+  .delete("/entity-contact-types/:type_id/", async ({ params: { slug, type_id }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await exigirEscrita(ws.id, user.id);
     const tipo = await prisma.entityContactType.findFirst({
-      where: {id: type_id, workspaceId: ws.id},
-      select: {id: true, name: true},
+      where: { id: type_id, workspaceId: ws.id },
+      select: { id: true, name: true },
     });
     if (!tipo) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return { detail: "Não encontrado." };
     }
     // O tipo não tem exclusão lógica no modelo; os responsáveis que apontavam
     // para ele ficam com `type_id` nulo (FK com SetNull) em vez de sumir.
-    await prisma.entityContactType.delete({where: {id: type_id}});
+    await prisma.entityContactType.delete({ where: { id: type_id } });
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.ENTITY_CONTACT_TYPE,
@@ -550,7 +545,7 @@ export const entityContactModule = new Elysia({prefix: "/workspaces/:slug"})
       action: AUDIT_ACTIONS.DELETE,
       actor: user,
       headers,
-      metadata: {name: tipo.name},
+      metadata: { name: tipo.name },
     });
     set.status = 204;
     return null;

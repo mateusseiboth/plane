@@ -51,7 +51,10 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceWriter(ws.id, user.id);
     const b = body as any;
-    if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
+    if (!b.name) {
+      set.status = 400;
+      return { detail: "O nome é obrigatório." };
+    }
     // Nome de entidade é único por workspace (não há índice único no banco, então
     // a checagem é explícita; o tratamento de P2002 abaixo cobre corridas caso um
     // índice seja criado no futuro).
@@ -98,7 +101,9 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
   .get("/entities/:entity_id/", async ({ params: { slug, entity_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return entityDto(await prisma.entity.findFirstOrThrow({ where: { id: entity_id, workspaceId: ws.id, deletedAt: null } }));
+    return entityDto(
+      await prisma.entity.findFirstOrThrow({ where: { id: entity_id, workspaceId: ws.id, deletedAt: null } })
+    );
   })
 
   .patch("/entities/:entity_id/", async ({ params: { slug, entity_id }, body, user, set }) => {
