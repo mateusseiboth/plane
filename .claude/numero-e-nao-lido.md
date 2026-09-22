@@ -60,7 +60,7 @@ Migração `apps/api-ts/prisma/migrations/20260922120000_numero_anual_e_nao_lido
   "122026"), `backfillNumerosDosChamados`.
 - `serializeIssue` devolve `ticket_number`. As listagens montadas à mão em
   `modules/project` (inbox-issues) também.
-- Busca: `buscarChamados` (`@utils/search`, fonte única de `/search/` do ⌘K e de
+- Busca: `findChamados` (`@utils/search`, fonte única de `/search/` do ⌘K e de
   `/global-search/` do Ctrl+G) ganhou um braço pelo índice
   `(workspace_id, ticket_year, ticket_sequence)` e peso 200 no ranqueamento. As duas
   rotas devolvem `ticket_number`. No ⌘K o `value` do cmdk inclui o número, para o

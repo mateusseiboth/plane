@@ -49,6 +49,7 @@ const G = {
   CHAT: "Atendimento (chat)",
   ESPACO: "Espaço de trabalho",
   CADASTROS: "Cadastros e integrações",
+  WIKI: "Wiki",
 } as const;
 
 // UMA LINHA POR AÇÃO. A ordem é a ordem em que a tela de Funções desenha.
@@ -108,6 +109,8 @@ export const ACTION_CATALOG = {
   AI_CONFIG: {key: "ai.config", label: "Configurar provedores de IA", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   PLUGIN_MANAGE: {key: "plugin.manage", label: "Instalar e remover plugins", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
   PORTAL_MANAGE: {key: "portal.manage", label: "Gerenciar contas do portal do cliente", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
+  WIKI_VIEW: {key: "wiki.view", label: "Ler a wiki", group: G.WIKI, scope: "workspace", roles: TODOS},
+  WIKI_EDIT: {key: "wiki.edit", label: "Escrever e organizar páginas da wiki", group: G.WIKI, scope: "workspace", roles: ESCREVEM},
 } as const satisfies Record<string, ActionDef>;
 
 type Catalog = typeof ACTION_CATALOG;

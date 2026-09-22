@@ -10,7 +10,7 @@ import { PageIcon } from "@plane/propel/icons";
 // plane import
 import type { TActivityEntityData, TPageEntityData } from "@plane/types";
 import { Avatar } from "@plane/ui";
-import { calculateTimeAgo, getFileURL, getPageName } from "@plane/utils";
+import { calculateTimeAgo, getFileURL, getPageName, getPaginaPath } from "@plane/utils";
 import { ListItem } from "@/components/core/list";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
@@ -33,9 +33,11 @@ export function RecentPage(props: BlockProps) {
   if (!pageDetails) return <></>;
 
   const ownerDetails = getUserDetails(pageDetails?.owned_by);
-  const pageLink = pageDetails.project_id
-    ? `/${workspaceSlug}/projects/${pageDetails.project_id}/pages/${pageDetails.id}`
-    : `/${workspaceSlug}/pages/${pageDetails.id}`;
+  const pageLink = getPaginaPath({
+    workspaceSlug,
+    pageId: pageDetails.id,
+    projectIds: pageDetails.project_id ? [pageDetails.project_id] : [],
+  });
 
   return (
     <ListItem

@@ -5,6 +5,7 @@
  */
 
 export enum CORE_EXTENSIONS {
+  ATTACHMENT = "attachmentComponent",
   BLOCKQUOTE = "blockquote",
   BOLD = "bold",
   BULLET_LIST = "bulletList",
@@ -72,6 +73,7 @@ export const BLOCK_NODE_TYPES = [
   // Media and embed nodes
   CORE_EXTENSIONS.IMAGE,
   CORE_EXTENSIONS.CUSTOM_IMAGE,
+  CORE_EXTENSIONS.ATTACHMENT,
   CORE_EXTENSIONS.CALLOUT,
   CORE_EXTENSIONS.WORK_ITEM_EMBED,
 ];

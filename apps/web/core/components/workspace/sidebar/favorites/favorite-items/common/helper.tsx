@@ -8,6 +8,7 @@ import { Logo } from "@plane/propel/emoji-icon-picker";
 import { PageIcon } from "@plane/propel/icons";
 // plane imports
 import type { IFavorite, TLogoProps } from "@plane/types";
+import { getPaginaPath } from "@plane/utils";
 // components
 // plane web constants
 import { FAVORITE_ITEM_ICONS, FAVORITE_ITEM_LINKS } from "@/constants/sidebar-favorites";
@@ -32,6 +33,14 @@ export const getFavoriteItemIcon = (type: string, logo?: TLogoProps) => {
 };
 
 export const generateFavoriteItemLink = (workspaceSlug: string, favorite: IFavorite) => {
+  // Página sem sistema é da wiki; a de sistema abre no sistema (fonte única: getPaginaPath).
+  if (favorite.entity_type === "page")
+    return getPaginaPath({
+      workspaceSlug,
+      pageId: favorite.entity_identifier ?? "",
+      projectIds: favorite.project_id ? [favorite.project_id] : [],
+    });
+
   const entityLinkDetails = FAVORITE_ITEM_LINKS[favorite.entity_type];
 
   if (!entityLinkDetails) {

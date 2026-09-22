@@ -43,6 +43,7 @@ describe("DEFAULT_ROLES", () => {
       EProjectAction.ISSUE_VIEW,
       EProjectAction.COMMENT_READ,
       EProjectAction.ATTACHMENT_VIEW,
+      EProjectAction.WIKI_VIEW,
     ]);
   });
 

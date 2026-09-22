@@ -862,17 +862,6 @@ export const PLANS_COMPARISON_LIST: TPlansComparisonDetails[] = [
         },
       },
       {
-        title: "Wiki",
-        description: "Crie wikis ou bases de conhecimento para toda a empresa\nsem criar um projeto.",
-        cloud: {
-          free: false,
-          one: true,
-          pro: true,
-          business: true,
-          enterprise: true,
-        },
-      },
-      {
         title: "Exportações",
         description: "Exporte o conteúdo da página para PDFs ou documentos compatíveis\ncom o Word.",
         cloud: {
