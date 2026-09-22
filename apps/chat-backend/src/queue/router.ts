@@ -13,6 +13,7 @@ import { connectedUserIds } from "@/ws/hub";
 import { attendantName } from "@/users";
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
 import { isPhoneSession } from "@/canais";
+import { nomeDoCliente } from "@/aviso-do-atendente";
 
 /**
  * Assign a session to a specific attendant and announce it everywhere: the client
@@ -33,7 +34,9 @@ export async function assignSessionToAttendant(sessionId: string, userId: string
     data: { assignedAttendantId: userId, status: "active" },
   });
   const name = await attendantName(userId);
-  sendToUser(userId, { type: "session.assigned", session_id: sessionId });
+  // O nome do cliente viaja junto: o atendente pode estar em outra tela do
+  // sistema, sem a lista de conversas para consultar quem é.
+  sendToUser(userId, { type: "session.assigned", session_id: sessionId, client_name: nomeDoCliente(session) });
   sendToSession(sessionId, { type: "session.assigned", session_id: sessionId, attendant_id: userId });
   sendToWorkspace(session.workspaceId, { type: "session.activity", session_id: sessionId });
 

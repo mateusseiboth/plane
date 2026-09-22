@@ -3,6 +3,7 @@
 // assigned attendant. Clients never poll — this is the single source of realtime.
 
 import prisma from "@db";
+import { avisoDeMensagemDoCliente } from "@/aviso-do-atendente";
 import { sendToSession, sendToUser, sendToWorkspace } from "@/ws/hub";
 
 export type SendArgs = {
@@ -86,7 +87,7 @@ export async function persistAndBroadcast(args: SendArgs) {
         : args.sender === "client"
           ? { lastClientMessageAt: message.createdAt }
           : {},
-    select: { workspaceId: true },
+    select: { id: true, workspaceId: true, assignedAttendantId: true, clientName: true, clientPhone: true },
   });
 
   // A equipe recebe a forma completa (inclusive o nome de quem enviou "sem o
@@ -99,6 +100,10 @@ export async function persistAndBroadcast(args: SendArgs) {
   sendToSession(args.sessionId, { type: "message.new", message: serializeMessage(message) }, "client");
   // Also fan out to the workspace so attendant list views update live.
   sendToWorkspace(session.workspaceId, { type: "session.activity", session_id: args.sessionId });
+  // O atendente da conversa é avisado onde quer que esteja no sistema: desde que
+  // a presença dele fica aberta o tempo todo, ele pode estar em outra tela.
+  const aviso = avisoDeMensagemDoCliente(session, { sender: args.sender, type: message.type, text: message.text });
+  if (aviso) sendToUser(aviso.userId, aviso.payload);
   return message;
 }
 
