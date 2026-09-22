@@ -13,6 +13,7 @@ import {
   readAneisDaMalha,
   readContornoDoEstado,
   readFonteDoMapa,
+  readLimitesDoEnquadramento,
   readRaioDoMarcador,
   spreadPontosProximos,
 } from "./mapa-helpers";
@@ -21,11 +22,48 @@ const distancia = (a: { lat: number; lon: number }, b: { lat: number; lon: numbe
   Math.hypot(a.lat - b.lat, a.lon - b.lon);
 
 describe("tamanho do marcador", () => {
-  it("cresce com o volume, para o número caber dentro", () => {
-    expect(readRaioDoMarcador(0)).toBe(22);
-    expect(readRaioDoMarcador(9)).toBe(22);
-    expect(readRaioDoMarcador(10)).toBe(26);
-    expect(readRaioDoMarcador(120)).toBe(30);
+  it("é discreto e cresce só o bastante para o número caber dentro", () => {
+    expect(readRaioDoMarcador(0)).toBe(10);
+    expect(readRaioDoMarcador(9)).toBe(10);
+    expect(readRaioDoMarcador(10)).toBe(11);
+    expect(readRaioDoMarcador(120)).toBe(13);
+  });
+});
+
+describe("enquadramento do mapa", () => {
+  const estado = { sul: -24.07, oeste: -58.17, norte: -17.17, leste: -50.92 };
+
+  it("com cidades, enquadra as cidades: o estado inteiro deixaria tudo distante", () => {
+    const pontos = [
+      { chave: "a", lat: -18.1, lon: -54.5 },
+      { chave: "b", lat: -23.1, lon: -55.2 },
+      { chave: "c", lat: -20.4, lon: -57.6 },
+    ];
+    expect(readLimitesDoEnquadramento(pontos, estado)).toEqual({
+      sul: -23.1,
+      oeste: -57.6,
+      norte: -18.1,
+      leste: -54.5,
+    });
+  });
+
+  it("com menos de duas cidades, volta ao estado inteiro", () => {
+    expect(readLimitesDoEnquadramento([], estado)).toEqual(estado);
+    expect(readLimitesDoEnquadramento([{ chave: "a", lat: -20, lon: -54 }], estado)).toEqual(estado);
+  });
+
+  it("cidade fora do estado não puxa o enquadramento", () => {
+    const pontos = [
+      { chave: "a", lat: -18.1, lon: -54.5 },
+      { chave: "b", lat: -23.1, lon: -55.2 },
+      { chave: "mt", lat: -15.6, lon: -56.1 },
+    ];
+    expect(readLimitesDoEnquadramento(pontos, estado)).toEqual({
+      sul: -23.1,
+      oeste: -55.2,
+      norte: -18.1,
+      leste: -54.5,
+    });
   });
 });
 

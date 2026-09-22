@@ -34,9 +34,11 @@ import {
   readBuracosDaMalha,
   readContornoDoEstado,
   readFonteDoMapa,
+  readLimitesDoEnquadramento,
   readRaioDoMarcador,
   spreadPontosProximos,
   type EstadoDosTiles,
+  type LimitesDoMapa,
 } from "./mapa-helpers";
 import type { TPontoDoMapa } from "./mapa-tv";
 
@@ -50,6 +52,13 @@ const TERRENO = {
   atribuicao: "Esri, National Geographic, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA",
   zoomMaximo: 14,
 };
+
+const toLimites = (limites: L.LatLngBounds): LimitesDoMapa => ({
+  sul: limites.getSouth(),
+  oeste: limites.getWest(),
+  norte: limites.getNorth(),
+  leste: limites.getEast(),
+});
 
 /** Folga em volta do estado: o mapa não passeia para fora de MS. */
 const FOLGA_DOS_LIMITES = 0.12;
@@ -77,7 +86,7 @@ function buildHtmlDoMarcador(ponto: TPontoDoMapa, emDestaque: boolean): string {
     `--cor:${corDoPonto(ponto)}`,
     `--cor-critica:${STATUS.critico}`,
     `--cor-de-atencao:${STATUS.atencao}`,
-    `--tamanho-do-numero:${ponto.abertos >= 100 ? "1.15rem" : "1.4rem"}`,
+    `--tamanho-do-numero:${ponto.abertos >= 100 ? "0.68rem" : "0.78rem"}`,
   ].join(";");
 
   return [
@@ -121,18 +130,30 @@ function MapaComTerreno({
   const caixa = useRef<HTMLDivElement>(null);
   const marcadores = useRef<L.LayerGroup | null>(null);
   const limitesDoEstado = useRef<L.LatLngBounds | null>(null);
+  const mapaVivo = useRef<L.Map | null>(null);
+  // O enquadramento segue as cidades, e o efeito do mapa não pode depender de
+  // `pontos` (recriaria o Leaflet a cada atualização): a lista vive num ref.
+  const pontosRef = useRef(pontos);
+  pontosRef.current = pontos;
   const [isDesenhado, setDesenhado] = useState(false);
+
+  const enquadrar = (alvo: L.Map, pontosAtuais: TPontoDoMapa[]) => {
+    const estado = limitesDoEstado.current;
+    if (!estado) return;
+    const limites = readLimitesDoEnquadramento(pontosAtuais, toLimites(estado));
+    alvo.fitBounds(
+      [
+        [limites.sul, limites.oeste],
+        [limites.norte, limites.leste],
+      ],
+      { padding: [28, 28], animate: false }
+    );
+  };
 
   useEffect(() => {
     const no = caixa.current;
     if (!no) return undefined;
     let vivo = true;
-
-    const enquadrar = (alvo: L.Map) => {
-      const limites = limitesDoEstado.current;
-      if (!limites) return;
-      alvo.fitBounds(limites, { padding: [12, 12], animate: false });
-    };
 
     const mapa = L.map(no, {
       // A TV não tem ponteiro nem teclado: tudo o que o Leaflet oferece de
@@ -160,6 +181,7 @@ function MapaComTerreno({
     terreno.addTo(mapa);
 
     marcadores.current = L.layerGroup().addTo(mapa);
+    mapaVivo.current = mapa;
 
     void import("./dados/ms-municipios.geo.json").then((modulo) => {
       if (!vivo) return undefined;
@@ -189,7 +211,7 @@ function MapaComTerreno({
 
       limitesDoEstado.current = contorno.getBounds();
       mapa.setMaxBounds(limitesDoEstado.current.pad(FOLGA_DOS_LIMITES));
-      enquadrar(mapa);
+      enquadrar(mapa, pontosRef.current);
       setDesenhado(true);
       return undefined;
     });
@@ -199,7 +221,7 @@ function MapaComTerreno({
     // cortado ou perdido no canto.
     const observador = new ResizeObserver(() => {
       mapa.invalidateSize();
-      enquadrar(mapa);
+      enquadrar(mapa, pontosRef.current);
     });
     observador.observe(no);
 
@@ -207,6 +229,7 @@ function MapaComTerreno({
       vivo = false;
       observador.disconnect();
       marcadores.current = null;
+      mapaVivo.current = null;
       mapa.remove();
     };
   }, [onTileCarregado, onTileComErro]);
@@ -215,6 +238,8 @@ function MapaComTerreno({
     const camada = marcadores.current;
     if (!camada) return;
     camada.clearLayers();
+
+    if (mapaVivo.current) enquadrar(mapaVivo.current, pontos);
 
     const posicoes = spreadPontosProximos(pontos, DISTANCIA_MINIMA_EM_GRAUS);
     for (const ponto of pontos) {

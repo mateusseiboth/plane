@@ -4,22 +4,44 @@
  * navegador nenhum.
  */
 
-/** Raio do marcador pelo volume: o número dentro precisa caber. */
+/**
+ * Raio do marcador pelo volume: discreto, para o mapa aparecer por baixo, e
+ * só o bastante para o número caber dentro.
+ */
 export function readRaioDoMarcador(abertos: number): number {
-  if (abertos >= 100) return 30;
-  if (abertos >= 10) return 26;
-  return 22;
+  if (abertos >= 100) return 13;
+  if (abertos >= 10) return 11;
+  return 10;
 }
 
 export type PontoNoMapa = { chave: string; lat: number; lon: number };
 export type PosicaoDoPonto = { lat: number; lon: number };
 
+export type LimitesDoMapa = { sul: number; oeste: number; norte: number; leste: number };
+
+const isDentro = (ponto: PontoNoMapa, limites: LimitesDoMapa) =>
+  ponto.lat >= limites.sul && ponto.lat <= limites.norte && ponto.lon >= limites.oeste && ponto.lon <= limites.leste;
+
+/**
+ * O que a TV enquadra: as cidades com entidade, não o polígono do estado. As
+ * pontas do MS (Sonora ao norte, Mundo Novo ao sul) não têm cliente e o
+ * estado inteiro deixava tudo pequeno. Cidade fora do estado (cadastro de MT)
+ * não puxa o enquadramento; com menos de duas cidades, vale o estado.
+ */
+export function readLimitesDoEnquadramento(pontos: PontoNoMapa[], estado: LimitesDoMapa): LimitesDoMapa {
+  const dentro = pontos.filter((ponto) => isDentro(ponto, estado));
+  if (dentro.length < 2) return estado;
+  const lats = dentro.map((p) => p.lat);
+  const lons = dentro.map((p) => p.lon);
+  return { sul: Math.min(...lats), oeste: Math.min(...lons), norte: Math.max(...lats), leste: Math.max(...lons) };
+}
+
 /**
  * Quanto duas cidades precisam distar para os dois marcadores caberem lado a
- * lado no mapa de MS na TV. Em graus, que é a unidade do cadastro: 0,22° são
- * uns 24 km, o bastante para os números não se encavalarem.
+ * lado no mapa de MS na TV. Em graus, que é a unidade do cadastro: 0,16° são
+ * uns 17 km, o bastante para os marcadores pequenos não se encavalarem.
  */
-export const DISTANCIA_MINIMA_EM_GRAUS = 0.22;
+export const DISTANCIA_MINIMA_EM_GRAUS = 0.16;
 
 const TAU = Math.PI * 2;
 
