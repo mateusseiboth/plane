@@ -4,8 +4,10 @@
  * See the LICENSE file for details.
  */
 
+import { usePathname } from "next/navigation";
 import { observer } from "mobx-react";
 // plane imports
+import { Logo } from "@plane/propel/emoji-icon-picker";
 import type { TIssueIdentifierProps, TIssueTypeIdentifier } from "@plane/types";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -15,7 +17,7 @@ import { IdentifierText } from "@/components/issues/issue-detail/identifier-text
 export const IssueIdentifier = observer(function IssueIdentifier(props: TIssueIdentifierProps) {
   const { projectId, variant, size, displayProperties, enableClickToCopyIdentifier = false } = props;
   // store hooks
-  const { getProjectIdentifierById } = useProject();
+  const { getProjectIdentifierById, getProjectById } = useProject();
   const {
     issue: { getIssueById },
   } = useIssueDetail();
@@ -27,10 +29,19 @@ export const IssueIdentifier = observer(function IssueIdentifier(props: TIssueId
   const issueSequenceId = isUsingStoreData ? issue?.sequence_id : props.issueSequenceId;
   const shouldRenderIssueID = displayProperties ? displayProperties.key : true;
 
+  // O ícone do sistema só acompanha o código nas visualizações do ESPAÇO
+  // ("Todos os chamados"), onde cada linha é de um sistema diferente e o
+  // desenho identifica antes da sigla. Dentro de um sistema, e na tela do
+  // chamado, ele seria a mesma figura repetida em toda linha.
+  const pathname = usePathname();
+  const isVisaoDoEspaco = pathname?.includes("/workspace-views/") ?? false;
+  const logoDoSistema = isVisaoDoEspaco ? getProjectById(projectId)?.logo_props : undefined;
+
   if (!shouldRenderIssueID) return null;
 
   return (
-    <div className="flex shrink-0 items-center space-x-2">
+    <div className="flex shrink-0 items-center gap-1.5">
+      {logoDoSistema?.in_use && <Logo logo={logoDoSistema} size={16} />}
       <IdentifierText
         identifier={`${projectIdentifier}-${issueSequenceId}`}
         enableClickToCopyIdentifier={enableClickToCopyIdentifier}
