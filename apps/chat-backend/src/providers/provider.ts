@@ -7,11 +7,16 @@ export type InboundMessage = {
   externalId?: string;
   phone: string;
   senderName?: string;
-  type: "text" | "image" | "video" | "audio" | "file";
+  /** `reaction` e `call_missed` não viram mensagem comum: ver src/webhook/zapi.ts. */
+  type: "text" | "image" | "video" | "audio" | "file" | "reaction" | "call_missed";
   text?: string;
   mediaUrl?: string;
   mediaMime?: string;
   mediaName?: string;
+  /** Reação do cliente a uma mensagem (id do provedor da mensagem reagida). */
+  reaction?: { emoji: string; externalId: string | null };
+  /** Instante da mensagem no WhatsApp (ms). Usado para descartar o que é velho. */
+  momentMs?: number;
 };
 
 /** Edição/remoção feita pelo CLIENTE e notificada pelo provedor. */

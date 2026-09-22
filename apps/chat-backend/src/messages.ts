@@ -45,6 +45,8 @@ export function serializeMessage(m: any, opts: { full?: boolean } = {}) {
     edit_history: full ? (m.editHistory ?? []) : undefined,
     deleted_at: m.deletedAt ?? null,
     status: m.status,
+    // Motivo da falha de envio ao WhatsApp: só a equipe vê (é quem reenvia).
+    send_error: full ? (m.sendError ?? null) : undefined,
     created_at: m.createdAt,
   };
 }
@@ -72,7 +74,8 @@ export async function persistAndBroadcast(args: SendArgs) {
     where: { id: args.sessionId },
     data:
       args.sender === "attendant"
-        ? { lastAttendantMessageAt: message.createdAt }
+        ? // O atendente voltou a escrever: a pergunta de inatividade pendente perde o sentido.
+          { lastAttendantMessageAt: message.createdAt, idlePromptedAt: null }
         : args.sender === "client"
           ? { lastClientMessageAt: message.createdAt }
           : {},

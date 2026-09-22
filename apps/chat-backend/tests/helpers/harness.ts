@@ -205,10 +205,13 @@ export async function sendWhatsAppText(workspace: string, phone: string, message
   });
 }
 
-export async function postWebhook(workspace: string, body: Record<string, unknown>) {
+/** Token do webhook que `configureWorkspace` grava e `postWebhook` envia (Client-Token). */
+export const WEBHOOK_TOKEN = "test-webhook-token";
+
+export async function postWebhook(workspace: string, body: Record<string, unknown>, token: string | null = WEBHOOK_TOKEN) {
   const res = await fetch(`${CHAT_URL}/providers/zapi/webhook/${workspace}/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(token ? { "Client-Token": token } : {}) },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`webhook falhou: ${res.status} ${await res.text()}`);
@@ -226,10 +229,11 @@ export async function configureWorkspace(workspace: string, zapiBaseUrl: string)
       instanceId: "test-instance",
       token: "test-token",
       clientToken: "test-client-token",
+      webhookToken: WEBHOOK_TOKEN,
       baseUrl: zapiBaseUrl,
       isActive: true,
     },
-    update: { baseUrl: zapiBaseUrl, isActive: true },
+    update: { baseUrl: zapiBaseUrl, isActive: true, webhookToken: WEBHOOK_TOKEN },
   });
   await prisma.botConfig.upsert({
     where: { workspaceId: workspace },
@@ -267,6 +271,13 @@ export async function criarEntidade(workspaceId: string, nome: string): Promise<
     nome
   );
   return id;
+}
+
+/** Entidade no espaço do Plane de mesmo slug (o encerramento exige entidade). */
+export async function createEntidadeNoEspaco(slug: string, nome = "Entidade de Teste"): Promise<string> {
+  const [ws] = (await prisma.$queryRaw`SELECT id::text AS id FROM workspaces WHERE slug = ${slug} LIMIT 1`) as Array<{ id: string }>;
+  if (!ws) throw new Error(`Espaço ${slug} não existe no Plane: conecte o atendente antes.`);
+  return criarEntidade(ws.id, nome);
 }
 
 export async function criarResponsavel(
