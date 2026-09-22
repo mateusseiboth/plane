@@ -13,14 +13,14 @@ import type { TEntityContact } from "@plane/types";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { ContatoFormModal, descricaoDoContato } from "@/components/entity-contacts";
 // hooks
+import { useChatMotivos, useModulosDoSistema } from "@/hooks/use-chat-atendimento";
 import useDebounce from "@/hooks/use-debounce";
+import { useEntities } from "@/hooks/use-entities";
 import { useEntityContacts } from "@/hooks/use-entity-contacts";
+// services
+import type { DadosDoEncerramento } from "@/services/chat.service";
 
-/** O que o encerramento leva para o chat-backend (`agent.close`). */
-export type DadosDoEncerramento = {
-  project_id?: string;
-  contact?: { contact_id: string };
-};
+export type { DadosDoEncerramento };
 
 type Props = {
   sessao: {
@@ -32,11 +32,16 @@ type Props = {
     project_identifier?: string | null;
     contact_entity_id?: string | null;
     entity_contact_id?: string | null;
+    entity_id?: string | null;
   };
   workspaceSlug: string;
+  /** Endereço do chat-backend: de lá vem o catálogo de motivos. */
+  apiUrl: string;
   projetos: { value: string; label: string }[];
   onConfirmar: (dados: DadosDoEncerramento) => void;
   onCancelar: () => void;
+  /** Enquanto o encerramento está indo ao servidor. */
+  enviando?: boolean;
 };
 
 /** Nada de buscar a base inteira a cada tecla: duas letras já filtram bem. */
@@ -59,9 +64,25 @@ const CAIXA =
  * O sistema só é pedido quando a conversa ainda não virou solicitação: nesse
  * caso ela já carrega o projeto e perguntar de novo seria retrabalho.
  */
-export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirmar, onCancelar }: Props) {
+export function ModalDeEncerramento({
+  sessao,
+  workspaceSlug,
+  apiUrl,
+  projetos,
+  onConfirmar,
+  onCancelar,
+  enviando = false,
+}: Props) {
   const precisaDeProjeto = !sessao.project_id;
   const [projeto, setProjeto] = useState("");
+  // Classificação do SAC: entidade (obrigatória), tipo do motivo, funcionalidade e observação.
+  const [entidade, setEntidade] = useState(sessao.entity_id ?? sessao.contact_entity_id ?? "");
+  const [motivo, setMotivo] = useState("");
+  const [modulo, setModulo] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const { entities } = useEntities(workspaceSlug);
+  const { motivos } = useChatMotivos(apiUrl, workspaceSlug);
+  const { modulos } = useModulosDoSistema(workspaceSlug, projeto || sessao.project_id);
   const [busca, setBusca] = useState("");
   const [contatoId, setContatoId] = useState(sessao.entity_contact_id ?? "");
   const [contatoEscolhido, setContatoEscolhido] = useState<TEntityContact | null>(null);
@@ -78,6 +99,13 @@ export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirm
     setContatoId(contato.id);
     setContatoEscolhido(contato);
     setBusca("");
+    // O contato é de uma entidade: já preenche, o atendente só troca se precisar.
+    if (contato.entity_id && !entidade) setEntidade(contato.entity_id);
+  };
+
+  const escolherProjeto = (valor: string) => {
+    setProjeto(valor);
+    setModulo("");
   };
 
   const limparContato = () => {
@@ -89,7 +117,19 @@ export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirm
     onConfirmar({
       ...(precisaDeProjeto && projeto ? { project_id: projeto } : {}),
       ...(contatoId ? { contact: { contact_id: contatoId } } : {}),
+      entity_id: entidade,
+      motivo,
+      ...(modulo ? { module_id: modulo } : {}),
+      ...(observacao.trim() ? { note: observacao.trim() } : {}),
     });
+
+  const pendencia = [
+    [precisaDeProjeto && !projeto, "Escolha o sistema atendido."],
+    [!entidade, "Escolha a entidade."],
+    [!motivo, "Escolha o motivo."],
+  ].find(([falta]) => falta)?.[1] as string | undefined;
+  const opcoesDeEntidade = (entities ?? []).map((e) => ({ value: e.id, label: e.name }));
+  const opcoesDeMotivo = motivos.map((m) => ({ value: m.label, label: m.label }));
 
   // Quem o bot identificou pelo telefone chega sem o registro carregado: o nome
   // do atendimento é o do próprio contato, e serve para mostrar a escolha.
@@ -98,10 +138,17 @@ export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirm
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancelar}>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={onCancelar}
+        role="presentation"
+      >
         <div
-          className="w-full max-w-md rounded-xl border border-subtle bg-surface-1 p-5 shadow-xl"
+          className="shadow-xl w-full max-w-md rounded-xl border border-subtle bg-surface-1 p-5"
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          onKeyDown={(e) => e.key === "Escape" && onCancelar()}
         >
           <h2 className="text-15 font-semibold text-primary">Encerrar atendimento</h2>
           <p className="mt-1 text-12 text-secondary">
@@ -111,10 +158,10 @@ export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirm
           <div className="mt-4 space-y-4">
             {precisaDeProjeto ? (
               <div>
-                <label className="mb-1 block text-12 font-medium text-secondary">Sistema atendido</label>
+                <p className="mb-1 block text-12 font-medium text-secondary">Sistema atendido</p>
                 <SelectPesquisavel
                   value={projeto}
-                  onChange={setProjeto}
+                  onChange={escolherProjeto}
                   opcoes={projetos}
                   placeholder="Selecione o sistema"
                   searchPlaceholder="Buscar sistema"
@@ -126,6 +173,53 @@ export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirm
                 <strong className="text-primary">{sessao.project_name ?? sessao.project_identifier}</strong>.
               </p>
             )}
+
+            <div>
+              <p className="mb-1 block text-12 font-medium text-secondary">Entidade</p>
+              <SelectPesquisavel
+                value={entidade}
+                onChange={setEntidade}
+                opcoes={opcoesDeEntidade}
+                placeholder="Selecione a entidade"
+                searchPlaceholder="Buscar entidade"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="mb-1 block text-12 font-medium text-secondary">Motivo</p>
+                <SelectPesquisavel
+                  value={motivo}
+                  onChange={setMotivo}
+                  opcoes={opcoesDeMotivo}
+                  placeholder="Selecione"
+                />
+              </div>
+              <div>
+                <p className="mb-1 block text-12 font-medium text-secondary">Funcionalidade</p>
+                <SelectPesquisavel
+                  value={modulo}
+                  onChange={setModulo}
+                  opcoes={modulos}
+                  opcaoVazia={{ value: "", label: "Nenhuma" }}
+                  placeholder="Opcional"
+                  searchPlaceholder="Buscar módulo"
+                  disabled={!(projeto || sessao.project_id)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1 block text-12 font-medium text-secondary">Observação</p>
+              <textarea
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                rows={2}
+                maxLength={2000}
+                placeholder="Opcional"
+                className={CAIXA}
+              />
+            </div>
 
             <div className="space-y-3 rounded-md border border-subtle p-3">
               <p className="text-12 font-medium text-secondary">Contato</p>
@@ -149,7 +243,7 @@ export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirm
               ) : (
                 <>
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary" />
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-secondary" />
                     <input
                       autoFocus
                       value={busca}
@@ -204,11 +298,11 @@ export function ModalDeEncerramento({ sessao, workspaceSlug, projetos, onConfirm
             </button>
             <button
               onClick={confirmar}
-              disabled={precisaDeProjeto && !projeto}
+              disabled={Boolean(pendencia) || enviando}
               className="rounded-md bg-danger-primary px-3 py-1.5 text-13 text-on-color disabled:cursor-not-allowed disabled:opacity-50"
-              title={precisaDeProjeto && !projeto ? "Escolha o sistema atendido" : "Encerrar"}
+              title={pendencia ?? "Encerrar"}
             >
-              Encerrar
+              {enviando ? "Encerrando…" : "Encerrar"}
             </button>
           </div>
         </div>
