@@ -4,8 +4,9 @@ import { authPlugin } from "@middleware/auth";
 // Reports are restricted to [ADMIN, MEMBER] (workspace role >= 15) — mirrors the
 // `reports`/`analytics` sidebar gate in packages/constants/src/workspace.ts.
 import { PRIORIDADES, ROTULO_DE_PRIORIDADE } from "@utils/prioridade";
-import { getWorkspaceOrFail, requireWorkspaceWriter } from "@utils/workspace";
+import { getWorkspaceOrFail } from "@utils/workspace";
 import { Prisma } from "@prisma/client";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Relatórios gerenciais (SAC) — agregações sobre chamados, visitas, sistemas,
@@ -124,7 +125,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 1. Visão geral de chamados ──────────────────────────────────────────────
   .get("/tickets-overview/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f);
 
@@ -173,7 +174,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 2. Chamados por sistema (projeto) ───────────────────────────────────────
   .get("/by-system/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f);
 
@@ -211,7 +212,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 3. Chamados por entidade (cliente) ──────────────────────────────────────
   .get("/by-entity/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f);
 
@@ -258,7 +259,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 4. Chamados por prioridade / urgência ───────────────────────────────────
   .get("/by-priority/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f);
 
@@ -314,7 +315,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 5. Chamados por tipo de atividade (labels) ──────────────────────────────
   .get("/by-type/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f);
 
@@ -361,7 +362,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 6. Produtividade por usuário/técnico ────────────────────────────────────
   .get("/productivity/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
 
     // chamados atribuídos por responsável (via IssueAssignee)
@@ -429,7 +430,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 7. Tempo gasto (time tracking) ──────────────────────────────────────────
   .get("/time-tracking/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
 
     // filtro adicional por loggedDate dentro do período (se informado)
@@ -497,7 +498,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 8. Interações / mensagens ───────────────────────────────────────────────
   .get("/interactions/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const commentWhere: any = { deletedAt: null, issue: issueWhere(ws.id, f) };
 
@@ -549,7 +550,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 9. Visão geral de visitas técnicas ──────────────────────────────────────
   .get("/visits-overview/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
 
     const where: any = { workspaceId: ws.id, deletedAt: null };
@@ -627,7 +628,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 10. Tendência temporal (criados vs concluídos por mês) ──────────────────
   .get("/trends/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     // janela padrão: últimos 12 meses se não informado
     const filter = issueSqlFilter(ws.id, { projectIds: f.projectIds, entityId: f.entityId });
@@ -656,7 +657,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 11. Backlog aging ───────────────────────────────────────────────────────
   .get("/backlog-aging/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f, { state: { group: { notIn: ["completed", "cancelled"] } } });
 
@@ -698,7 +699,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 12. SLA / tempo de resolução ────────────────────────────────────────────
   .get("/sla/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const filter = issueSqlFilter(ws.id, f);
 
@@ -748,7 +749,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // ── 13. Dashboard executivo (consolidado) ───────────────────────────────────
   .get("/executive/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f);
 
@@ -794,7 +795,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
   // sem histórico (itens antigos pré-log) acumulam todo o tempo no estado atual.
   .get("/time-in-state/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const f = parseFilters(query);
     const where = issueWhere(ws.id, f);
 

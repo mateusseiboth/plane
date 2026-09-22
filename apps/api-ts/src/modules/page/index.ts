@@ -3,6 +3,7 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getProjectOrFail, getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import {EProjectAction, hasWorkspaceAction} from "@utils/permission-checks";
 
 
 /**
@@ -101,9 +102,9 @@ function serializePageVersion(v: any) {
  */
 async function resolveScope(params: Record<string, string>, userId: string) {
   const ws = await getWorkspaceOrFail(params.slug);
-  const membership = await requireWorkspaceMember(ws.id, userId);
+  await requireWorkspaceMember(ws.id, userId);
   if (params.project_id) await getProjectOrFail(ws.id, params.project_id, userId, { allowInstanceAdmin: true });
-  return { ws, isAdmin: membership.role >= 20 };
+  return { ws, isAdmin: await hasWorkspaceAction(ws.id, userId, EProjectAction.PAGE_MANAGE_ALL) };
 }
 
 /** Carrega a página com as relações da serialização, presa ao workspace da URL. */

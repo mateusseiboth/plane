@@ -14,3 +14,5 @@ target = "bun"
 "@generated" = "./generated"
 "@tests" = "./tests"
 "@scripts" = "./scripts"
+# Só para os testes: conferem que o chat usa as mesmas ações do catálogo do api-ts.
+"@api-ts" = "../api-ts/src"

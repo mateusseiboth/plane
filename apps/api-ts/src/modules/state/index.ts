@@ -2,6 +2,7 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
+import {EProjectAction, requireProjectAction} from "@utils/permission-checks";
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -40,8 +41,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
 
   .post("/", async ({ params: { slug, project_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.STATE_MANAGE);
     const b = body as any;
     if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const exists = await prisma.state.findFirst({ where: { projectId: project_id, name: b.name, deletedAt: null } });
@@ -77,8 +77,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
 
   .patch("/:state_id/", async ({ params: { slug, project_id, state_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.STATE_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) { data.name = b.name; data.slug = slugify(b.name); }
@@ -93,8 +92,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
 
   .patch("/:state_id", async ({ params: { slug, project_id, state_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.STATE_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) { data.name = b.name; data.slug = slugify(b.name); }
@@ -109,8 +107,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
 
   .post("/:state_id/mark-default/", async ({ params: { slug, project_id, state_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 15) { set.status = 403; return { detail: "Permissão negada." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.STATE_MANAGE);
     const exists = await prisma.state.findFirst({ where: { id: state_id, projectId: project_id, deletedAt: null } });
     if (!exists) { set.status = 404; return { detail: "Estado não encontrado." }; }
     await prisma.$transaction(async tx => {
@@ -123,8 +120,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
 
   .delete("/:state_id/", async ({ params: { slug, project_id, state_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir estados." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.STATE_DELETE);
     const state = await prisma.state.findFirstOrThrow({ where: { id: state_id, projectId: project_id } });
     if (state.default) { set.status = 400; return { detail: "O estado padrão não pode ser excluído." }; }
     const issueCount = await prisma.issue.count({ where: { stateId: state_id, deletedAt: null } });
@@ -136,8 +132,7 @@ export const stateModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pro
 
   .delete("/:state_id", async ({ params: { slug, project_id, state_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 20) { set.status = 403; return { detail: "Apenas administradores podem excluir estados." }; }
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.STATE_DELETE);
     const state = await prisma.state.findFirstOrThrow({ where: { id: state_id, projectId: project_id } });
     if (state.default) { set.status = 400; return { detail: "O estado padrão não pode ser excluído." }; }
     const issueCount = await prisma.issue.count({ where: { stateId: state_id, deletedAt: null } });

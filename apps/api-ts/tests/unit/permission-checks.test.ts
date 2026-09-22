@@ -9,10 +9,14 @@ import {addMember, createProject, createUser, createWorkspace} from "@tests/help
 import {
   EProjectAction,
   canTransition,
+  hasWorkspaceAction,
+  listMemberActions,
   requireOwnOrAll,
   requireProjectAction,
+  requireWorkspaceAction,
   resolveRole,
 } from "@utils/permission-checks";
+import {getProjectOrFail} from "@utils/workspace";
 import {DEFAULT_STATES} from "@utils/project-defaults";
 import {seedWorkflowRoles} from "@utils/permissions";
 
@@ -187,6 +191,81 @@ describe("permission-checks", () => {
   });
 
   
+  describe("exceções por pessoa", () => {
+    const setOverrides = (memberId: string, granted: string[], revoked: string[]) =>
+      prisma.workspaceMember.updateMany({
+        where: {workspaceId, memberId},
+        data: {grantedActions: granted, revokedActions: revoked},
+      });
+
+    it("concessão à pessoa libera ação de sistema que a função não tem", async () => {
+      await setOverrides(guestId, ["issue.priority"], []);
+      const {role} = await requireProjectAction(workspaceId, projectId, guestId, EProjectAction.ISSUE_PRIORITY);
+      expect(role.permissions).toContain("issue.priority");
+      await setOverrides(guestId, [], []);
+    });
+
+    it("negação à pessoa barra o que a função daria", async () => {
+      await setOverrides(tiId, [], ["cycle.manage"]);
+      const thrown = await catchThrown(() =>
+        requireProjectAction(workspaceId, projectId, tiId, EProjectAction.CYCLE_MANAGE),
+      );
+      expect(thrown).toMatchObject({status: 403});
+      await setOverrides(tiId, [], []);
+    });
+
+    it("vale também para as ações do espaço de trabalho", async () => {
+      await setOverrides(qualidadeId, ["report.view"], ["chat.atender"]);
+      expect(await hasWorkspaceAction(workspaceId, qualidadeId, EProjectAction.REPORT_VIEW)).toBe(true);
+      expect(await hasWorkspaceAction(workspaceId, qualidadeId, EProjectAction.CHAT_ATENDER)).toBe(false);
+      await setOverrides(qualidadeId, [], []);
+    });
+
+    it("listMemberActions devolve função, efetivas e exceções", async () => {
+      await setOverrides(guestId, ["issue.priority"], ["comment.read"]);
+      const r = await listMemberActions(workspaceId, guestId);
+      expect(r.role.key).toBe("guest");
+      expect(r.permissions).toContain("issue.priority");
+      expect(r.permissions).not.toContain("comment.read");
+      expect(r.granted).toEqual(["issue.priority"]);
+      expect(r.revoked).toEqual(["comment.read"]);
+      await setOverrides(guestId, [], []);
+    });
+  });
+
+  describe("requireWorkspaceAction", () => {
+    it("403 para quem não tem a ação no espaço", async () => {
+      const thrown = await catchThrown(() => requireWorkspaceAction(workspaceId, tiId, EProjectAction.WORKSPACE_SETTINGS));
+      expect(thrown).toMatchObject({status: 403});
+    });
+
+    it("admin do espaço passa", async () => {
+      const role = await requireWorkspaceAction(workspaceId, adminId, EProjectAction.WORKSPACE_SETTINGS);
+      expect(role.key).toBe("admin");
+    });
+
+    it("hasWorkspaceAction responde falso para quem não é do espaço", async () => {
+      const outsider = await createUser();
+      expect(await hasWorkspaceAction(workspaceId, outsider.id, EProjectAction.ISSUE_VIEW)).toBe(false);
+    });
+  });
+
+  describe("admin do espaço dentro do sistema", () => {
+    it("não herda a função baixa gravada na associação ao sistema", async () => {
+      await prisma.projectMember.updateMany({
+        where: {projectId, memberId: adminId},
+        data: {role: 5, workflowRoleId: roleIds.guest},
+      });
+      const {member} = await getProjectOrFail(workspaceId, projectId, adminId);
+      const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
+      expect(role.key).toBe("admin");
+      await prisma.projectMember.updateMany({
+        where: {projectId, memberId: adminId},
+        data: {role: 20, workflowRoleId: roleIds.admin},
+      });
+    });
+  });
+
   describe("canTransition", () => {
     const s = (group: string, name: string) => ({group, name});
 

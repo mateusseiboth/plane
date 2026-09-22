@@ -1,11 +1,12 @@
-// DB-coupled runtime permission checks (H3). Reads the live WorkflowRole /
-// RoleStateVisibility / RoleStateTransition config. Kept separate from
-// utils/permissions.ts (pure data + seed) so the seed scripts stay decoupled
-// from the @db singleton.
+// Checagens de permissão em runtime (modelo v2). Lê a configuração viva:
+// WorkflowRole (função), RoleStateTransition (etapas) e as exceções por pessoa
+// de workspace_members. TODA pergunta "esta pessoa pode X?" passa por aqui; o
+// catálogo de ações mora em utils/permissions.ts. Ver .claude/permissoes-v2.md.
 import prisma from "@db";
 import {
   DEFAULT_TRANSITIONS,
   EProjectAction,
+  applyMemberOverrides,
   defaultRoleForLevel,
   roleCan,
   type EffectiveRole,
@@ -32,6 +33,39 @@ export async function resolveRole(workspaceId: string, roleIntOrLevel: number, w
   return {id: null, key: def.key, level: def.level, permissions: def.permissions};
 }
 
+type MemberLike = {memberId: string; role: number; workflowRoleId?: string | null};
+
+const DENIED = {status: 403, message: "Sua função não permite esta ação."};
+
+const denyAction = (): never => {
+  throw DENIED;
+};
+
+/** Exceções por pessoa: moram na associação ao ESPAÇO e valem em todos os sistemas dele. */
+async function readOverrides(workspaceId: string, memberId: string): Promise<{granted: unknown; revoked: unknown}> {
+  const wm = await prisma.workspaceMember.findFirst({
+    where: {workspaceId, memberId, isActive: true, deletedAt: null},
+    select: {grantedActions: true, revokedActions: true},
+  });
+  return {granted: wm?.grantedActions ?? [], revoked: wm?.revokedActions ?? []};
+}
+
+/**
+ * Função efetiva de uma associação (ao espaço ou ao sistema): a função
+ * configurável, com as concessões e negações da pessoa aplicadas por cima.
+ */
+export async function resolveMemberRole(workspaceId: string, member: MemberLike): Promise<EffectiveRole> {
+  const role = await resolveRole(workspaceId, member.role, member.workflowRoleId);
+  const overrides = await readOverrides(workspaceId, member.memberId);
+  return {...role, permissions: applyMemberOverrides(role.permissions, overrides)};
+}
+
+export async function resolveProjectMember(workspaceId: string, projectId: string, userId: string) {
+  const {project, member} = await getProjectOrFail(workspaceId, projectId, userId);
+  const role = await resolveMemberRole(workspaceId, member as MemberLike);
+  return {project, member, role};
+}
+
 /**
  * Membership + action guard for every project-scoped mutation.
  *
@@ -46,12 +80,9 @@ export async function requireProjectAction(
   userId: string,
   action: EProjectAction,
 ): Promise<{project: any; member: any; role: EffectiveRole}> {
-  const {project, member} = await getProjectOrFail(workspaceId, projectId, userId);
-  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
-  if (!roleCan(role, action)) {
-    throw {status: 403, message: "Sua função não permite esta ação."};
-  }
-  return {project, member, role};
+  const resolved = await resolveProjectMember(workspaceId, projectId, userId);
+  if (!roleCan(resolved.role, action)) denyAction();
+  return resolved;
 }
 
 /**
@@ -68,12 +99,9 @@ export async function requireProjectAnyAction(
   userId: string,
   actions: EProjectAction[],
 ): Promise<{project: any; member: any; role: EffectiveRole}> {
-  const {project, member} = await getProjectOrFail(workspaceId, projectId, userId);
-  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
-  if (!actions.some((action) => roleCan(role, action))) {
-    throw {status: 403, message: "Sua função não permite esta ação."};
-  }
-  return {project, member, role};
+  const resolved = await resolveProjectMember(workspaceId, projectId, userId);
+  if (!actions.some((action) => roleCan(resolved.role, action))) denyAction();
+  return resolved;
 }
 
 /**
@@ -89,11 +117,15 @@ export async function requireOwnOrAll(
   ownAction: EProjectAction,
   allAction: EProjectAction,
 ): Promise<{project: any; member: any; role: EffectiveRole}> {
-  const {project, member} = await getProjectOrFail(workspaceId, projectId, userId);
-  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
-  if (roleCan(role, allAction)) return {project, member, role};
-  if (roleCan(role, ownAction) && ownerId && ownerId === userId) return {project, member, role};
-  throw {status: 403, message: "Sua função não permite esta ação."};
+  const resolved = await resolveProjectMember(workspaceId, projectId, userId);
+  if (roleCan(resolved.role, allAction)) return resolved;
+  if (roleCan(resolved.role, ownAction) && ownerId && ownerId === userId) return resolved;
+  return denyAction();
+}
+
+/** Guarda de uma ação sobre uma função já resolvida (ex.: prioridade dentro do PATCH). */
+export function requireRoleAction(role: EffectiveRole, action: EProjectAction): void {
+  if (!roleCan(role, action)) denyAction();
 }
 
 /** Whether a role may move an issue between two states. */
@@ -127,10 +159,24 @@ export async function canTransition(
 }
 
 /**
+ * Função efetiva da pessoa no ESPAÇO DE TRABALHO, ou `null` quando ela não é
+ * membro ativo dele.
+ */
+export async function resolveWorkspaceRole(workspaceId: string, userId: string): Promise<EffectiveRole | null> {
+  const member = await prisma.workspaceMember.findFirst({
+    where: {workspaceId, memberId: userId, isActive: true, deletedAt: null},
+  });
+  if (!member) return null;
+  const role = await resolveRole(workspaceId, member.role, member.workflowRoleId);
+  const permissions = applyMemberOverrides(role.permissions, {granted: member.grantedActions, revoked: member.revokedActions});
+  return {...role, permissions};
+}
+
+/**
  * Guarda de ação para rotas do ESPAÇO DE TRABALHO, sem projeto no caminho.
  *
  * `requireProjectAction` não serve para elas, e cair no nível (>= 15) seria pior
- * ainda: neste fork Atendimento é 6, Qualidade 8 e TI 12 — o corte por nível
+ * ainda: neste fork Atendimento é 6, Qualidade 8 e TI 12. O corte por nível
  * barraria justamente quem opera. O que separa é a permissão.
  */
 export async function requireWorkspaceAction(
@@ -138,10 +184,27 @@ export async function requireWorkspaceAction(
   userId: string,
   action: EProjectAction,
 ): Promise<EffectiveRole> {
-  const member = await requireWorkspaceMember(workspaceId, userId);
-  const role = await resolveRole(workspaceId, member.role, (member as any).workflowRoleId);
-  if (!roleCan(role, action)) {
-    throw {status: 403, message: "Sua função não permite esta ação."};
-  }
+  await requireWorkspaceMember(workspaceId, userId);
+  const role = await resolveWorkspaceRole(workspaceId, userId);
+  if (!role || !roleCan(role, action)) return denyAction();
   return role;
+}
+
+/** Versão que não lança: para decidir o que MOSTRAR (ex.: páginas de outros). */
+export async function hasWorkspaceAction(workspaceId: string, userId: string, action: EProjectAction): Promise<boolean> {
+  const role = await resolveWorkspaceRole(workspaceId, userId);
+  return !!role && roleCan(role, action);
+}
+
+/** O que a pessoa pode no espaço: função, permissões efetivas e as exceções dela. */
+export async function listMemberActions(workspaceId: string, userId: string) {
+  const member = await requireWorkspaceMember(workspaceId, userId);
+  const role = await resolveRole(workspaceId, member.role, member.workflowRoleId);
+  const overrides = {granted: member.grantedActions, revoked: member.revokedActions};
+  return {
+    role,
+    permissions: applyMemberOverrides(role.permissions, overrides),
+    granted: applyMemberOverrides([], {granted: overrides.granted, revoked: []}),
+    revoked: applyMemberOverrides([], {granted: overrides.revoked, revoked: []}),
+  };
 }

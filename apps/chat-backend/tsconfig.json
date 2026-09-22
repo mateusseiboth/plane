@@ -7,14 +7,15 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "..",
     "types": ["bun"],
     "paths": {
       "@/*": ["./src/*"],
       "@db": ["./src/db.ts"],
       "@generated/*": ["./generated/*"],
       "@tests/*": ["./tests/*"],
-      "@scripts/*": ["./scripts/*"]
+      "@scripts/*": ["./scripts/*"],
+      "@api-ts/*": ["../api-ts/src/*"]
     }
   },
   "include": ["./src/**/*", "./tests/**/*", "./scripts/**/*", "./prisma.config.ts"],

@@ -11,7 +11,6 @@ import {
   getWorkspaceOrFail,
   isWorkspaceMember,
   requireWorkspaceMember,
-  requireWorkspaceWriter,
 } from "@utils/workspace";
 
 const catchThrown = async (fn: () => Promise<unknown>) => {
@@ -82,18 +81,13 @@ describe("guards de workspace", () => {
     });
   });
 
-  describe("requireWorkspaceMember / requireWorkspaceWriter", () => {
+  describe("requireWorkspaceMember", () => {
     it("devolve a associação do membro", async () => {
       expect((await requireWorkspaceMember(ws.id, memberId)).role).toBe(15);
     });
 
     it("lança 403 para quem não é membro", async () => {
       expect(await catchThrown(() => requireWorkspaceMember(ws.id, outsiderId))).toMatchObject({status: 403});
-    });
-
-    it("writer exige papel >= 15", async () => {
-      expect((await requireWorkspaceWriter(ws.id, memberId)).role).toBe(15);
-      expect(await catchThrown(() => requireWorkspaceWriter(ws.id, guestId))).toMatchObject({status: 403});
     });
   });
 

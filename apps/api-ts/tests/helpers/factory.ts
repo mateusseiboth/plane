@@ -382,6 +382,13 @@ export function apiClient(token: string, baseUrl = `${TEST_API_BASE_URL}/api/v1`
         body: JSON.stringify(body),
       });
     },
+    async put(path: string, body: unknown) {
+      return fetch(`${baseUrl}${path}`, {
+        method: "PUT",
+        headers: { "X-Api-Key": token, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    },
     async delete(path: string) {
       return fetch(`${baseUrl}${path}`, {
         method: "DELETE",

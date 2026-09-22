@@ -1,14 +1,15 @@
 import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
-import { getWorkspaceOrFail, requireWorkspaceWriter } from "@utils/workspace";
+import { getWorkspaceOrFail } from "@utils/workspace";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/slack" })
   .use(authPlugin)
 
   .get("/config/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const config = await prisma.slackIntegrationConfig.findFirst({
       where: { workspaceId: ws.id, deletedAt: null },
       include: { channels: { where: { deletedAt: null } } },
@@ -18,7 +19,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
 
   .post("/config/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const b = body as any;
     try {
       const config = await prisma.slackIntegrationConfig.create({
@@ -39,7 +40,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
 
   .patch("/config/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const config = await prisma.slackIntegrationConfig.findFirst({ where: { workspaceId: ws.id } });
     if (!config) { set.status = 404; return { detail: "Nenhuma integração com o Slack encontrada." }; }
     const b = body as any;
@@ -53,7 +54,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
 
   .delete("/config/", async ({ params: { slug }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     await prisma.slackIntegrationConfig.updateMany({ where: { workspaceId: ws.id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -63,7 +64,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
 
   .get("/channels/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const config = await prisma.slackIntegrationConfig.findFirst({ where: { workspaceId: ws.id } });
     if (!config) return { results: [] };
     return prisma.slackProjectChannel.findMany({ where: { configId: config.id, deletedAt: null } });
@@ -71,7 +72,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
 
   .post("/channels/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const config = await prisma.slackIntegrationConfig.findFirst({ where: { workspaceId: ws.id } });
     if (!config) { set.status = 400; return { detail: "Configure a integração com o Slack primeiro." }; }
     const b = body as any;
@@ -88,7 +89,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
 
   .patch("/channels/:channel_id/", async ({ params: { slug, channel_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     const b = body as any;
     const data: any = {};
     if (b.events !== undefined) data.events = b.events;
@@ -98,7 +99,7 @@ export const slackIntegrationModule = new Elysia({ prefix: "/workspaces/:slug/sl
 
   .delete("/channels/:channel_id/", async ({ params: { slug, channel_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTEGRATION_MANAGE);
     await prisma.slackProjectChannel.update({ where: { id: channel_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;

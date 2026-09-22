@@ -12,6 +12,8 @@ import { paginate } from "@utils/pagination";
 import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 import { registrarVersaoDaDescricao, serializarVersao } from "@utils/versoes-da-descricao";
 import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
+import {EProjectAction, requireProjectAnyAction, requireRoleAction} from "@utils/permission-checks";
+import { isPriorityChange } from "@utils/prioridade";
 
 function isoDate(d: any) { if (!d) return null; return d instanceof Date ? d.toISOString() : String(d); }
 
@@ -107,8 +109,10 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
   // ── Update intake work item ──────────────────────────────────────────────────
   .patch("/:issue_id/", async ({ params: { slug, project_id, issue_id }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const { member } = await getProjectOrFail(ws.id, project_id, user.id);
-    if (member.role < 5) { set.status = 403; return { detail: "Permissão negada." }; }
+    const { role } = await requireProjectAnyAction(ws.id, project_id, user.id, [
+      EProjectAction.INTAKE_REVIEW,
+      EProjectAction.INTAKE_CREATE,
+    ]);
     const b = body as any;
 
     const before = await prisma.issue.findFirst({
@@ -117,6 +121,8 @@ export const intakeWorkItemModule = new Elysia({ prefix: "/workspaces/:slug/proj
     });
 
     // Mesma regra do PATCH do chamado: todos reescrevem, o "antes" fica gravado.
+    if (isPriorityChange(before?.priority, b.priority)) requireRoleAction(role, EProjectAction.ISSUE_PRIORITY);
+
     const abriuVersao = await registrarVersaoDaDescricao({ antes: before, corpo: b, autorId: user.id });
 
     const data: any = { updatedById: user.id };

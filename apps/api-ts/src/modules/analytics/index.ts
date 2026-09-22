@@ -2,7 +2,8 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { paginate } from "@utils/pagination";
-import { getWorkspaceOrFail, requireWorkspaceMember, requireWorkspaceWriter } from "@utils/workspace";
+import { getWorkspaceOrFail } from "@utils/workspace";
+import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 
 export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
@@ -11,7 +12,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/default-analytics/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
 
     const baseWhere: any = { workspaceId: ws.id, deletedAt: null };
     if (query.project_id) baseWhere.projectId = query.project_id;
@@ -60,7 +61,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/analytic-view/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const where = { workspaceId: ws.id, deletedAt: null };
     return paginate({
       query: (skip, take) => prisma.analyticView.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
@@ -71,7 +72,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .post("/analytic-view/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const b = body as any;
     if (!b.name) { set.status = 400; return { detail: "O nome é obrigatório." }; }
     const view = await prisma.analyticView.create({
@@ -87,13 +88,13 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/analytic-view/:view_id/", async ({ params: { slug, view_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     return prisma.analyticView.findFirstOrThrow({ where: { id: view_id, workspaceId: ws.id, deletedAt: null } });
   })
 
   .patch("/analytic-view/:view_id/", async ({ params: { slug, view_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
@@ -105,7 +106,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .delete("/analytic-view/:view_id/", async ({ params: { slug, view_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
     await prisma.analyticView.update({ where: { id: view_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
@@ -115,7 +116,7 @@ export const analyticsModule = new Elysia({ prefix: "/workspaces/:slug" })
 
   .get("/project-stats/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceWriter(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.REPORT_VIEW);
 
     const projectIdFilter = query.project_ids
       ? (query.project_ids as string).split(",").filter(Boolean)
