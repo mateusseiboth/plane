@@ -179,6 +179,10 @@ do banco compartilhado).
 
 Depois do lote: `mural.publish` (Gestor, admin; mural de recados da home, ver `.claude/mural.md`).
 
+W15: `ouvidoria.read`, `denuncia.read`, `curriculo.read` e `contato.export` (Gestor, admin; ver
+`.claude/ouvidoria-denuncia-curriculos.md`). O menu lateral esconde ouvidoria e currículos de quem
+não tem a ação (campo `action` do item em `packages/constants/src/workspace.ts`).
+
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já
 deixava, por número).
