@@ -4,6 +4,8 @@
  * `id` casa com o segmento da rota e com o método do ReportsService / endpoint do backend.
  */
 
+import type { TFiltroDoRelatorio } from "@/components/reports/filtros-do-relatorio";
+
 export type ReportCategory = "chamados" | "pessoas" | "visitas" | "gerencial";
 
 export type ReportMeta = {
@@ -13,8 +15,8 @@ export type ReportMeta = {
   category: ReportCategory;
   /** lucide icon name (resolvido no componente) */
   icon: string;
-  /** filtros aplicáveis a este relatório */
-  filters: ("period" | "project" | "entity")[];
+  /** filtros aplicáveis a este relatório (ver filtros-do-relatorio.ts) */
+  filters: TFiltroDoRelatorio[];
 };
 
 export const REPORT_CATEGORIES: { key: ReportCategory; label: string; description: string }[] = [
@@ -76,10 +78,11 @@ export const REPORTS: ReportMeta[] = [
   {
     id: "time-tracking",
     title: "Tempo Gasto",
-    description: "Horas registradas por usuário, sistema e os chamados que mais consumiram tempo.",
+    description:
+      "Horas registradas por usuário e sistema, os chamados que mais consumiram tempo e os lançamentos de cada analista.",
     category: "pessoas",
     icon: "Clock",
-    filters: ["period", "project", "entity"],
+    filters: ["period", "project", "entity", "user"],
   },
   {
     id: "interactions",
@@ -92,18 +95,18 @@ export const REPORTS: ReportMeta[] = [
   {
     id: "visits-overview",
     title: "Visão Geral de Visitas",
-    description: "Visitas por status, motivo, técnico, entidade e cidade, com duração média.",
+    description: "Visitas por status, motivo, técnico, entidade, cidade e sistema, com duração média.",
     category: "visitas",
     icon: "Wrench",
-    filters: ["period", "entity"],
+    filters: ["period", "project", "entity", "location"],
   },
   {
     id: "trends",
     title: "Tendência Temporal",
-    description: "Chamados criados vs concluídos por mês (últimos 12 meses) e evolução do backlog.",
+    description: "Chamados criados vs concluídos por mês no período (padrão: últimos 12 meses).",
     category: "gerencial",
     icon: "TrendingUp",
-    filters: ["project", "entity"],
+    filters: ["period", "project", "entity"],
   },
   {
     id: "backlog-aging",
@@ -130,6 +133,50 @@ export const REPORTS: ReportMeta[] = [
     filters: ["period", "project", "entity"],
   },
 ];
+
+// ── Relatórios sobre os marcos por etapa (atribuído, TI, homologação, encerramento) ──
+REPORTS.push(
+  {
+    id: "milestones-by-user",
+    title: "Chamados por Usuário",
+    description: "Lista analítica de cada pessoa com as datas de atribuição, TI, homologação e encerramento.",
+    category: "pessoas",
+    icon: "ListChecks",
+    filters: ["period", "project", "entity", "user", "perfil", "situacao"],
+  },
+  {
+    id: "weekly-summary",
+    title: "Sintético Semanal",
+    description: "Responsável por sistema e tipo: interações, concluídos no TI e pendentes. Padrão: semana atual.",
+    category: "pessoas",
+    icon: "CalendarRange",
+    filters: ["period", "project", "entity"],
+  },
+  {
+    id: "returned",
+    title: "Chamados Devolvidos",
+    description: "Chamados que voltaram de Em Teste para Em Desenvolvimento, com quem devolveu e quando.",
+    category: "chamados",
+    icon: "Undo2",
+    filters: ["period", "project", "entity"],
+  },
+  {
+    id: "ticket-log",
+    title: "Log de Chamados",
+    description: "Histórico consolidado de alterações e comentários, por etapa, função, pessoa, período e sistema.",
+    category: "chamados",
+    icon: "ScrollText",
+    filters: ["period", "project", "entity", "etapa", "funcao", "user"],
+  },
+  {
+    id: "balance",
+    title: "Balanço de Chamados",
+    description: "Abertos, encerrados e saldo acumulado por mês ou por ano.",
+    category: "gerencial",
+    icon: "Scale",
+    filters: ["period", "project", "entity", "granularidade"],
+  }
+);
 
 export function getReportMeta(id: string): ReportMeta | undefined {
   return REPORTS.find((r) => r.id === id);

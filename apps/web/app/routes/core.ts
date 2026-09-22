@@ -51,6 +51,9 @@ export const coreRoutes: RouteConfigEntry[] = [
     // WORKSPACE-SCOPED ROUTES
     // ======================================================================
     layout("./(all)/[workspaceSlug]/layout.tsx", [
+      // Painel de TV (tela cheia, sem o menu lateral dos sistemas)
+      route(":workspaceSlug/painel/:setor", "./(all)/[workspaceSlug]/(painel)/painel/[setor]/page.tsx"),
+
       // ====================================================================
       // PROJECTS APP SECTION - WORKSPACE LEVEL ROUTES
       // ====================================================================
