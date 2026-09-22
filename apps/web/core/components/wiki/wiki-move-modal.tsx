@@ -32,7 +32,7 @@ export const WikiMoveModal = observer(function WikiMoveModal(props: Props) {
     return getWikiMoveTargets(pages, page.id)
       .map((destino) => ({ id: destino.id as string, caminho: getCaminho(pages, destino) }))
       .filter((destino) => destino.caminho.toLowerCase().includes(termo))
-      .toSorted((a, b) => a.caminho.localeCompare(b.caminho, "pt-BR"));
+      .sort((a, b) => a.caminho.localeCompare(b.caminho, "pt-BR"));
   }, [busca, page, pages]);
 
   const handleClose = () => {
