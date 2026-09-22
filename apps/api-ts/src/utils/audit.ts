@@ -64,6 +64,10 @@ export const AUDIT_ENTITIES = {
   REPORT: "report",
   CHAT_SESSION: "chat_session",
   AUDIT_LOG: "audit_log",
+  OUVIDORIA: "ouvidoria",
+  CURRICULO: "curriculo",
+  // Denúncia NÃO entra aqui: nada da denúncia vai para a trilha, para que a
+  // anônima não possa ser correlacionada com quem estava logado.
 } as const;
 
 export type AuditEntity = (typeof AUDIT_ENTITIES)[keyof typeof AUDIT_ENTITIES];

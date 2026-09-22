@@ -9,7 +9,7 @@ import {rm} from "fs/promises";
 import path from "path";
 import prisma from "@db";
 import {cleanDb} from "@tests/helpers/setup";
-import {copyAsset, invalidateStorageCache, saveAsset, serveAsset} from "@utils/storage";
+import {copyAsset, deleteAsset, invalidateStorageCache, saveAsset, serveAsset} from "@utils/storage";
 
 // A raiz é fixada pelo preload (tests/helpers/setup.ts), antes de qualquer
 // import de @utils/storage, para não depender da ordem dos arquivos de teste.
@@ -27,6 +27,15 @@ describe("storage em disco local", () => {
     invalidateStorageCache();
     await rm(path.join(MEDIA_ROOT, SCOPE), {recursive: true, force: true});
     await cleanDb();
+  });
+
+  it("apaga de vez (exclusão definitiva da LGPD) e não reclama do que já não existe", async () => {
+    const k = key("curriculo.pdf");
+    await saveAsset(k, new Blob(["%PDF-1.7"], {type: "application/pdf"}));
+    await deleteAsset(k);
+    expect(existsSync(path.join(MEDIA_ROOT, k))).toBe(false);
+    expect(await serveAsset(k)).toBeNull();
+    await deleteAsset(k);
   });
 
   it("grava criando os diretórios intermediários", async () => {

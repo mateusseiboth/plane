@@ -217,6 +217,19 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(ACTION_CATALOG.MURAL_PUBLISH).toMatchObject({ label: "Publicar recados no mural", scope: "workspace" });
   });
 
+  it("ouvidoria, denúncias, currículos e lista de e-mails são de Gestor e admin", () => {
+    for (const acao of ["ouvidoria.read", "denuncia.read", "curriculo.read", "contato.export"]) {
+      expect(donosDe(acao)).toEqual(["admin", "gestor_projeto"]);
+    }
+    expect(ACTION_CATALOG.OUVIDORIA_READ).toMatchObject({ label: "Ler a ouvidoria", scope: "workspace" });
+    expect(ACTION_CATALOG.DENUNCIA_READ).toMatchObject({ label: "Ler as denúncias", scope: "workspace" });
+    expect(ACTION_CATALOG.CURRICULO_READ).toMatchObject({ label: "Ver e gerenciar currículos", scope: "workspace" });
+    expect(ACTION_CATALOG.CONTATO_EXPORT).toMatchObject({
+      label: "Gerar e exportar a lista de e-mails dos responsáveis",
+      scope: "workspace",
+    });
+  });
+
   it("funções e SLA de etiqueta, que eram papel >= 18, ficam com Gestor e admin", () => {
     expect(donosDe("role.manage")).toEqual(["admin", "gestor_projeto"]);
     expect(donosDe("label.sla")).toEqual(["admin", "gestor_projeto"]);

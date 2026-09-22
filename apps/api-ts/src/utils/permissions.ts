@@ -49,6 +49,7 @@ const G = {
   CHAT: "Atendimento (chat)",
   ESPACO: "Espaço de trabalho",
   CADASTROS: "Cadastros e integrações",
+  OUVIDORIA: "Ouvidoria, denúncias e currículos",
 } as const;
 
 // UMA LINHA POR AÇÃO. A ordem é a ordem em que a tela de Funções desenha.
@@ -108,6 +109,10 @@ export const ACTION_CATALOG = {
   AI_CONFIG: {key: "ai.config", label: "Configurar provedores de IA", group: G.CADASTROS, scope: "workspace", roles: MEMBRO_E_GESTOR},
   PLUGIN_MANAGE: {key: "plugin.manage", label: "Instalar e remover plugins", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
   PORTAL_MANAGE: {key: "portal.manage", label: "Gerenciar contas do portal do cliente", group: G.CADASTROS, scope: "workspace", roles: SO_ADMIN},
+  CONTATO_EXPORT: {key: "contato.export", label: "Gerar e exportar a lista de e-mails dos responsáveis", group: G.CADASTROS, scope: "workspace", roles: GESTOR},
+  OUVIDORIA_READ: {key: "ouvidoria.read", label: "Ler a ouvidoria", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
+  DENUNCIA_READ: {key: "denuncia.read", label: "Ler as denúncias", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
+  CURRICULO_READ: {key: "curriculo.read", label: "Ver e gerenciar currículos", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
 } as const satisfies Record<string, ActionDef>;
 
 type Catalog = typeof ACTION_CATALOG;
