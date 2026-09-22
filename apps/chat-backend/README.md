@@ -67,12 +67,19 @@ refaz é o encerramento.
 
 ### Cadastro no encerramento
 
-`agent.close` aceita, além de `session_id`:
+O encerramento vai por `POST /workspaces/:slug/sessions/:id/close/` (a tela usa
+este, porque a recusa volta com o motivo em `detail`) ou por `agent.close` no
+socket (a recusa volta como `{ type: "error", action: "session.close" }`). Os dois
+passam por `closeWithEncerramento` e aceitam:
 
 ```jsonc
 {
   "type": "agent.close",
   "session_id": "uuid",
+  "entity_id": "uuid", // OBRIGATÓRIA (ou já conhecida pelo contato/sessão): sem ela, 422
+  "motivo": "Dúvida", // rótulo do catálogo BotConfig.closeReasons
+  "module_id": "uuid", // funcionalidade: módulo do sistema atendido
+  "note": "texto livre", // observação
   "project_id": "uuid", // sistema atendido (classificação)
   "contact": {
     "contact_id": "uuid", // contato já existente escolhido na busca
@@ -98,6 +105,28 @@ O `Contact` do chat (`chat_contacts`) **continua existindo**: ele é o históric
 conversa por telefone, não o cadastro do cliente. Ao encerrar, ele acompanha o
 nome, o e-mail e a entidade do contato gravado.
 
+## Ciclo de vida da conversa
+
+Detalhes, decisões e o mapa do legado em `.claude/chat-ciclo-de-vida.md`. Resumo:
+
+- **Um caminho de encerramento** (`src/ciclo-de-vida/encerrar.ts`): grava como a
+  conversa terminou (`end_kind`) e, quando o cliente foi embora, o tipo de abandono
+  do SAC (`abandon_type`, 1 a 5).
+- **Timers** (`src/timers.ts` chama `src/ciclo-de-vida/*`): inatividade no robô,
+  na fila e em atendimento (pergunta 1 continua / 99 encerra), pausa vencida em
+  3 dias e fim do dia do WhatsApp. Ligação (`channel = "phone"`) fica de fora.
+- **Webhook Z-API** (`src/webhook/zapi.ts`): token opcional por espaço
+  (`chat_provider_config.webhook_token`, no cabeçalho `Client-Token` ou em
+  `?token=`), descarte de mensagem com 2 dias ou mais, reação, figurinha, contato e
+  chamada perdida.
+- **Falha de envio**: a mensagem fica `status = "failed"` com `send_error`, o
+  atendente recebe `message.status` e reenvia por
+  `POST /workspaces/:slug/messages/:id/resend/`.
+- **Rotas** (`chat.atender`): `POST .../sessions/:id/close|pause|resume|chamado/`,
+  `GET .../close-reasons/`. **Relatórios** (`chat.gerenciar`):
+  `GET .../reports/atendimentos/` e `GET .../registros/` (filtros `from`, `to`,
+  `entity_id`, `project_id`, `motivo`, `attendant_id`).
+
 ## Quem atende, quem escolhe e quem lê a avaliação
 
 **O cliente não escolhe atendente.** O pré-chat do widget pergunta nome e sistema;
@@ -105,8 +134,9 @@ a conversa entra na fila e a distribuição por peso decide. Escolher deixava a
 conversa parada na caixa de quem estava ocupado (ou fora do horário) com o resto
 da equipe livre.
 
-**Quem aparece como atendente** sai de `papeis.ts`, e são três perguntas
-diferentes que antes usavam o mesmo número (`role >= 15`):
+**Quem aparece como atendente** sai de `src/permissoes.ts` (matriz de ações,
+`chat.atender` / `chat.gerenciar` / `chat.administrar`). Antes eram três perguntas
+diferentes que usavam o número do papel:
 
 | Pergunta        | Papel mínimo    | Onde vale                                                   |
 | --------------- | --------------- | ----------------------------------------------------------- |

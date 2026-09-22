@@ -98,6 +98,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
       PORT: 8001
       NODE_ENV: development
+      # Onde a API busca os arquivos da conversa ao abrir chamado a partir do chat.
+      CHAT_INTERNAL_URL: ${CHAT_INTERNAL_URL:-http://chat-backend:8002}
       CORS_ALLOWED_ORIGINS: http://localhost,http://localhost:80,http://localhost:3000
       JWT_SECRET: ${SECRET_KEY:-plane-jwt-secret}
       # IA de levantamento de requisitos ("texto fantasma"). Sem URL o recurso
