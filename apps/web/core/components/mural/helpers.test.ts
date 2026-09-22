@@ -7,6 +7,7 @@ import { describe, expect, it } from "bun:test";
 import {
   buildMuralQuery,
   buildRecadoPayload,
+  editorInicial,
   getAvisoAtual,
   getFieldErrors,
   isMuralEvent,
@@ -58,6 +59,33 @@ describe("toRecadoForm", () => {
 
   it("sem recado devolve o formulário vazio", () => {
     expect(toRecadoForm(null)).toEqual(MURAL_FORM_VAZIO);
+  });
+});
+
+describe("editorInicial", () => {
+  const recado = {
+    title: "T",
+    description_html: '<p class="editor-paragraph-block">Reunião na sexta.</p>',
+    is_pinned: false,
+    is_required: false,
+    expires_at: null,
+    attachment: null,
+  };
+
+  it("o editor abre com o texto do recado em edição", () => {
+    expect(editorInicial(toRecadoForm(recado))).toBe(recado.description_html);
+  });
+
+  it("recado novo abre com parágrafo em branco", () => {
+    expect(editorInicial(MURAL_FORM_VAZIO)).toBe("<p></p>");
+  });
+
+  // A regressão que isto cobre: o editor montava com o texto de uma abertura
+  // anterior enquanto o estado do formulário já estava vazio, e a API recusava
+  // "Escreva o recado." com o texto à vista.
+  it("o que o editor mostra é o que vai para a API", () => {
+    const form = toRecadoForm(recado);
+    expect(buildRecadoPayload(form).description_html).toBe(editorInicial(form));
   });
 });
 
