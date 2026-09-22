@@ -18,6 +18,7 @@ import { entityModule } from "@modules/entity";
 import { entityContactModule } from "@modules/entity-contact";
 import { emailConfigModule } from "@modules/email-config";
 import { freezeModule } from "@modules/freeze";
+import { memberAccountModule } from "@modules/member-account";
 // assetModule imported below (combined with v2)
 import { inviteModule } from "@modules/invite";
 import { analyticsModule } from "@modules/analytics";
@@ -205,6 +206,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(auditModule)
   .use(emailConfigModule)
   .use(freezeModule)
+  .use(memberAccountModule)
   .use(portalAdminModule)
   .use(portalRespostaModule)
   .use(rolesModule)

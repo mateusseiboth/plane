@@ -78,9 +78,13 @@ async function forgotPassword(body: any, headers: Record<string, string | undefi
 }
 
 /** Formulário de nova senha (POST de navegador): sempre responde com redirecionamento. */
-async function resetPassword(params: { uidb64: string; token: string }, body: any, set: any) {
+async function resetPassword(params: { uidb64: string; token: string }, body: any, set: any, headers: any) {
   const outcome = await applyPasswordReset(params.uidb64, params.token, body?.password);
-  if (outcome.ok) return authRedirect(set, "/?success=true");
+  if (outcome.ok) {
+    const user = await prisma.user.findUnique({ where: { id: outcome.userId }, select: { id: true, email: true } });
+    auditAuth(AUDIT_ACTIONS.PASSWORD_CHANGE, user?.email ?? "", headers, user, { por_email: true });
+    return authRedirect(set, "/?success=true");
+  }
   const back = new URLSearchParams({
     uidb64: params.uidb64,
     token: params.token,
@@ -90,14 +94,43 @@ async function resetPassword(params: { uidb64: string; token: string }, body: an
   return authRedirect(set, `/accounts/reset-password?${back.toString()}`);
 }
 
+const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,60}$/;
+
+type LoginLookup = { isValid: (identifier: string) => boolean; where: (identifier: string) => object };
+
+// Quem digita com @ entra pelo e-mail; sem @, pelo nome de usuário.
+const LOGIN_LOOKUPS: Record<"email" | "username", LoginLookup> = {
+  email: { isValid: validateEmail, where: (email) => ({ email }) },
+  username: {
+    isValid: (username) => USERNAME_RE.test(username),
+    where: (username) => ({ username: { equals: username, mode: "insensitive" } }),
+  },
+};
+
+function readLoginLookup(identifier: string): LoginLookup {
+  return LOGIN_LOOKUPS[identifier.includes("@") ? "email" : "username"];
+}
+
+function normalizeLogin(identifier: unknown): string {
+  const text = String(identifier ?? "").trim();
+  return text.includes("@") ? text.toLowerCase() : text;
+}
+
+/** Usuário pelo e-mail ou pelo nome de usuário; `null` quando o formato não serve. */
+async function findUserByLogin(identifier: string) {
+  const lookup = readLoginLookup(identifier);
+  if (!lookup.isValid(identifier)) return null;
+  return prisma.user.findFirst({ where: { ...lookup.where(identifier), deletedAt: null } });
+}
+
 // ── Shared email-check logic ───────────────────────────────────────────────────
 async function emailCheck(email: string, set: any) {
   if (!email) {
     set.status = 400;
     return { error_code: 4030, error_message: "EMAIL_REQUIRED" };
   }
-  const normalized = String(email).toLowerCase().trim();
-  if (!validateEmail(normalized)) {
+  const normalized = normalizeLogin(email);
+  if (!readLoginLookup(normalized).isValid(normalized)) {
     set.status = 400;
     return { error_code: 4031, error_message: "INVALID_EMAIL" };
   }
@@ -116,7 +149,7 @@ async function emailCheck(email: string, set: any) {
     return { error_code: 4036, error_message: "EMAIL_PASSWORD_DISABLED" };
   }
 
-  const existingUser = await prisma.user.findUnique({ where: { email: normalized } });
+  const existingUser = await findUserByLogin(normalized);
   if (existingUser) {
     return { existing: true, status: "CREDENTIAL" };
   }
@@ -221,12 +254,12 @@ async function signIn(b: any, set: any, json = false, headers?: any) {
       ? jsonError(400, "Informe e-mail e senha.")
       : authRedirect(set, `/?error_code=${AUTH_ERR.REQUIRED_SIGN_IN}`);
   }
-  const email = String(b.email).toLowerCase().trim();
+  const email = normalizeLogin(b.email);
   const fail = () =>
     json
       ? jsonError(403, "E-mail ou senha inválidos.")
       : authRedirect(set, `/?error_code=${AUTH_ERR.FAILED_SIGN_IN}&email=${encodeURIComponent(email)}`);
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await findUserByLogin(email);
   if (!user?.password || !user.isActive) {
     auditAuth(AUDIT_ACTIONS.LOGIN_FAILED, email, headers, user, {
       motivo: user ? "inativo ou sem senha" : "usuário inexistente",
@@ -351,9 +384,11 @@ export const sessionAuthModule = new Elysia()
   // ── Password management ──────────────────────────────────────────────────────
   .post("/auth/forgot-password/", async ({ body, headers, set }) => forgotPassword(body, headers, set))
   .post("/auth/spaces/forgot-password/", async ({ body, headers, set }) => forgotPassword(body, headers, set))
-  .post("/auth/reset-password/:uidb64/:token/", async ({ params, body, set }) => resetPassword(params, body, set))
-  .post("/auth/spaces/reset-password/:uidb64/:token/", async ({ params, body, set }) =>
-    resetPassword(params, body, set)
+  .post("/auth/reset-password/:uidb64/:token/", async ({ params, body, set, headers }) =>
+    resetPassword(params, body, set, headers)
+  )
+  .post("/auth/spaces/reset-password/:uidb64/:token/", async ({ params, body, set, headers }) =>
+    resetPassword(params, body, set, headers)
   )
   .post("/auth/set-password/", async ({ body, headers, set }) => {
     const resolved = await resolveTokenFromRequest(headers as any);

@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { authPlugin } from "@middleware/auth";
+import { authPlugin, type AuthUser } from "@middleware/auth";
 import prisma from "@db";
 import {
   ENTITY_INCLUDE,
@@ -8,6 +8,7 @@ import {
   readEntityData,
   requireValidEntityData,
 } from "@modules/entity/service";
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit } from "@utils/audit";
 import { createFieldError } from "@utils/field-error";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
@@ -20,6 +21,43 @@ function buildListWhere(workspaceId: string, query: Record<string, string | unde
   if (query.is_active !== undefined) where.isActive = query.is_active === "true";
   if (query.is_frozen !== undefined) where.frozenAt = query.is_frozen === "true" ? { not: null } : null;
   return where;
+}
+
+// Campos que a trilha registra com o valor. Dado de órgão público, não pessoal.
+const AUDITED_FIELDS = [
+  "name",
+  "entityType",
+  "cnpj",
+  "stateRegistration",
+  "street",
+  "addressNumber",
+  "complement",
+  "district",
+  "zipCode",
+  "city",
+  "state",
+  "email",
+  "phone",
+  "fax",
+  "website",
+  "representativeId",
+  "relatedEntityId",
+  "usesThirdPartyCnpj",
+  "isActive",
+];
+
+type AuditContext = { workspaceId: string; user: AuthUser; headers: Record<string, string | undefined> };
+
+function recordEntityAudit(ctx: AuditContext, entityId: string, action: string, changes?: Record<string, unknown>) {
+  recordAudit({
+    workspaceId: ctx.workspaceId,
+    entity: AUDIT_ENTITIES.ENTITY,
+    entityId,
+    action,
+    actor: ctx.user,
+    headers: ctx.headers,
+    changes,
+  });
 }
 
 async function findDuplicate(workspaceId: string, name: string) {
@@ -44,7 +82,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
     });
   })
 
-  .post("/entities/", async ({ params: { slug }, body, user, set }) => {
+  .post("/entities/", async ({ params: { slug }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     const data = readEntityData((body as any) ?? {});
@@ -62,6 +100,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
         data: { ...(data as any), workspaceId: ws.id, createdById: user.id },
         include: ENTITY_INCLUDE,
       });
+      recordEntityAudit({ workspaceId: ws.id, user, headers }, entity.id, AUDIT_ACTIONS.CREATE);
       set.status = 201;
       return entityDto(entity);
     } catch (e: any) {
@@ -80,7 +119,7 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
     return findEntityDto(ws.id, entity_id);
   })
 
-  .patch("/entities/:entity_id/", async ({ params: { slug, entity_id }, body, user }) => {
+  .patch("/entities/:entity_id/", async ({ params: { slug, entity_id }, body, user, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
     const current = await prisma.entity.findFirst({ where: { id: entity_id, workspaceId: ws.id, deletedAt: null } });
@@ -88,15 +127,30 @@ export const entityModule = new Elysia({ prefix: "/workspaces/:slug" })
     const data = readEntityData((body as any) ?? {});
     if (data.name === null) throw createFieldError("name", NAME_REQUIRED);
     await requireValidEntityData(ws.id, data, current);
-    return entityDto(
-      await prisma.entity.update({ where: { id: entity_id }, data: data as any, include: ENTITY_INCLUDE })
+    const updated = await prisma.entity.update({
+      where: { id: entity_id },
+      data: data as any,
+      include: ENTITY_INCLUDE,
+    });
+    recordEntityAudit(
+      { workspaceId: ws.id, user, headers },
+      entity_id,
+      AUDIT_ACTIONS.UPDATE,
+      auditDiff(current, updated, AUDITED_FIELDS)
     );
+    return entityDto(updated);
   })
 
-  .delete("/entities/:entity_id/", async ({ params: { slug, entity_id }, user, set }) => {
+  .delete("/entities/:entity_id/", async ({ params: { slug, entity_id }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.ENTITY_MANAGE);
-    await prisma.entity.update({ where: { id: entity_id }, data: { deletedAt: new Date() } });
+    // Filtra pelo espaço: sem isso, o id de uma entidade de outro espaço também era apagado.
+    const removed = await prisma.entity.updateMany({
+      where: { id: entity_id, workspaceId: ws.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (removed.count === 0) throw { status: 404, message: "Entidade não encontrada." };
+    recordEntityAudit({ workspaceId: ws.id, user, headers }, entity_id, AUDIT_ACTIONS.DELETE);
     set.status = 204;
     return null;
   });
