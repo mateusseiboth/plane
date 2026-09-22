@@ -15,9 +15,10 @@ import { useMember } from "@/hooks/store/use-member";
 // services
 import { chatApi } from "@/services/chat.service";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
+import { ConfigDeTelefonia } from "@/components/chat/ligacoes/config-de-telefonia";
 import { Search } from "lucide-react";
 
-type Tab = "messages" | "menu" | "queues" | "flows" | "schedules" | "attendants" | "provider";
+type Tab = "messages" | "menu" | "queues" | "flows" | "schedules" | "attendants" | "provider" | "telefonia";
 const BASE_TABS: { key: Tab; label: string }[] = [
   { key: "messages", label: "Mensagens" },
   { key: "menu", label: "Menu" },
@@ -37,7 +38,14 @@ const btnGhost = "rounded-md border border-subtle px-3 py-1.5 text-13";
 export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl, isAdmin = false }: { slug: string; apiUrl: string; isAdmin?: boolean }) {
   const [tab, setTab] = useState<Tab>("messages");
   const api = chatApi(apiUrl);
-  const TABS = isAdmin ? [...BASE_TABS.slice(0, 5), { key: "attendants" as Tab, label: "Atendentes" }, BASE_TABS[5]] : BASE_TABS;
+  const TABS = isAdmin
+    ? [
+        ...BASE_TABS.slice(0, 5),
+        { key: "attendants" as Tab, label: "Atendentes" },
+        BASE_TABS[5],
+        { key: "telefonia" as Tab, label: "Telefonia" },
+      ]
+    : BASE_TABS;
 
   // workspace members for queue/schedule assignment
   const {
@@ -69,6 +77,7 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl,
         {tab === "schedules" && <SchedulesTab slug={slug} api={api} />}
         {tab === "attendants" && <AttendantsTab slug={slug} api={api} members={members} />}
         {tab === "provider" && <ProviderTab slug={slug} api={api} />}
+        {tab === "telefonia" && <ConfigDeTelefonia slug={slug} apiUrl={apiUrl} />}
       </div>
     </div>
   );

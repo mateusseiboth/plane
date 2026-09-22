@@ -4,6 +4,7 @@
 //    how many breached the 10-minute first-response target.
 
 import prisma from "@db";
+import { WITHOUT_PHONE } from "@/canais";
 import { attendantName } from "@/users";
 
 const SLA_FIRST_RESPONSE_MS = 10 * 60 * 1000;
@@ -71,7 +72,8 @@ export async function ratingsReport(slug: string) {
 export async function slaReport(slug: string, days = 30) {
   const since = new Date(Date.now() - days * 86_400_000);
   const sessions = await prisma.chatSession.findMany({
-    where: { workspaceId: slug, createdAt: { gte: since }, assignedAttendantId: { not: null } },
+    // Ligação não tem primeira resposta escrita: fica fora do SLA.
+    where: { workspaceId: slug, createdAt: { gte: since }, assignedAttendantId: { not: null }, ...WITHOUT_PHONE },
     select: { id: true, assignedAttendantId: true, createdAt: true, closedAt: true, status: true },
   });
 

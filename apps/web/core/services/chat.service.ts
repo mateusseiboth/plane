@@ -146,21 +146,34 @@ export class ChatService extends APIService {
 
 // ── Direct chat-backend helpers (use the configured api_url) ──────────────────
 
-export function chatApi(apiUrl: string) {
+/** Chamada ao chat-backend com o cookie do Plane; erro vem como o JSON da resposta. */
+export function chatRequest(apiUrl: string) {
   const base = apiUrl.replace(/\/$/, "");
-  const req = async (path: string, init?: RequestInit) => {
+  return async (path: string, init?: RequestInit) => {
     const res = await fetch(base + path, { credentials: "include", ...init });
     if (!res.ok) throw await res.json().catch(() => ({ detail: res.statusText }));
     return res.json();
   };
+}
+
+export function chatApi(apiUrl: string) {
+  const base = apiUrl.replace(/\/$/, "");
+  const req = chatRequest(apiUrl);
   return {
     base,
-    listSessions: (slug: string, status?: string, busca?: string): Promise<{ results: ChatSession[] }> => {
+    listSessions: (
+      slug: string,
+      status?: string,
+      busca?: string,
+      canal?: string
+    ): Promise<{ results: ChatSession[] }> => {
       // `q` vai ao servidor porque a aba de encerrados passou a trazer só o dia
       // corrente: sem isso, procurar um protocolo de ontem não acharia nada.
       const params = new URLSearchParams();
       if (status) params.set("status", status);
       if (busca?.trim()) params.set("q", busca.trim());
+      // `phone` (ligações) ou `whatsapp,native` (conversas).
+      if (canal) params.set("channel", canal);
       const query = params.toString();
       return req(`/workspaces/${slug}/sessions/${query ? `?${query}` : ""}`);
     },

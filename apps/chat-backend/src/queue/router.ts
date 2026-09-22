@@ -12,6 +12,7 @@ import { persistAndBroadcast, sendToSession, sendToUser, sendToWorkspace } from 
 import { connectedUserIds } from "@/ws/hub";
 import { attendantName } from "@/users";
 import { CHAT_AUDIT_ACTIONS, recordChatAudit } from "@/audit";
+import { isPhoneSession } from "@/canais";
 
 /**
  * Assign a session to a specific attendant and announce it everywhere: the client
@@ -38,6 +39,9 @@ export async function assignSessionToAttendant(sessionId: string, userId: string
 
   if (!jaEraMinha) {
     await persistAndBroadcast({ sessionId, sender: "system", type: "event", text: `${name} iniciou o atendimento.` });
+  }
+  // Ligação não tem cliente do outro lado para receber o aviso.
+  if (!jaEraMinha && !isPhoneSession(session)) {
     // O evento acima é interno: quem está no WhatsApp não recebe nada e fica sem
     // saber se tem alguém do outro lado. Esta é a mensagem que chega ao cliente.
     const cfg = await prisma.botConfig.findUnique({ where: { workspaceId: session.workspaceId } });
@@ -93,7 +97,8 @@ function roulettePick(weighted: { userId: string; weight: number }[]): string | 
  */
 export async function routeQueuedSession(sessionId: string): Promise<string | null> {
   const session = await prisma.chatSession.findUnique({ where: { id: sessionId } });
-  if (!session || session.status !== "queued") return null;
+  // Ligação espera alguém assumir: a fila automática não a distribui.
+  if (!session || session.status !== "queued" || isPhoneSession(session)) return null;
 
   // Outside company business hours → don't route.
   if (!(await isWithinBusinessHours(session.workspaceId))) return null;
