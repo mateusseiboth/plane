@@ -5,7 +5,8 @@ import entityService, { type TEntity, entityTypeLabel } from "@/services/entity.
 
 type Props = {
   value: string | null | undefined;
-  onChange: (entityId: string | null) => void;
+  /** A entidade escolhida vem junto: quem precisa da cidade dela não busca de novo. */
+  onChange: (entityId: string | null, entity?: TEntity) => void;
   workspaceSlug: string;
   buttonVariant?: "border-with-text" | "transparent-without-text";
   placeholder?: string;
@@ -139,7 +140,7 @@ export function EntityDropdown({
                 <button
                   key={entity.id}
                   type="button"
-                  onClick={() => { onChange(entity.id); setOpen(false); setSearch(""); }}
+                  onClick={() => { onChange(entity.id, entity); setOpen(false); setSearch(""); }}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-1.5 text-left text-caption-sm-regular hover:bg-layer-1",
                     entity.id === value && "bg-layer-2 font-medium"

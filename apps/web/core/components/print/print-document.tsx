@@ -18,6 +18,12 @@ type Props = {
   meta?: TPrintMetaItem[];
   children: React.ReactNode;
   className?: string;
+  /**
+   * Fica montado mas não vai para a impressora. Para páginas com mais de um
+   * documento (relatório e lista de presença da visita): trocar qual está montado
+   * na hora do clique disputaria com o diálogo de impressão.
+   */
+  skip?: boolean;
 };
 
 /**
@@ -28,7 +34,7 @@ type Props = {
  * Use junto com `usePrint().print()` no modo padrão (`document`).
  */
 export const PrintDocument = function PrintDocument(props: Props) {
-  const { title, subtitle, meta, children, className } = props;
+  const { title, subtitle, meta, children, className, skip = false } = props;
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => setIsMounted(true), []);
@@ -36,7 +42,10 @@ export const PrintDocument = function PrintDocument(props: Props) {
   if (!isMounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className={cn("print-document-root bg-white p-0 font-sans text-xs text-neutral-900", className)}>
+    <div
+      className={cn("print-document-root bg-white p-0 font-sans text-xs text-neutral-900", className)}
+      data-print-skip={skip || undefined}
+    >
       <PrintHeader title={title} subtitle={subtitle} meta={meta} />
       <main>{children}</main>
       <PrintFooter />
