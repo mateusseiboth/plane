@@ -14,7 +14,7 @@ import { EmptyStateCompact } from "@plane/propel/empty-state";
 import { Loader, Card } from "@plane/ui";
 import { calculateTimeAgo, getFileURL } from "@plane/utils";
 // components
-import { ActivityMessage, IssueLink } from "@/components/core/activity";
+import { ActivityMessage, IssueLink, hasActivityMessage } from "@/components/core/activity";
 // constants
 import { USER_PROFILE_ACTIVITY } from "@/constants/fetch-keys";
 // helpers
@@ -41,14 +41,18 @@ export const ProfileActivity = observer(function ProfileActivity() {
       : null
   );
 
+  // Atividade sem frase sairia como uma linha só com o avatar (ver
+  // `hasActivityMessage`): é melhor não listar do que listar em branco.
+  const atividades = (userProfileActivity?.results ?? []).filter(hasActivityMessage);
+
   return (
     <div className="space-y-2">
       <h3 className="text-16 font-medium">{t("profile.stats.recent_activity.title")}</h3>
       <Card>
         {userProfileActivity ? (
-          userProfileActivity.results.length > 0 ? (
+          atividades.length > 0 ? (
             <div className="space-y-5">
-              {userProfileActivity.results.map((activity) => (
+              {atividades.map((activity) => (
                 <div key={activity.id} className="flex gap-3">
                   <Avatar
                     name={activity.actor_detail?.display_name}
@@ -60,14 +64,14 @@ export const ProfileActivity = observer(function ProfileActivity() {
                     <p className="inline text-13 text-secondary">
                       <span className="font-medium text-primary">
                         {currentUser?.id === activity.actor_detail?.id
-                          ? "You"
+                          ? t("common.you")
                           : activity.actor_detail?.display_name}{" "}
                       </span>
                       {activity.field ? (
                         <ActivityMessage activity={activity} showIssue />
                       ) : (
                         <span>
-                          created <IssueLink activity={activity} />
+                          {t("activity.created_work_item")} <IssueLink activity={activity} />
                         </span>
                       )}
                     </p>

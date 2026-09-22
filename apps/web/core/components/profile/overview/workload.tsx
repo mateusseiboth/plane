@@ -34,13 +34,9 @@ export function ProfileWorkload({ stateDistribution }: Props) {
                   }}
                 />
                 <div className="flex-col space-y-1">
-                  <span className="text-13 text-placeholder">
-                    {group.state_group === "unstarted"
-                      ? "Not started"
-                      : group.state_group === "started"
-                        ? "Working on"
-                        : STATE_GROUPS[group.state_group].label}
-                  </span>
+                  {/* O rótulo de STATE_GROUPS já está em português; os dois
+                      casos escritos à mão devolviam a tela para o inglês. */}
+                  <span className="text-13 text-placeholder">{STATE_GROUPS[group.state_group].label}</span>
                   <p className="text-18 font-semibold">{group.state_count}</p>
                 </div>
               </Card>

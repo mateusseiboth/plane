@@ -50,7 +50,8 @@
       "urgent": "Urgent",
       "high": "High",
       "medium": "Medium",
-      "low": "Low"
+      "low": "Low",
+      "none": "None"
     },
     "display": {
       "properties": {

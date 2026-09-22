@@ -13,6 +13,7 @@ import {whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {findChamados, findPaginasDaPessoa, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
 import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
+import {ATIVIDADE_INCLUDE, serializeTrilha, withoutMarcadorInterno} from "@utils/trilha";
 import {dataLocal} from "@utils/prazo";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import {randomBytes, randomUUID} from "crypto";
@@ -2113,13 +2114,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/user-activity/:user_id/", async ({params: {slug, user_id}, user, query}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const where = {workspaceId: ws.id, actorId: user_id};
-    return paginate({
-      query: (skip, take) => prisma.issueActivity.findMany({where, skip, take, orderBy: {createdAt: "desc"}}),
+    const where = {workspaceId: ws.id, actorId: user_id, deletedAt: null, ...withoutMarcadorInterno};
+    const perPage = query.per_page ? Number(query.per_page) : 10;
+    const pagina = await paginate({
+      query: (skip, take) =>
+        prisma.issueActivity.findMany({where, skip, take, orderBy: {createdAt: "desc"}, include: ATIVIDADE_INCLUDE}),
       count: () => prisma.issueActivity.count({where}),
       cursor: query.cursor as string | undefined,
-      perPage: query.per_page ? Number(query.per_page) : 10,
+      perPage,
+      transform: (linhas) => serializeTrilha(linhas, {id: ws.id, name: ws.name, slug: ws.slug}),
     });
+    // A aba Atividade pagina por `total_pages`/`count` (IUserActivityResponse);
+    // sem eles o botão "Carregar mais" nunca aparecia.
+    return {
+      ...pagina,
+      count: pagina.results.length,
+      total_pages: Math.ceil(pagina.total_count / Math.max(1, perPage)),
+      extra_stats: null,
+    };
   })
 
   // ── User issues (for profile/my-issues board view) ────────────────────────────

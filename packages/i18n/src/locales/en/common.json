@@ -8,7 +8,9 @@
     "removed_start_date": "removed the start date",
     "set_name_to": "set the name to",
     "for": "for",
-    "from": "from"
+    "from": "from",
+    "created_work_item": "created",
+    "commented": "commented"
   },
   "draft": {
     "save_title": "Save this draft?",
