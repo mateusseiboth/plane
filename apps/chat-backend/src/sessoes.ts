@@ -6,6 +6,8 @@
  * escolher explicitamente — e para caber em teste sem subir o servidor.
  */
 
+import { isAbandonado, rotuloDoAbandono } from "@/ciclo-de-vida/abandono";
+
 /** Nada aqui lê o banco: a entrada é o registro do Prisma já carregado. */
 export function serializeSession(s: any) {
   return {
@@ -34,6 +36,20 @@ export function serializeSession(s: any) {
     rating_state: s.ratingState ?? null,
     created_at: s.createdAt,
     closed_at: s.closedAt ?? null,
+    // Ciclo de vida (src/ciclo-de-vida/): classificação do encerramento, abandono,
+    // pausa e o chamado aberto a partir da conversa.
+    entity_id: s.entityId ?? null,
+    close_reason: s.closeReason ?? null,
+    close_module_id: s.closeModuleId ?? null,
+    close_module_name: s.closeModuleName ?? null,
+    close_note: s.closeNote ?? null,
+    end_kind: s.endKind ?? null,
+    abandon_type: s.abandonType ?? null,
+    abandon_label: isAbandonado(s) ? rotuloDoAbandono(s.abandonType) : null,
+    paused_at: s.pausedAt ?? null,
+    issue_id: s.issueId ?? null,
+    issue_project_id: s.issueProjectId ?? null,
+    issue_label: s.issueLabel ?? null,
   };
 }
 

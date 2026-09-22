@@ -11,6 +11,28 @@ import { Elysia } from "elysia";
 import prisma from "@db";
 import { resolveAttendant } from "@/auth";
 import { CHAT_ACTION, hasChatAction } from "@/permissoes";
+import { CHAT_AUDIT_ACTIONS, CHAT_AUDIT_ENTITIES, recordChatAudit } from "@/audit";
+import { parseCatalogoDeMotivos } from "@/ciclo-de-vida/encerramento-regras";
+
+const HORARIO = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Campos do ciclo de vida que chegam por PATCH da config do robô, já tratados. */
+const CAMPOS_DO_CICLO_DE_VIDA: Record<string, (valor: unknown) => unknown> = {
+  closeReasons: parseCatalogoDeMotivos,
+  activeIdlePromptMessage: (v) => String(v ?? "").trim() || undefined,
+  endOfDayEnabled: (v) => Boolean(v),
+  endOfDayTime: (v) => (typeof v === "string" && v.trim() ? v.trim() : null),
+  endOfDayMessage: (v) => String(v ?? "").trim() || undefined,
+};
+
+function readCicloDeVida(body: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(CAMPOS_DO_CICLO_DE_VIDA)
+      .filter(([campo]) => body[campo] !== undefined)
+      .map(([campo, tratar]) => [campo, tratar(body[campo])])
+      .filter(([, valor]) => valor !== undefined)
+  );
+}
 
 async function requireUser(headers: any, set: any) {
   const user = await resolveAttendant(headers);
@@ -45,7 +67,8 @@ export const configModule = new Elysia()
     );
   })
   .patch("/workspaces/:slug/config/bot/", async ({ params: { slug }, body, headers, set }: any) => {
-    await requireUser(headers, set);
+    // Administrar: além das mensagens, aqui se liga o encerramento automático do fim do dia.
+    await requireAdmin(slug, headers, set);
     const b = body ?? {};
     const data: any = {};
     for (const k of [
@@ -64,6 +87,11 @@ export const configModule = new Elysia()
       "routingBeta",
     ])
       if (b[k] !== undefined) data[k] = b[k];
+    Object.assign(data, readCicloDeVida(b));
+    if (data.endOfDayTime && !HORARIO.test(data.endOfDayTime)) {
+      set.status = 422;
+      return { detail: "Informe o horário do fim do dia no formato HH:MM." };
+    }
     return prisma.botConfig.upsert({ where: { workspaceId: slug }, create: { workspaceId: slug, ...data }, update: data });
   })
 
@@ -200,8 +228,18 @@ export const configModule = new Elysia()
     }
   })
   .patch("/workspaces/:slug/config/attendants/:userId/visibility/", async ({ params: { slug, userId }, body, headers, set }: any) => {
-    await requireAdmin(slug, headers, set);
+    const admin = await requireAdmin(slug, headers, set);
     const isInvisible = Boolean((body as any)?.is_invisible);
+    // Esconder um atendente muda quem recebe conversa: fica na trilha quem fez.
+    recordChatAudit({
+      workspaceSlug: slug,
+      sessionId: userId,
+      entity: CHAT_AUDIT_ENTITIES.ATTENDANT,
+      action: CHAT_AUDIT_ACTIONS.UPDATE,
+      userId: admin.id,
+      headers,
+      metadata: { is_invisible: isInvisible },
+    });
     try {
       const saved = await (prisma as any).attendantStatus.upsert({
         where: { workspaceId_userId: { workspaceId: slug, userId } },
@@ -247,7 +285,7 @@ export const configModule = new Elysia()
     await requireUser(headers, set);
     const cfg = await prisma.providerConfig.findUnique({ where: { workspaceId: slug } });
     if (!cfg) return { provider: "zapi", is_active: false };
-    return { provider: cfg.provider, instance_id: cfg.instanceId, base_url: cfg.baseUrl, client_token: Boolean(cfg.clientToken), has_token: Boolean(cfg.token), is_active: cfg.isActive };
+    return { provider: cfg.provider, instance_id: cfg.instanceId, base_url: cfg.baseUrl, client_token: Boolean(cfg.clientToken), has_token: Boolean(cfg.token), has_webhook_token: Boolean(cfg.webhookToken), is_active: cfg.isActive };
   })
   .patch("/workspaces/:slug/config/provider/", async ({ params: { slug }, body, headers, set }: any) => {
     await requireUser(headers, set);
@@ -258,6 +296,8 @@ export const configModule = new Elysia()
     if (b.is_active !== undefined) data.isActive = b.is_active;
     if (b.token) data.token = b.token;
     if (b.client_token) data.clientToken = b.client_token;
+    // Vazio desliga a exigência do token no webhook (ver src/webhook/regras.ts).
+    if (b.webhook_token !== undefined) data.webhookToken = String(b.webhook_token ?? "").trim() || null;
     const saved = await prisma.providerConfig.upsert({ where: { workspaceId: slug }, create: { workspaceId: slug, ...data }, update: data });
     return { ok: true, is_active: saved.isActive };
   });

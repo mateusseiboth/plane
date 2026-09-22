@@ -79,6 +79,28 @@ model ChatSession {
   // Origem no chat antigo (SAC): `chat.chat_id`. Só é preenchido pela migração
   // scripts/migrate-sac-chat.ts e é o que a torna idempotente.
   legacyId           Int?          @unique @map("legacy_id")
+  // ── Ciclo de vida (0013_ciclo_de_vida.sql) ──
+  // Entidade (o cliente) do atendimento. Obrigatória para o atendente encerrar.
+  // Sem FK: `entities` é da API principal (ver src/responsaveis.ts).
+  entityId           String?       @map("entity_id") @db.Uuid
+  // Classificação do encerramento: tipo do motivo (rótulo do catálogo em
+  // BotConfig.closeReasons, gravado como texto para o histórico não mudar
+  // quando o catálogo mudar), funcionalidade (módulo do sistema) e observação.
+  closeReason        String?       @map("close_reason")
+  closeModuleId      String?       @map("close_module_id") @db.Uuid
+  closeModuleName    String?       @map("close_module_name")
+  closeNote          String?       @map("close_note")
+  // Como terminou: atendente | cliente | inatividade | fim_do_dia | robo | abandono
+  // (abandono = histórico do SAC sem o tipo gravado).
+  endKind            String?       @map("end_kind")
+  // Tipo de abandono 1..5 do SAC (ver src/ciclo-de-vida/abandono.ts). Nulo = finalizado.
+  abandonType        Int?          @map("abandon_type") @db.SmallInt
+  // Chat do site em pausa: o cliente pode voltar em até 3 dias.
+  pausedAt           DateTime?     @map("paused_at")
+  // Chamado aberto a partir desta conversa (issues.external_id = id da sessão).
+  issueId            String?       @map("issue_id") @db.Uuid
+  issueProjectId     String?       @map("issue_project_id") @db.Uuid
+  issueLabel         String?       @map("issue_label")
   messages           ChatMessage[]
   readStates         ChatReadState[]
   ligacao            ChatLigacao?
@@ -89,6 +111,9 @@ model ChatSession {
   @@index([clientBrowserId])
   @@index([clientPhone])
   @@index([entityContactId])
+  @@index([workspaceId, closedAt])
+  @@index([entityId])
+  @@index([issueId])
   @@map("chat_sessions")
 }
 
@@ -110,7 +135,9 @@ model ChatMessage {
   editHistory  Json        @default("[]") @map("edit_history")
   deletedAt    DateTime?   @map("deleted_at")
   externalId   String?     @map("external_id") // provider message id (dedup)
-  status       String      @default("sent") // sent | delivered | read
+  status       String      @default("sent") // sent | delivered | read | failed
+  // Motivo da falha de envio ao WhatsApp (status = failed). O atendente reenvia.
+  sendError    String?     @map("send_error")
   createdAt    DateTime    @default(now()) @map("created_at")
   // Origem no chat antigo (SAC): `chat_mensagens.chat_mensagens_id`.
   legacyId     Int?        @unique @map("legacy_id")
@@ -210,6 +237,14 @@ model BotConfig {
   //   businessHours: [{ weekday: 0-6, start: "HH:MM", end: "HH:MM" }]
   businessHours        Json     @default("[]") @map("business_hours")
   businessBreaks       Json     @default("[]") @map("business_breaks")
+  // Catálogo do tipo de motivo do encerramento: [{ key, label }].
+  closeReasons         Json     @default("[{\"key\":\"acesso\",\"label\":\"Acesso\"},{\"key\":\"duvida\",\"label\":\"Dúvida\"},{\"key\":\"correcao\",\"label\":\"Correção\"},{\"key\":\"melhoria\",\"label\":\"Melhoria\"},{\"key\":\"senha\",\"label\":\"Senha\"}]") @map("close_reasons")
+  // Pergunta ao cliente que ficou 10 min sem responder o atendente.
+  activeIdlePromptMessage String @default("Você não responde há mais de 10 minutos. Digite *1* para continuar o atendimento ou *99* para encerrar.") @map("active_idle_prompt_message")
+  // Fim do dia: encerra as conversas de WhatsApp abertas no horário informado.
+  endOfDayEnabled      Boolean  @default(false) @map("end_of_day_enabled")
+  endOfDayTime         String?  @map("end_of_day_time") // "HH:MM"; vazio = fim do expediente do dia
+  endOfDayMessage      String   @default("Agradecemos seu contato. O atendimento foi encerrado e estamos à disposição sempre que precisar.") @map("end_of_day_message")
   routingAlpha         Float    @default(1) @map("routing_alpha") // weight of active chats
   routingBeta          Float    @default(0.5) @map("routing_beta") // weight of today's count
   updatedAt            DateTime @updatedAt @map("updated_at")
@@ -254,6 +289,9 @@ model ProviderConfig {
   instanceId   String?  @map("instance_id")
   token        String?
   clientToken  String?  @map("client_token")
+  // Token que a Z-API manda no webhook (cabeçalho Client-Token ou ?token=).
+  // Só é exigido quando configurado.
+  webhookToken String?  @map("webhook_token")
   baseUrl      String?  @map("base_url")
   isActive     Boolean  @default(false) @map("is_active")
   updatedAt    DateTime @updatedAt @map("updated_at")

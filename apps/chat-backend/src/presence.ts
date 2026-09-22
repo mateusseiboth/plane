@@ -21,7 +21,7 @@ const fusoPorWorkspace = new Map<string, string>();
  * O valor muda de ano em ano, na prática nunca — guardar em memória evita uma
  * ida ao banco em cada mensagem que o robô processa.
  */
-async function fusoDoWorkspace(workspaceId: string): Promise<string> {
+export async function readFusoDoWorkspace(workspaceId: string): Promise<string> {
   const emCache = fusoPorWorkspace.get(workspaceId);
   if (emCache) return emCache;
   let fuso = FUSO_PADRAO;
@@ -68,7 +68,7 @@ function agoraNoFuso(fuso: string): {weekday: number; minutes: number} {
  * virar às 21h locais, no meio do expediente de quem trabalha até mais tarde.
  */
 export async function inicioDoDiaNoFuso(workspaceId: string): Promise<Date> {
-  const fuso = await fusoDoWorkspace(workspaceId);
+  const fuso = await readFusoDoWorkspace(workspaceId);
   const agora = new Date();
   // Diferença entre o relógio do servidor e o do fuso, no instante de agora.
   const deslocamento =
@@ -90,7 +90,7 @@ export async function isWithinBusinessHours(workspaceId: string): Promise<boolea
   const hours = ((cfg?.businessHours as Window[]) ?? []).filter(Boolean);
   // Not configured → always open.
   if (hours.length === 0) return true;
-  const {weekday, minutes} = agoraNoFuso(await fusoDoWorkspace(workspaceId));
+  const {weekday, minutes} = agoraNoFuso(await readFusoDoWorkspace(workspaceId));
   const todays = hours.filter((h) => Number(h.weekday) === weekday);
   if (todays.length === 0) return false;
   const open = todays.some((h) => minutes >= toMinutes(h.start_time) && minutes < toMinutes(h.end_time));

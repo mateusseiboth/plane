@@ -285,7 +285,7 @@ export type AnexoDoPortal = {
 };
 
 /** Entidade 2 = chamado, a mesma que o upload da equipe usa (ver modules/asset). */
-const ENTIDADE_CHAMADO = 2;
+export const ENTIDADE_CHAMADO = 2;
 const ORIGEM = "portal";
 
 /** O registro de `issue_attachments` no formato que o portal mostra. */
