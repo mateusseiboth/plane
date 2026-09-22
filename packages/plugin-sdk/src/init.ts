@@ -45,7 +45,7 @@ declare global {
 }
 
 export function initializeSDK(options: SDKInitOptions): PluginSDKInstance {
-  configureHttp(options.baseUrl, options.pluginId);
+  configureHttp(options.baseUrl, options.pluginId, options.workspaceSlug);
   configureStorage(options.pluginId);
   configureNavigation(options.pluginId);
 

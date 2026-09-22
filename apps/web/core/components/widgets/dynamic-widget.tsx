@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, type ComponentType } from "react";
+import { useParams } from "next/navigation";
 import { initializeSDK } from "@mateusseiboth/widgets-aviao";
 import { widgetRegistry } from "@/services/widget-registry.service";
 
@@ -19,10 +20,13 @@ type State =
 export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = {} }) => {
   const [state, setState] = useState<State>({ phase: "loading" });
   const loadedId = useRef<string | null>(null);
+  // O SDK manda o workspace aberto em toda chamada: o gateway exige workspace_slug.
+  const workspaceSlug = useParams().workspaceSlug?.toString();
 
   useEffect(() => {
-    if (loadedId.current === widgetId) return;
-    loadedId.current = widgetId;
+    const key = `${widgetId}:${workspaceSlug ?? ""}`;
+    if (loadedId.current === key) return;
+    loadedId.current = key;
 
     let cancelled = false;
 
@@ -38,6 +42,7 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = 
         initializeSDK({
           baseUrl: window.location.origin,
           widgetId,
+          workspaceSlug,
         });
 
         const url = widgetRegistry.resolveAssetUrl(widget);
@@ -57,7 +62,7 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = 
     return () => {
       cancelled = true;
     };
-  }, [widgetId]);
+  }, [widgetId, workspaceSlug]);
 
   if (state.phase === "loading") return <WidgetSkeleton />;
   if (state.phase === "error") return <WidgetErrorFallback message={state.message} widgetId={widgetId} />;

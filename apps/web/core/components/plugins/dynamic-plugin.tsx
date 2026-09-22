@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, type ComponentType } from "react";
+import { useParams } from "next/navigation";
 import { initializeSDK } from "@mateusseiboth/plugins-aviao";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
 import { PluginUiBridge } from "@/components/plugins/plugin-ui-bridge";
@@ -26,6 +27,8 @@ type State =
 export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, props = {} }) => {
   const [state, setState] = useState<State>({ phase: "loading" });
   const loadedKey = useRef<string | null>(null);
+  // O SDK manda o workspace aberto em toda chamada: o gateway exige workspace_slug.
+  const workspaceSlug = useParams().workspaceSlug?.toString();
 
   // Bridge plugin SDK notifications to the host toast system.
   useEffect(() => {
@@ -45,7 +48,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
   }, []);
 
   useEffect(() => {
-    const key = `${pluginId}:${page ?? ""}`;
+    const key = `${pluginId}:${page ?? ""}:${workspaceSlug ?? ""}`;
     if (loadedKey.current === key) return;
     loadedKey.current = key;
 
@@ -66,7 +69,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
         const title = target?.title || plugin.name;
 
         // Initialize the SDK before executing the bundle so window.PluginSDK is ready.
-        initializeSDK({ baseUrl: window.location.origin, pluginId });
+        initializeSDK({ baseUrl: window.location.origin, pluginId, workspaceSlug });
 
         const url = pluginRegistry.resolveAssetUrl(plugin);
         // Carrega o bundle compartilhando o React do host (hooks funcionam).
@@ -93,7 +96,7 @@ export const DynamicPlugin: React.FC<DynamicPluginProps> = ({ pluginId, page, pr
     return () => {
       cancelled = true;
     };
-  }, [pluginId, page]);
+  }, [pluginId, page, workspaceSlug]);
 
   if (state.phase === "loading") return <PluginSkeleton />;
   if (state.phase === "error") return <PluginErrorFallback message={state.message} pluginId={pluginId} />;
