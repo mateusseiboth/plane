@@ -14,6 +14,7 @@ import { useProject } from "@/hooks/store/use-project";
 import { RelatoriosDeAtendimento } from "@/components/chat/relatorios-de-atendimento";
 import { chatApi, type RatingsReport, type SlaReport } from "@/services/chat.service";
 import { RelatorioDeLigacoes } from "@/components/chat/ligacoes/relatorio-de-ligacoes";
+import { MonitorAoVivo } from "@/components/chat/atendente/monitor-ao-vivo";
 
 type Stats = Awaited<ReturnType<ReturnType<typeof chatApi>["dashboard"]>>;
 
@@ -88,6 +89,10 @@ export const ChatDashboard = observer(function ChatDashboard({ slug, apiUrl }: {
 
   return (
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-5">
+      <div>
+        <h3 className="mb-2 text-sm font-semibold">Monitor ao vivo</h3>
+        <MonitorAoVivo slug={slug} apiUrl={apiUrl} />
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Em atendimento" value={stats.totals.active} tone="bg-success-subtle/40" />
         <Stat label="Na fila" value={stats.totals.queued} tone="bg-warning-subtle/40" />

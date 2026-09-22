@@ -17,6 +17,8 @@ export type InboundMessage = {
   reaction?: { emoji: string; externalId: string | null };
   /** Instante da mensagem no WhatsApp (ms). Usado para descartar o que é velho. */
   momentMs?: number;
+  /** Foto de perfil do WhatsApp (link temporário do CDN). Ver src/atendente/foto.ts. */
+  photoUrl?: string;
 };
 
 /** Edição/remoção feita pelo CLIENTE e notificada pelo provedor. */
