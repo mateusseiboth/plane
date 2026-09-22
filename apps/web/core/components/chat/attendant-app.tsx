@@ -42,6 +42,7 @@ import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-butt
 // services
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
+import { BotaoDoDisparo } from "@/components/chat/disparo/botao-do-disparo";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
 import {ModalDeEncerramento, type DadosDoEncerramento} from "@/components/chat/modal-de-encerramento";
 import {AcoesDaConversa, FalhaDeEnvio} from "@/components/chat/acoes-da-conversa";
@@ -1043,6 +1044,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             >
               <Plus className="h-4 w-4" />
             </button>
+            <BotaoDoDisparo slug={slug} />
             {isAdmin && (
               <button
                 onClick={() => setShowDashboard(true)}

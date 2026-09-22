@@ -143,6 +143,7 @@ export const coreRoutes: RouteConfigEntry[] = [
 
         // Chat / Atendimento (plugin)
         route(":workspaceSlug/chat", "./(all)/[workspaceSlug]/(projects)/chat/page.tsx"),
+        route(":workspaceSlug/chat/disparo", "./(all)/[workspaceSlug]/(projects)/chat/disparo/page.tsx"),
         route(":workspaceSlug/chat-view/:protocol", "./(all)/[workspaceSlug]/(projects)/chat-view/[protocol]/page.tsx"),
 
         // Management Reports
