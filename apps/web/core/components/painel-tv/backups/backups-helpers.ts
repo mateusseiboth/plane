@@ -49,6 +49,8 @@ export type TContadoresDoBackup = {
   backups_recebidos: number;
   maior_atraso_dias: number;
   com_problema: number;
+  /** Entidades ativas que nunca enviaram backup: não é atraso, é quem não faz. */
+  nao_fazem_backup: number;
 };
 
 export type TPainelDeBackups = {
@@ -229,7 +231,11 @@ const ACEITA_SEM_BACKUP: Record<SituacaoDoBackup, (entidade: TEntidadeSemBackup)
   nunca: (entidade) => entidade.dias === null,
 };
 
-const buildContadores = (semBackup: TEntidadeSemBackup[], enviados: TEntidadeComBackup[]): TContadoresDoBackup => {
+const buildContadores = (
+  semBackup: TEntidadeSemBackup[],
+  enviados: TEntidadeComBackup[],
+  naoFazemBackup: number
+): TContadoresDoBackup => {
   const recebidos = enviados.flatMap((e) => e.backups);
   return {
     entidades_atrasadas: semBackup.length,
@@ -237,6 +243,7 @@ const buildContadores = (semBackup: TEntidadeSemBackup[], enviados: TEntidadeCom
     backups_recebidos: recebidos.length,
     maior_atraso_dias: semBackup.reduce<number>((maior, e) => Math.max(maior, e.dias ?? 0), 0),
     com_problema: recebidos.filter((b) => !b.ok).length,
+    nao_fazem_backup: naoFazemBackup,
   };
 };
 
@@ -276,5 +283,10 @@ export function filterPainelDeBackups(painel: TPainelDeBackups, filtros: Filtros
           // oxlint-disable-next-line unicorn/no-array-sort
           .sort(ordenacao.enviados);
 
-  return { ...painel, sem_backup: semBackup, enviados, contadores: buildContadores(semBackup, enviados) };
+  return {
+    ...painel,
+    sem_backup: semBackup,
+    enviados,
+    contadores: buildContadores(semBackup, enviados, painel.contadores.nao_fazem_backup ?? 0),
+  };
 }

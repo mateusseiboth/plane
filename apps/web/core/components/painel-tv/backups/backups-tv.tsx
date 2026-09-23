@@ -138,6 +138,7 @@ export function BackupsDaTv({
           cor={visivel.contadores.com_problema > 0 ? STATUS.critico : undefined}
         />
         <Numero rotulo="Maior atraso (dias)" valor={visivel.contadores.maior_atraso_dias} />
+        <Numero rotulo="Não fazem backup" valor={visivel.contadores.nao_fazem_backup} />
         {painel.uf && (
           <div
             className="text-3xl flex items-center rounded-xl px-5 py-3 font-semibold"

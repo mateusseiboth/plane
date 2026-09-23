@@ -93,8 +93,12 @@ export function buildPainelDeBackups({ entidades, envios, atrasados, agora, dias
     }
   }
 
+  // Quem nunca enviou nada nos quatro sistemas não faz backup (câmara sem
+  // sistema, entidade só de contrato): não é atraso, só entra na contagem.
+  const naoFazemBackup = escolhidas.filter((e) => !porEntidade.has(e.id) && !ultimoPorEntidade.has(e.id));
+
   const semBackup = escolhidas
-    .filter((entidade) => !porEntidade.has(entidade.id))
+    .filter((entidade) => !porEntidade.has(entidade.id) && ultimoPorEntidade.has(entidade.id))
     .map((entidade) => {
       const ultimo = ultimoPorEntidade.get(entidade.id) ?? null;
       return {
@@ -108,7 +112,6 @@ export function buildPainelDeBackups({ entidades, envios, atrasados, agora, dias
         dias: diasDesde(ultimo, agora),
       };
     })
-    // Quem nunca enviou nada vem primeiro: é o atraso que ninguém sabe medir.
     .toSorted((a, b) => (b.dias ?? Number.MAX_SAFE_INTEGER) - (a.dias ?? Number.MAX_SAFE_INTEGER));
 
   const enviados = escolhidas
@@ -144,6 +147,7 @@ export function buildPainelDeBackups({ entidades, envios, atrasados, agora, dias
       backups_recebidos: recebidos.length,
       maior_atraso_dias: semBackup.reduce<number>((maior, e) => Math.max(maior, e.dias ?? 0), 0),
       com_problema: recebidos.filter((b) => !b.ok).length,
+      nao_fazem_backup: naoFazemBackup.length,
     },
   };
 }

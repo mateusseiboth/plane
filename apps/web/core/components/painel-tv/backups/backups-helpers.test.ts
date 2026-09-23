@@ -75,6 +75,7 @@ const painel: TPainelDeBackups = {
     backups_recebidos: 3,
     maior_atraso_dias: 12,
     com_problema: 1,
+    nao_fazem_backup: 2,
   },
 };
 
@@ -198,7 +199,7 @@ describe("ordenação", () => {
 });
 
 describe("contadores", () => {
-  it("contam a lista filtrada, não a inteira", () => {
+  it("contam a lista filtrada, não a inteira; quem não faz backup passa direto", () => {
     const filtrado = filterPainelDeBackups(painel, { ...FILTROS_PADRAO, situacao: "em-dia" });
     expect(filtrado.contadores).toEqual({
       entidades_atrasadas: 0,
@@ -206,6 +207,7 @@ describe("contadores", () => {
       backups_recebidos: 3,
       maior_atraso_dias: 0,
       com_problema: 1,
+      nao_fazem_backup: 2,
     });
   });
 });

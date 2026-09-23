@@ -14,6 +14,8 @@ import type { BackupDaEntidade, EntidadeParaBackup, EnvioDeBackup } from "@modul
 
 const SISTEMAS_DO_BANCO_INTEGRACAO = new Set(["8", "9", "10", "11", "12", "13", "15", "18", "21", "22", "23"]);
 const SISTEMA_INTEGRACAO = "8";
+/** Os sistemas que fazem backup (já normalizados): o resto do legado não conta. */
+const SISTEMAS_ACOMPANHADOS = new Set(["1", "3", "4", SISTEMA_INTEGRACAO]);
 export const ROTULO_INTEGRACAO = "Integração";
 
 /**
@@ -119,16 +121,26 @@ type EntradaDoLegado = {
 };
 
 /**
- * Último envio de cada par entidade × sistema que ficou para trás do corte,
- * já com a entidade DO PLANE. Envio de entidade que não foi migrada é ignorado:
- * a lateral só fala de cliente que existe aqui.
+ * Entidades atrasadas, como o relatório legado conta: o atraso é da ENTIDADE,
+ * não do par entidade × sistema. Basta um dos quatro sistemas ter enviado
+ * dentro da janela para ela estar em dia; parada é quem não enviou nada. O que
+ * volta é o envio mais recente da entidade, com o sistema dele. Quem nunca
+ * enviou nos quatro sistemas não faz backup e fica de fora. Envio de entidade
+ * que não foi migrada é ignorado: a lateral só fala de cliente que existe aqui.
  */
 export function buildAtrasadosDoLegado(entrada: EntradaDoLegado): BackupDaEntidade[] {
   const porCodigo = indexEntidadesPorCodigo(entrada.entidades, entrada.codigoPorLegado);
-  const ultimos = [...readUltimoEnvioPorPar(entrada.envios).values()];
+  const ultimos = [...readUltimoEnvioPorPar(entrada.envios).values()].filter((envio) =>
+    SISTEMAS_ACOMPANHADOS.has(normalizeSistemaBackup(envio.id_sistema))
+  );
+  const maisRecentePorEntidade = ultimos.reduce((mapa, envio) => {
+    const codigo = envio.id_entidade.trim();
+    if (isMaisRecente(envio, mapa.get(codigo))) mapa.set(codigo, envio);
+    return mapa;
+  }, new Map<string, EnvioAutom>());
 
-  return ultimos.flatMap((envio) => {
-    const entidade = porCodigo.get(envio.id_entidade.trim());
+  return [...maisRecentePorEntidade.entries()].flatMap(([codigo, envio]) => {
+    const entidade = porCodigo.get(codigo);
     if (!entidade) return [];
     const ultimoEm = parseDataHoraLegado(envio.datahora_envio, entrada.tz);
     if (ultimoEm && new Date(ultimoEm) >= entrada.staleSince) return [];

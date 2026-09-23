@@ -74,7 +74,7 @@ describe("painel de backups", () => {
     ]);
   });
 
-  it("ordena os sem backup pelo atraso, e quem nunca enviou vem primeiro", () => {
+  it("ordena os sem backup pelo atraso; quem nunca enviou não faz backup e fica de fora, só contado", () => {
     const painel = buildPainelDeBackups({
       entidades: [
         entidade({ id: "a", codigo: 1, nome: "A" }),
@@ -89,8 +89,8 @@ describe("painel de backups", () => {
       agora: AGORA,
       dias: 1,
     });
-    expect(painel.sem_backup.map((e) => e.nome)).toEqual(["C", "B", "A"]);
-    expect(painel.sem_backup[0]!.dias).toBeNull();
+    expect(painel.sem_backup.map((e) => e.nome)).toEqual(["B", "A"]);
+    expect(painel.contadores.nao_fazem_backup).toBe(1);
   });
 
   it("conta o que o topo da TV mostra", () => {
@@ -107,6 +107,7 @@ describe("painel de backups", () => {
       backups_recebidos: 2,
       maior_atraso_dias: 20,
       com_problema: 0,
+      nao_fazem_backup: 0,
     });
   });
 

@@ -117,9 +117,32 @@ describe("atrasados do MySQL legado", () => {
     ).toEqual([]);
   });
 
-  it("sistema sem nome no legado aparece pelo código", () => {
+  it("sistema fora dos quatro do painel não conta como backup", () => {
     const lista = atrasados([{ id: "1", id_entidade: "204", id_sistema: "77", datahora_envio: "2020-01-01 08:00:00" }]);
-    expect(lista[0]!.sistema).toBe("Sistema 77");
+    expect(lista).toEqual([]);
+  });
+
+  it("o atraso é da ENTIDADE: um sistema em dia basta, mesmo com outro parado há anos", () => {
+    const lista = atrasados([
+      { id: "1", id_entidade: "204", id_sistema: "3", datahora_envio: "2026-09-22 08:00:00" },
+      { id: "2", id_entidade: "204", id_sistema: "4", datahora_envio: "2020-01-01 08:00:00" },
+    ]);
+    expect(lista).toEqual([]);
+  });
+
+  it("com todos os sistemas parados, vale o envio mais recente da entidade e o sistema dele", () => {
+    const lista = atrasados([
+      { id: "1", id_entidade: "204", id_sistema: "4", datahora_envio: "2022-10-01 09:31:54" },
+      { id: "2", id_entidade: "204", id_sistema: "3", datahora_envio: "2022-12-01 09:31:54" },
+    ]);
+    expect(lista).toEqual([
+      {
+        entityId: "uuid-a",
+        entidade: "Prefeitura de Selvíria",
+        sistema: "SIART",
+        ultimoEm: "2022-12-01T13:31:54.000Z",
+      },
+    ]);
   });
 });
 
