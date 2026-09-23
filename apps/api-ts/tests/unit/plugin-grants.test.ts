@@ -80,6 +80,18 @@ describe("ida e volta entre a grade da tela e as linhas gravadas", () => {
     );
     expect(grade).toEqual({ "role-ti": ["backup-manager.admin", "backup-manager.view"] });
   });
+
+  it("permissão que saiu do manifesto (versão nova) não volta na grade nem trava a tela", () => {
+    const grade = buildGradeDasLinhas(
+      [
+        { subjectId: "18", permission: "backup-manager.view" },
+        { subjectId: "18", permission: "backup-manager.delete" },
+      ],
+      FUNCOES,
+      [{ key: "backup-manager.view", label: "Ver" }]
+    );
+    expect(grade).toEqual({ "role-gestor": ["backup-manager.view"] });
+  });
 });
 
 describe("diffLinhasDeGrant", () => {

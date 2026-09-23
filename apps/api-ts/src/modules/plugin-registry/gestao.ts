@@ -25,6 +25,7 @@ import {
   parseGradeDeGrants,
   type TErroDeCampo,
   type TFuncaoDoEspaco,
+  type TPermissaoDeclarada,
 } from "@modules/plugin-registry/grants";
 
 type Set_ = { status?: number | string };
@@ -53,12 +54,17 @@ async function findFuncoesDoEspaco(workspaceId: string): Promise<TFuncaoDoEspaco
   return roles;
 }
 
-async function readGrants(pluginId: string, workspaceId: string, funcoes: readonly TFuncaoDoEspaco[]) {
+async function readGrants(
+  pluginId: string,
+  workspaceId: string,
+  funcoes: readonly TFuncaoDoEspaco[],
+  permissoes: readonly TPermissaoDeclarada[]
+) {
   const linhas = await prisma.pluginPermissionGrant.findMany({
     where: { pluginId, workspaceId, subjectType: "role" },
     select: { subjectId: true, permission: true },
   });
-  return buildGradeDasLinhas(linhas, funcoes);
+  return buildGradeDasLinhas(linhas, funcoes, permissoes);
 }
 
 export const pluginGestaoModule = new Elysia({ prefix: "/workspaces/:slug/plugins" })
@@ -146,10 +152,11 @@ export const pluginGestaoModule = new Elysia({ prefix: "/workspaces/:slug/plugin
       return { detail: "Plugin não encontrado." };
     }
     const funcoes = await findFuncoesDoEspaco(workspaceId);
+    const permissions = readDefinedPermissions(plugin);
     return {
-      permissions: readDefinedPermissions(plugin),
+      permissions,
       roles: funcoes,
-      grants: await readGrants(id, workspaceId, funcoes),
+      grants: await readGrants(id, workspaceId, funcoes, permissions),
     };
   })
 
@@ -192,5 +199,5 @@ export const pluginGestaoModule = new Elysia({ prefix: "/workspaces/:slug/plugin
     });
 
     auditLog("plugin.grants", user.id, id, { added: toAdd.length, removed: toRemove.length });
-    return { permissions, roles: funcoes, grants: await readGrants(id, workspaceId, funcoes) };
+    return { permissions, roles: funcoes, grants: await readGrants(id, workspaceId, funcoes, permissions) };
   });

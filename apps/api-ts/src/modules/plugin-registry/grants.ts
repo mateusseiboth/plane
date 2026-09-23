@@ -62,16 +62,24 @@ export function parseGradeDeGrants(
   return { grade: errors.length ? {} : grade, errors };
 }
 
-/** Grade da tela (por id da função) a partir das linhas gravadas (por nível). */
+/**
+ * Grade da tela (por id da função) a partir das linhas gravadas (por nível).
+ * Linha de permissão que o manifesto atual não declara mais (sobra de uma
+ * versão anterior do plugin) fica de fora: a tela não a mostra, e o próximo
+ * salvar a apaga pelo diff.
+ */
 export function buildGradeDasLinhas(
   linhas: readonly TLinhaDeGrant[],
-  funcoes: readonly TFuncaoDoEspaco[]
+  funcoes: readonly TFuncaoDoEspaco[],
+  permissoes?: readonly TPermissaoDeclarada[]
 ): TGradeDeGrants {
   const idPorNivel = new Map(funcoes.map((f) => [String(f.level), f.id]));
+  const declaradas = permissoes ? new Set(permissoes.map((p) => p.key)) : null;
   const grade: TGradeDeGrants = {};
   for (const linha of linhas) {
     const roleId = idPorNivel.get(linha.subjectId);
     if (!roleId) continue;
+    if (declaradas && !declaradas.has(linha.permission)) continue;
     (grade[roleId] ??= []).push(linha.permission);
   }
   for (const chaves of Object.values(grade)) chaves.sort();

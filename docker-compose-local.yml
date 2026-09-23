@@ -53,9 +53,9 @@ services:
 
   db-migrate:
     container_name: plane-db-migrate
-    build:
-      context: ./apps/api-ts
-      dockerfile: Dockerfile.dev
+    # Mesma imagem do api-ts: construir uma cópia por serviço já deixou o seeder
+    # sem o client Prisma gerado (build paralelo com cache diferente).
+    image: plane-api-ts
     restart: "no"
     networks:
       - dev_env
@@ -67,9 +67,9 @@ services:
 
   seeder:
     container_name: plane-seeder
-    build:
-      context: ./apps/api-ts
-      dockerfile: Dockerfile
+    # Mesma imagem do api-ts: construir uma cópia por serviço já deixou o seeder
+    # sem o client Prisma gerado (build paralelo com cache diferente).
+    image: plane-api-ts
     restart: "no"
     networks:
       - dev_env
@@ -88,6 +88,7 @@ services:
 
   api-ts:
     container_name: plane-api-ts
+    image: plane-api-ts
     build:
       context: ./apps/api-ts
       dockerfile: Dockerfile.dev
@@ -300,9 +301,9 @@ services:
 
   sac-migrator:
     container_name: plane-sac-migrator
-    build:
-      context: ./apps/api-ts
-      dockerfile: Dockerfile
+    # Mesma imagem do api-ts: construir uma cópia por serviço já deixou o seeder
+    # sem o client Prisma gerado (build paralelo com cache diferente).
+    image: plane-api-ts
     restart: "no"
     # Mesmo volume do api-ts: os importadores de anexos gravam onde a API lê.
     volumes:

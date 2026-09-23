@@ -66,7 +66,7 @@ step_live() {
 # As imagens de migração usam os Dockerfiles do api-ts e do chat, mas não são
 # reconstruídas junto com os serviços: sem elas, os importadores rodam código velho.
 step_images() {
-  compose 'build api-ts chat-backend web admin live proxy db-migrate seeder chat-migrate sac-migrator'
+  compose 'build api-ts chat-backend web admin live proxy chat-migrate'
 }
 
 step_up() { compose 'up -d api-ts chat-backend web admin live proxy'; }
