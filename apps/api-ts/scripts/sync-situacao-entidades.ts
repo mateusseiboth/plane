@@ -16,13 +16,18 @@ import { MOTIVO_DA_SINCRONIZACAO, readSituacaoDaEntidade } from "./situacao-da-e
 
 const DRY_RUN = process.env.DRY_RUN === "1";
 
-type LinhaDaIntranet = { entidades_id: number; entidades_situacao: string | null; entidades_status: number | null };
+type LinhaDaIntranet = {
+  entidades_id: number;
+  entidades_situacao: string | null;
+  entidades_status: number | null;
+  entidades_sac_desktop_id: number | null;
+};
 
 async function readIntranet(url: string): Promise<LinhaDaIntranet[]> {
   const conexao = await mysql.createConnection({ uri: url, ssl: undefined });
   try {
     const [linhas] = await conexao.query<any[]>(
-      "SELECT entidades_id, entidades_situacao, entidades_status FROM entidades"
+      "SELECT entidades_id, entidades_situacao, entidades_status, entidades_sac_desktop_id FROM entidades"
     );
     return linhas as LinhaDaIntranet[];
   } finally {
@@ -37,10 +42,10 @@ async function main() {
   const intranet = new Map(readSituacaoPorCodigo(await readIntranet(url)));
   const entidades = await prisma.entity.findMany({
     where: { deletedAt: null, legacyId: { not: null } },
-    select: { id: true, name: true, legacyId: true, isActive: true, frozenAt: true, frozenReason: true },
+    select: { id: true, name: true, legacyId: true, sacCode: true, isActive: true, frozenAt: true, frozenReason: true },
   });
 
-  const contagem = { congeladas: 0, reativadas: 0, semRegistroNaIntranet: 0, inalteradas: 0 };
+  const contagem = { congeladas: 0, reativadas: 0, codigoSac: 0, semRegistroNaIntranet: 0, inalteradas: 0 };
   for (const entidade of entidades) {
     const situacao = intranet.get(entidade.legacyId!);
     if (!situacao) {
@@ -51,33 +56,45 @@ async function main() {
     const reativarAgora =
       !situacao.congelada && entidade.frozenAt !== null && entidade.frozenReason === MOTIVO_DA_SINCRONIZACAO;
     const ativoMudou = entidade.isActive !== situacao.isActive;
+    const sacMudou = situacao.sacCode !== null && entidade.sacCode !== situacao.sacCode;
 
-    if (!congelarAgora && !reativarAgora && !ativoMudou) {
+    if (!congelarAgora && !reativarAgora && !ativoMudou && !sacMudou) {
       contagem.inalteradas += 1;
       continue;
     }
     const dados = {
       isActive: situacao.isActive,
+      ...(sacMudou ? { sacCode: situacao.sacCode } : {}),
       ...(congelarAgora ? { frozenAt: new Date(), frozenReason: MOTIVO_DA_SINCRONIZACAO } : {}),
       ...(reativarAgora ? { frozenAt: null, frozenReason: null } : {}),
     };
     if (congelarAgora) contagem.congeladas += 1;
     if (reativarAgora) contagem.reativadas += 1;
+    if (sacMudou) contagem.codigoSac += 1;
     console.log(`${DRY_RUN ? "[dry] " : ""}${entidade.legacyId} ${entidade.name}: ${JSON.stringify(dados)}`);
     if (!DRY_RUN) await prisma.entity.update({ where: { id: entidade.id }, data: dados });
   }
   console.log(JSON.stringify({ entidadesNoPlane: entidades.length, ...contagem }));
 }
 
+/** Código SAC válido é inteiro positivo; 0 ou nulo é "não tem". */
+const readCodigoSac = (valor: unknown): number | null => {
+  const codigo = Number(valor);
+  return Number.isInteger(codigo) && codigo > 0 ? codigo : null;
+};
+
 function readSituacaoPorCodigo(linhas: LinhaDaIntranet[]) {
   return linhas.map(
     (l) =>
       [
         Number(l.entidades_id),
-        readSituacaoDaEntidade({
-          situacao: l.entidades_situacao,
-          status: l.entidades_status === null ? null : Number(l.entidades_status),
-        }),
+        {
+          ...readSituacaoDaEntidade({
+            situacao: l.entidades_situacao,
+            status: l.entidades_status === null ? null : Number(l.entidades_status),
+          }),
+          sacCode: readCodigoSac(l.entidades_sac_desktop_id),
+        },
       ] as const
   );
 }

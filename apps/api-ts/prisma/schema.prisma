@@ -1644,6 +1644,8 @@ model Entity {
   phone              String?          @db.VarChar(30)
   isActive           Boolean          @default(true) @map("is_active")
   legacyId           Int?             @map("legacy_id")
+  /// Código no SAC desktop: é o que o servidor de backups e o SAC usam (difere do legacyId).
+  sacCode            Int?             @map("sac_code")
   externalSource     String?          @map("external_source")
   externalId         String?          @map("external_id")
   // Endereço completo e dados cadastrais do legado (intra_entidade*.php).
@@ -1673,6 +1675,7 @@ model Entity {
   portalAccounts     PortalAccount[]
   ouvidorias         Ouvidoria[]
 
+  @@index([sacCode])
   @@map("entities")
 }
 

@@ -18,12 +18,13 @@ export type EntidadeDoEspaco = {
   city: string | null;
   state: string | null;
   legacyId: number | null;
+  sacCode: number | null;
 };
 
 export function findEntidadesDoEspaco(workspaceId: string): Promise<EntidadeDoEspaco[]> {
   return prisma.entity.findMany({
     where: { workspaceId, deletedAt: null, isActive: true },
-    select: { id: true, name: true, city: true, state: true, legacyId: true },
+    select: { id: true, name: true, city: true, state: true, legacyId: true, sacCode: true },
     orderBy: { name: "asc" },
   });
 }

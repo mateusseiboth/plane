@@ -42,7 +42,12 @@ export async function findMapa(workspaceId: string, deps: Partial<MapaDeps> = {}
     countChamadosUrgentes(workspaceId),
   ]);
 
-  const paraFontes: EntidadeParaBackup[] = entidades.map((e) => ({ id: e.id, nome: e.name, legacyId: e.legacyId }));
+  const paraFontes: EntidadeParaBackup[] = entidades.map((e) => ({
+    id: e.id,
+    nome: e.name,
+    legacyId: e.legacyId,
+    sacCode: e.sacCode,
+  }));
   const [atrasados, status] = await Promise.all([
     backups.findAtrasados(paraFontes, agora),
     servidores.findStatus(paraFontes, agora),

@@ -14,9 +14,9 @@ import {
 const AGORA = new Date("2026-09-22T12:00:00.000Z");
 
 const entidades = [
-  { id: "uuid-a", nome: "Prefeitura A", legacyId: 3 },
-  { id: "uuid-b", nome: "Prefeitura B", legacyId: 4 },
-  { id: "uuid-c", nome: "Entidade nova", legacyId: null },
+  { id: "uuid-a", nome: "Prefeitura A", legacyId: 3, sacCode: 3 },
+  { id: "uuid-b", nome: "Prefeitura B", legacyId: 4, sacCode: 4 },
+  { id: "uuid-c", nome: "Entidade nova", legacyId: null, sacCode: null },
 ];
 const sacPorLegado = new Map([
   [3, 3],
@@ -78,7 +78,7 @@ describe("provedor do gateway", () => {
       buscar: buscar as unknown as typeof fetch,
       agora: () => AGORA,
     });
-    await fonte.findStatus([{ id: "uuid", nome: "Prefeitura", legacyId: 3 }], AGORA);
+    await fonte.findStatus([{ id: "uuid", nome: "Prefeitura", legacyId: 3, sacCode: 3 }], AGORA);
     const [url, init] = buscar.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://gw.exemplo/admin/clients.list?limit=5000");
     expect((init.headers as Record<string, string>)["x-admin-token"]).toBe("token-de-teste");

@@ -10,7 +10,7 @@ import {
   normalizeSistemaBackup,
   parseDataHoraLegado,
   readUltimoEnvioPorPar,
-  buildCodigoIdentidade,
+  buildCodigoPorSac,
   NOMES_FIXOS_DOS_SISTEMAS,
 } from "@modules/painel-tv/backups/legado";
 import { buildBackupsAtrasados } from "@modules/painel-tv/backups/atrasados";
@@ -50,9 +50,9 @@ describe("regras do legado", () => {
 
 describe("atrasados do MySQL legado", () => {
   const entidades = [
-    { id: "uuid-a", nome: "Prefeitura de Selvíria", legacyId: 42 },
-    { id: "uuid-b", nome: "Câmara de Corguinho", legacyId: 7 },
-    { id: "uuid-c", nome: "Entidade nova do Plane", legacyId: null },
+    { id: "uuid-a", nome: "Prefeitura de Selvíria", legacyId: 42, sacCode: 204 },
+    { id: "uuid-b", nome: "Câmara de Corguinho", legacyId: 7, sacCode: 12 },
+    { id: "uuid-c", nome: "Entidade nova do Plane", legacyId: null, sacCode: null },
   ];
   const codigoPorLegado = new Map([
     [42, "204"],
@@ -70,11 +70,11 @@ describe("atrasados do MySQL legado", () => {
       tz: TZ,
     });
 
-  it("sem a intranet, o código é o próprio id legado da entidade e os nomes dos sistemas são os fixos", () => {
-    const identidade = buildCodigoIdentidade(entidades);
+  it("sem a intranet, o código é o sacCode gravado na entidade (não o id legado) e os nomes são os fixos", () => {
+    const identidade = buildCodigoPorSac(entidades);
     expect([...identidade.entries()]).toEqual([
-      [42, "42"],
-      [7, "7"],
+      [42, "204"],
+      [7, "12"],
     ]);
     expect(NOMES_FIXOS_DOS_SISTEMAS.get("1")).toBe("Contabilidade");
     expect(NOMES_FIXOS_DOS_SISTEMAS.get("3")).toBe("ARH");
@@ -82,7 +82,7 @@ describe("atrasados do MySQL legado", () => {
     const lista = buildAtrasadosDoLegado({
       entidades,
       codigoPorLegado: identidade,
-      envios: [{ id: "1", id_entidade: "42", id_sistema: "3", datahora_envio: "2022-12-01 09:31:54" }],
+      envios: [{ id: "1", id_entidade: "204", id_sistema: "3", datahora_envio: "2022-12-01 09:31:54" }],
       nomes: NOMES_FIXOS_DOS_SISTEMAS,
       staleSince: buildStaleSince(AGORA, 1, TZ),
       tz: TZ,

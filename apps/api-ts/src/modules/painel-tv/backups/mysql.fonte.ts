@@ -19,7 +19,7 @@
 import mysql from "mysql2/promise";
 import {
   buildAtrasadosDoLegado,
-  buildCodigoIdentidade,
+  buildCodigoPorSac,
   buildEnviosDoLegado,
   buildStaleSince,
   NOMES_FIXOS_DOS_SISTEMAS,
@@ -176,7 +176,7 @@ export function createFonteMysqlDeBackups({
              e.corrompido, e.envio_ftp, e.erro_backup, e.erro_restore`;
 
   const lerCodigoPorLegado = (entidades: EntidadeParaBackup[]) =>
-    intranetDb === null ? Promise.resolve(buildCodigoIdentidade(entidades)) : lerCodigoDaIntranet();
+    intranetDb === null ? Promise.resolve(buildCodigoPorSac(entidades)) : lerCodigoDaIntranet();
 
   const lerCodigoDaIntranet = () =>
     cache("codigos", async () => {

@@ -98,6 +98,7 @@ const ENTITY_SELECT = {
   phone: true,
   isActive: true,
   legacyId: true,
+  sacCode: true,
   externalSource: true,
   externalId: true,
 } as const;
@@ -110,6 +111,7 @@ function serializeEntity(e: any) {
   put("id", e.id);
   put("external_id", e.externalId);
   put("legacy_id", e.legacyId);
+  put("sac_code", e.sacCode);
   put("cnpj", e.cnpj);
   put("external_source", e.externalSource);
   return {
@@ -123,6 +125,7 @@ function serializeEntity(e: any) {
     phone: e.phone ?? null,
     is_active: e.isActive ?? null,
     legacy_id: e.legacyId ?? null,
+    sac_code: e.sacCode ?? null,
     external_source: e.externalSource ?? null,
     external_id: e.externalId ?? null,
     external_refs: externalRefs,

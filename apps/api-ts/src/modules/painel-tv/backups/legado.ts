@@ -31,15 +31,18 @@ export const NOMES_FIXOS_DOS_SISTEMAS: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
- * Sem a intranet, o `id_entidade` do envio É o código da entidade: as entidades
- * do Plane vieram da migração do SAC com `legacyId` igual ao código, então o
- * mapa é a identidade, só para quem tem id legado.
+ * Sem a intranet, o código que o `envio_autom` usa é o `sacCode` gravado na
+ * entidade (código do SAC desktop, que a sincronização com a intranet mantém).
+ * O `legacyId` é OUTRO número (id da intranet): só 41 das 269 coincidem.
  */
-export const buildCodigoIdentidade = (entidades: EntidadeParaBackup[]): Map<number, string> =>
+export const buildCodigoPorSac = (entidades: EntidadeParaBackup[]): Map<number, string> =>
   new Map(
     entidades
-      .filter((e): e is EntidadeParaBackup & { legacyId: number } => e.legacyId !== null)
-      .map((e) => [e.legacyId, String(e.legacyId)])
+      .filter(
+        (e): e is EntidadeParaBackup & { legacyId: number; sacCode: number } =>
+          e.legacyId !== null && e.sacCode !== null
+      )
+      .map((e) => [e.legacyId, String(e.sacCode)])
   );
 
 const DATA_HORA_LEGADO = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/;

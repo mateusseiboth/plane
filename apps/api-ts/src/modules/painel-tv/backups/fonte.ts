@@ -33,7 +33,8 @@ export type EnvioDeBackup = {
 
 import type { EnvioDetalhado } from "@modules/painel-tv/backups/historico";
 
-export type EntidadeParaBackup = { id: string; nome: string; legacyId: number | null };
+/** `sacCode` é o código no SAC desktop: é por ele que o `envio_autom` fala. */
+export type EntidadeParaBackup = { id: string; nome: string; legacyId: number | null; sacCode: number | null };
 
 /** O que a gaveta do painel interativo pede: uma entidade, um sistema, N dias. */
 export type ConsultaDoHistorico = {

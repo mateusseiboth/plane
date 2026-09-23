@@ -20,7 +20,6 @@ import {
   formatTamanho,
   type EntidadeDoBackup,
 } from "@modules/painel-tv/backups/painel-de-backups";
-import { readEntidadesLegado } from "@modules/painel-tv/mapa/dados";
 import { findEntidadesDoEspaco } from "@modules/painel-tv/mapa/mapa.dao";
 
 const DIAS_PADRAO = 1;
@@ -48,8 +47,12 @@ export async function findPainelDeBackups(
   const agora = now();
 
   const entidades = await findEntidadesDoEspaco(workspaceId);
-  const legado = readEntidadesLegado();
-  const paraFontes: EntidadeParaBackup[] = entidades.map((e) => ({ id: e.id, nome: e.name, legacyId: e.legacyId }));
+  const paraFontes: EntidadeParaBackup[] = entidades.map((e) => ({
+    id: e.id,
+    nome: e.name,
+    legacyId: e.legacyId,
+    sacCode: e.sacCode,
+  }));
 
   const [atrasados, envios] = await Promise.all([
     fonte.findAtrasados(paraFontes, agora, dias),
@@ -59,7 +62,7 @@ export async function findPainelDeBackups(
   const doPainel: EntidadeDoBackup[] = entidades.map((e) => ({
     id: e.id,
     // O backup fala o código do SAC desktop, não o id legado da intranet.
-    codigo: e.legacyId === null ? null : (legado[String(e.legacyId)]?.sac ?? null),
+    codigo: e.sacCode,
     nome: e.name,
     cidade: e.city,
     uf: e.state,
@@ -122,7 +125,12 @@ export async function findHistoricoDeBackups(
 
   const agora = now();
   const dias = readDiasDoHistorico(consulta.dias);
-  const paraFonte: EntidadeParaBackup = { id: entidade.id, nome: entidade.name, legacyId: entidade.legacyId };
+  const paraFonte: EntidadeParaBackup = {
+    id: entidade.id,
+    nome: entidade.name,
+    legacyId: entidade.legacyId,
+    sacCode: entidade.sacCode,
+  };
   const envios = await fonte.findHistorico({
     entidade: paraFonte,
     sistema: sistema === "invalido" ? null : sistema,
@@ -130,15 +138,13 @@ export async function findHistoricoDeBackups(
     dias,
   });
 
-  const legado = readEntidadesLegado();
-
   return {
     gerado_em: agora.toISOString(),
     dias,
     sistema: sistema === "invalido" ? null : sistema,
     entidade: {
       id: entidade.id,
-      codigo: entidade.legacyId === null ? null : (legado[String(entidade.legacyId)]?.sac ?? null),
+      codigo: entidade.sacCode,
       nome: entidade.name,
       cidade: entidade.city,
       uf: entidade.state,
