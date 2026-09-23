@@ -177,7 +177,6 @@ export function PainelDaTvPage({ workspaceSlug, painel, busca }: Props) {
       }
       acoes={acoes}
       legenda={legendas[painel]}
-      compacta={painel === "mapa"}
     >
       {conteudo[painel]()}
     </MolduraDoPainel>

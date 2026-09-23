@@ -354,7 +354,7 @@ Armadilhas que essas fontes guardam:
 
 O mesmo barramento SSE do produto (`utils/realtime.ts`), filtrado para chamado e
 solicitação. A TV também recarrega a cada 60 s como rede de segurança (proxy que
-corta o stream, rede que cai), e o cabeçalho mostra "Ao vivo" e há quanto tempo
+corta o stream, rede que cai), e o rodapé mostra "Ao vivo" e há quanto tempo
 os dados chegaram. O fluxo reconecta sozinho a cada 5 s quando cai: a tela fica
 ligada o dia inteiro e ninguém a recarrega.
 
