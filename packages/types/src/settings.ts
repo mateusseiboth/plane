@@ -10,7 +10,7 @@ import type { EUserWorkspaceRoles } from "./workspace";
 
 export type TProfileSettingsTabs = "general" | "preferences" | "notifications" | "security" | "api-tokens";
 
-export type TWorkspaceSettingsTabs = "general" | "members" | "roles" | "sla" | "billing-and-plans" | "export" | "webhooks" | "entities" | "ai" | "ia-requisitos" | "integrations-custom" | "storage" | "chat" | "print" | "auditoria" | "email" | "portal" | "paineis-tv";
+export type TWorkspaceSettingsTabs = "general" | "members" | "roles" | "sla" | "billing-and-plans" | "export" | "webhooks" | "entities" | "ai" | "ia-requisitos" | "integrations-custom" | "storage" | "chat" | "print" | "auditoria" | "email" | "portal" | "paineis-tv" | "plugins";
 export type TWorkspaceSettingsItem = {
   key: TWorkspaceSettingsTabs;
   i18n_label: string;

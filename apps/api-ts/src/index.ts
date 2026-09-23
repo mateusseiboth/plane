@@ -46,6 +46,7 @@ import { customWebhookModule } from "@modules/custom-webhook";
 import { widgetModule } from "@modules/widget";
 import { widgetSdkGatewayModule } from "@modules/widget-sdk-gateway";
 import { pluginRegistryModule } from "@modules/plugin-registry";
+import { pluginGestaoModule } from "@modules/plugin-registry/gestao";
 import { pluginSdkGatewayModule } from "@modules/plugin-sdk-gateway";
 import { auditModule } from "@modules/audit";
 import { portalAdminModule, portalChamadoModule, portalModule, portalRespostaModule } from "@modules/portal";
@@ -261,6 +262,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // SDK gateways — their global widget-auth hook would otherwise leak onto it and
   // make /plugins/active demand an X-Widget-Id header.
   .use(pluginRegistryModule)
+  // Configurações do espaço > Plugins (plugin.manage).
+  .use(pluginGestaoModule)
   .use(widgetSdkGatewayModule)
   .use(pluginSdkGatewayModule);
 

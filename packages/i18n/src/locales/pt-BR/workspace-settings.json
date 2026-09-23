@@ -543,6 +543,9 @@
       "paineis_tv": {
         "title": "Painéis de TV"
       },
+      "plugins": {
+        "title": "Plugins"
+      },
       "email": {
         "title": "E-mail (SMTP)"
       },

@@ -48,6 +48,7 @@ vez, na criação. Quem já está logado no Plane abre o painel sem chave nenhum
 | Relatórios | `/<slug>/reports` |
 | Links úteis (os endereços desta lista, prontos para copiar) | `/<slug>/links-uteis` |
 | Plugins instalados | `/<slug>/plugins/<slug-do-plugin>` |
+| Gerenciar plugins (enviar, ligar, permissões e configuração) | `/<slug>/settings/plugins` |
 
 ### Configurações do espaço
 

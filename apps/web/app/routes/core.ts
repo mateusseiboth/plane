@@ -390,6 +390,10 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/paineis-tv",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/paineis-tv/page.tsx"
           ),
+          route(
+            ":workspaceSlug/settings/plugins",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/plugins/page.tsx"
+          ),
         ]),
 
         // --------------------------------------------------------------------

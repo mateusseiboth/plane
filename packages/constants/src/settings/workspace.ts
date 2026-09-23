@@ -146,6 +146,13 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/paineis-tv/`,
   },
+  plugins: {
+    key: "plugins",
+    i18n_label: "workspace_settings.settings.plugins.title",
+    href: `/settings/plugins`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/plugins/`,
+  },
   auditoria: {
     key: "auditoria",
     i18n_label: "workspace_settings.settings.auditoria.title",
@@ -175,6 +182,7 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     WORKSPACE_SETTINGS["ia-requisitos"],
     WORKSPACE_SETTINGS["print"],
     WORKSPACE_SETTINGS["paineis-tv"],
+    WORKSPACE_SETTINGS["plugins"],
     WORKSPACE_SETTINGS["auditoria"],
   ].filter(Boolean) as TWorkspaceSettingsItem[],
   [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [],
