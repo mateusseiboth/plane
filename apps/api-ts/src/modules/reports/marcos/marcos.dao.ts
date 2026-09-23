@@ -4,6 +4,7 @@
  * marcos mora em `marcos.ts`. O relatório "tempo em cada etapa" lê o mesmo histórico.
  */
 import prisma from "@db";
+import { findEmLotes, TAMANHO_DO_LOTE } from "@modules/reports/comum/lotes";
 import type { Atribuicao, GrupoDaEtapa, TransicaoDeEtapa } from "@modules/reports/marcos/marcos";
 
 function groupPorChamado<L extends { issueId: string }, T>(linhas: L[], map: (linha: L) => T): Map<string, T[]> {
@@ -15,11 +16,13 @@ function groupPorChamado<L extends { issueId: string }, T>(linhas: L[], map: (li
 /** Histórico de etapa por chamado, do mais antigo para o mais recente. */
 export async function findTransicoesDeEtapa(issueIds: string[]): Promise<Map<string, TransicaoDeEtapa[]>> {
   if (!issueIds.length) return new Map();
-  const linhas = await prisma.issueActivity.findMany({
-    where: { issueId: { in: issueIds }, field: "state", deletedAt: null },
-    select: { issueId: true, oldValue: true, newValue: true, createdAt: true, actorId: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const linhas = await findEmLotes(issueIds, TAMANHO_DO_LOTE, (lote) =>
+    prisma.issueActivity.findMany({
+      where: { issueId: { in: lote }, field: "state", deletedAt: null },
+      select: { issueId: true, oldValue: true, newValue: true, createdAt: true, actorId: true },
+      orderBy: { createdAt: "asc" },
+    })
+  );
   return groupPorChamado(linhas, (l) => ({ de: l.oldValue, para: l.newValue, em: l.createdAt, por: l.actorId }));
 }
 
@@ -31,11 +34,13 @@ export async function findTransicoesDeEtapa(issueIds: string[]): Promise<Map<str
 export async function findAtribuicoes(issueIds: string[]) {
   if (!issueIds.length)
     return { atribuicoes: new Map<string, Atribuicao[]>(), responsaveis: new Map<string, string[]>() };
-  const linhas = await prisma.issueAssignee.findMany({
-    where: { issueId: { in: issueIds } },
-    select: { issueId: true, assigneeId: true, createdAt: true, deletedAt: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const linhas = await findEmLotes(issueIds, TAMANHO_DO_LOTE, (lote) =>
+    prisma.issueAssignee.findMany({
+      where: { issueId: { in: lote } },
+      select: { issueId: true, assigneeId: true, createdAt: true, deletedAt: true },
+      orderBy: { createdAt: "asc" },
+    })
+  );
   const atuais = groupPorChamado(
     linhas.filter((l) => !l.deletedAt),
     (l) => l.assigneeId

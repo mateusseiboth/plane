@@ -280,12 +280,15 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
         untagged++;
         continue;
       }
+      // A etiqueta é por sistema: "Correção" existe uma vez em cada projeto. O
+      // relatório agrupa pelo NOME, senão o mesmo tipo aparece dezenas de vezes.
       for (const l of issue.labels) {
         const lab = l.label;
         if (!lab) continue;
-        const cur = byLabel.get(lab.id) ?? {
-          id: lab.id,
-          name: lab.name,
+        const chaveDoTipo = lab.name.trim().toLowerCase();
+        const cur = byLabel.get(chaveDoTipo) ?? {
+          id: chaveDoTipo,
+          name: lab.name.trim(),
           color: lab.color,
           total: 0,
           completed: 0,
@@ -299,7 +302,7 @@ export const reportsModule = new Elysia({ prefix: "/workspaces/:slug/reports" })
             (new Date(issue.completedAt).getTime() - new Date(issue.createdAt).getTime()) / 86400000;
           cur.resolutionCount++;
         }
-        byLabel.set(lab.id, cur);
+        byLabel.set(chaveDoTipo, cur);
       }
     }
     const rows = [...byLabel.values()]
