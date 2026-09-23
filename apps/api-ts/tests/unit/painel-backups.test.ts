@@ -10,6 +10,8 @@ import {
   normalizeSistemaBackup,
   parseDataHoraLegado,
   readUltimoEnvioPorPar,
+  buildCodigoIdentidade,
+  NOMES_FIXOS_DOS_SISTEMAS,
 } from "@modules/painel-tv/backups/legado";
 import { buildBackupsAtrasados } from "@modules/painel-tv/backups/atrasados";
 
@@ -67,6 +69,26 @@ describe("atrasados do MySQL legado", () => {
       staleSince: buildStaleSince(AGORA, 1, TZ),
       tz: TZ,
     });
+
+  it("sem a intranet, o código é o próprio id legado da entidade e os nomes dos sistemas são os fixos", () => {
+    const identidade = buildCodigoIdentidade(entidades);
+    expect([...identidade.entries()]).toEqual([
+      [42, "42"],
+      [7, "7"],
+    ]);
+    expect(NOMES_FIXOS_DOS_SISTEMAS.get("1")).toBe("Contabilidade");
+    expect(NOMES_FIXOS_DOS_SISTEMAS.get("3")).toBe("ARH");
+    expect(NOMES_FIXOS_DOS_SISTEMAS.get("4")).toBe("SIART");
+    const lista = buildAtrasadosDoLegado({
+      entidades,
+      codigoPorLegado: identidade,
+      envios: [{ id: "1", id_entidade: "42", id_sistema: "3", datahora_envio: "2022-12-01 09:31:54" }],
+      nomes: NOMES_FIXOS_DOS_SISTEMAS,
+      staleSince: buildStaleSince(AGORA, 1, TZ),
+      tz: TZ,
+    });
+    expect(lista.map((l) => [l.entityId, l.sistema])).toEqual([["uuid-a", "ARH"]]);
+  });
 
   it("liga o envio à entidade do Plane pelo código do SAC e nomeia o sistema", () => {
     const lista = atrasados([

@@ -322,7 +322,7 @@ plugin backup-manager vive em repositório separado e a ação é dele.
 
 | Fonte | Variáveis | Sem configuração |
 | --- | --- | --- |
-| Backups (`backup.envio_autom` no MySQL legado) | `LEGACY_BACKUP_DB_URL`, `LEGACY_INTRANET_DB` (padrão `quality_site_dev`), `LEGACY_BACKUP_TZ` (padrão `-04:00`) | "Sem dados de backup" |
+| Backups (`backup.envio_autom` no MySQL legado) | `LEGACY_BACKUP_DB_URL`, `LEGACY_INTRANET_DB` (só no DEV, onde a intranet mora no mesmo MySQL; vazio em produção: o código é o próprio `id_entidade` e os nomes dos sistemas são fixos), `LEGACY_BACKUP_TZ` (padrão `-04:00`) | "Sem dados de backup" |
 | Status dos servidores (gateway dos bservers) | `GATEWAY_ADMIN_TOKEN`, `GATEWAY_ADMIN_URL` (padrão o gateway de PRODUÇÃO) | nenhum marcador recebe cor de status |
 
 Armadilhas que essas fontes guardam:

@@ -16,6 +16,30 @@ const SISTEMAS_DO_BANCO_INTEGRACAO = new Set(["8", "9", "10", "11", "12", "13", 
 const SISTEMA_INTEGRACAO = "8";
 export const ROTULO_INTEGRACAO = "Integração";
 
+/**
+ * Nomes dos sistemas acompanhados, sem depender da tabela `sistemas` da
+ * intranet: em produção o banco de backups e a intranet moram em servidores
+ * diferentes, e a lista é fechada (1, 3, 4 e o grupo do banco de integração).
+ */
+export const NOMES_FIXOS_DOS_SISTEMAS: ReadonlyMap<string, string> = new Map([
+  ["1", "Contabilidade"],
+  ["3", "ARH"],
+  ["4", "SIART"],
+  [SISTEMA_INTEGRACAO, ROTULO_INTEGRACAO],
+]);
+
+/**
+ * Sem a intranet, o `id_entidade` do envio É o código da entidade: as entidades
+ * do Plane vieram da migração do SAC com `legacyId` igual ao código, então o
+ * mapa é a identidade, só para quem tem id legado.
+ */
+export const buildCodigoIdentidade = (entidades: EntidadeParaBackup[]): Map<number, string> =>
+  new Map(
+    entidades
+      .filter((e): e is EntidadeParaBackup & { legacyId: number } => e.legacyId !== null)
+      .map((e) => [e.legacyId, String(e.legacyId)])
+  );
+
 const DATA_HORA_LEGADO = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/;
 const OFFSET = /^([+-])(\d{2}):(\d{2})$/;
 const DIA_MS = 86_400_000;
@@ -79,7 +103,7 @@ export function readUltimoEnvioPorPar(envios: EnvioAutom[]): Map<string, EnvioAu
   }, new Map<string, EnvioAutom>());
 }
 
-const nomeDoSistema = (codigo: string, nomes: Map<string, string>): string => {
+const nomeDoSistema = (codigo: string, nomes: ReadonlyMap<string, string>): string => {
   if (codigo === SISTEMA_INTEGRACAO) return ROTULO_INTEGRACAO;
   return nomes.get(codigo) ?? `Sistema ${codigo}`;
 };
@@ -89,7 +113,7 @@ type EntradaDoLegado = {
   /** Id legado da entidade no Plane (`entidades_id`) → código do SAC desktop. */
   codigoPorLegado: Map<number, string>;
   envios: EnvioAutom[];
-  nomes: Map<string, string>;
+  nomes: ReadonlyMap<string, string>;
   staleSince: Date;
   tz: string;
 };

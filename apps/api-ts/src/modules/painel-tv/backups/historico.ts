@@ -87,12 +87,12 @@ const isSim = (valor: unknown) =>
     .trim()
     .toUpperCase() === "S";
 
-const nomeDoSistema = (codigo: number, nomes: Map<string, string>): string =>
+const nomeDoSistema = (codigo: number, nomes: ReadonlyMap<string, string>): string =>
   codigo === SISTEMA_INTEGRACAO ? ROTULO_INTEGRACAO : (nomes.get(String(codigo)) ?? `Sistema ${codigo}`);
 
 type Entrada = {
   linhas: LinhaDoHistorico[];
-  nomes: Map<string, string>;
+  nomes: ReadonlyMap<string, string>;
   /**
    * Código já normalizado (o grupo da integração é o 8). `null` traz os QUATRO
    * do painel: o legado guarda envio de outros sistemas, e mostrá-los aqui

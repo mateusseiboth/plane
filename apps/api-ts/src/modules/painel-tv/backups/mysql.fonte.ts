@@ -19,14 +19,17 @@
 import mysql from "mysql2/promise";
 import {
   buildAtrasadosDoLegado,
+  buildCodigoIdentidade,
   buildEnviosDoLegado,
   buildStaleSince,
+  NOMES_FIXOS_DOS_SISTEMAS,
   type EnvioAutom,
 } from "@modules/painel-tv/backups/legado";
 import {
   FONTE_VAZIA,
   type BackupDaEntidade,
   type ConsultaDoHistorico,
+  type EntidadeParaBackup,
   type EnvioDeBackup,
   type FonteDeBackups,
 } from "@modules/painel-tv/backups/fonte";
@@ -46,8 +49,12 @@ const NOME_DE_BASE = /^[A-Za-z0-9_]+$/;
 
 type Opcoes = {
   url: string;
-  /** Base da intranet, onde estão `entidades` e `sistemas`. */
-  intranetDb: string;
+  /**
+   * Base da intranet no MESMO servidor, onde estão `entidades` e `sistemas`.
+   * `null` (produção): o código é o próprio `id_entidade` e os nomes dos
+   * sistemas são os fixos.
+   */
+  intranetDb: string | null;
   tz?: string;
   agora?: () => Date;
 };
@@ -114,7 +121,9 @@ export function createFonteMysqlDeBackups({
   tz = TZ_PADRAO,
   agora = () => new Date(),
 }: Opcoes): FonteDeBackups {
-  if (!NOME_DE_BASE.test(intranetDb)) throw new Error(`Base da intranet inválida: ${intranetDb}`);
+  if (intranetDb !== null && !NOME_DE_BASE.test(intranetDb)) {
+    throw new Error(`Base da intranet inválida: ${intranetDb}`);
+  }
   const pool = mysql.createPool({ uri: url, connectionLimit: 2, ssl: undefined });
   const cache = createCache<unknown>(agora);
 
@@ -166,7 +175,10 @@ export function createFonteMysqlDeBackups({
              e.tamanho_banco, e.nome_arquivo, e.host, e.ip_externo, e.versao_backup,
              e.corrompido, e.envio_ftp, e.erro_backup, e.erro_restore`;
 
-  const lerCodigoPorLegado = () =>
+  const lerCodigoPorLegado = (entidades: EntidadeParaBackup[]) =>
+    intranetDb === null ? Promise.resolve(buildCodigoIdentidade(entidades)) : lerCodigoDaIntranet();
+
+  const lerCodigoDaIntranet = () =>
     cache("codigos", async () => {
       const linhas = await consulta(`
         SELECT entidades_id, entidades_sac_desktop_id
@@ -175,18 +187,24 @@ export function createFonteMysqlDeBackups({
       return new Map(linhas.map((l) => [Number(l.entidades_id), texto(l.entidades_sac_desktop_id)]));
     }) as Promise<Map<number, string>>;
 
-  const lerNomes = () =>
+  const lerNomes = () => (intranetDb === null ? Promise.resolve(NOMES_FIXOS_DOS_SISTEMAS) : lerNomesDaIntranet());
+
+  const lerNomesDaIntranet = () =>
     cache("nomes", async () => {
       const linhas = await consulta(`
         SELECT sistemas_cod_sac_desktop, sistemas_nome
           FROM ${intranetDb}.sistemas
          WHERE sistemas_cod_sac_desktop > 0 AND categoria = 0`);
       return new Map(linhas.map((l) => [texto(l.sistemas_cod_sac_desktop), texto(l.sistemas_nome)]));
-    }) as Promise<Map<string, string>>;
+    }) as Promise<ReadonlyMap<string, string>>;
 
   return {
     async findAtrasados(entidades, instante, dias = DIAS_DE_TOLERANCIA): Promise<BackupDaEntidade[]> {
-      const [envios, codigoPorLegado, nomes] = await Promise.all([lerUltimos(), lerCodigoPorLegado(), lerNomes()]);
+      const [envios, codigoPorLegado, nomes] = await Promise.all([
+        lerUltimos(),
+        lerCodigoPorLegado(entidades),
+        lerNomes(),
+      ]);
       return buildAtrasadosDoLegado({
         entidades,
         codigoPorLegado,
@@ -201,14 +219,14 @@ export function createFonteMysqlDeBackups({
       const staleSince = buildStaleSince(instante, dias, tz);
       const [envios, codigoPorLegado, nomes] = await Promise.all([
         lerDesde(comoDataDoLegado(staleSince, tz)),
-        lerCodigoPorLegado(),
+        lerCodigoPorLegado(entidades),
         lerNomes(),
       ]);
       return buildEnviosDoLegado({ entidades, codigoPorLegado, envios, nomes, staleSince, tz });
     },
 
     async findHistorico({ entidade, sistema, agora: instante, dias }: ConsultaDoHistorico): Promise<EnvioDetalhado[]> {
-      const codigoPorLegado = await lerCodigoPorLegado();
+      const codigoPorLegado = await lerCodigoPorLegado([entidade]);
       const codigo = entidade.legacyId === null ? undefined : codigoPorLegado.get(entidade.legacyId);
       // Entidade que não existe no SAC desktop nunca mandou backup nenhum.
       if (!codigo) return [];
@@ -247,7 +265,8 @@ const semQuebrar = <T>(promessa: Promise<T[]>): Promise<T[]> =>
 export function createFonteDeBackups(env: Record<string, string | undefined> = process.env): FonteDeBackups {
   const url = env.LEGACY_BACKUP_DB_URL?.trim();
   if (!url) return FONTE_VAZIA;
-  const intranetDb = env.LEGACY_INTRANET_DB?.trim() || env.MYSQL_DB?.trim() || "quality_site_dev";
+  // Só o banco de DEV tem a intranet no mesmo servidor; em produção fica vazio.
+  const intranetDb = env.LEGACY_INTRANET_DB?.trim() || null;
   const fonte = createFonteMysqlDeBackups({ url, intranetDb, tz: env.LEGACY_BACKUP_TZ?.trim() || TZ_PADRAO });
   return {
     findAtrasados: (entidades, instante, dias) => semQuebrar(fonte.findAtrasados(entidades, instante, dias)),
