@@ -11,6 +11,7 @@ import {
   parseDataHoraLegado,
   readUltimoEnvioPorPar,
   buildCodigoPorSac,
+  ENTIDADES_FORA_DO_BACKUP,
   NOMES_FIXOS_DOS_SISTEMAS,
 } from "@modules/painel-tv/backups/legado";
 import { buildBackupsAtrasados } from "@modules/painel-tv/backups/atrasados";
@@ -115,6 +116,19 @@ describe("atrasados do MySQL legado", () => {
     expect(
       atrasados([{ id: "1", id_entidade: "999", id_sistema: "3", datahora_envio: "2020-01-01 08:00:00" }])
     ).toEqual([]);
+  });
+
+  it("entidade da lista fixa do relatório legado (Quality, testes) fica fora do atraso", () => {
+    expect(ENTIDADES_FORA_DO_BACKUP.has("79")).toBe(true);
+    const fora = buildAtrasadosDoLegado({
+      entidades: [{ id: "uuid-q", nome: "Quality Sistemas", legacyId: 1, sacCode: 79 }],
+      codigoPorLegado: new Map([[1, "79"]]),
+      envios: [{ id: "1", id_entidade: "79", id_sistema: "3", datahora_envio: "2020-01-01 08:00:00" }],
+      nomes: NOMES_FIXOS_DOS_SISTEMAS,
+      staleSince: buildStaleSince(AGORA, 1, TZ),
+      tz: TZ,
+    });
+    expect(fora).toEqual([]);
   });
 
   it("sistema fora dos quatro do painel não conta como backup", () => {

@@ -16,6 +16,24 @@ const SISTEMAS_DO_BANCO_INTEGRACAO = new Set(["8", "9", "10", "11", "12", "13", 
 const SISTEMA_INTEGRACAO = "8";
 /** Os sistemas que fazem backup (já normalizados): o resto do legado não conta. */
 const SISTEMAS_ACOMPANHADOS = new Set(["1", "3", "4", SISTEMA_INTEGRACAO]);
+
+/**
+ * Códigos SAC que o relatório legado (`relatorio_backup.php`) deixa de fora:
+ * a própria Quality (79) e entidades de teste ou desativadas no SAC.
+ */
+export const ENTIDADES_FORA_DO_BACKUP: ReadonlySet<string> = new Set([
+  "79",
+  "288",
+  "291",
+  "323",
+  "356",
+  "268",
+  "358",
+  "363",
+  "239",
+  "305",
+  "361",
+]);
 export const ROTULO_INTEGRACAO = "Integração";
 
 /**
@@ -144,7 +162,7 @@ export function buildAtrasadosDoLegado(entrada: EntradaDoLegado): BackupDaEntida
 
   return [...maisRecentePorEntidade.entries()].flatMap(([codigo, envio]) => {
     const entidade = porCodigo.get(codigo);
-    if (!entidade) return [];
+    if (!entidade || ENTIDADES_FORA_DO_BACKUP.has(codigo)) return [];
     const ultimoEm = parseDataHoraLegado(envio.datahora_envio, entrada.tz);
     if (ultimoEm && new Date(ultimoEm) >= entrada.staleSince) return [];
     return [

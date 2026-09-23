@@ -11,6 +11,7 @@
  * Puro: entidades, envios e atrasos entram prontos.
  */
 
+import { ENTIDADES_FORA_DO_BACKUP } from "@modules/painel-tv/backups/legado";
 import type { BackupDaEntidade, EnvioDeBackup } from "@modules/painel-tv/backups/fonte";
 
 export const SISTEMAS_DO_PAINEL = [1, 3, 4, 8] as const;
@@ -75,7 +76,9 @@ const serializeEnvio = (envio: EnvioDeBackup) => ({
 const readUf = (entidade: EntidadeDoBackup) => (entidade.uf ?? "").trim().toUpperCase();
 
 export function buildPainelDeBackups({ entidades, envios, atrasados, agora, dias, uf }: Entrada) {
-  const doSac = entidades.filter((e) => e.codigo !== null);
+  // Sem código no SAC não há backup; e a lista fixa do relatório legado
+  // (Quality, entidades de teste) fica fora do painel inteiro.
+  const doSac = entidades.filter((e) => e.codigo !== null && !ENTIDADES_FORA_DO_BACKUP.has(String(e.codigo)));
   const ufs = [...new Set(doSac.map(readUf).filter(Boolean))].toSorted();
   const filtro = (uf ?? "").trim().toUpperCase();
   const escolhidas = filtro ? doSac.filter((e) => readUf(e) === filtro) : doSac;
