@@ -4,7 +4,5 @@
  * See the LICENSE file for details.
  */
 
-export * from "./links";
 export * from "./no-projects";
-export * from "./recents";
 export * from "./stickies";
