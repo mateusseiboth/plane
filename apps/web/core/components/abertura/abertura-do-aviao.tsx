@@ -12,8 +12,8 @@
  * por isso o estado inicial é sempre "aberta": nada aqui depende de tema,
  * janela ou preferência antes de montar.
  */
-import { useEffect, useRef, useState, type AnimationEvent } from "react";
 import AviaoMark from "@/app/assets/logos/aviao-mark.svg?url";
+import { useEffect, useRef, useState, type AnimationEvent } from "react";
 import { Cena } from "./cena";
 import { buildControleDaAbertura, type ControleDaAbertura } from "./controle-da-abertura";
 import { prontidaoDaApp } from "./prontidao-da-app";
@@ -78,7 +78,7 @@ export function AberturaDoAviao() {
         <img src={AviaoMark} alt="" />
         <div>
           <div className="abertura__nome">Avião</div>
-          <div className="abertura__lema">Atendimento e chamados da Quality</div>
+          <div className="abertura__lema">Atendimento e chamados</div>
         </div>
       </div>
       <p className="abertura__legenda">Preparando a decolagem…</p>
