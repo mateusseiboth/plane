@@ -21,20 +21,6 @@ export type THomeSummary = {
   projetos: number;
 };
 
-export type THomeOverdueItem = {
-  id: string;
-  name: string;
-  priority: string;
-  target_date: string | null;
-  sequence_id: number;
-  project_id: string;
-  project_identifier: string;
-  project_name: string;
-  state_name: string | null;
-  state_color: string | null;
-  state_group: string | null;
-};
-
 const VAZIO: THomeSummary = {
   meus_abertos: 0,
   meus_atrasados: 0,
@@ -65,12 +51,6 @@ class HomeSummaryService extends APIService {
     return this.get(`/api/workspaces/${workspaceSlug}/home-summary/`)
       .then((r) => (r?.data as THomeSummary) ?? VAZIO)
       .catch(() => VAZIO);
-  }
-
-  overdue(workspaceSlug: string, limit = 6): Promise<THomeOverdueItem[]> {
-    return this.get(`/api/workspaces/${workspaceSlug}/home-overdue/`, { params: { limit } })
-      .then((r) => (r?.data as THomeOverdueItem[]) ?? [])
-      .catch(() => []);
   }
 }
 

@@ -5,35 +5,37 @@
  */
 
 import { observer } from "mobx-react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import useSWR from "swr";
 // plane imports
 import { ContentWrapper } from "@plane/ui";
 // hooks
-import { useHome } from "@/hooks/store/use-home";
-import { useUserProfile } from "@/hooks/store/user";
+import { useUser, useUserProfile } from "@/hooks/store/user";
 // plane web imports
 import { HomePeekOverviewsRoot } from "@/plane-web/components/home";
+import { HomePageHeader } from "@/plane-web/components/home/header";
 import { TourRoot } from "@/plane-web/components/onboarding/tour/root";
+// services
+import { homeSummaryService } from "@/services/home-summary.service";
 // local imports
-import { MuralHomeSection } from "@/components/mural/home-section";
-import { DashboardWidgets } from "./home-dashboard-widgets";
+import { PainelDaHome } from "./painel/painel-da-home";
+import { buildResumoDoDia } from "./painel/painel-rules";
+import { UserGreetingsView } from "./user-greetings";
+import { NoProjectsEmptyState } from "./widgets";
+import { MarketplaceWidgetsSection } from "./widgets/marketplace-widgets-section";
 
 export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
   // store hooks
   const { workspaceSlug } = useParams();
+  const pathname = usePathname();
+  const { data: currentUser } = useUser();
   const { data: currentUserProfile, updateTourCompleted } = useUserProfile();
-  const { fetchWidgets } = useHome();
+  const slug = workspaceSlug?.toString() ?? "";
+  const isWikiApp = pathname.includes(`/${slug}/pages`);
 
-  useSWR(
-    workspaceSlug ? `HOME_DASHBOARD_WIDGETS_${workspaceSlug}` : null,
-    workspaceSlug ? () => fetchWidgets(workspaceSlug?.toString()) : null,
-    {
-      revalidateIfStale: true,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-    }
-  );
+  const { data: resumo } = useSWR(slug ? `HOME_SUMMARY_${slug}` : null, () => homeSummaryService.summary(slug), {
+    revalidateOnFocus: false,
+  });
 
   const handleTourCompleted = async () => {
     try {
@@ -43,7 +45,6 @@ export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
     }
   };
 
-  // TODO: refactor loader implementation
   return (
     <>
       {currentUserProfile && !currentUserProfile.is_tour_completed && (
@@ -51,18 +52,20 @@ export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
           <TourRoot onComplete={handleTourCompleted} />
         </div>
       )}
-      <>
-        <HomePeekOverviewsRoot />
-        {/* A home usava uma coluna de 800px centralizada: numa tela larga
-            sobravam faixas enormes de vazio dos dois lados. Agora ela ocupa a
-            largura útil, com um teto que evita linhas longas demais. */}
-        <ContentWrapper className="scrollbar-hide gap-6 bg-surface-1 px-page-x">
-          <div className="mx-auto w-full max-w-[1440px] pb-10">
-            {workspaceSlug && <MuralHomeSection workspaceSlug={workspaceSlug.toString()} />}
-            <DashboardWidgets />
+      <HomePeekOverviewsRoot />
+      {/* Fundo cinza no claro, cartões brancos por cima; no escuro o fundo é o
+          surface-1 e os cartões sobem para o layer-1. */}
+      <ContentWrapper className="scrollbar-hide bg-surface-2 px-page-x dark:bg-surface-1">
+        <div className="mx-auto flex w-full max-w-360 flex-col gap-5 pt-2 pb-10">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            {currentUser ? <UserGreetingsView user={currentUser} resumo={buildResumoDoDia(resumo)} /> : <div />}
+            <HomePageHeader />
           </div>
-        </ContentWrapper>
-      </>
+          {!isWikiApp && <NoProjectsEmptyState />}
+          {slug && currentUser && <PainelDaHome workspaceSlug={slug} userId={currentUser.id} />}
+          {!isWikiApp && <MarketplaceWidgetsSection />}
+        </div>
+      </ContentWrapper>
     </>
   );
 });

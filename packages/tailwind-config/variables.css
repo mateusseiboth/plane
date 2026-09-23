@@ -145,6 +145,10 @@
     --priority-medium: oklch(0.79 0.1466 82.04);
     --priority-low: oklch(0.579 0.1807 262.31);
     --priority-none: oklch(0.6376 0.0129 231.77);
+    /* Séries de gráfico: as duas primeiras cores categóricas da skill dataviz,
+       validadas (CVD e contraste) no claro e, com passos próprios, no escuro. */
+    --chart-series-1: #2a78d6;
+    --chart-series-2: #eb6834;
 
     /* -------------------- Light mode color tokens -------------------- */
     /* Neutral colors */
@@ -398,6 +402,9 @@
 
     /* ---------- Dark mode color tokens ---------- */
     @variant dark {
+      /* Séries de gráfico no escuro (passos do escuro, não inversão do claro) */
+      --chart-series-1: #3987e5;
+      --chart-series-2: #d95926;
       /* Neutral colors */
       --neutral-black: oklch(0.1689 0.0021 230.81);
       --neutral-100: oklch(0.1932 0.002 230.81);
@@ -973,6 +980,9 @@
   --border-color-priority-medium: var(--priority-medium);
   --border-color-priority-low: var(--priority-low);
   --border-color-priority-none: var(--priority-none);
+  /* ---------- Chart series ---------- */
+  --color-chart-series-1: var(--chart-series-1);
+  --color-chart-series-2: var(--chart-series-2);
 }
 
 /* ---------- Typography tokens ---------- */

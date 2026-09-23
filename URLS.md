@@ -30,7 +30,7 @@ vez, na criação. Quem já está logado no Plane abre o painel sem chave nenhum
 
 | Tela | URL |
 |---|---|
-| Página inicial (mural fica no topo) | `/<slug>/` |
+| Página inicial (painel pessoal com o mural) | `/<slug>/` |
 | Chamados do espaço | `/<slug>/workspace-views/all-issues` |
 | Solicitações globais (triagem) | `/<slug>/global-intake` |
 | Visitas técnicas | `/<slug>/visits` |

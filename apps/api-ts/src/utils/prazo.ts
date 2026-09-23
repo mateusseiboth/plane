@@ -34,7 +34,7 @@
  * (`America/Campo_Grande` em produção); o env existe para quem hospedar a
  * instância em outro estado.
  */
-const FUSO = process.env.APP_TIMEZONE ?? "America/Campo_Grande";
+export const FUSO = process.env.APP_TIMEZONE ?? "America/Campo_Grande";
 
 /** `2026-09-30` — data pura, sem hora nenhuma. */
 const SO_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -53,7 +53,7 @@ const RELOGIO = new Intl.DateTimeFormat("en-US", {
   second: "2-digit",
 });
 
-type Parede = {ano: number; mes: number; dia: number; hora: number; minuto: number; segundo: number};
+type Parede = { ano: number; mes: number; dia: number; hora: number; minuto: number; segundo: number };
 
 /** O que o relógio de parede do escritório marca num dado instante. */
 function parede(instante: Date): Parede {
@@ -85,7 +85,15 @@ function deslocamento(instante: Date): number {
  * segunda o confirma já perto do instante certo — o que importa se algum dia
  * o fuso voltar a ter horário de verão.
  */
-function instanteLocal(ano: number, mes: number, dia: number, hora: number, minuto: number, segundo: number, ms: number): Date {
+function instanteLocal(
+  ano: number,
+  mes: number,
+  dia: number,
+  hora: number,
+  minuto: number,
+  segundo: number,
+  ms: number
+): Date {
   const comoUtc = Date.UTC(ano, mes - 1, dia, hora, minuto, segundo, ms);
   const palpite = comoUtc - deslocamento(new Date(comoUtc));
   return new Date(comoUtc - deslocamento(new Date(palpite)));
@@ -144,7 +152,7 @@ export function instanteDaEntrada(valor: unknown, borda: BordaDoDia): Date | nul
       Number(local[4]),
       Number(local[5]),
       Number(local[6] ?? 0),
-      Number((local[7] ?? "0").padEnd(3, "0")),
+      Number((local[7] ?? "0").padEnd(3, "0"))
     );
   }
 
