@@ -5,6 +5,7 @@ import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { readBridgeSecret } from "@modules/plugin-sdk-gateway/bridge-secret";
 import { buildProxyResponseHeaders, isRespostaEmFluxo } from "@utils/proxy-response";
+import { EProjectAction, hasWorkspaceAction } from "@utils/permission-checks";
 import {
   findAction,
   findActions,
@@ -74,6 +75,9 @@ async function resolvePluginPermissions(plugin: any, user: any, workspaceId: str
 
 async function canAdminPlugin(plugin: any, user: any, workspaceId: string | null): Promise<boolean> {
   if (user?.isInstanceAdmin || user?.isSuperuser) return true;
+  // Quem gerencia plugins na tela de Configurações também configura o plugin:
+  // sem isto o admin do espaço abriria o formulário e tomaria 403 ao salvar.
+  if (workspaceId && (await hasWorkspaceAction(workspaceId, user.id, EProjectAction.PLUGIN_MANAGE))) return true;
   const perms = await resolvePluginPermissions(plugin, user, workspaceId);
   return perms.some((p) => p.endsWith(".admin"));
 }
