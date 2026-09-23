@@ -35,7 +35,7 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = 
         const widget = await widgetRegistry.fetchWidget(widgetId);
 
         if (widget.status !== "ACTIVE") {
-          throw new Error(`O widget "${widget.name}" não está ativo (status: ${widget.status}).`);
+          throw new Error(`O widget "${widget.name}" está desativado. Peça a um administrador para ativá-lo.`);
         }
 
         // O SDK é parte do projeto web — inicializa com o widgetId antes de executar o bundle
@@ -93,10 +93,14 @@ function loadModule(url: string): Promise<unknown> {
       import * as mod from ${JSON.stringify(url)};
       window[${JSON.stringify(callbackName)}](mod);
     `;
-    script.onerror = () => {
-      delete (window as any)[callbackName];
-      reject(new Error(`Falha ao carregar o bundle do widget: ${url}`));
-    };
+    script.addEventListener(
+      "error",
+      () => {
+        delete (window as any)[callbackName];
+        reject(new Error(`Falha ao carregar o bundle do widget: ${url}`));
+      },
+      { once: true }
+    );
     document.head.appendChild(script);
     script.addEventListener("load", () => script.remove(), { once: true });
   });
@@ -105,14 +109,17 @@ function loadModule(url: string): Promise<unknown> {
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
 const WidgetSkeleton: React.FC = () => (
-  <div className="bg-custom-background-80 animate-pulse rounded-xl" style={{ minHeight: 120 }} />
+  <div aria-hidden className="min-h-30 animate-pulse rounded-xl bg-layer-1 dark:bg-layer-2" />
 );
 
 const WidgetErrorFallback: React.FC<{ message: string; widgetId: string }> = ({ message, widgetId }) => (
-  <div className="border-red-500/20 bg-red-500/5 flex flex-col items-center justify-center rounded-xl border p-6 text-center">
-    <p className="text-sm text-red-500 font-medium">Falha ao carregar o widget</p>
-    <p className="text-xs text-red-400 mt-1">{message}</p>
-    <p className="font-mono text-xs text-custom-text-400 mt-2">id: {widgetId}</p>
+  <div
+    role="alert"
+    className="flex flex-col items-center justify-center rounded-xl border border-danger-subtle bg-danger-subtle p-6 text-center"
+  >
+    <p className="text-13 font-medium text-danger-primary">Não foi possível carregar o widget.</p>
+    <p className="mt-1 text-12 text-secondary">{message}</p>
+    <p className="font-mono mt-2 text-11 text-tertiary">{widgetId}</p>
   </div>
 );
 

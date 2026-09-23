@@ -51,4 +51,7 @@ export type {
   DrawerConfig,
   ConfirmConfig,
   SDKInitOptions,
+  WidgetSize,
+  WidgetManifest,
+  WidgetHomeProps,
 } from "./types";

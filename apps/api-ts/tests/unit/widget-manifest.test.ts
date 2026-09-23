@@ -53,4 +53,21 @@ describe("validateManifest", () => {
     const result = validateManifest({ ...VALID, name: longName });
     expect(result.name.length).toBe(255);
   });
+
+  // Home em grade: o widget pode declarar o título do cartão e o tamanho em que nasce.
+  it("aceita título do cartão e tamanho padrão na grade da home", () => {
+    const result = validateManifest({ ...VALID, title: "  Fila do suporte ", defaultSize: "2/3" });
+    expect(result.title).toBe("Fila do suporte");
+    expect(result.defaultSize).toBe("2/3");
+  });
+
+  it("sem título e sem tamanho, os dois ficam de fora", () => {
+    const result = validateManifest(VALID);
+    expect(result.title).toBeUndefined();
+    expect(result.defaultSize).toBeUndefined();
+  });
+
+  it("recusa tamanho padrão fora de 1/3, 1/2, 2/3 e 1/1", () => {
+    expect(() => validateManifest({ ...VALID, defaultSize: "3/4" })).toThrow("defaultSize");
+  });
 });

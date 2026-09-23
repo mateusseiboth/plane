@@ -21,7 +21,6 @@ import type {
   TLink,
   TSearchResponse,
   TSearchEntityRequestPayload,
-  TWidgetEntityData,
   TActivityEntityData,
   IWorkspaceSidebarNavigationItem,
   IWorkspaceSidebarNavigation,
@@ -419,27 +418,6 @@ export class WorkspaceService extends APIService {
         entity_name,
       },
     })
-      .then((response) => response?.data)
-      .catch((error) => {
-        throw error?.response;
-      });
-  }
-
-  // widgets
-  async fetchWorkspaceWidgets(workspaceSlug: string): Promise<TWidgetEntityData[]> {
-    return this.get(`/api/workspaces/${workspaceSlug}/home-preferences/`)
-      .then((response) => response?.data)
-      .catch((error) => {
-        throw error?.response;
-      });
-  }
-
-  async updateWorkspaceWidget(
-    workspaceSlug: string,
-    widgetKey: string,
-    data: Partial<TWidgetEntityData>
-  ): Promise<TWidgetEntityData> {
-    return this.patch(`/api/workspaces/${workspaceSlug}/home-preferences/${widgetKey}/`, data)
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response;

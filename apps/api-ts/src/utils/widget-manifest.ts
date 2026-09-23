@@ -1,3 +1,5 @@
+import { isTamanhoDeWidget, type TamanhoDeWidget } from "@utils/tamanho-de-widget";
+
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
 
 export const VALID_PERMISSIONS = new Set([
@@ -16,6 +18,27 @@ export interface ValidatedManifest {
   description: string;
   entry: string;
   permissions: string[];
+  /** Título do cartão na home; sem ele a home usa o `name`. */
+  title?: string;
+  /** Tamanho com que o widget entra na grade da home (fração da largura). */
+  defaultSize?: TamanhoDeWidget;
+}
+
+const TAMANHO_DO_TITULO = 80;
+
+/** Campos opcionais da grade da home: ausentes ficam de fora; tamanho inválido recusa o pacote. */
+function readCamposDaHome(raw: Record<string, unknown>): Pick<ValidatedManifest, "title" | "defaultSize"> {
+  if (raw.defaultSize !== undefined && !isTamanhoDeWidget(raw.defaultSize)) {
+    throw Object.assign(
+      new Error(`manifest.json: "defaultSize" deve ser 1/3, 1/2, 2/3 ou 1/1; recebido "${String(raw.defaultSize)}".`),
+      { status: 400 }
+    );
+  }
+  const title = typeof raw.title === "string" ? raw.title.trim().slice(0, TAMANHO_DO_TITULO) : "";
+  return {
+    ...(title && { title }),
+    ...(raw.defaultSize !== undefined && { defaultSize: raw.defaultSize as TamanhoDeWidget }),
+  };
 }
 
 export function validateManifest(raw: Record<string, unknown>): ValidatedManifest {
@@ -53,5 +76,6 @@ export function validateManifest(raw: Record<string, unknown>): ValidatedManifes
     description: typeof raw.description === "string" ? raw.description.trim() : "",
     entry: (raw.entry as string).trim(),
     permissions,
+    ...readCamposDaHome(raw),
   };
 }

@@ -18,11 +18,11 @@ import { TourRoot } from "@/plane-web/components/onboarding/tour/root";
 // services
 import { homeSummaryService } from "@/services/home-summary.service";
 // local imports
-import { PainelDaHome } from "./painel/painel-da-home";
-import { buildResumoDoDia } from "./painel/painel-rules";
-import { UserGreetingsView } from "./user-greetings";
-import { NoProjectsEmptyState } from "./widgets";
-import { MarketplaceWidgetsSection } from "./widgets/marketplace-widgets-section";
+import { GerenciarWidgets } from "@/components/home/grade/gerenciar-widgets";
+import { GradeDeWidgets } from "@/components/home/grade/grade-de-widgets";
+import { buildResumoDoDia } from "@/components/home/painel/painel-rules";
+import { UserGreetingsView } from "@/components/home/user-greetings";
+import { NoProjectsEmptyState } from "@/components/home/widgets";
 
 export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
   // store hooks
@@ -53,6 +53,7 @@ export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
         </div>
       )}
       <HomePeekOverviewsRoot />
+      {slug && <GerenciarWidgets workspaceSlug={slug} />}
       {/* Fundo cinza no claro, cartões brancos por cima; no escuro o fundo é o
           surface-1 e os cartões sobem para o layer-1. */}
       <ContentWrapper className="scrollbar-hide bg-surface-2 px-page-x dark:bg-surface-1">
@@ -62,8 +63,7 @@ export const WorkspaceHomeView = observer(function WorkspaceHomeView() {
             <HomePageHeader />
           </div>
           {!isWikiApp && <NoProjectsEmptyState />}
-          {slug && currentUser && <PainelDaHome workspaceSlug={slug} userId={currentUser.id} />}
-          {!isWikiApp && <MarketplaceWidgetsSection />}
+          {slug && currentUser && <GradeDeWidgets workspaceSlug={slug} userId={currentUser.id} />}
         </div>
       </ContentWrapper>
     </>

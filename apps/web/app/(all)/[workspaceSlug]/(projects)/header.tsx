@@ -5,16 +5,21 @@
  */
 
 import { observer } from "mobx-react";
+import { Shapes } from "lucide-react";
 // plane imports
 import { useTranslation } from "@plane/i18n";
+import { Button } from "@plane/propel/button";
 import { HomeIcon } from "@plane/propel/icons";
 import { Breadcrumbs, Header } from "@plane/ui";
 // components
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
+// hooks
+import { useHome } from "@/hooks/store/use-home";
 
 export const WorkspaceDashboardHeader = observer(function WorkspaceDashboardHeader() {
   // plane hooks
   const { t } = useTranslation();
+  const { toggleWidgetSettings } = useHome();
 
   return (
     <>
@@ -30,6 +35,18 @@ export const WorkspaceDashboardHeader = observer(function WorkspaceDashboardHead
             </Breadcrumbs>
           </div>
         </Header.LeftItem>
+        <Header.RightItem>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => toggleWidgetSettings(true)}
+            aria-label={t("home.manage_widgets")}
+            className="my-auto mb-0"
+            prependIcon={<Shapes />}
+          >
+            <div className="hidden md:block">{t("home.manage_widgets")}</div>
+          </Button>
+        </Header.RightItem>
       </Header>
     </>
   );

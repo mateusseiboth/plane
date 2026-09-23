@@ -169,8 +169,17 @@ export default function MeuWidget({ entityId }) {
   "version": "1.0.0",
   "author": "Seu Nome",
   "entry": "widget.js",
-  "permissions": ["worker-items.read", "stats.read"]
+  "permissions": ["worker-items.read", "stats.read"],
+  "title": "Fila do suporte",
+  "defaultSize": "1/2"
 }`}</Code>
+            <p>
+              <Pill>title</Pill> e <Pill>defaultSize</Pill> são opcionais e valem para a home: o título do cartão (sem
+              ele, vale o <Pill>name</Pill>) e o tamanho com que o widget entra na grade (<Pill>1/3</Pill>,{" "}
+              <Pill>1/2</Pill>, <Pill>2/3</Pill> ou <Pill>1/1</Pill>; sem ele, <Pill>1/2</Pill>). Depois cada pessoa move,
+              redimensiona e oculta o widget na própria home, e o componente recebe o tamanho atual na prop{" "}
+              <Pill>size</Pill>.
+            </p>
             <div className="overflow-hidden rounded-xl border border-custom-border-200">
               <table className="w-full text-13">
                 <thead className="bg-custom-background-90 text-custom-text-300">
@@ -202,8 +211,8 @@ zip widget.zip manifest.json -j dist/widget.js`}</Code>
               <a href={`/${slug}/settings/widgets/`} className="text-custom-primary-100 hover:underline">
                 Configurações → Widgets
               </a>{" "}
-              e faz o upload do <Pill>widget.zip</Pill>. Após a ativação, o widget aparece na home para todos os
-              usuários do workspace.
+              e faz o upload do <Pill>widget.zip</Pill>. Após a ativação, o widget entra no fim da grade da home de
+              todos os usuários do workspace, que podem movê-lo ou ocultá-lo em Gerenciar widgets.
             </p>
           </Section>
 
