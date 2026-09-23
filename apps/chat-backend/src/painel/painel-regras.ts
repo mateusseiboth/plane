@@ -113,6 +113,16 @@ export const readSituacaoDoAtendente = (atendente: { conectado: boolean; invisiv
   return atendente.invisivel ? "invisivel" : "online";
 };
 
+/**
+ * A lateral mostra só quem está em alguma fila de atendimento. Quem tem a ação
+ * de atender mas não entrou em fila nenhuma nunca recebe conversa distribuída,
+ * então sua linha só enchia a TV de "Offline". Vale inclusive para quem está
+ * online fora de fila.
+ */
+export function filterAtendentesEmFila<T extends { id: string }>(atendentes: T[], emFila: ReadonlySet<string>): T[] {
+  return atendentes.filter((atendente) => emFila.has(atendente.id));
+}
+
 const PESO_DA_SITUACAO: Record<SituacaoDoAtendente, number> = { online: 0, invisivel: 1, offline: 2 };
 
 /** Online primeiro, depois quem tem mais conversa, depois em ordem alfabética. */

@@ -79,7 +79,16 @@ describe("painel de TV do atendimento", () => {
     expect(painel.totais).toMatchObject({ abertas: 4, encerradas_hoje: 2 });
   });
 
-  it("a lateral traz quem atende no espaço, com a situação e a carga", async () => {
+  it("quem atende mas não está em fila nenhuma fica fora da lateral", async () => {
+    const painel = await readPainelDeAtendimento(slug, AGORA);
+    expect(painel.atendentes).toEqual([]);
+    expect(painel.totais.atendentes_online).toBe(0);
+  });
+
+  it("a lateral traz quem está em fila, com a situação e a carga", async () => {
+    const fila = await prisma.queue.create({ data: { workspaceId: slug, name: "Suporte" } });
+    await prisma.queueMember.create({ data: { queueId: fila.id, userId: atendente.id } });
+
     const painel = await readPainelDeAtendimento(slug, AGORA);
     const pessoa = painel.atendentes.find((a) => a.id === atendente.id)!;
     expect(pessoa).toMatchObject({ situacao: "offline", em_atendimento: 2 });

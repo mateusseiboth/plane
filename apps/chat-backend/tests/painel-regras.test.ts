@@ -6,6 +6,7 @@ import { describe, expect, it } from "bun:test";
 import {
   ABAS_DO_PAINEL,
   classifyAbaDoPainel,
+  filterAtendentesEmFila,
   readContato,
   readSituacaoDoAtendente,
   readTempoDaLinha,
@@ -110,5 +111,35 @@ describe("contato e atendentes", () => {
       atendente("Bruno", true, 3),
     ]).map((a) => a.name);
     expect(ordem).toEqual(["Bruno", "Ana", "Carlos"]);
+  });
+});
+
+describe("só quem está em fila aparece na lateral", () => {
+  const equipe = [atendente("Ana", true, 1), atendente("Bruno", false, 0), atendente("Carlos", true, 2)];
+
+  it("deixa de fora quem não é membro de nenhuma fila", () => {
+    const naLateral = filterAtendentesEmFila(equipe, new Set(["Ana", "Bruno"])).map((a) => a.name);
+    expect(naLateral).toEqual(["Ana", "Bruno"]);
+  });
+
+  it("online fora de fila também fica de fora", () => {
+    const naLateral = filterAtendentesEmFila(equipe, new Set(["Bruno"])).map((a) => a.name);
+    expect(naLateral).toEqual(["Bruno"]);
+  });
+
+  it("sem fila nenhuma configurada, a lateral fica vazia", () => {
+    expect(filterAtendentesEmFila(equipe, new Set())).toEqual([]);
+  });
+
+  it("id de fila que não é mais da equipe não inventa linha", () => {
+    const naLateral = filterAtendentesEmFila(equipe, new Set(["Ana", "Quem-Saiu"])).map((a) => a.name);
+    expect(naLateral).toEqual(["Ana"]);
+  });
+
+  it("preserva a ordenação de online primeiro depois do corte", () => {
+    const ordem = sortAtendentes(filterAtendentesEmFila(equipe, new Set(["Ana", "Bruno", "Carlos"]))).map(
+      (a) => a.name
+    );
+    expect(ordem).toEqual(["Carlos", "Ana", "Bruno"]);
   });
 });

@@ -171,10 +171,18 @@ Abas (de `painel-regras.ts`), com o tempo que cada uma mostra:
 | Fechou Chat | as demais encerradas hoje (`cliente_saiu`, `atendente`, `cliente`, `robo`, `fim_do_dia`) | duração |
 
 Ligação (`channel = "phone"`) fica de fora: do outro lado não há ninguém
-digitando. A lateral lista quem tem `chat.atender` no espaço, com a situação
-(online = conectado e visível; invisível = conectado e escondido pelo
-administrador; offline), quantas conversas tem na mão e em quantas o cliente
-está esperando resposta.
+digitando. A lateral lista quem é membro de ALGUMA FILA do espaço
+(`chat_queue_members`, filtro puro `filterAtendentesEmFila` em
+`painel-regras.ts`), com a situação (online = conectado e visível; invisível =
+conectado e escondido pelo administrador; offline), quantas conversas tem na
+mão e em quantas o cliente está esperando resposta.
+
+Ter `chat.atender` não basta: a TV mostrava o espaço inteiro, quase tudo
+"Offline", porque a permissão é de muita gente e a fila é de poucos. Quem está
+online mas fora de fila também fica de fora, pela mesma razão: sem fila, a
+conversa não chega nele. Sem ninguém em fila, a lateral mostra "Ninguém em
+fila" (W26). O "Atendentes online" do rodapé conta essa mesma gente, para o
+número bater com a lista ao lado.
 
 ## 8. Painel do mapa
 
