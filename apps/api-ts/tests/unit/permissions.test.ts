@@ -14,7 +14,9 @@ import {
   EProjectAction,
   STATE,
   roleCan,
+  canOwnOrAll,
   defaultRoleForLevel,
+  isTransitionAllowed,
   seedWorkflowRoles,
   type EffectiveRole,
 } from "@utils/permissions";
@@ -225,5 +227,47 @@ describe("seedWorkflowRoles", () => {
     } finally {
       delete process.env.RESEED_WORKFLOW;
     }
+  });
+});
+
+describe("isTransitionAllowed (a regra pura do quadro)", () => {
+  const funcao = (key: string): EffectiveRole => ({id: null, key, level: role(key).level, permissions: role(key).permissions});
+  const emTeste = {group: "started", name: STATE.EM_TESTE};
+  const aFazer = {group: "unstarted", name: STATE.A_FAZER};
+  const concluido = {group: "completed", name: STATE.CONCLUIDO};
+
+  it("quem move livremente passa sem regra nenhuma", () => {
+    expect(isTransitionAllowed(funcao("gestor_projeto"), [], aFazer, concluido)).toBe(true);
+    expect(isTransitionAllowed(funcao("admin"), [], aFazer, concluido)).toBe(true);
+  });
+
+  it("ficar na mesma etapa não é transição", () => {
+    expect(isTransitionAllowed(funcao("guest"), [], aFazer, aFazer)).toBe(true);
+  });
+
+  it("casa o grupo e o nome da etapa de cada regra", () => {
+    const regras = DEFAULT_TRANSITIONS.qualidade;
+    expect(isTransitionAllowed(funcao("qualidade"), regras, emTeste, concluido)).toBe(true);
+    expect(isTransitionAllowed(funcao("qualidade"), regras, aFazer, concluido)).toBe(false);
+    expect(isTransitionAllowed(funcao("ti"), DEFAULT_TRANSITIONS.ti, emTeste, concluido)).toBe(false);
+  });
+});
+
+const buildFuncao = (permissions: string[]): EffectiveRole => ({id: "r", key: "x", level: 10, permissions});
+
+describe("canOwnOrAll", () => {
+  const {ISSUE_EDIT_OWN: OWN, ISSUE_EDIT_ALL: ALL} = EProjectAction;
+
+  it("a ação sobre todos vale para qualquer registro", () => {
+    expect(canOwnOrAll(buildFuncao([ALL]), false, OWN, ALL)).toBe(true);
+  });
+
+  it("a ação sobre os próprios só vale para quem é o autor", () => {
+    expect(canOwnOrAll(buildFuncao([OWN]), true, OWN, ALL)).toBe(true);
+    expect(canOwnOrAll(buildFuncao([OWN]), false, OWN, ALL)).toBe(false);
+  });
+
+  it("sem nenhuma das duas, nega", () => {
+    expect(canOwnOrAll(buildFuncao([]), true, OWN, ALL)).toBe(false);
   });
 });

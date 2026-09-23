@@ -1,7 +1,8 @@
 /**
  * Painel da página inicial: série de abertos x encerrados por período, tarefas
- * com prazo, métricas do mês com o ranking de encerrados, chamados por sistema
- * e os detalhes da pessoa. Tudo do usuário logado (responsável ou criador).
+ * com prazo (e se a pessoa pode concluí-las), métricas do mês decididas pelo
+ * papel, chamados por sistema e os detalhes da pessoa. Tudo do usuário logado
+ * (responsável ou criador), visto por um Administrador e por um Visualizador.
  * API de verdade + banco de teste.
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
@@ -28,6 +29,8 @@ const soma = (dias: any[], campo: "abertos" | "encerrados") => dias.reduce((t, d
 
 describe("painel da home: série, tarefas, métricas, sistemas e perfil", () => {
   let ana: ReturnType<typeof apiClient>;
+  let vera: ReturnType<typeof apiClient>;
+  let tarefaDaVera: string;
   let slug: string;
   let anaId: string;
   let tributos: string;
@@ -66,6 +69,15 @@ describe("painel da home: série, tarefas, métricas, sistemas e perfil", () => 
     const caio = await createUser({ firstName: "Caio" });
     await addMember(ws.id, bia.id, 15, p1.id, 15);
     await addMember(ws.id, caio.id, 15, p1.id, 15);
+    // Vera é Visualizadora (5) no espaço e na Tributos.
+    const visualizadora = await createUser({ firstName: "Vera", lastName: "Visualizadora" });
+    vera = apiClient((await createApiToken(visualizadora.id)).token);
+    await addMember(ws.id, visualizadora.id, 5, p1.id, 5);
+    // Vínculo repetido com o mesmo sistema (a unicidade do banco inclui `deleted_at`,
+    // que é nulo nos dois): o perfil tem que listar a Tributos uma vez só.
+    await db.projectMember.create({
+      data: { projectId: p1.id, workspaceId: ws.id, memberId: anaId, role: 20, isActive: true },
+    });
 
     const prefeitura = await createEntity(ws.id, { name: "Prefeitura de Dourados" });
 
@@ -118,6 +130,35 @@ describe("painel da home: série, tarefas, métricas, sistemas e perfil", () => 
     await Promise.all([1, 2, 3].map(() => criar(tributos, done1, bia.id, { encerradoHa: HORA_MS })));
     await criar(tributos, done1, caio.id, { encerradoHa: HORA_MS });
 
+    // Movimentações do mês: Vera mudou a etapa de um chamado e comentou em dois
+    // (um deles o mesmo), então movimentou 2 chamados com 2 comentários. Bia
+    // mudou a etapa de 3. Caio comentou num chamado de OUTRO espaço: não conta.
+    tarefaDaVera = await criar(tributos, todo1, visualizadora.id, { prazoEm: 2 * DIA_MS, nome: "Tarefa da Vera" });
+    const trilha = (issueId: string, actorId: string) =>
+      db.issueActivity.create({
+        data: {
+          issueId,
+          workspaceId: ws.id,
+          projectId: tributos,
+          actorId,
+          verb: "updated",
+          field: "state",
+          newValue: "Todo",
+        },
+      });
+    const comentario = (issueId: string, actorId: string, workspaceId = ws.id, projectId = tributos) =>
+      db.issueComment.create({
+        data: { issueId, workspaceId, projectId, actorId, commentHtml: "<p>ok</p>", commentStripped: "ok" },
+      });
+    await trilha(tarefaDaVera, visualizadora.id);
+    await comentario(tarefaDaVera, visualizadora.id);
+    await comentario(tarefaAtrasada, visualizadora.id);
+    await Promise.all([tarefaDeAmanha, tarefaAtrasada, tarefaDaVera].map((id) => trilha(id, bia.id)));
+    const outroEspaco = await createWorkspace(caio.id);
+    const outroSistema = await createProject(outroEspaco.id, caio.id, { name: "Outro", identifier: "OUT" });
+    const deFora = await createIssue(outroSistema.id, outroEspaco.id, { name: "De fora" });
+    await comentario(deFora.id, caio.id, outroEspaco.id, outroSistema.id);
+
     await db.auditLog.create({
       data: {
         workspaceId: ws.id,
@@ -132,8 +173,8 @@ describe("painel da home: série, tarefas, métricas, sistemas e perfil", () => 
 
   afterAll(() => cleanDb());
 
-  const getJson = async (path: string) => {
-    const res = await ana.get(`/workspaces/${slug}/home/${path}`);
+  const getJson = async (path: string, quem: "ana" | "vera" = "ana") => {
+    const res = await (quem === "vera" ? vera : ana).get(`/workspaces/${slug}/home/${path}`);
     return { status: res.status, body: (await res.json()) as any };
   };
 
@@ -191,22 +232,46 @@ describe("painel da home: série, tarefas, métricas, sistemas e perfil", () => 
       entity_name: "Prefeitura de Dourados",
       priority: "high",
       completed_state_id: concluidoTributos,
+      pode_concluir: true,
     });
     expect(amanha.numero).toMatch(/^\d+-\d{4}$/);
     expect(typeof amanha.target_date).toBe("string");
     expect(body.find((t: any) => t.id === tarefaAtrasada)).toBeDefined();
+    // Administrador move para qualquer etapa: conclui todas.
+    expect(body.every((t: any) => t.pode_concluir === true)).toBe(true);
   });
 
-  it("métricas do mês: encerrados, em aberto, tempo médio e posição no ranking", async () => {
+  it("tarefas do Visualizador: a dele vem, mas sem poder concluir", async () => {
+    const { status, body } = await getJson("tarefas/", "vera");
+    expect(status).toBe(200);
+    expect(body.map((t: any) => t.id)).toEqual([tarefaDaVera]);
+    expect(body[0]).toMatchObject({ completed_state_id: concluidoTributos, pode_concluir: false });
+  });
+
+  it("métricas do Administrador: encerrados, em aberto, tempo médio e ranking de encerrados", async () => {
     const { status, body } = await getJson("metricas-do-mes/");
     expect(status).toBe(200);
-    // Bia 3, Ana 1, Caio 1: Ana divide a 2ª posição com o Caio.
-    expect(body.encerrados).toBe(1);
-    expect(body.em_aberto).toBe(4);
-    expect(body.ranking).toEqual({ posicao: 2, total_pessoas: 3 });
-    // O encerrado do mês foi aberto há 2 dias.
-    expect(body.tempo_medio_resolucao_horas).toBeGreaterThan(47);
-    expect(body.tempo_medio_resolucao_horas).toBeLessThan(49);
+    // Bia 3, Ana 1, Caio 1: Ana divide a 2ª posição com o Caio. O encerrado do
+    // mês foi aberto há 2 dias e encerrado há 1 minuto: 48 h, arredondado.
+    expect(body).toEqual([
+      { rotulo: "Encerrados", valor: "1", complemento: "no mês" },
+      { rotulo: "Em aberto", valor: "4", complemento: "com você" },
+      { rotulo: "Tempo médio", valor: "48 h", complemento: "até encerrar" },
+      { rotulo: "Ranking", valor: "2º", complemento: "de 3 pessoas" },
+    ]);
+  });
+
+  it("métricas do Visualizador: movimentados, comentários, em aberto e ranking de movimentações", async () => {
+    const { status, body } = await getJson("metricas-do-mes/", "vera");
+    expect(status).toBe(200);
+    expect(body.map((m: any) => m.rotulo)).not.toContain("Encerrados");
+    // Bia movimentou 3 chamados, Vera 2. O comentário do Caio é de outro espaço.
+    expect(body).toEqual([
+      { rotulo: "Movimentados", valor: "2", complemento: "no mês" },
+      { rotulo: "Comentários", valor: "2", complemento: "no mês" },
+      { rotulo: "Em aberto", valor: "1", complemento: "com você" },
+      { rotulo: "Ranking", valor: "2º", complemento: "de 2 pessoas" },
+    ]);
   });
 
   it("chamados por sistema: abertos no período, do sistema com mais chamados para o com menos", async () => {
@@ -234,5 +299,18 @@ describe("painel da home: série, tarefas, métricas, sistemas e perfil", () => 
     expect(body.papel.length).toBeGreaterThan(0);
     expect(typeof body.entrou_em).toBe("string");
     expect(body.sistemas.map((s: any) => s.name).toSorted()).toEqual(["Folha", "Tributos"]);
+    // Ana atua nos dois sistemas ativos do espaço: o resumo é o total, sem lista.
+    expect(body.sistemas_resumo).toEqual({ texto: "Todos os sistemas (2)", etiquetas: [], restantes: 0 });
+  });
+
+  it("perfil do Visualizador: só o sistema em que atua, como etiqueta", async () => {
+    const { status, body } = await getJson("perfil/", "vera");
+    expect(status).toBe(200);
+    expect(body.papel).toBe("Visualizador");
+    expect(body.sistemas_resumo).toEqual({
+      texto: null,
+      etiquetas: [{ id: tributos, name: "Tributos", identifier: "TRIB" }],
+      restantes: 0,
+    });
   });
 });

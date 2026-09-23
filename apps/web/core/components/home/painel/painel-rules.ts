@@ -5,15 +5,14 @@
  */
 
 /**
- * Regras puras do painel da home: grupos de prazo, prazo e tempo relativos,
- * texto dos eventos, ranking e duração. Tudo em pt-BR e no fuso de quem olha.
+ * Regras puras do painel da home: grupos de prazo, prazo e tempo relativos e
+ * texto dos eventos. Métricas do mês e resumo dos sistemas vêm prontos da API. Tudo em pt-BR e no fuso de quem olha.
  */
 import { differenceInCalendarDays, endOfWeek } from "date-fns";
 import type {
   TChamadoDoPainel,
   TEventoDaHome,
   TPeriodoDoPainel,
-  TRankingDoMes,
   TTarefaDaHome,
   TTipoDeEvento,
 } from "@/services/home-painel.service";
@@ -142,21 +141,6 @@ export const readTextoDoEvento = (evento: TEventoDaHome) => {
 
 /** Marcador de valor ausente no cartão de números. */
 export const SEM_VALOR = "–";
-
-export function formatRanking({ posicao, total_pessoas }: TRankingDoMes): { valor: string; detalhe: string } {
-  if (posicao === null) return { valor: SEM_VALOR, detalhe: "sem encerrados no mês" };
-  return { valor: `${posicao}º`, detalhe: `de ${total_pessoas} ${total_pessoas === 1 ? "pessoa" : "pessoas"}` };
-}
-
-const DECIMAL = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
-
-/** Até dois dias em horas; dali em diante em dias, com uma casa. */
-export function formatDuracao(horas: number | null): string {
-  if (horas === null) return SEM_VALOR;
-  if (horas < 1) return "< 1 h";
-  if (horas < 48) return `${Math.round(horas)} h`;
-  return `${DECIMAL.format(horas / 24)} dias`;
-}
 
 /** "2026-09-07" → "07/09". A data já vem no dia do escritório; não passa por `Date`. */
 export const formatDiaDoEixo = (data: string) => {

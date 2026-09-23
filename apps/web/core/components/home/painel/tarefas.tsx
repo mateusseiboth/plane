@@ -29,6 +29,7 @@ export function TarefasDaHome({ workspaceSlug }: { workspaceSlug: string }) {
   const { completeTarefa, idEmConclusao } = useCompleteTarefa(workspaceSlug);
   const agora = new Date();
   const grupos = groupTarefasPorPrazo(tarefas ?? [], agora);
+  const isComColunaDeConcluir = (tarefas ?? []).some((t) => t.pode_concluir);
 
   const conteudo = () => {
     if (isLoading) return <EsqueletoDoCartao linhas={5} />;
@@ -59,6 +60,7 @@ export function TarefasDaHome({ workspaceSlug }: { workspaceSlug: string }) {
                   agora={agora}
                   isAtrasada={grupo.chave === "atrasados"}
                   isConcluindo={idEmConclusao === tarefa.id}
+                  isComColunaDeConcluir={isComColunaDeConcluir}
                   onComplete={completeTarefa}
                 />
               ))}

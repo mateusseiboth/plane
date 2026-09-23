@@ -1,22 +1,31 @@
 /**
  * Service do painel da página inicial: série de abertos x encerrados, tarefas
- * com prazo, métricas do mês com o ranking, chamados por sistema, cartão da
- * pessoa e a atividade dela. A rota só resolve o espaço e a sessão; o contrato
+ * com prazo (e se a pessoa pode concluí-las), métricas do mês do papel dela,
+ * chamados por sistema, cartão da pessoa e a atividade dela. A rota só resolve o espaço e a sessão; o contrato
  * snake_case que a tela consome sai daqui. Dependências injetadas para o teste.
  */
 import type { ChamadoResumido, EscopoDaPessoa, PainelDao } from "@modules/home/painel.dao";
 import {
   CAMPOS_DA_ATIVIDADE,
+  buildMetricasDeEncerramento,
+  buildMetricasDeMovimentacao,
   classifyAtividade,
   fillSerie,
+  isConcluivel,
   mergeEventos,
   rankPosicao,
+  readPerfilDeMetricas,
   resolveJanelaDaSerie,
   resolveMesCorrente,
+  summarizeSistemas,
+  uniqueSistemas,
+  type Janela,
+  type MetricaDoMes,
+  type PerfilDeMetricas,
   type PeriodoDaSerie,
   type TipoDeEvento,
 } from "@modules/home/painel.rules";
-import { round, userName } from "@modules/reports/comum/filtros";
+import { userName } from "@modules/reports/comum/filtros";
 import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
 import { defaultRoleForLevel } from "@utils/permissions";
 import { vencimento } from "@utils/serialize";
@@ -69,36 +78,84 @@ export function createPainelService({ dao, now }: PainelDeps) {
     };
   };
 
+  /** Função e regras de transição da pessoa em cada sistema, lidas uma vez por sistema. */
+  const readPermissoesPorSistema = async (escopo: EscopoDaPessoa, projectIds: string[]) =>
+    new Map(
+      await Promise.all(
+        projectIds.map(async (projectId) => {
+          const funcao = await dao.findFuncaoNoSistema(escopo, projectId);
+          const regras = funcao ? await dao.readRegrasDeTransicao(funcao) : [];
+          return [projectId, { funcao, regras }] as const;
+        })
+      )
+    );
+
   const findTarefas = async (escopo: EscopoDaPessoa) => {
     const tarefas = await dao.findTarefas(escopo, LIMITE_DE_TAREFAS);
-    const etapas = await dao.findEtapasDeConclusao([...new Set(tarefas.map((t) => t.projectId))]);
+    const projectIds = [...new Set(tarefas.map((t) => t.projectId))];
+    const [etapas, permissoes] = await Promise.all([
+      dao.findEtapasDeConclusao(projectIds),
+      readPermissoesPorSistema(escopo, projectIds),
+    ]);
     // A lista vem por `sequence`: a primeira de cada sistema é a que vale.
-    const conclusaoPorSistema = new Map<string, string>();
-    for (const etapa of etapas.toReversed()) conclusaoPorSistema.set(etapa.projectId, etapa.id);
-    return tarefas.map((t) =>
-      Object.assign(serializeChamado(t), {
+    const conclusaoPorSistema = new Map(etapas.toReversed().map((etapa) => [etapa.projectId, etapa]));
+    return tarefas.map((t) => {
+      const conclusao = conclusaoPorSistema.get(t.projectId) ?? null;
+      const permissao = permissoes.get(t.projectId);
+      // Etapa de origem como o PATCH do chamado a lê: sem etapa, conta como pendência.
+      const de = { group: t.state?.group ?? "backlog", name: t.state?.name ?? "" };
+      return Object.assign(serializeChamado(t), {
         priority: t.priority,
         target_date: vencimento(t.targetDate),
         entity_name: t.entity?.name ?? null,
         state_name: t.state?.name ?? null,
-        completed_state_id: conclusaoPorSistema.get(t.projectId) ?? null,
-      })
-    );
+        completed_state_id: conclusao?.id ?? null,
+        pode_concluir: isConcluivel(permissao?.funcao ?? null, permissao?.regras ?? [], {
+          de,
+          para: conclusao,
+          isAutor: t.createdById === escopo.userId,
+        }),
+      });
+    });
   };
 
-  const findMetricasDoMes = async (escopo: EscopoDaPessoa) => {
-    const mes = resolveMesCorrente(now());
+  const findMetricasDeEncerramento = async (escopo: EscopoDaPessoa, mes: Janela) => {
     const [porPessoa, em_aberto, horas] = await Promise.all([
       dao.countEncerradosPorPessoa(escopo.workspaceId, mes),
       dao.countEmAberto(escopo),
       dao.avgHorasDeResolucao(escopo, mes),
     ]);
-    return {
+    return buildMetricasDeEncerramento({
       encerrados: porPessoa.find((p) => p.pessoaId === escopo.userId)?.total ?? 0,
       em_aberto,
-      tempo_medio_resolucao_horas: round(horas, 1),
+      horas,
       ranking: rankPosicao(porPessoa, escopo.userId),
-    };
+    });
+  };
+
+  const findMetricasDeMovimentacao = async (escopo: EscopoDaPessoa, mes: Janela) => {
+    const [porPessoa, comentarios, em_aberto] = await Promise.all([
+      dao.countMovimentadosPorPessoa(escopo.workspaceId, mes),
+      dao.countComentariosDaPessoa(escopo, mes),
+      dao.countEmAberto(escopo),
+    ]);
+    return buildMetricasDeMovimentacao({
+      movimentados: porPessoa.find((p) => p.pessoaId === escopo.userId)?.total ?? 0,
+      comentarios,
+      em_aberto,
+      ranking: rankPosicao(porPessoa, escopo.userId),
+    });
+  };
+
+  const METRICAS_POR_PERFIL: Record<PerfilDeMetricas, (e: EscopoDaPessoa, mes: Janela) => Promise<MetricaDoMes[]>> = {
+    encerramento: findMetricasDeEncerramento,
+    movimentacao: findMetricasDeMovimentacao,
+  };
+
+  /** As quatro métricas já com rótulo e valor: o papel decide quais, a tela só desenha. */
+  const findMetricasDoMes = async (escopo: EscopoDaPessoa) => {
+    const funcao = await dao.findFuncaoNoEspaco(escopo);
+    return METRICAS_POR_PERFIL[readPerfilDeMetricas(funcao?.key ?? "guest")](escopo, resolveMesCorrente(now()));
   };
 
   const findChamadosPorSistema = async (escopo: EscopoDaPessoa, periodo: PeriodoDaSerie) => {
@@ -115,12 +172,14 @@ export function createPainelService({ dao, now }: PainelDeps) {
   };
 
   const findPerfil = async (escopo: EscopoDaPessoa) => {
-    const [pessoa, vinculo, sistemas, ultimoLogin] = await Promise.all([
+    const [pessoa, vinculo, vinculos, ultimoLogin, ativosNoEspaco] = await Promise.all([
       dao.findPessoa(escopo.userId),
       dao.findVinculoNoEspaco(escopo),
       dao.findSistemasDaPessoa(escopo),
       dao.findUltimoLogin(escopo.userId),
+      dao.countSistemasAtivos(escopo.workspaceId),
     ]);
+    const sistemas = uniqueSistemas(vinculos.map((v) => v.project));
     return {
       id: escopo.userId,
       nome: userName(pessoa),
@@ -130,7 +189,8 @@ export function createPainelService({ dao, now }: PainelDeps) {
       papel: vinculo?.workflowRole?.name ?? defaultRoleForLevel(vinculo?.role ?? 5).name,
       equipe: vinculo?.companyRole?.trim() || null,
       entrou_em: vinculo?.createdAt.toISOString() ?? null,
-      sistemas: sistemas.map((s) => s.project),
+      sistemas,
+      sistemas_resumo: summarizeSistemas(sistemas, ativosNoEspaco),
       ultimo_acesso: ultimoLogin?.toISOString() ?? null,
       // Não há gestor cadastrado no vínculo; a tela omite a linha quando vem nulo.
       gestor: null,

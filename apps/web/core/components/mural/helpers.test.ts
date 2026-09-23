@@ -7,6 +7,7 @@ import { describe, expect, it } from "bun:test";
 import {
   buildMuralQuery,
   buildRecadoPayload,
+  countRecadosNovos,
   editorInicial,
   getAvisoAtual,
   getFieldErrors,
@@ -106,6 +107,17 @@ describe("getAvisoAtual", () => {
     expect(getAvisoAtual(pendentes, new Set(["a"]))?.id).toBe("b");
     expect(getAvisoAtual(pendentes, new Set(["a", "b"]))).toBeUndefined();
     expect(getAvisoAtual(undefined, new Set())).toBeUndefined();
+  });
+});
+
+describe("countRecadosNovos", () => {
+  it("conta só os que a pessoa ainda não leu", () => {
+    expect(countRecadosNovos([{ is_read: false }, { is_read: true }, { is_read: false }])).toBe(2);
+  });
+
+  it("sem lista, ou com tudo lido, não há recado novo e o cartão da home fica compacto", () => {
+    expect(countRecadosNovos(undefined)).toBe(0);
+    expect(countRecadosNovos([{ is_read: true }])).toBe(0);
   });
 });
 

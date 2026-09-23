@@ -12,7 +12,7 @@ import {
   homePainelService,
   type TChamadosPorSistema,
   type TEventoDaHome,
-  type TMetricasDoMes,
+  type TMetricaDoMes,
   type TPerfilDaHome,
   type TPeriodoDoPainel,
   type TSerieDeChamados,
@@ -43,7 +43,7 @@ export const useTarefasDaHome = (slug: string | undefined) =>
   usePainelQuery<TTarefaDaHome[]>(buildChave(slug, "TAREFAS"), () => homePainelService.tarefas(slug!));
 
 export const useMetricasDoMes = (slug: string | undefined) =>
-  usePainelQuery<TMetricasDoMes>(buildChave(slug, "METRICAS"), () => homePainelService.metricasDoMes(slug!));
+  usePainelQuery<TMetricaDoMes[]>(buildChave(slug, "METRICAS"), () => homePainelService.metricasDoMes(slug!));
 
 export const useChamadosPorSistema = (slug: string | undefined, periodo: TPeriodoDoPainel) =>
   usePainelQuery<TChamadosPorSistema>(buildChave(slug, "SISTEMAS", periodo), () =>
@@ -66,7 +66,7 @@ export function useCompleteTarefa(slug: string | undefined) {
   const [idEmConclusao, setIdEmConclusao] = useState<string | null>(null);
 
   const completeTarefa = async (tarefa: TTarefaDaHome) => {
-    if (!slug || !tarefa.completed_state_id) return;
+    if (!slug || !tarefa.pode_concluir || !tarefa.completed_state_id) return;
     setIdEmConclusao(tarefa.id);
     try {
       await issueService.patchIssue(slug, tarefa.project_id, tarefa.id, { state_id: tarefa.completed_state_id });

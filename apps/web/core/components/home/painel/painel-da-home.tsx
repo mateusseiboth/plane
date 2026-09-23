@@ -21,8 +21,9 @@ import { TarefasDaHome } from "./tarefas";
 type Props = { workspaceSlug: string; userId: string };
 
 /**
- * Painel da home em duas colunas: à esquerda o trabalho (série, tarefas, mural
- * e atividade), à direita a pessoa. Em tela estreita a coluna da pessoa desce
+ * Painel da home em duas colunas: à esquerda o mural no topo (os recados são a
+ * primeira coisa a ver), depois a série, as tarefas e a atividade; à direita a
+ * pessoa. Em tela estreita a coluna da pessoa desce
  * para depois do conteúdo principal.
  */
 export function PainelDaHome({ workspaceSlug, userId }: Props) {
@@ -35,9 +36,9 @@ export function PainelDaHome({ workspaceSlug, userId }: Props) {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="flex min-w-0 flex-col gap-5">
+        <MuralHomeSection workspaceSlug={workspaceSlug} />
         <SerieDeChamados workspaceSlug={workspaceSlug} />
         <TarefasDaHome workspaceSlug={workspaceSlug} />
-        <MuralHomeSection workspaceSlug={workspaceSlug} />
         <AtividadeDaHome workspaceSlug={workspaceSlug} />
       </div>
       <aside aria-label="Você no espaço" className="flex min-w-0 flex-col gap-5">

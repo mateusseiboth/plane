@@ -53,6 +53,8 @@ type Props = {
   agora: Date;
   isAtrasada: boolean;
   isConcluindo: boolean;
+  /** Alguma tarefa da lista pode ser concluída: as que não podem guardam o espaço do checkbox. */
+  isComColunaDeConcluir: boolean;
   onComplete: (tarefa: TTarefaDaHome) => Promise<void>;
 };
 
@@ -60,8 +62,40 @@ type Props = {
 const readMensagemDeErro = (erro: unknown) =>
   (erro as { detail?: string } | undefined)?.detail ?? "Não foi possível concluir o chamado. Tente de novo.";
 
-/** Uma tarefa: checkbox de concluir (com confirmação na própria linha), título, etiquetas e prazo. */
-export function TarefaLinha({ tarefa, workspaceSlug, agora, isAtrasada, isConcluindo, onComplete }: Props) {
+type TCheckboxProps = { referencia: string; isConcluindo: boolean; onChange: () => void };
+
+function CheckboxDeConcluir({ referencia, isConcluindo, onChange }: TCheckboxProps) {
+  return (
+    <span className="relative mt-0.5 flex size-4 shrink-0">
+      <input
+        type="checkbox"
+        checked={isConcluindo}
+        aria-label={`Concluir o chamado ${referencia}`}
+        disabled={isConcluindo}
+        onChange={onChange}
+        className="peer size-4 cursor-pointer appearance-none rounded-full border border-strong transition-colors checked:border-accent-strong checked:bg-accent-primary hover:border-accent-strong focus-visible:ring-2 focus-visible:ring-accent-strong focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      <Check
+        aria-hidden
+        className="pointer-events-none absolute inset-0.5 hidden size-3 text-on-color peer-checked:block"
+      />
+    </span>
+  );
+}
+
+/**
+ * Uma tarefa: checkbox de concluir (com confirmação na própria linha), título,
+ * etiquetas e prazo. O checkbox só existe para quem a API diz que pode concluir.
+ */
+export function TarefaLinha({
+  tarefa,
+  workspaceSlug,
+  agora,
+  isAtrasada,
+  isConcluindo,
+  isComColunaDeConcluir,
+  onComplete,
+}: Props) {
   const [isConfirmando, setConfirmando] = useState(false);
   const referencia = readReferenciaDoChamado(tarefa);
   const link = generateWorkItemLink({
@@ -85,20 +119,11 @@ export function TarefaLinha({ tarefa, workspaceSlug, agora, isAtrasada, isConclu
 
   return (
     <li className="group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-layer-1 dark:hover:bg-layer-2">
-      <span className="relative mt-0.5 flex size-4 shrink-0">
-        <input
-          type="checkbox"
-          checked={isConcluindo}
-          aria-label={`Concluir o chamado ${referencia}`}
-          disabled={!tarefa.completed_state_id || isConcluindo}
-          onChange={() => setConfirmando(true)}
-          className="peer size-4 cursor-pointer appearance-none rounded-full border border-strong transition-colors checked:border-accent-strong checked:bg-accent-primary hover:border-accent-strong focus-visible:ring-2 focus-visible:ring-accent-strong focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <Check
-          aria-hidden
-          className="pointer-events-none absolute inset-0.5 hidden size-3 text-on-color peer-checked:block"
-        />
-      </span>
+      {tarefa.pode_concluir ? (
+        <CheckboxDeConcluir referencia={referencia} isConcluindo={isConcluindo} onChange={() => setConfirmando(true)} />
+      ) : (
+        isComColunaDeConcluir && <span aria-hidden className="size-4 shrink-0" />
+      )}
 
       <div className="min-w-0 flex-1">
         {isConfirmando ? (
