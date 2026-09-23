@@ -3,6 +3,17 @@
  * sintético semanal, devolvidos, log de chamados e balanço. Mais as seções que
  * estendem "por sistema", "por tipo", "visitas" e "tempo gasto".
  */
+import { useState } from "react";
+import { useChamadosDoUsuario } from "@/hooks/use-report";
+import type { ReportFilters } from "@/services/reports.service";
+import {
+  buildPaginacao,
+  buildResumoDoUsuario,
+  buildRotuloDaAmostra,
+  buildRotuloVerTodos,
+  isAmostraParcial,
+  readTotalDoUsuario,
+} from "./chamados-por-usuario";
 import { EmptyHint, KpiCard, KpiGrid, ReportTable, SectionTitle, fmtHours, type Column } from "./ui";
 
 const fmtData = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "—");
@@ -33,28 +44,95 @@ const marcoComAutor = (em: string | null, por: string | null) => (
 );
 
 // ── Chamados por usuário (marcos) ──────────────────────────────────────────────
-function MilestonesByUser({ data }: { data: any }) {
-  const cols: Column<any>[] = [
-    colunaChamado,
-    colunaTitulo,
-    { key: "project", header: "Sistema" },
-    { key: "tipo_label", header: "Tipo" },
-    { key: "state", header: "Etapa" },
-    { key: "atribuido", header: "Atribuído", render: (r) => fmtData(r.marcos.atribuido_em) },
-    { key: "inicio", header: "Início TI", render: (r) => fmtData(r.marcos.inicio_ti_em) },
-    {
-      key: "finalizado",
-      header: "Finalizado TI",
-      render: (r) => marcoComAutor(r.marcos.finalizado_ti_em, r.marcos.finalizado_ti_por),
-    },
-    {
-      key: "homologado",
-      header: "Homologado",
-      render: (r) => marcoComAutor(r.marcos.homologado_em, r.marcos.homologado_por),
-    },
-    { key: "encerrado", header: "Encerrado", render: (r) => fmtData(r.marcos.encerrado_em) },
-    { key: "devolucoes", header: "Devoluções", align: "right", render: (r) => r.marcos.devolucoes },
-  ];
+
+/** O que a tela precisa para buscar a lista completa de uma pessoa. */
+export type TContextoDoRelatorio = { slug?: string; params?: ReportFilters };
+
+export type TRendererDeRelatorio = (props: { data: any; contexto?: TContextoDoRelatorio }) => JSX.Element;
+
+const COLUNAS_DOS_MARCOS: Column<any>[] = [
+  colunaChamado,
+  colunaTitulo,
+  { key: "project", header: "Sistema" },
+  { key: "tipo_label", header: "Tipo" },
+  { key: "state", header: "Etapa" },
+  { key: "atribuido", header: "Atribuído", render: (r) => fmtData(r.marcos.atribuido_em) },
+  { key: "inicio", header: "Início TI", render: (r) => fmtData(r.marcos.inicio_ti_em) },
+  {
+    key: "finalizado",
+    header: "Finalizado TI",
+    render: (r) => marcoComAutor(r.marcos.finalizado_ti_em, r.marcos.finalizado_ti_por),
+  },
+  {
+    key: "homologado",
+    header: "Homologado",
+    render: (r) => marcoComAutor(r.marcos.homologado_em, r.marcos.homologado_por),
+  },
+  { key: "encerrado", header: "Encerrado", render: (r) => fmtData(r.marcos.encerrado_em) },
+  { key: "devolucoes", header: "Devoluções", align: "right", render: (r) => r.marcos.devolucoes },
+];
+
+const botaoDaPagina =
+  "rounded border border-subtle px-2 py-1 text-11 text-secondary hover:text-primary disabled:opacity-40";
+
+/**
+ * Uma pessoa do relatório. Fechada, mostra a amostra que veio na listagem;
+ * aberta, busca os chamados daquela pessoa página a página. Só as linhas
+ * visíveis são montadas: a lista inteira passa de 40 mil chamados.
+ */
+function ChamadosDoUsuario({ usuario, contexto }: { usuario: any; contexto?: TContextoDoRelatorio }) {
+  const [aberto, setAberto] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const { data, isLoading } = useChamadosDoUsuario(
+    contexto?.slug,
+    usuario.user_id,
+    contexto?.params ?? {},
+    pagina,
+    aberto
+  );
+
+  const linhas = aberto ? (data?.chamados ?? []) : usuario.chamados;
+  const paginacao = buildPaginacao(data?.total ?? readTotalDoUsuario(usuario), pagina, data?.per_page);
+  const parcial = isAmostraParcial(usuario);
+
+  return (
+    <div className="print-avoid-break">
+      <SectionTitle hint={buildResumoDoUsuario(usuario)}>{usuario.name}</SectionTitle>
+      {!aberto && parcial && (
+        <div data-print-hide className="mb-2 flex items-center gap-3">
+          <span className="text-11 text-tertiary">{buildRotuloDaAmostra(usuario)}</span>
+          <button onClick={() => setAberto(true)} className="text-11 text-accent-primary hover:underline">
+            {buildRotuloVerTodos(usuario)}
+          </button>
+        </div>
+      )}
+      {aberto && isLoading && !data && <p className="mb-2 text-11 text-tertiary">Carregando os chamados...</p>}
+      <ReportTable columns={COLUNAS_DOS_MARCOS} rows={linhas} />
+      {aberto && (
+        <div data-print-hide className="mt-2 flex items-center gap-2">
+          <button onClick={() => setPagina((p) => p - 1)} disabled={!paginacao.temAnterior} className={botaoDaPagina}>
+            Anterior
+          </button>
+          <span className="text-11 text-tertiary">{paginacao.rotulo}</span>
+          <button onClick={() => setPagina((p) => p + 1)} disabled={!paginacao.temProxima} className={botaoDaPagina}>
+            Próxima
+          </button>
+          <button
+            onClick={() => {
+              setAberto(false);
+              setPagina(1);
+            }}
+            className="ml-2 text-11 text-accent-primary hover:underline"
+          >
+            Voltar ao resumo
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MilestonesByUser({ data, contexto }: { data: any; contexto?: TContextoDoRelatorio }) {
   const usuarios: any[] = data.usuarios ?? [];
   return (
     <div>
@@ -64,10 +142,7 @@ function MilestonesByUser({ data }: { data: any }) {
       </KpiGrid>
       {!usuarios.length && <EmptyHint />}
       {usuarios.map((u) => (
-        <div key={u.user_id} className="print-avoid-break">
-          <SectionTitle hint={`${u.total} chamado(s)`}>{u.name}</SectionTitle>
-          <ReportTable columns={cols} rows={u.chamados} />
-        </div>
+        <ChamadosDoUsuario key={u.user_id} usuario={u} contexto={contexto} />
       ))}
     </div>
   );
@@ -221,7 +296,7 @@ function Balance({ data }: { data: any }) {
   );
 }
 
-export const RENDERERS_DE_CHAMADOS: Record<string, (props: { data: any }) => JSX.Element> = {
+export const RENDERERS_DE_CHAMADOS: Record<string, TRendererDeRelatorio> = {
   "milestones-by-user": MilestonesByUser,
   "weekly-summary": WeeklySummary,
   returned: Returned,

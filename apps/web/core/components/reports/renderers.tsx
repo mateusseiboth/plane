@@ -20,6 +20,8 @@ import {
   MatrizSistemaPorTipo,
   RENDERERS_DE_CHAMADOS,
   SituacaoPorSistema,
+  type TContextoDoRelatorio,
+  type TRendererDeRelatorio,
 } from "./renderers-chamados";
 
 function ticketRef(row: { legacy_ticket_number?: string | null; sequence_id?: number | null }) {
@@ -562,7 +564,7 @@ function Executive({ data }: { data: any }) {
   );
 }
 
-const RENDERERS: Record<string, (props: { data: any }) => JSX.Element> = {
+const RENDERERS: Record<string, TRendererDeRelatorio> = {
   "tickets-overview": TicketsOverview,
   "by-system": BySystem,
   "by-entity": ByEntity,
@@ -579,8 +581,16 @@ const RENDERERS: Record<string, (props: { data: any }) => JSX.Element> = {
   ...RENDERERS_DE_CHAMADOS,
 };
 
-export function ReportRenderer({ reportId, data }: { reportId: string; data: any }) {
+export function ReportRenderer({
+  reportId,
+  data,
+  contexto,
+}: {
+  reportId: string;
+  data: any;
+  contexto?: TContextoDoRelatorio;
+}) {
   const Comp = RENDERERS[reportId];
   if (!Comp) return <p className="text-12 text-tertiary">Relatório desconhecido.</p>;
-  return <Comp data={data} />;
+  return <Comp data={data} contexto={contexto} />;
 }

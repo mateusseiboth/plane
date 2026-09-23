@@ -58,7 +58,8 @@ com duas, Correção > Melhoria > Projeto.
 
 | Rota | O quê | Parâmetros além dos comuns |
 | --- | --- | --- |
-| `milestones-by-user/` | lista analítica por pessoa com os marcos | `user_id`, `perfil` (responsavel, homologacao), `situacao` (todos, abertos, encerrados) |
+| `milestones-by-user/` | totais por pessoa + amostra dos chamados mais recentes | `user_id`, `perfil` (responsavel, homologacao), `situacao` (todos, abertos, encerrados), `por_usuario` (tamanho da amostra; padrão 25, máx. 200) |
+| `milestones-by-user/:userId/` | os chamados de uma pessoa, paginados | os mesmos filtros da listagem, mais `page` e `per_page` (padrão 50, máx. 200) |
 | `returned/` | devolvidos no período, com quem devolveu | |
 | `weekly-summary/` | responsável × sistema × tipo: interações, concluídos, pendentes | período padrão: semana atual (segunda a domingo, Brasília) |
 | `balance/` | balanço com saldo anterior, abertos, encerrados, diferença e saldo atual | `granularidade` (mes, ano); padrão: ano corrente / desde o 1º chamado |
@@ -116,6 +117,12 @@ Relatórios estendidos:
 - Balanço: cancelado também sai do saldo; "diferença" = encerrados − abertos (o "saldo" do
   mensal do SAC); "saldo atual" é o acumulado (o do anual).
 - Log consolidado: `etapa` filtra a etapa ATUAL do chamado; `funcao` filtra quem agiu.
+- Analítico por usuário: a listagem devolvia TODOS os chamados aninhados por pessoa (46 mil em
+  produção, ~35 MB num JSON só) e travava a tela. Agora vêm os totais (`chamados_total`, `abertos`,
+  `encerrados`) e uma amostra dos mais recentes; a lista completa de uma pessoa sai paginada em
+  `milestones-by-user/:userId/`. Como a paginação recalcularia os marcos de todos os chamados a
+  cada página, o resultado agregado fica 60 s em cache por filtro, no processo da API
+  (`reports/comum/cache-em-memoria.ts`); o relatório aceita esse atraso.
 - Impressão do chamado: rótulos do histórico espelham `describeAtividade` do api-ts (o api-ts
   não depende de `@plane/*`); campo novo na trilha entra nos dois mapas.
 - Auditoria: impressão busca até 1000 registros dos filtros atuais; o CSV continua sendo a
