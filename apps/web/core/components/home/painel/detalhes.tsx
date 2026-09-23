@@ -35,6 +35,32 @@ function ListaDeDetalhes({ linhas }: { linhas: TLinhaDeDetalhe[] }) {
   );
 }
 
+/** Etiqueta curta de um sistema; o nome inteiro fica no título. */
+function EtiquetaDeSistema({ texto, titulo }: { texto: string; titulo?: string }) {
+  return (
+    <span
+      title={titulo}
+      className="inline-flex max-w-40 items-center rounded-md bg-layer-1 px-1.5 py-0.5 text-11 text-secondary dark:bg-layer-2"
+    >
+      <span className="truncate">{texto}</span>
+    </span>
+  );
+}
+
+/** A API já resume: um texto quando a lista não cabe, senão até seis etiquetas e o "+N". */
+function SistemasDaPessoa({ resumo }: { resumo: TPerfilDaHome["sistemas_resumo"] }) {
+  if (resumo.texto) return <>{resumo.texto}</>;
+  if (!resumo.etiquetas.length) return <>{SEM_VALOR}</>;
+  return (
+    <span className="mt-0.5 flex flex-wrap gap-1">
+      {resumo.etiquetas.map((sistema) => (
+        <EtiquetaDeSistema key={sistema.id} texto={sistema.name} titulo={sistema.name} />
+      ))}
+      {resumo.restantes > 0 && <EtiquetaDeSistema texto={`+${resumo.restantes}`} />}
+    </span>
+  );
+}
+
 /** Linhas sem dado somem: melhor não mostrar do que mostrar um vazio. */
 const buildDetalhes = (perfil: TPerfilDaHome): TLinhaDeDetalhe[] =>
   [
@@ -44,7 +70,7 @@ const buildDetalhes = (perfil: TPerfilDaHome): TLinhaDeDetalhe[] =>
     {
       icone: Layers,
       rotulo: "Sistemas em que atua",
-      valor: perfil.sistemas.length ? perfil.sistemas.map((s) => s.name).join(", ") : SEM_VALOR,
+      valor: <SistemasDaPessoa resumo={perfil.sistemas_resumo} />,
     },
     { icone: Mail, rotulo: "E-mail", valor: perfil.email },
   ].filter((linha) => linha.valor);

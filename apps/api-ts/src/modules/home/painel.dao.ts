@@ -9,6 +9,8 @@
 import prisma from "@db";
 import { Prisma } from "@prisma/client";
 import type { ContagemPorDia, ContagemPorPessoa, Janela } from "@modules/home/painel.rules";
+import { readTransitionRules, resolveProjectMember, resolveWorkspaceRole } from "@utils/permission-checks";
+import type { EffectiveRole } from "@utils/permissions";
 import { FUSO } from "@utils/prazo";
 
 export type EscopoDaPessoa = { workspaceId: string; userId: string };
@@ -98,6 +100,7 @@ export const painelDao = {
       take: limite,
       select: {
         ...SELECT_CHAMADO,
+        createdById: true,
         priority: true,
         targetDate: true,
         entity: { select: { name: true } },
@@ -110,7 +113,58 @@ export const painelDao = {
     prisma.state.findMany({
       where: { projectId: { in: projectIds }, group: "completed", deletedAt: null },
       orderBy: { sequence: "asc" },
-      select: { id: true, projectId: true },
+      select: { id: true, projectId: true, name: true, group: true },
+    }),
+
+  /**
+   * Função da pessoa no sistema, com as exceções dela: a mesma que o PATCH do
+   * chamado resolve. Quem não participa do sistema não tem função ali (`null`).
+   */
+  findFuncaoNoSistema: ({ workspaceId, userId }: EscopoDaPessoa, projectId: string): Promise<EffectiveRole | null> =>
+    resolveProjectMember(workspaceId, projectId, userId).then(
+      (r) => r.role,
+      (erro: { status?: number }) => (erro?.status ? null : Promise.reject(erro))
+    ),
+
+  findFuncaoNoEspaco: ({ workspaceId, userId }: EscopoDaPessoa) => resolveWorkspaceRole(workspaceId, userId),
+
+  readRegrasDeTransicao: (funcao: EffectiveRole) => readTransitionRules(funcao),
+
+  /** Sistemas ativos do espaço, para saber se a pessoa atua em todos. */
+  countSistemasAtivos: (workspaceId: string) =>
+    prisma.project.count({ where: { workspaceId, deletedAt: null, archivedAt: null } }),
+
+  /**
+   * Chamados movimentados no período por pessoa, no espaço inteiro: etapa
+   * mudada (trilha `state`) ou comentário. O mesmo chamado conta uma vez.
+   */
+  countMovimentadosPorPessoa: async (workspaceId: string, janela: Janela): Promise<ContagemPorPessoa[]> => {
+    const linhas = await prisma.$queryRaw<{ pessoa_id: string; total: bigint }[]>`
+      SELECT m.actor_id AS pessoa_id, COUNT(DISTINCT m.issue_id) AS total
+      FROM (
+        SELECT a.actor_id, a.issue_id FROM issue_activities a
+        WHERE a.workspace_id = ${workspaceId}::uuid AND a.field = 'state' AND a.deleted_at IS NULL
+          AND a.created_at >= ${janela.inicio} AND a.created_at <= ${janela.fim}
+        UNION ALL
+        SELECT c.actor_id, c.issue_id FROM issue_comments c
+        WHERE c.workspace_id = ${workspaceId}::uuid AND c.deleted_at IS NULL
+          AND c.created_at >= ${janela.inicio} AND c.created_at <= ${janela.fim}
+      ) m
+      JOIN issues i ON i.id = m.issue_id AND i.deleted_at IS NULL AND i.is_draft = false AND i.archived_at IS NULL
+      JOIN users u ON u.id = m.actor_id AND u.is_bot_user = false
+      GROUP BY m.actor_id`;
+    return linhas.map((l) => ({ pessoaId: l.pessoa_id, total: Number(l.total) }));
+  },
+
+  countComentariosDaPessoa: ({ workspaceId, userId }: EscopoDaPessoa, janela: Janela) =>
+    prisma.issueComment.count({
+      where: {
+        workspaceId,
+        actorId: userId,
+        deletedAt: null,
+        createdAt: { gte: janela.inicio, lte: janela.fim },
+        issue: baseDoEspaco(workspaceId),
+      },
     }),
 
   countEmAberto: ({ workspaceId, userId }: EscopoDaPessoa) =>

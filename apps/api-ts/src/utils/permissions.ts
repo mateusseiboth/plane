@@ -372,6 +372,34 @@ export function roleCan(role: EffectiveRole, action: EProjectAction): boolean {
 }
 
 /**
+ * A ação vale para o registro: a de "todos" vale sempre; a de "os próprios",
+ * só para o autor. Regra pura de `requireOwnOrAll`, que a home também usa para
+ * saber, sem lançar, se a pessoa pode mexer no chamado.
+ */
+export function canOwnOrAll(role: EffectiveRole, isOwner: boolean, ownAction: EProjectAction, allAction: EProjectAction): boolean {
+  return roleCan(role, allAction) || (isOwner && roleCan(role, ownAction));
+}
+
+export type EtapaDaTransicao = {group: string; name: string};
+
+/**
+ * A função pode levar o chamado de uma etapa a outra? Regra pura de
+ * `canTransition` (que só busca as regras gravadas da função); o quadro e o
+ * checkbox de concluir da home decidem pelas mesmas linhas.
+ */
+export function isTransitionAllowed(role: EffectiveRole, regras: TransitionRule[], from: EtapaDaTransicao, to: EtapaDaTransicao): boolean {
+  if (roleCan(role, EProjectAction.STATE_MOVE_UNRESTRICTED)) return true;
+  if (from.name === to.name) return true; // no-op move
+  return regras.some(
+    (r) =>
+      r.fromGroup === from.group &&
+      (!r.fromStateName || r.fromStateName === from.name) &&
+      r.toGroup === to.group &&
+      (!r.toStateName || r.toStateName === to.name),
+  );
+}
+
+/**
  * Deixa os vínculos de projeto de um membro coerentes com a função que ele tem
  * no espaço de trabalho.
  *

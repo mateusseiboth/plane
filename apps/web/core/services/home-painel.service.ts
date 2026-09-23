@@ -36,16 +36,12 @@ export type TTarefaDaHome = TChamadoDoPainel & {
   state_name: string | null;
   /** Etapa de conclusão do sistema: para onde o checkbox leva o chamado. */
   completed_state_id: string | null;
+  /** A função da pessoa deixa levar o chamado à conclusão (a mesma regra do quadro). */
+  pode_concluir: boolean;
 };
 
-export type TRankingDoMes = { posicao: number | null; total_pessoas: number };
-
-export type TMetricasDoMes = {
-  encerrados: number;
-  em_aberto: number;
-  tempo_medio_resolucao_horas: number | null;
-  ranking: TRankingDoMes;
-};
+/** Uma das quatro métricas do mês, já escolhida pelo papel e formatada pela API. */
+export type TMetricaDoMes = { rotulo: string; valor: string; complemento: string | null };
 
 export type TSistemaDoPainel = {
   project_id: string;
@@ -56,6 +52,8 @@ export type TSistemaDoPainel = {
 
 export type TChamadosPorSistema = { periodo: TPeriodoDoPainel; sistemas: TSistemaDoPainel[] };
 
+export type TSistemaDaPessoa = { id: string; name: string; identifier: string };
+
 export type TPerfilDaHome = {
   id: string;
   nome: string;
@@ -65,7 +63,9 @@ export type TPerfilDaHome = {
   papel: string;
   equipe: string | null;
   entrou_em: string | null;
-  sistemas: { id: string; name: string; identifier: string }[];
+  sistemas: TSistemaDaPessoa[];
+  /** Resumo pronto: `texto` quando a lista não cabe; senão até seis etiquetas e o que sobra. */
+  sistemas_resumo: { texto: string | null; etiquetas: TSistemaDaPessoa[]; restantes: number };
   ultimo_acesso: string | null;
   gestor: string | null;
 };
@@ -103,7 +103,7 @@ class HomePainelService extends APIService {
   }
 
   metricasDoMes(slug: string) {
-    return this.read<TMetricasDoMes>(slug, "metricas-do-mes");
+    return this.read<TMetricaDoMes[]>(slug, "metricas-do-mes");
   }
 
   chamadosPorSistema(slug: string, periodo: TPeriodoDoPainel) {

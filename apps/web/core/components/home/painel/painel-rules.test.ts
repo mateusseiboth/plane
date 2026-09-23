@@ -1,7 +1,7 @@
 /**
  * Painel da página inicial: regras puras da tela (grupos de prazo das tarefas,
- * prazo e tempo relativos em pt-BR, texto de cada evento da atividade, ranking,
- * duração e o ponto da série). Datas montadas no fuso local, então o resultado
+ * prazo e tempo relativos em pt-BR, texto de cada evento da atividade e o
+ * ponto da série). Os números do cartão da pessoa vêm prontos da API. Datas montadas no fuso local, então o resultado
  * não depende do fuso da máquina. Rodar com `bun test core/components/home`.
  */
 import { describe, expect, it } from "bun:test";
@@ -9,9 +9,7 @@ import {
   buildResumoDoDia,
   formatDataLonga,
   formatDiaDoEixo,
-  formatDuracao,
   formatPrazoRelativo,
-  formatRanking,
   formatTempoRelativo,
   groupTarefasPorPrazo,
   isEventoDoPainel,
@@ -38,6 +36,7 @@ const tarefa = (id: string, target_date: string | null): TTarefaDaHome => ({
   target_date,
   state_name: "A fazer",
   completed_state_id: "s9",
+  pode_concluir: true,
 });
 
 const chamado = {
@@ -139,24 +138,6 @@ describe("texto do evento", () => {
 
   it("chamado sem número anual cai no identificador do sistema", () => {
     expect(readReferenciaDoChamado({ ...chamado, numero: null })).toBe("TRIB-7");
-  });
-});
-
-describe("números do cartão da pessoa", () => {
-  it("posição no ranking", () => {
-    expect(formatRanking({ posicao: 2, total_pessoas: 3 })).toEqual({ valor: "2º", detalhe: "de 3 pessoas" });
-    expect(formatRanking({ posicao: 1, total_pessoas: 1 })).toEqual({ valor: "1º", detalhe: "de 1 pessoa" });
-    expect(formatRanking({ posicao: null, total_pessoas: 4 })).toEqual({
-      valor: "–",
-      detalhe: "sem encerrados no mês",
-    });
-  });
-
-  it("duração média em horas ou dias", () => {
-    expect(formatDuracao(null)).toBe("–");
-    expect(formatDuracao(0.4)).toBe("< 1 h");
-    expect(formatDuracao(18.4)).toBe("18 h");
-    expect(formatDuracao(60)).toBe("2,5 dias");
   });
 });
 

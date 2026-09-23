@@ -122,3 +122,7 @@ export function getAvisoAtual<T extends { id: string }>(pendentes: T[] | undefin
 }
 
 export const isMuralEvent = (event: { entity: string }) => event.entity === "mural";
+
+/** Recados que a pessoa ainda não leu. Sem nenhum, o cartão da home vira uma linha só. */
+export const countRecadosNovos = (recados: { is_read: boolean }[] | undefined) =>
+  recados?.filter((r) => !r.is_read).length ?? 0;

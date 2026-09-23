@@ -8,27 +8,13 @@ import { cn, getFileURL } from "@plane/utils";
 // hooks
 import { useMetricasDoMes, usePerfilDaHome } from "@/hooks/use-home-painel";
 // services
-import type { TMetricasDoMes, TPerfilDaHome } from "@/services/home-painel.service";
+import type { TMetricaDoMes, TPerfilDaHome } from "@/services/home-painel.service";
 // local imports
 import { CLASSE_DO_CARTAO } from "./cartao";
-import { SEM_VALOR, formatDuracao, formatRanking } from "./painel-rules";
+import { SEM_VALOR } from "./painel-rules";
 
-type TNumeroDoMes = { rotulo: string; valor: string; detalhe?: string };
-
-const buildNumerosDoMes = (m: TMetricasDoMes): TNumeroDoMes[] => {
-  const ranking = formatRanking(m.ranking);
-  return [
-    { rotulo: "Encerrados", valor: String(m.encerrados), detalhe: "no mês" },
-    { rotulo: "Em aberto", valor: String(m.em_aberto), detalhe: "com você" },
-    { rotulo: "Tempo médio", valor: formatDuracao(m.tempo_medio_resolucao_horas), detalhe: "até encerrar" },
-    { rotulo: "Ranking", valor: ranking.valor, detalhe: ranking.detalhe },
-  ];
-};
-
-const NUMEROS_CARREGANDO: TNumeroDoMes[] = ["Encerrados", "Em aberto", "Tempo médio", "Ranking"].map((rotulo) => ({
-  rotulo,
-  valor: SEM_VALOR,
-}));
+/** Enquanto carrega, as quatro casas ficam no lugar: quais métricas são depende do papel. */
+const CASAS_CARREGANDO = ["casa-1", "casa-2", "casa-3", "casa-4"];
 
 const readIniciais = (nome: string) =>
   nome
@@ -55,26 +41,38 @@ function AvatarDaPessoa({ perfil }: { perfil?: TPerfilDaHome }) {
   );
 }
 
-function NumerosDoMes({ numeros, isCarregando }: { numeros: TNumeroDoMes[]; isCarregando: boolean }) {
+const CLASSE_DA_GRADE =
+  "grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-subtle bg-[var(--border-subtle)]";
+const CLASSE_DA_CASA = "flex flex-col gap-0.5 bg-surface-1 px-3 py-2.5 dark:bg-layer-1";
+
+function NumerosDoMes({ numeros }: { numeros: TMetricaDoMes[] }) {
   return (
-    <dl
-      aria-busy={isCarregando}
-      className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-subtle bg-[var(--border-subtle)]"
-    >
+    <dl className={CLASSE_DA_GRADE}>
       {numeros.map((numero) => (
-        <div key={numero.rotulo} className="flex flex-col gap-0.5 bg-surface-1 px-3 py-2.5 dark:bg-layer-1">
+        <div key={numero.rotulo} className={CLASSE_DA_CASA}>
           <dt className="text-11 text-tertiary">{numero.rotulo}</dt>
-          <dd className={cn("text-18 leading-tight font-semibold text-primary", isCarregando && "animate-pulse")}>
-            {numero.valor}
-          </dd>
-          {numero.detalhe && <dd className="text-11 text-tertiary">{numero.detalhe}</dd>}
+          <dd className="text-18 leading-tight font-semibold text-primary">{numero.valor}</dd>
+          {numero.complemento && <dd className="text-11 text-tertiary">{numero.complemento}</dd>}
         </div>
       ))}
     </dl>
   );
 }
 
-/** Cartão da pessoa: capa com o gradiente da marca, avatar, papel e os quatro números do mês. */
+function NumerosCarregando() {
+  return (
+    <div aria-busy className={CLASSE_DA_GRADE}>
+      {CASAS_CARREGANDO.map((casa) => (
+        <div key={casa} className={cn(CLASSE_DA_CASA, "animate-pulse")}>
+          <span className="h-3 w-16 rounded bg-layer-1 dark:bg-layer-2" />
+          <span className="text-18 leading-tight font-semibold text-tertiary">{SEM_VALOR}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Cartão da pessoa: capa com o gradiente da marca, avatar, papel e os quatro números do mês que a API escolheu. */
 export function PerfilDaHome({ workspaceSlug }: { workspaceSlug: string }) {
   const { data: perfil, isLoading } = usePerfilDaHome(workspaceSlug);
   const { data: metricas } = useMetricasDoMes(workspaceSlug);
@@ -100,7 +98,7 @@ export function PerfilDaHome({ workspaceSlug }: { workspaceSlug: string }) {
             </p>
           </div>
         )}
-        <NumerosDoMes numeros={metricas ? buildNumerosDoMes(metricas) : NUMEROS_CARREGANDO} isCarregando={!metricas} />
+        {metricas ? <NumerosDoMes numeros={metricas} /> : <NumerosCarregando />}
       </div>
     </section>
   );

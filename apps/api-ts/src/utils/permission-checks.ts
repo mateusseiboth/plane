@@ -7,9 +7,12 @@ import {
   DEFAULT_TRANSITIONS,
   EProjectAction,
   applyMemberOverrides,
+  canOwnOrAll,
   defaultRoleForLevel,
+  isTransitionAllowed,
   roleCan,
   type EffectiveRole,
+  type EtapaDaTransicao,
   type TransitionRule,
 } from "@utils/permissions";
 import {getProjectOrFail, requireWorkspaceMember} from "@utils/workspace";
@@ -118,8 +121,7 @@ export async function requireOwnOrAll(
   allAction: EProjectAction,
 ): Promise<{project: any; member: any; role: EffectiveRole}> {
   const resolved = await resolveProjectMember(workspaceId, projectId, userId);
-  if (roleCan(resolved.role, allAction)) return resolved;
-  if (roleCan(resolved.role, ownAction) && ownerId && ownerId === userId) return resolved;
+  if (canOwnOrAll(resolved.role, !!ownerId && ownerId === userId, ownAction, allAction)) return resolved;
   return denyAction();
 }
 
@@ -128,34 +130,21 @@ export function requireRoleAction(role: EffectiveRole, action: EProjectAction): 
   if (!roleCan(role, action)) denyAction();
 }
 
+/**
+ * Regras de transição vivas da função. Espaço de trabalho ainda sem as funções
+ * gravadas caía num `return true`: NENHUMA transição era barrada ali. A regra
+ * vale igual, só que lida da matriz padrão do código em vez do banco.
+ */
+export async function readTransitionRules(role: EffectiveRole): Promise<TransitionRule[]> {
+  if (!role.id) return DEFAULT_TRANSITIONS[role.key] ?? [];
+  const linhas = await prisma.roleStateTransition.findMany({where: {roleId: role.id, allowed: true}});
+  return linhas.map((r) => ({fromGroup: r.fromGroup, fromStateName: r.fromStateName, toGroup: r.toGroup, toStateName: r.toStateName}));
+}
+
 /** Whether a role may move an issue between two states. */
-export async function canTransition(
-  role: EffectiveRole,
-  from: {group: string; name: string},
-  to: {group: string; name: string},
-): Promise<boolean> {
+export async function canTransition(role: EffectiveRole, from: EtapaDaTransicao, to: EtapaDaTransicao): Promise<boolean> {
   if (roleCan(role, EProjectAction.STATE_MOVE_UNRESTRICTED)) return true;
-  if (from.name === to.name) return true; // no-op move
-
-  // Espaço de trabalho ainda sem as funções gravadas caía num `return true`:
-  // NENHUMA transição era barrada ali. A regra vale igual, só que lida da
-  // matriz padrão do código em vez do banco.
-  const regras: TransitionRule[] = role.id
-    ? (await prisma.roleStateTransition.findMany({where: {roleId: role.id, allowed: true}})).map((r) => ({
-        fromGroup: r.fromGroup,
-        fromStateName: r.fromStateName,
-        toGroup: r.toGroup,
-        toStateName: r.toStateName,
-      }))
-    : (DEFAULT_TRANSITIONS[role.key] ?? []);
-
-  return regras.some(
-    (r) =>
-      r.fromGroup === from.group &&
-      (!r.fromStateName || r.fromStateName === from.name) &&
-      r.toGroup === to.group &&
-      (!r.toStateName || r.toStateName === to.name),
-  );
+  return isTransitionAllowed(role, await readTransitionRules(role), from, to);
 }
 
 /**
