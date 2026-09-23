@@ -543,6 +543,9 @@
       "paineis_tv": {
         "title": "TV panels"
       },
+      "plugins": {
+        "title": "Plugins"
+      },
       "email": {
         "title": "E-mail (SMTP)"
       },
