@@ -6,6 +6,10 @@
  * É uma tela de PAREDE: tipografia grande, nada de menu, nada clicável que o
  * operador precise acertar. Os dois botões (tela cheia e som) existem porque o
  * navegador exige um clique para cada um e ficam discretos.
+ *
+ * `compacta` tira o cabeçalho inteiro e deixa só uma pílula flutuante no canto
+ * (ao vivo, idade dos dados, tela cheia, hora): é para o mapa, em que cada
+ * pixel de altura vira zoom no estado.
  */
 import type { ReactNode } from "react";
 import { Bell, BellOff, Maximize, RefreshCw, TriangleAlert } from "lucide-react";
@@ -21,6 +25,8 @@ type Props = {
   som?: { ativo: boolean; querSom: boolean; ativar: () => void; desativar: () => void };
   acoes?: ReactNode;
   legenda?: ReactNode;
+  /** Sem cabeçalho; a pílula flutuante no canto faz as vezes dele. */
+  compacta?: boolean;
   children: ReactNode;
 };
 
@@ -35,8 +41,48 @@ export function MolduraDoPainel({
   som,
   acoes,
   legenda,
+  compacta = false,
   children,
 }: Props) {
+  if (compacta) {
+    return (
+      <div
+        className="fixed inset-0 z-[80] flex flex-col overflow-hidden text-white"
+        style={{ backgroundColor: FUNDO_DO_PAINEL }}
+      >
+        <div className="absolute top-3 right-3 z-[85] flex items-center gap-4 rounded-full border border-white/10 bg-black/60 px-4 py-2 backdrop-blur">
+          <span className="text-lg font-semibold text-white/80">{titulo}</span>
+          <span className="text-base flex items-center gap-2">
+            <span
+              className={`inline-block size-2.5 rounded-full ${aoVivo ? "animate-pulse bg-[#0ca30c]" : "bg-[#d03b3b]"}`}
+              aria-hidden
+            />
+            <span className="text-white/70">{aoVivo ? "Ao vivo" : "Sem conexão"}</span>
+          </span>
+          <span className="text-base flex items-center gap-1.5 text-white/60">
+            <RefreshCw className="size-4" aria-hidden />
+            <span>há {formatDuracao(idadeDosDados)}</span>
+          </span>
+          <button
+            type="button"
+            onClick={telaCheia}
+            className="rounded-full p-1 text-white/70 transition hover:text-white"
+            title="Tela cheia"
+          >
+            <Maximize className="size-5" />
+          </button>
+          <time className="font-mono text-2xl font-semibold tabular-nums">{formatHora(agora)}</time>
+        </div>
+        <main className="min-h-0 flex-1 overflow-hidden p-3">{children}</main>
+        {legenda && (
+          <footer className="text-base flex shrink-0 flex-wrap items-center gap-6 border-t border-white/10 px-6 py-2 text-white/60">
+            {legenda}
+          </footer>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-[80] flex flex-col overflow-hidden text-white"
