@@ -21,6 +21,10 @@ export type ReportFilters = {
   etapa?: string;
   funcao?: string;
   setor?: string;
+  /** Amostra por pessoa no analítico por usuário. */
+  por_usuario?: number;
+  page?: number;
+  per_page?: number;
 };
 
 export class ReportsService extends APIService {
@@ -76,6 +80,18 @@ export class ReportsService extends APIService {
 
   byReportId(slug: string, reportId: string, params?: ReportFilters) {
     return this.fetch<any>(slug, reportId, params);
+  }
+
+  /**
+   * Os chamados de uma pessoa no analítico por usuário, paginados. A listagem
+   * do relatório traz só uma amostra por pessoa; o resto vem por aqui.
+   */
+  chamadosDoUsuario<T = any>(slug: string, userId: string, params?: ReportFilters): Promise<T> {
+    return this.get(`/api/workspaces/${slug}/reports/milestones-by-user/${userId}/`, { params })
+      .then((res) => res?.data as T)
+      .catch((error) => {
+        throw error?.response?.data ?? error;
+      });
   }
 
   /** Igual a `byReportId`, mas deixa o erro subir: a tela mostra o motivo (sem permissão, filtro inválido). */

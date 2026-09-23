@@ -132,7 +132,9 @@ function ReportDetailPage() {
           {!isLoading && error && (
             <p className="py-10 text-center text-13 text-tertiary">{readMensagemDeErro(error)}</p>
           )}
-          {!isLoading && !error && data && <ReportRenderer reportId={reportId} data={data} />}
+          {!isLoading && !error && data && (
+            <ReportRenderer reportId={reportId} data={data} contexto={{ slug: workspaceSlug, params }} />
+          )}
 
           <div data-print-only>
             <PrintFooter />
