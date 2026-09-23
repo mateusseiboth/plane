@@ -36,6 +36,11 @@ export type RegraDaColuna = {
   concluidoEmDias?: number;
   /** `false` tira a coluna do total e do percentual (o legado não soma Homologado). */
   noTotal?: boolean;
+  /**
+   * `false` deixa os urgentes desta coluna fora do alerta ("cliente parado").
+   * No TI, o que já está em Concluído (homologação) é problema da Qualidade.
+   */
+  alerta?: boolean;
 };
 
 export type ChamadoDoQuadro = {
@@ -59,7 +64,7 @@ export const COLUNAS_PADRAO: Record<PainelDoQuadro, RegraDaColuna[]> = {
     { chave: "pendente", rotulo: "Pendente", cor: "cinza", etapas: ["Pendências", "A Fazer"], responsavel: "sem" },
     { chave: "atribuido", rotulo: "Atribuído", cor: "azul", etapas: ["Pendências", "A Fazer"], responsavel: "com" },
     { chave: "em_desenvolvimento", rotulo: "Em desenvolvimento", cor: "roxo", etapas: ["Em Desenvolvimento"] },
-    { chave: "concluido", rotulo: "Concluído", cor: "ouro", etapas: ["Em Teste"] },
+    { chave: "concluido", rotulo: "Concluído", cor: "ouro", etapas: ["Em Teste"], alerta: false },
     { chave: "enviado", rotulo: "Enviado", cor: "verde", etapas: ["Concluído"], concluidoEmDias: 30, noTotal: false },
   ],
   qualidade: [
@@ -88,6 +93,7 @@ const isDaColuna = (regra: RegraDaColuna, chamado: ChamadoDoQuadro, agora: Date)
 };
 
 const isNoTotal = (regra: RegraDaColuna) => regra.noTotal !== false;
+const isComAlerta = (regra: RegraDaColuna) => regra.alerta !== false;
 
 const percentualDe = (parte: number, total: number) => (total ? Math.round((parte / total) * 1000) / 10 : 0);
 
@@ -117,7 +123,7 @@ export function buildQuadro<T extends ChamadoDoQuadro>(colunas: RegraDaColuna[],
       };
     }),
     urgentes: escolhidos
-      .filter((e) => e.regra && isNoTotal(e.regra) && e.chamado.prioridade === "urgent")
+      .filter((e) => e.regra && isNoTotal(e.regra) && isComAlerta(e.regra) && e.chamado.prioridade === "urgent")
       .map((e) => e.chamado),
   };
 }
@@ -173,6 +179,7 @@ function parseColuna(bruta: Record<string, unknown>, indice: number): { coluna?:
       ...(responsavel ? { responsavel: responsavel as "com" | "sem" } : {}),
       ...(dias === undefined ? {} : { concluidoEmDias: dias }),
       ...((bruta.no_total ?? bruta.noTotal) === false ? { noTotal: false } : {}),
+      ...(bruta.alerta === false ? { alerta: false } : {}),
     },
   };
 }

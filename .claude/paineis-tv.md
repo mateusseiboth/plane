@@ -123,7 +123,10 @@ própria para `/api/tv/<slug>/stream/`, sem buffer e com leitura longa.
 ## 5. Colunas do TI e da Qualidade
 
 A coluna é DADO: `{chave, rotulo, cor, etapas[], responsavel?, concluidoEmDias?,
-noTotal?}`. Cada chamado entra em UMA coluna, a primeira que o quer — assim o
+noTotal?, alerta?}`. `alerta: false` deixa os urgentes da coluna fora do banner
+de cliente parado (padrão do TI: Concluído, que já é homologação da Qualidade;
+Em Desenvolvimento não é coluna da Qualidade, então lá só o TI alerta). Cada
+chamado entra em UMA coluna, a primeira que o quer — assim o
 total do painel é a soma das colunas, como o "(11/134)" do legado.
 
 Padrão (`quadro/colunas.ts`):

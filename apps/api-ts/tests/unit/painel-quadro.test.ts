@@ -95,6 +95,24 @@ describe("colunas do painel", () => {
     expect(quadro.urgentes.map((c) => c.id)).toEqual([parado.id]);
   });
 
+  it("no TI, urgente que já está em Concluído (homologação) não dispara o alerta; na Qualidade dispara", () => {
+    const emDesenvolvimento = chamado({ etapa: "Em Desenvolvimento", grupo: "started", prioridade: "urgent" });
+    const emHomologacao = chamado({ etapa: "Em Teste", grupo: "started", prioridade: "urgent" });
+    const ti = buildQuadro(COLUNAS_PADRAO.ti, [emDesenvolvimento, emHomologacao], AGORA);
+    expect(ti.colunas.find((c) => c.chave === "concluido")?.chamados.map((c) => c.id)).toEqual([emHomologacao.id]);
+    expect(ti.urgentes.map((c) => c.id)).toEqual([emDesenvolvimento.id]);
+
+    const qualidade = buildQuadro(COLUNAS_PADRAO.qualidade, [emDesenvolvimento, emHomologacao], AGORA);
+    expect(qualidade.urgentes.map((c) => c.id)).toEqual([emHomologacao.id]);
+  });
+
+  it("na Qualidade, urgente em desenvolvimento não aparece em coluna nenhuma nem no alerta: é só do TI", () => {
+    const emDesenvolvimento = chamado({ etapa: "Em Desenvolvimento", grupo: "started", prioridade: "urgent" });
+    const qualidade = buildQuadro(COLUNAS_PADRAO.qualidade, [emDesenvolvimento], AGORA);
+    expect(qualidade.colunas.flatMap((c) => c.chamados)).toEqual([]);
+    expect(qualidade.urgentes).toEqual([]);
+  });
+
   it("o filtro do DAO pede as etapas de todas as colunas e a data-limite dos concluídos", () => {
     const filtro = buildFiltroDoQuadro(COLUNAS_PADRAO.qualidade, AGORA);
     expect(filtro.etapas).toEqual(["Triagem", "Em Análise", "Em Teste", "Concluído"]);
@@ -111,6 +129,7 @@ describe("configuração das colunas gravada pelo espaço", () => {
   const valida = [
     { chave: "espera", rotulo: "Esperando", cor: "laranja", etapas: ["Triagem", "Pendências"] },
     { chave: "feito", rotulo: "Feito", cor: "verde", etapas: ["Concluído"], concluido_em_dias: 3, no_total: false },
+    { chave: "teste", rotulo: "Em teste", cor: "ouro", etapas: ["Em Teste"], alerta: false },
   ];
 
   it("aceita a configuração completa e devolve as colunas internas", () => {
@@ -119,6 +138,7 @@ describe("configuração das colunas gravada pelo espaço", () => {
     expect(colunas).toEqual([
       { chave: "espera", rotulo: "Esperando", cor: "laranja", etapas: ["Triagem", "Pendências"] },
       { chave: "feito", rotulo: "Feito", cor: "verde", etapas: ["Concluído"], concluidoEmDias: 3, noTotal: false },
+      { chave: "teste", rotulo: "Em teste", cor: "ouro", etapas: ["Em Teste"], alerta: false },
     ]);
   });
 

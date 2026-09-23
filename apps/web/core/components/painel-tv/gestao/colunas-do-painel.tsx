@@ -164,6 +164,14 @@ export function ColunasDoPainel({ workspaceSlug, painel, configuracao, recarrega
               />
               Conta no total e no percentual
             </label>
+            <label className="flex items-center gap-2 text-13 text-secondary">
+              <input
+                type="checkbox"
+                checked={coluna.alerta !== false}
+                onChange={(e) => trocar(indice, { alerta: e.target.checked ? undefined : false })}
+              />
+              Cliente parado nesta coluna dispara o alerta
+            </label>
             <button
               type="button"
               className="text-danger ml-auto inline-flex items-center gap-1 text-13"

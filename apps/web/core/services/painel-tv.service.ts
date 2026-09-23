@@ -134,6 +134,7 @@ export type TColunaDoPainel = {
   responsavel?: "com" | "sem";
   concluidoEmDias?: number;
   noTotal?: boolean;
+  alerta?: boolean;
 };
 
 export type TColunasDoPainel = {
