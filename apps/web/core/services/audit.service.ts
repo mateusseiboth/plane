@@ -10,7 +10,20 @@
 import { API_BASE_URL } from "@plane/constants";
 import { APIService } from "@/services/api.service";
 
+/**
+ * Registro citado pela linha da trilha, já resolvido pelo backend: o rótulo é
+ * o que a pessoa lê e `caminho` é a rota que abre o registro (null quando o
+ * tipo não tem tela ou o registro foi removido).
+ */
+export type TRegistroDaAuditoria = {
+  tipo: string;
+  id: string;
+  rotulo: string;
+  caminho: string | null;
+};
+
 export type TAuditLog = {
+  registro: TRegistroDaAuditoria | null;
   id: string;
   workspace_id: string;
   actor_id: string | null;

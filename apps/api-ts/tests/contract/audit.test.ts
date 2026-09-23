@@ -45,7 +45,9 @@ describe("TestAuditTrail", () => {
 
     const membroUser = await createUser({ email: "audit-membro@plane.test" });
     membroId = membroUser.id;
-    await prisma.workspaceMember.create({ data: { workspaceId: ws.id, memberId: membroUser.id, role: 15, isActive: true } });
+    await prisma.workspaceMember.create({
+      data: { workspaceId: ws.id, memberId: membroUser.id, role: 15, isActive: true },
+    });
     await prisma.projectMember.create({
       data: { projectId: project.id, workspaceId: ws.id, memberId: membroUser.id, role: 15, isActive: true },
     });
@@ -244,6 +246,42 @@ describe("TestAuditTrail", () => {
       expect(res.status).toBe(200);
       const data = (await res.json()) as any;
       expect(data.total_count).toBe(0);
+    });
+
+    it("cada linha traz o registro resolvido, com rótulo legível e rota que o abre", async () => {
+      const res = await admin.get(`${auditUrl()}?entity_id=${issueId}&action=view`);
+      const data = (await res.json()) as any;
+      const linha = data.results[0];
+      expect(linha.registro.tipo).toBe("issue");
+      expect(linha.registro.id).toBe(issueId);
+      expect(linha.registro.rotulo).toContain("Chamado auditado");
+      expect(linha.registro.caminho).toBe(`/${wsSlug}/projects/${projectId}/issues/${issueId}`);
+    });
+
+    it("registro apagado continua legível, mas sem link para abrir", async () => {
+      const criado = await admin.post(issuesUrl(), { name: "Chamado que some" });
+      const alvo = ((await criado.json()) as any).id;
+      expect((await admin.delete(`${issuesUrl()}${alvo}/`)).status).toBe(204);
+      await waitForLog({ entity: "issue", entityId: alvo, action: "delete" });
+
+      const data = (await (await admin.get(`${auditUrl()}?entity_id=${alvo}`)).json()) as any;
+      expect(data.results.length).toBeGreaterThan(0);
+      for (const linha of data.results) {
+        expect(linha.registro.caminho).toBeNull();
+        expect(linha.registro.rotulo).toContain("(removido)");
+      }
+    });
+
+    it("o titular também recebe o registro resolvido nos próprios acessos", async () => {
+      const data = (await (await membro.get(`${auditUrl()}me/`)).json()) as any;
+      expect(data.results.every((l: any) => typeof l.registro?.rotulo === "string")).toBe(true);
+    });
+
+    it("o CSV ganha a coluna do rótulo do registro", async () => {
+      const csv = await (await admin.get(`${auditUrl()}export/?entity_id=${issueId}`)).text();
+      const [cabecalho, ...linhas] = csv.split("\n");
+      expect(cabecalho!.split(",")).toContain("registro");
+      expect(linhas.some((l) => l.includes("Chamado auditado"))).toBe(true);
     });
 
     it("sem autenticação não há trilha", async () => {
