@@ -1,6 +1,6 @@
 /**
  * Painel de TV do atendimento: as seis abas do `chatger` do SAC e a lateral de
- * atendentes, montados para uma tela de parede.
+ * atendentes (só quem está em alguma fila), montados para uma tela de parede.
  *
  * Duas leituras (conversas do dia + conversas abertas) e agregação em memória,
  * como o monitor ao vivo já faz. Ligação (`channel = "phone"`) fica de fora: do
@@ -17,6 +17,7 @@ import { WITHOUT_PHONE } from "@/canais";
 import {
   ABAS_DO_PAINEL,
   classifyAbaDoPainel,
+  filterAtendentesEmFila,
   readContato,
   readSituacaoDoAtendente,
   readTempoDaLinha,
@@ -99,6 +100,19 @@ function serializeLinha(linha: Linha, aba: AbaDoPainel, nomes: Nomes, agora: Dat
   };
 }
 
+/**
+ * Quem é membro de alguma fila do espaço. É esta a equipe da lateral da TV: a
+ * fila é o que faz a conversa chegar em alguém, e a tela de parede mostra quem
+ * atende de verdade, não a lista de todo mundo que tem a permissão.
+ */
+async function findAtendentesEmFila(slug: string): Promise<Set<string>> {
+  const membros = await prisma.queueMember.findMany({
+    where: { queue: { workspaceId: slug } },
+    select: { userId: true },
+  });
+  return new Set(membros.map((m) => m.userId));
+}
+
 const soma = (mapa: Map<string, number>, id: string) => mapa.set(id, (mapa.get(id) ?? 0) + 1);
 
 /** Quantas conversas cada atendente tem na mão, e em quantas o cliente espera. */
@@ -118,7 +132,11 @@ function countPorAtendente(linhas: Linha[]) {
 
 export async function readPainelDeAtendimento(slug: string, agora = new Date()) {
   const inicioDoDia = await inicioDoDiaNoFuso(slug);
-  const [linhas, equipe] = await Promise.all([findConversas(slug, inicioDoDia), listAtendentes(slug)]);
+  const [linhas, equipe, emFila] = await Promise.all([
+    findConversas(slug, inicioDoDia),
+    listAtendentes(slug),
+    findAtendentesEmFila(slug),
+  ]);
   const nomes = await readNomes(linhas);
 
   const classificadas = linhas.map((linha) => ({ linha, aba: classifyAbaDoPainel(linha) }));
@@ -144,7 +162,7 @@ export async function readPainelDeAtendimento(slug: string, agora = new Date()) 
     ).map((s) => s.userId)
   );
   const contagens = countPorAtendente(linhas);
-  const atendentes: AtendenteDoPainel[] = equipe.map((pessoa) => ({
+  const atendentes: AtendenteDoPainel[] = filterAtendentesEmFila(equipe, emFila).map((pessoa) => ({
     id: pessoa.id,
     name: pessoa.name,
     conectado: conectados.has(pessoa.id),

@@ -1,7 +1,7 @@
 /**
  * Painel de TV do atendimento: as seis abas do `chatger` do SAC, que TROCAM
  * SOZINHAS a cada X segundos (padrão 15, `?intervalo=` na URL), com a barra de
- * progresso da troca, e a lateral com os atendentes do espaço.
+ * progresso da troca, e a lateral com os atendentes que estão em alguma fila.
  *
  * A espera longa muda de cor E ganha rótulo: "aguardando há 21min" continua
  * legível para quem não distingue vermelho de amarelo.
@@ -154,9 +154,7 @@ function LateralDeAtendentes({ atendentes }: { atendentes: TAtendenteDoPainel[] 
             </span>
           </li>
         ))}
-        {atendentes.length === 0 && (
-          <li className="text-xl p-4 text-center text-white/40">Ninguém atende neste espaço</li>
-        )}
+        {atendentes.length === 0 && <li className="text-xl p-4 text-center text-white/40">Ninguém em fila</li>}
       </ul>
     </aside>
   );
