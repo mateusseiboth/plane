@@ -1739,67 +1739,6 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return {data: []};
   })
 
-  // ── Home preferences ──────────────────────────────────────────────────────────
-
-  .get("/:slug/home-preferences/", async ({params: {slug}, user}) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-
-    const DEFAULT_WIDGETS = [
-      {key: "my_work_items", name: "Meus Work Items", is_enabled: true, sort_order: 7},
-      {key: "upcoming_dates", name: "Prazos Próximos", is_enabled: true, sort_order: 6},
-      {key: "open_intakes", name: "Intakes Abertos", is_enabled: true, sort_order: 5},
-      {key: "quick_links", name: "Links Rápidos", is_enabled: true, sort_order: 4},
-      {key: "recents", name: "Recentes", is_enabled: true, sort_order: 3},
-      {key: "my_stickies", name: "Meus Stickies", is_enabled: true, sort_order: 2},
-      {key: "quick_tutorial", name: "Tutorial", is_enabled: true, sort_order: 1},
-      {key: "new_at_plane", name: "Novidades", is_enabled: true, sort_order: 0},
-    ];
-
-    const props = await prisma.workspaceUserProperties.findFirst({
-      where: {workspaceId: ws.id, userId: user.id},
-      select: {displayFilters: true},
-    });
-    const widgetPrefs: Record<string, any> = (props?.displayFilters as any)?.widget_preferences ?? {};
-
-    return DEFAULT_WIDGETS.map((w) => ({
-      ...w,
-      is_enabled: widgetPrefs[w.key]?.is_enabled ?? w.is_enabled,
-      sort_order: widgetPrefs[w.key]?.sort_order ?? w.sort_order,
-    }));
-  })
-
-  .patch("/:slug/home-preferences/", async ({params: {slug}, body, user}) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    return {detail: "Preferências atualizadas."};
-  })
-
-  .get("/:slug/home-preferences/:key/", async ({params: {slug, key}, user}) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    return {key, value: null};
-  })
-
-  .patch("/:slug/home-preferences/:key/", async ({params: {slug, key}, body, user}) => {
-    const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
-    const b = body as any;
-    const props = await prisma.workspaceUserProperties.findFirst({
-      where: {workspaceId: ws.id, userId: user.id},
-    });
-    const existing = (props?.displayFilters as any) ?? {};
-    const widgetPrefs = existing.widget_preferences ?? {};
-    widgetPrefs[key] = {...(widgetPrefs[key] ?? {}), ...b};
-    const newDisplayFilters = {...existing, widget_preferences: widgetPrefs};
-    await prisma.workspaceUserProperties.upsert({
-      where: {workspaceId_userId: {workspaceId: ws.id, userId: user.id}},
-      update: {displayFilters: newDisplayFilters},
-      create: {workspaceId: ws.id, userId: user.id, displayFilters: newDisplayFilters},
-    });
-    return {key, ...b};
-  })
-
   // ── Quick links ───────────────────────────────────────────────────────────────
 
   .get("/:slug/quick-links/", async ({params: {slug}, user}) => {

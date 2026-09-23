@@ -168,3 +168,28 @@ export interface SDKInitOptions {
   /** Workspace em que o widget está aberto; vai como `workspace_slug` em toda chamada. */
   workspaceSlug?: string;
 }
+
+/** Tamanho de um widget na grade da página inicial, em fração da largura. */
+export type WidgetSize = "1/3" | "1/2" | "2/3" | "1/1";
+
+/**
+ * Conteúdo do `manifest.json` do pacote. `title` e `defaultSize` são opcionais e
+ * só valem para a home: o título do cartão (sem ele, o `name`) e o tamanho com
+ * que o widget entra na grade. Depois disso cada pessoa move e redimensiona.
+ */
+export interface WidgetManifest {
+  name: string;
+  version: string;
+  author: string;
+  entry: string;
+  description?: string;
+  permissions?: string[];
+  title?: string;
+  defaultSize?: WidgetSize;
+}
+
+/** Props que a home entrega ao componente do widget. */
+export interface WidgetHomeProps {
+  /** Tamanho atual do cartão na grade, para o widget adaptar o conteúdo. */
+  size: WidgetSize;
+}

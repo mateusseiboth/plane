@@ -8,13 +8,6 @@ import type { TLogoProps } from "./common";
 import type { TIssuePriorities } from "./issues";
 
 export type TRecentActivityFilterKeys = "all item" | "issue" | "page" | "project" | "workspace_page";
-export type THomeWidgetKeys = "quick_links" | "recents" | "my_stickies" | "quick_tutorial" | "new_at_plane"
-  | "my_work_items" | "upcoming_dates" | "open_intakes";
-
-export type THomeWidgetProps = {
-  workspaceSlug: string;
-};
-
 export type TPageEntityData = {
   id: string;
   name: string;
@@ -74,11 +67,4 @@ export type TLinkMap = {
 
 export type TLinkIdMap = {
   [workspace_slug: string]: string[];
-};
-
-export type TWidgetEntityData = {
-  key: THomeWidgetKeys;
-  name: string;
-  is_enabled: boolean;
-  sort_order: number;
 };

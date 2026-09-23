@@ -108,3 +108,13 @@ export function AcessoDaPessoa({ workspaceSlug }: { workspaceSlug: string }) {
     </CartaoDoPainel>
   );
 }
+
+/** Widget "Detalhes" da grade: os detalhes da pessoa e, embaixo, o último acesso e o gestor. */
+export function DetalhesDaHome({ workspaceSlug }: { workspaceSlug: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-5 *:last:grow">
+      <DetalhesDaPessoa workspaceSlug={workspaceSlug} />
+      <AcessoDaPessoa workspaceSlug={workspaceSlug} />
+    </div>
+  );
+}

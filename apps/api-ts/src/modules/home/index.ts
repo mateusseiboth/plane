@@ -17,8 +17,11 @@ import { vencimento } from "@utils/serialize";
 import { painelDao, type EscopoDaPessoa } from "@modules/home/painel.dao";
 import { readPeriodoDaSerie } from "@modules/home/painel.rules";
 import { createPainelService } from "@modules/home/painel.service";
+import { widgetsDao } from "@modules/home/widgets.dao";
+import { createWidgetsService } from "@modules/home/widgets.service";
 
 const painel = createPainelService({ dao: painelDao, now: () => new Date() });
+const widgets = createWidgetsService({ dao: widgetsDao });
 
 /** O painel é sempre de quem está logado, dentro de um espaço de que ele é membro. */
 async function readEscopo(slug: string, userId: string): Promise<EscopoDaPessoa> {
@@ -152,6 +155,13 @@ export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
   )
 
   .get("/home/perfil/", async ({ params: { slug }, user }) => painel.findPerfil(await readEscopo(slug, user.id)))
+
+  // ── Grade de widgets da home: ordem, tamanho e ligado/desligado por pessoa e espaço ──
+  .get("/home-preferences/", async ({ params: { slug }, user }) => widgets.read(await readEscopo(slug, user.id)))
+
+  .put("/home-preferences/", async ({ params: { slug }, user, body }) =>
+    widgets.save(await readEscopo(slug, user.id), body)
+  )
 
   .get("/home/atividade/", async ({ params: { slug }, user, query }) =>
     painel.findAtividade(await readEscopo(slug, user.id), query.limit)
