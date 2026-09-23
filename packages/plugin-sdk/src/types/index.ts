@@ -137,6 +137,8 @@ export interface Entity {
   phone?: string | null;
   is_active?: boolean | null;
   legacy_id?: number | null;
+  /** Código no SAC desktop: o que o servidor de backups e o SAC usam (difere do legacy_id). */
+  sac_code?: number | null;
   external_source?: string | null;
   external_id?: string | null;
   external_refs?: Record<string, string>;
