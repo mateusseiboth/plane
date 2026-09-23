@@ -10,6 +10,7 @@ tanto escrita quanto leitura: quem acessou, o quê, quando e de onde.
   `auditDiff`, `clientIp`, `serializeAuditLog`, além do vocabulário fechado
   `AUDIT_ACTIONS` / `AUDIT_ENTITIES`.
 - Rotas: `apps/api-ts/src/modules/audit/index.ts`.
+- Registro citado (rótulo legível + rota): `apps/api-ts/src/modules/audit/registro.ts`.
 - Chat: `apps/chat-backend/src/audit.ts` grava na MESMA tabela por SQL direto
   (o schema Prisma do chat não conhece o model `AuditLog`, e duplicá-lo faria as
   duas definições divergirem).
@@ -58,16 +59,68 @@ tanto escrita quanto leitura: quem acessou, o quê, quando e de onde.
 Filtros aceitos: `entity`, `entity_id`, `actor_id`, `action` (aceita lista separada
 por vírgula), `date_from`, `date_to`, `cursor`.
 
+## O registro citado por cada linha
+
+A trilha guarda só `entity` + `entity_id`. Na tela isso virava "Chamado b9cc59d1" e
+ninguém sabia QUAL chamado a pessoa tinha visto ou alterado. Toda linha da listagem
+(e de `/me/`) passa a trazer:
+
+```json
+"registro": { "tipo": "issue", "id": "<uuid>", "rotulo": "Chamado QLT-12 (34-2026) Erro no IPTU", "caminho": "/<slug>/projects/<id>/issues/<id>" }
+```
+
+- `rotulo` é o que a pessoa lê; `caminho` é a rota no web, ou `null` quando o tipo não
+  tem tela própria (anexo) ou o registro foi apagado.
+- Registro apagado (ou `deleted_at` preenchido) ganha o sufixo **"(removido)"** e perde o
+  link; o nome sai do `metadata`/`changes` quando ficou guardado lá.
+- A resolução é em **lote**: uma consulta por TIPO por página, nunca uma por linha.
+- O CSV de exportação ganhou a coluna `registro` com esse mesmo rótulo.
+
+Cada tipo é uma entrada do mapa de estratégias em `modules/audit/registro.ts`
+(`titulo`, `load`, `describe`, `caminho`); tipo novo entra ali, sem mexer no resto.
+
+| Tipo | Rótulo | Abre em |
+|---|---|---|
+| `issue` | `QLT-12 (34-2026)` + título | `/<slug>/projects/<projectId>/issues/<id>` |
+| `intake` | título + entidade | triagem do sistema, com `currentTab` e `inboxIssueId` |
+| `comment` | "em QLT-12" + título do chamado | o chamado comentado |
+| `attachment` | nome do arquivo | sem tela (`null`) |
+| `project` | nome + identificador | `/<slug>/projects/<id>/issues` |
+| `workspace` | nome | `/<slug>/settings` |
+| `member`, `user`, `chat_attendant` | nome + e-mail | membros do espaço (atendente: `/<slug>/chat`) |
+| `entity` | nome | `/<slug>/settings/entities` |
+| `entity_contact`, `entity_contact_type` | nome (+ entidade) | `/<slug>/contatos` |
+| `technical_visit` | número + entidade | `/<slug>/visits/<id>` |
+| `page` | nome | página do sistema ou `/<slug>/wiki/<id>` |
+| `cycle`, `module` | nome | ciclo/módulo do sistema |
+| `curriculo` | candidato + vaga | `/<slug>/curriculos` |
+| `ouvidoria` | tipo de manifestação + quem mandou | `/<slug>/ouvidoria` |
+| `panel_key` | nome + final da chave | `/<slug>/settings/paineis-tv` |
+| `chat_session` | protocolo (do `metadata`) | `/<slug>/chat-view/<protocolo>` |
+| `chat_disparo` | título do disparo | `/<slug>/chat/disparo` |
+| `report` | nome do relatório | `/<slug>/reports` |
+| `audit_log` | "Trilha de auditoria" | `/<slug>/settings/auditoria` |
+| desconhecido | tipo + começo do id | sem tela (`null`) |
+
+Na tela, a coluna **Registro** vira link que abre em outra aba (o administrador não perde
+os filtros da trilha) e o `title` mostra o id completo. Front:
+`apps/web/core/components/audit/registro.ts`.
+
 **Tela:** Configurações do espaço de trabalho → **Auditoria (LGPD)**
 (`/settings/auditoria`), com filtros, paginação e exportação em CSV.
 Front: `apps/web/core/services/audit.service.ts` + `core/hooks/use-audit-logs.ts`.
 
 ## Testes
 
-- `apps/api-ts/tests/unit/audit.test.ts` (13) — funções puras: IP atrás de proxy,
+- `apps/api-ts/tests/unit/audit.test.ts` (14) — funções puras: IP atrás de proxy,
   diff, truncamento, serialização, vocabulário.
-- `apps/api-ts/tests/contract/audit.test.ts` (21) — o ciclo completo do chamado
-  vira registro; regras de acesso; filtros; CSV; isolamento entre workspaces.
+- `apps/api-ts/tests/unit/audit-registro.test.ts` (24) — rótulo e rota por tipo de
+  registro, registro removido, título longo, tipo desconhecido.
+- `apps/api-ts/tests/contract/audit.test.ts` (25) — o ciclo completo do chamado
+  vira registro; o registro resolvido em cada linha; regras de acesso; filtros; CSV;
+  isolamento entre workspaces.
+- `apps/web/core/components/audit/registro.test.ts` (5) — rede de segurança da coluna
+  quando a resposta não traz `registro`.
 - `apps/chat-backend/tests/audit.e2e.test.ts` (4) — assumir/ver transcrição/encerrar
   atendimento, e ausência de registro órfão quando o workspace não existe.
 

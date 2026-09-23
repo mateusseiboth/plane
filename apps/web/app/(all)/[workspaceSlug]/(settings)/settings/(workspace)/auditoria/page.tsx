@@ -19,6 +19,7 @@ import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view
 import { PageHead } from "@/components/core/page-title";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { SettingsHeading } from "@/components/settings/heading";
+import { caminhoDoRegistro, rotuloDoRegistro } from "@/components/audit/registro";
 import { AuditLogsPrintDocument, usePrint, type TLinhaDaAuditoria } from "@/components/print";
 // hooks
 import { useAuditLogs, useAuditLogsParaImpressao, useAuditRecorder } from "@/hooks/use-audit-logs";
@@ -105,14 +106,20 @@ const ENTITY_LABELS: Record<string, string> = {
   member: "Membro",
   user: "Usuário",
   entity: "Entidade",
+  entity_contact: "Responsável",
+  entity_contact_type: "Tipo de responsável",
   technical_visit: "Visita técnica",
   page: "Página",
   cycle: "Ciclo",
   module: "Módulo",
   report: "Relatório",
   chat_session: "Atendimento",
+  chat_attendant: "Atendente",
   chat_disparo: "Disparo de mensagens",
   audit_log: "Trilha de auditoria",
+  panel_key: "Chave de painel",
+  ouvidoria: "Ouvidoria",
+  curriculo: "Currículo",
 };
 
 const PAGE_SIZE = 50;
@@ -146,6 +153,31 @@ function filterPorEmail(logs: TAuditLog[], email: string): TAuditLog[] {
   return logs.filter((log) => (log.actor_email ?? "").toLowerCase().includes(term));
 }
 
+const tituloDoTipo = (log: TAuditLog) => ENTITY_LABELS[log.entity] ?? log.entity;
+
+/**
+ * Coluna "Registro": o rótulo abre o registro em outra aba, para o administrador
+ * conferir sem perder os filtros da trilha. Passar o mouse mostra o id completo.
+ */
+function RegistroDaLinha({ log }: { log: TAuditLog }) {
+  const rotulo = rotuloDoRegistro(log, tituloDoTipo(log));
+  const caminho = caminhoDoRegistro(log);
+
+  if (!caminho) return <span title={log.entity_id}>{rotulo}</span>;
+
+  return (
+    <a
+      href={caminho}
+      target="_blank"
+      rel="noreferrer"
+      title={log.entity_id}
+      className="text-accent-primary hover:underline"
+    >
+      {rotulo}
+    </a>
+  );
+}
+
 function toLinhaDaAuditoria(log: TAuditLog): TLinhaDaAuditoria {
   return {
     id: log.id,
@@ -153,7 +185,7 @@ function toLinhaDaAuditoria(log: TAuditLog): TLinhaDaAuditoria {
     usuario: log.actor_email ?? "—",
     ip: log.actor_ip ?? "—",
     acao: ACTION_LABELS[log.action] ?? log.action,
-    registro: `${ENTITY_LABELS[log.entity] ?? log.entity} ${log.entity_id.slice(0, 8)}`,
+    registro: rotuloDoRegistro(log, tituloDoTipo(log)),
     alteracoes: summarizeChanges(log.changes),
   };
 }
@@ -355,8 +387,7 @@ function AuditoriaSettingsPage() {
                     {ACTION_LABELS[log.action] ?? log.action}
                   </td>
                   <td className="px-3 py-2 text-secondary">
-                    {ENTITY_LABELS[log.entity] ?? log.entity}
-                    <span className="ml-1 text-13 text-tertiary">{log.entity_id.slice(0, 8)}</span>
+                    <RegistroDaLinha log={log} />
                   </td>
                   <td className="px-3 py-2 text-13 text-secondary">{summarizeChanges(log.changes)}</td>
                 </tr>

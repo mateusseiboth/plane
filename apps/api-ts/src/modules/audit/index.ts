@@ -18,7 +18,8 @@ import { authPlugin } from "@middleware/auth";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit, serializeAuditLog } from "@utils/audit";
-import {EProjectAction, hasWorkspaceAction} from "@utils/permission-checks";
+import { EProjectAction, hasWorkspaceAction } from "@utils/permission-checks";
+import { chaveDoRegistro, resolveRegistrosDaTrilha } from "@modules/audit/registro";
 
 const CLIENT_REPORTABLE_ACTIONS = new Set<string>([
   AUDIT_ACTIONS.PRINT,
@@ -42,8 +43,25 @@ function buildWhere(workspaceId: string, query: Record<string, unknown>) {
   return where;
 }
 
-function toCsv(rows: any[]): string {
-  const header = ["data", "ator_id", "ator_email", "ip", "entidade", "entidade_id", "acao", "alteracoes", "metadados"];
+/** Cada linha da página ganha o registro resolvido (rótulo legível + rota). */
+async function serializePagina(items: any[], workspaceId: string, slug: string) {
+  const registros = await resolveRegistrosDaTrilha(items, { workspaceId, slug });
+  return items.map((log) => serializeAuditLog(log, registros.get(chaveDoRegistro(log)) ?? null));
+}
+
+function toCsv(rows: any[], registros: Map<string, { rotulo: string }>): string {
+  const header = [
+    "data",
+    "ator_id",
+    "ator_email",
+    "ip",
+    "entidade",
+    "entidade_id",
+    "registro",
+    "acao",
+    "alteracoes",
+    "metadados",
+  ];
   const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lines = rows.map((r) =>
     [
@@ -53,6 +71,7 @@ function toCsv(rows: any[]): string {
       r.actorIp ?? "",
       r.entity,
       r.entityId,
+      registros.get(chaveDoRegistro(r))?.rotulo ?? "",
       r.action,
       JSON.stringify(r.changes ?? {}),
       JSON.stringify(r.metadata ?? {}),
@@ -78,7 +97,7 @@ export const auditModule = new Elysia({ prefix: "/workspaces/:slug" })
       query: (skip, take) => prisma.auditLog.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
       count: () => prisma.auditLog.count({ where }),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeAuditLog),
+      transform: (items) => serializePagina(items, ws.id, slug),
     });
   })
 
@@ -91,7 +110,7 @@ export const auditModule = new Elysia({ prefix: "/workspaces/:slug" })
       query: (skip, take) => prisma.auditLog.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
       count: () => prisma.auditLog.count({ where }),
       cursor: query.cursor as string | undefined,
-      transform: (items) => items.map(serializeAuditLog),
+      transform: (items) => serializePagina(items, ws.id, slug),
     });
   })
 
@@ -105,6 +124,7 @@ export const auditModule = new Elysia({ prefix: "/workspaces/:slug" })
     const where = buildWhere(ws.id, query as Record<string, unknown>);
     const limit = Math.min(Number(query.limit ?? 10000), 50000);
     const rows = await prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, take: limit });
+    const registros = await resolveRegistrosDaTrilha(rows, { workspaceId: ws.id, slug });
 
     // A própria exportação é um tratamento de dados e também vira registro.
     recordAudit({
@@ -118,8 +138,9 @@ export const auditModule = new Elysia({ prefix: "/workspaces/:slug" })
     });
 
     set.headers["Content-Type"] = "text/csv; charset=utf-8";
-    set.headers["Content-Disposition"] = `attachment; filename="auditoria-${slug}-${new Date().toISOString().slice(0, 10)}.csv"`;
-    return toCsv(rows);
+    set.headers["Content-Disposition"] =
+      `attachment; filename="auditoria-${slug}-${new Date().toISOString().slice(0, 10)}.csv"`;
+    return toCsv(rows, registros);
   })
 
   // Eventos que só existem no cliente (imprimir/exportar uma tela).

@@ -178,8 +178,13 @@ export function auditDiff(
   return changes;
 }
 
-export function serializeAuditLog(log: any) {
+/**
+ * @param registro descrição legível do que foi auditado (ver
+ * `@modules/audit/registro`): sem ela a tela só teria o uuid.
+ */
+export function serializeAuditLog(log: any, registro: unknown = null) {
   return {
+    registro,
     id: log.id,
     workspace_id: log.workspaceId,
     actor_id: log.actorId ?? null,
