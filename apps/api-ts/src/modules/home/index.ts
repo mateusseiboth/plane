@@ -8,12 +8,24 @@
  * Tudo é contado dentro dos projetos de que o usuário participa: a home é a
  * visão pessoal do dia, não um painel do espaço de trabalho inteiro.
  */
-import Elysia from "elysia";
+import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 import { inicioDeHoje } from "@utils/prazo";
 import { vencimento } from "@utils/serialize";
+import { painelDao, type EscopoDaPessoa } from "@modules/home/painel.dao";
+import { readPeriodoDaSerie } from "@modules/home/painel.rules";
+import { createPainelService } from "@modules/home/painel.service";
+
+const painel = createPainelService({ dao: painelDao, now: () => new Date() });
+
+/** O painel é sempre de quem está logado, dentro de um espaço de que ele é membro. */
+async function readEscopo(slug: string, userId: string): Promise<EscopoDaPessoa> {
+  const ws = await getWorkspaceOrFail(slug);
+  await requireWorkspaceMember(ws.id, userId);
+  return { workspaceId: ws.id, userId };
+}
 
 /** Grupos que representam trabalho ainda aberto. */
 const GRUPOS_ABERTOS = ["backlog", "unstarted", "started", "triage"];
@@ -97,7 +109,12 @@ export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
     for (const linha of etapas) {
       const estado = estados.find((e) => e.id === linha.stateId);
       if (!estado) continue;
-      const atual = porNome.get(estado.name) ?? { name: estado.name, color: estado.color, group: estado.group, count: 0 };
+      const atual = porNome.get(estado.name) ?? {
+        name: estado.name,
+        color: estado.color,
+        group: estado.group,
+        count: 0,
+      };
       atual.count += linha._count.id;
       porNome.set(estado.name, atual);
     }
@@ -113,11 +130,32 @@ export const homeModule = new Elysia({ prefix: "/workspaces/:slug" })
       criados_7d,
       por_prioridade: prioridades
         .map((p) => ({ priority: p.priority, count: p._count.id }))
-        .sort((a, b) => b.count - a.count),
-      por_etapa: [...porNome.values()].sort((a, b) => b.count - a.count),
+        .toSorted((a, b) => b.count - a.count),
+      por_etapa: [...porNome.values()].toSorted((a, b) => b.count - a.count),
       projetos: projectIds.length,
     };
   })
+
+  // ── Painel da home (W30): tudo do usuário logado, responsável ou criador ──────
+  .get("/home/serie-de-chamados/", async ({ params: { slug }, user, query }) =>
+    painel.findSerie(await readEscopo(slug, user.id), readPeriodoDaSerie(query.periodo))
+  )
+
+  .get("/home/tarefas/", async ({ params: { slug }, user }) => painel.findTarefas(await readEscopo(slug, user.id)))
+
+  .get("/home/metricas-do-mes/", async ({ params: { slug }, user }) =>
+    painel.findMetricasDoMes(await readEscopo(slug, user.id))
+  )
+
+  .get("/home/chamados-por-sistema/", async ({ params: { slug }, user, query }) =>
+    painel.findChamadosPorSistema(await readEscopo(slug, user.id), readPeriodoDaSerie(query.periodo))
+  )
+
+  .get("/home/perfil/", async ({ params: { slug }, user }) => painel.findPerfil(await readEscopo(slug, user.id)))
+
+  .get("/home/atividade/", async ({ params: { slug }, user, query }) =>
+    painel.findAtividade(await readEscopo(slug, user.id), query.limit)
+  )
 
   /** Chamados meus que já passaram do prazo — a lista que a home destaca. */
   .get("/home-overdue/", async ({ params: { slug }, user, query }) => {
