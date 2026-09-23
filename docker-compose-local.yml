@@ -312,6 +312,7 @@ services:
       - dev_env
     command: ["bun", "run", "scripts/migrate-sac.ts"]
     environment:
+      LEGACY_INTRANET_DB_URL: ${LEGACY_INTRANET_DB_URL:-}
       DATABASE_URL: postgresql://${POSTGRES_USER:-plane}:${POSTGRES_PASSWORD:-plane}@plane-db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-plane}
       MYSQL_HOST: ${MYSQL_HOST:-10.1.2.32}
       MYSQL_PORT: ${MYSQL_PORT:-3306}

@@ -307,8 +307,24 @@ export interface IEntityContract {
   serialize: (e: any) => unknown;
 }
 
+const INCLUI_INATIVAS = new Set(["1", "true"]);
+
+/**
+ * Quem deixou de ser cliente (inativa ou congelada) fica fora da lista por
+ * padrão: painel, plugin e situação de backup só falam de cliente de verdade.
+ * `include_inactive=1` libera todas, para cadastro e histórico.
+ */
+export const readFiltroDeAtividade = (q: Query): Record<string, unknown> =>
+  INCLUI_INATIVAS.has(
+    String(q.include_inactive ?? "")
+      .trim()
+      .toLowerCase()
+  )
+    ? {}
+    : { isActive: true, frozenAt: null };
+
 export async function findEntities(scope: ISdkGatewayScope, q: Query, contract: IEntityContract) {
-  const where: Record<string, any> = { ...buildEntityScopeWhere(scope), deletedAt: null };
+  const where: Record<string, any> = { ...buildEntityScopeWhere(scope), deletedAt: null, ...readFiltroDeAtividade(q) };
   if (q.search) where.name = { contains: q.search, mode: "insensitive" };
 
   const { perPage, page, skip } = readPagination(q);
