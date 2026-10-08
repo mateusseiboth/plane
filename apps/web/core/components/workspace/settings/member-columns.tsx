@@ -230,13 +230,13 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
                     role: value as unknown as EUserPermissions,
                   });
                 } catch (err: unknown) {
-                  const error = err as { error?: string | string[] };
+                  const error = err as { error?: string | string[]; detail?: string };
                   const errorString = Array.isArray(error?.error) ? error.error[0] : error?.error;
 
                   setToast({
                     type: TOAST_TYPE.ERROR,
                     title: "Erro!",
-                    message: errorString ?? "An error occurred while updating member role. Please try again.",
+                    message: error?.detail ?? errorString ?? "Não foi possível alterar o cargo. Tente de novo.",
                   });
                 }
               }}
