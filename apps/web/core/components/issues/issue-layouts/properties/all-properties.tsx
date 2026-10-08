@@ -15,6 +15,7 @@ import { Paperclip, Building2 } from "lucide-react";
 // i18n
 import { useTranslation } from "@plane/i18n";
 import { LinkIcon, StartDatePropertyIcon, ViewsIcon, DueDatePropertyIcon } from "@plane/propel/icons";
+import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Tooltip } from "@plane/propel/tooltip";
 import type { TIssue, IIssueDisplayProperties, TIssuePriorities } from "@plane/types";
 // ui
@@ -36,6 +37,7 @@ import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { ModuleDropdown } from "@/components/dropdowns/module/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
+import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useIssues } from "@/hooks/store/use-issues";
@@ -144,8 +146,17 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
     [workspaceSlug, issue, changeModulesInIssue, addCycleToIssue, removeCycleFromIssue]
   );
 
+  // A loja volta o cartão para a etapa de antes; o aviso diz por que a API recusou
+  // (por exemplo, falta comentar no chamado antes de mudar a etapa).
   const handleState = async (stateId: string) => {
-    if (updateIssue) await updateIssue(issue.project_id, issue.id, { state_id: stateId });
+    if (!updateIssue) return;
+    await updateIssue(issue.project_id, issue.id, { state_id: stateId }).catch((error: unknown) =>
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: t("common.error.label"),
+        message: applyApiFieldErrors(error, undefined, t("entity.update.failed", { entity: t("issue.label") })),
+      })
+    );
   };
 
   const handlePriority = async (value: TIssuePriorities) => {

@@ -16,6 +16,8 @@ import { EIssuesStoreType } from "@plane/types";
 import emptyIssue from "@/app/assets/empty-state/issue.svg?url";
 // components
 import { EmptyState } from "@/components/common/empty-state";
+import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
+import type { TSetFieldError } from "@/helpers/api-field-errors.helper";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -29,7 +31,15 @@ import { IssueDetailsSidebar } from "./sidebar";
 
 export type TIssueOperations = {
   fetch: (workspaceSlug: string, projectId: string, issueId: string, loader?: boolean) => Promise<void>;
-  update: (workspaceSlug: string, projectId: string, issueId: string, data: Partial<TIssue>) => Promise<void>;
+  // `onFieldError` recebe a recusa de cada campo (`errors: [{ path, message }]`),
+  // para a tela mostrar a mensagem junto do campo além do aviso.
+  update: (
+    workspaceSlug: string,
+    projectId: string,
+    issueId: string,
+    data: Partial<TIssue>,
+    onFieldError?: TSetFieldError
+  ) => Promise<void>;
   remove: (workspaceSlug: string, projectId: string, issueId: string) => Promise<void>;
   archive?: (workspaceSlug: string, projectId: string, issueId: string) => Promise<void>;
   restore?: (workspaceSlug: string, projectId: string, issueId: string) => Promise<void>;
@@ -91,18 +101,25 @@ export const IssueDetailRoot = observer(function IssueDetailRoot(props: TIssueDe
           console.error("Error fetching the parent issue:", error);
         }
       },
-      update: async (workspaceSlug: string, projectId: string, issueId: string, data: Partial<TIssue>) => {
+      update: async (
+        workspaceSlug: string,
+        projectId: string,
+        issueId: string,
+        data: Partial<TIssue>,
+        onFieldError?: TSetFieldError
+      ) => {
         try {
           await updateIssue(workspaceSlug, projectId, issueId, data);
         } catch (error) {
           console.log("Error in updating issue:", error);
           // Prefer the backend reason (e.g. a blocked state transition) over the
           // generic "failed to update" message.
-          const detail = (error as { detail?: string; error?: string })?.detail ?? (error as { error?: string })?.error;
+          const fallback =
+            (error as { error?: string })?.error ?? t("entity.update.failed", { entity: t("issue.label") });
           setToast({
             title: t("common.error.label"),
             type: TOAST_TYPE.ERROR,
-            message: detail ?? t("entity.update.failed", { entity: t("issue.label") }),
+            message: applyApiFieldErrors(error, onFieldError, fallback),
           });
         }
       },
@@ -221,12 +238,7 @@ export const IssueDetailRoot = observer(function IssueDetailRoot(props: TIssueDe
   // issue details
   const issue = getIssueById(issueId);
   // checking if issue is editable, based on user role
-  const isEditable = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId
-  );
+  const isEditable = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
 
   return (
     <>

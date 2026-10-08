@@ -21,6 +21,7 @@ import { inicioRecebido, vencimentoRecebido } from "@utils/prazo";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
 import { recordActivities } from "@utils/activity";
+import { movimentacaoService } from "@modules/issue/movimentacao.service";
 
 
 /**
@@ -581,7 +582,7 @@ export const premiumModule = new Elysia()
     return { results: excluidos.map(serializeIssue), total_count: excluidos.length };
   })
 
-  .post("/workspaces/:slug/projects/:project_id/issues/bulk-update/", async ({ params: { slug, project_id }, body, user, set }) => {
+  .post("/workspaces/:slug/projects/:project_id/issues/bulk-update/", async ({ params: { slug, project_id }, body, user, credencial, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     // Bulk edit touches items the caller did not author, so it needs ISSUE_EDIT_ALL.
     const { role } = await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_EDIT_ALL);
@@ -608,6 +609,13 @@ export const premiumModule = new Elysia()
           select: { id: true, stateId: true, state: { select: { name: true } } },
         })
       : [];
+
+    // Mesma regra do PATCH: quem troca a etapa precisa ter comentado em CADA chamado.
+    await movimentacaoService.requireComentarioAntesDeMover({
+      issueIds: antes.filter((c) => c.stateId !== b.state).map((c) => c.id),
+      userId: user.id,
+      credencial,
+    });
 
     const result = await prisma.issue.updateMany({
       where: { id: { in: issueIds }, projectId: project_id },

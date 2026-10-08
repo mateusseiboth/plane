@@ -29,7 +29,7 @@ import {EstimateDropdown} from "@/components/dropdowns/estimate";
 import {ButtonAvatars} from "@/components/dropdowns/member/avatar";
 import {MemberDropdown} from "@/components/dropdowns/member/dropdown";
 import {PriorityDropdown} from "@/components/dropdowns/priority";
-import {StateDropdown} from "@/components/dropdowns/state/dropdown";
+import {IssueStateField} from "@/components/issues/issue-detail/state-field";
 // helpers
 import {useIssueDetail} from "@/hooks/store/use-issue-detail";
 import {useMember} from "@/hooks/store/use-member";
@@ -90,17 +90,14 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
           icon={StatePropertyIcon}
           label={t("common.state")}
         >
-          <StateDropdown
-            value={issue?.state_id}
-            onChange={(val) => issueOperations.update(workspaceSlug, projectId, issueId, {state_id: val})}
+          <IssueStateField
+            workspaceSlug={workspaceSlug}
             projectId={projectId}
+            issueId={issueId}
+            value={issue?.state_id}
+            issueOperations={issueOperations}
             disabled={disabled}
-            buttonVariant="transparent-with-text"
-            className="group w-full grow"
-            buttonContainerClassName="w-full text-left h-7.5"
             buttonClassName={`text-body-xs-medium ${issue?.state_id ? "" : "text-placeholder"}`}
-            dropdownArrow
-            dropdownArrowClassName="h-3.5 w-3.5 hidden group-hover:inline"
           />
         </SidebarPropertyListItem>
 

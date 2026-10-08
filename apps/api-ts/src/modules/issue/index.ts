@@ -22,6 +22,7 @@ import {sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 import {isPriorityChange} from "@utils/prioridade";
+import {movimentacaoService} from "@modules/issue/movimentacao.service";
 
 // State-transition rules are now data-driven (utils/permission-checks.ts), seeded
 // per workspace and editable through the roles API. See utils/permissions.ts for
@@ -306,7 +307,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     return null;
   })
 
-  .patch("/:issue_id", async ({params: {slug, project_id, issue_id}, body, user, set, headers}) => {
+  .patch("/:issue_id", async ({params: {slug, project_id, issue_id}, body, user, credencial, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
 
     // Snapshot the issue before mutation so we can log activity diffs afterwards
@@ -363,6 +364,11 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
           set.status = 403;
           return {detail: "Sua função não permite esta transição de estado."};
         }
+      }
+      // Trocar de etapa pede um comentário da pessoa depois da última troca.
+      // Ver @modules/issue/movimentacao.rules.
+      if (before && before.stateId !== newStateId) {
+        await movimentacaoService.requireComentarioAntesDeMover({issueIds: [issue_id], userId: user.id, credencial});
       }
       data.stateId = newStateId;
     }
