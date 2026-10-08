@@ -35,7 +35,6 @@ import { EstimateDropdown } from "@/components/dropdowns/estimate";
 import { ButtonAvatars } from "@/components/dropdowns/member/avatar";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
-import { StateDropdown } from "@/components/dropdowns/state/dropdown";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -54,6 +53,7 @@ import { IssueCycleSelect } from "./cycle-select";
 import { IssueEntitySelect } from "./entity-select";
 import { IssueLabel } from "./label";
 import { IssueModuleSelect } from "./module-select";
+import { IssueStateField } from "@/components/issues/issue-detail/state-field";
 import type { TIssueOperations } from "./root";
 import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
@@ -100,17 +100,14 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
           <h5 className="mt-5 text-body-xs-medium">{t("common.properties")}</h5>
           <div className={`mt-4 mb-2 space-y-2.5 truncate ${!isEditable ? "opacity-60" : ""}`}>
             <SidebarPropertyListItem icon={StatePropertyIcon} label={t("common.state")}>
-              <StateDropdown
-                value={issue?.state_id}
-                onChange={(val) => issueOperations.update(workspaceSlug, projectId, issueId, { state_id: val })}
+              <IssueStateField
+                workspaceSlug={workspaceSlug}
                 projectId={projectId?.toString() ?? ""}
+                issueId={issueId}
+                value={issue?.state_id}
+                issueOperations={issueOperations}
                 disabled={!isEditable}
-                buttonVariant="transparent-with-text"
-                className="group w-full grow"
-                buttonContainerClassName="w-full text-left h-7.5"
                 buttonClassName="text-body-xs-regular"
-                dropdownArrow
-                dropdownArrowClassName="h-3.5 w-3.5 hidden group-hover:inline"
               />
             </SidebarPropertyListItem>
 

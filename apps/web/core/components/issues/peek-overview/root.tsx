@@ -15,6 +15,8 @@ import { TOAST_TYPE, setPromiseToast, setToast } from "@plane/propel/toast";
 import type { IWorkItemPeekOverview, TIssue } from "@plane/types";
 import { EIssueServiceType, EIssuesStoreType } from "@plane/types";
 // hooks
+import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
+import type { TSetFieldError } from "@/helpers/api-field-errors.helper";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
@@ -75,7 +77,13 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
           console.error("Error fetching the parent issue", error);
         }
       },
-      update: async (workspaceSlug: string, projectId: string, issueId: string, data: Partial<TIssue>) => {
+      update: async (
+        workspaceSlug: string,
+        projectId: string,
+        issueId: string,
+        data: Partial<TIssue>,
+        onFieldError?: TSetFieldError
+      ) => {
         if (issues?.updateIssue) {
           await issues
             .updateIssue(workspaceSlug, projectId, issueId, data)
@@ -83,11 +91,17 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
               fetchActivities(workspaceSlug, projectId, issueId);
               return;
             })
-            .catch((_error) => {
+            .catch((error) => {
+              // O motivo da API (etapa sem comentário, transição proibida) vale
+              // mais que o "falha ao atualizar" genérico.
               setToast({
                 title: t("toast.error"),
                 type: TOAST_TYPE.ERROR,
-                message: t("entity.update.failed", { entity: t("issue.label", { count: 1 }) }),
+                message: applyApiFieldErrors(
+                  error,
+                  onFieldError,
+                  t("entity.update.failed", { entity: t("issue.label", { count: 1 }) })
+                ),
               });
             });
         }

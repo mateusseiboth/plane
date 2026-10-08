@@ -32,7 +32,7 @@ async function montar(dubleUser: () => Promise<unknown>, dubleToken: () => Promi
   }));
   // Import dinâmico DEPOIS do mock: o módulo captura `prisma` na avaliação.
   const { authPlugin } = await import("@middleware/auth?" + Math.random());
-  return new Elysia().use(authPlugin).get("/quem-sou", ({ user }: any) => ({ id: user.id }));
+  return new Elysia().use(authPlugin).get("/quem-sou", ({ user, credencial }: any) => ({ id: user.id, credencial }));
 }
 
 const assinar = (sub: string) =>
@@ -60,7 +60,28 @@ describe("authPlugin", () => {
     const app = await montar(async () => USUARIO);
     const res = await chamar(app, { authorization: `Bearer ${await assinar(USUARIO.id)}` });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ id: USUARIO.id });
+    expect(await res.json()).toEqual({ id: USUARIO.id, credencial: "sessao" });
+  });
+
+  // A pessoa logada (sessão) e o script/integração (chave de API) seguem regras
+  // diferentes: o comentário antes de mudar a etapa só vale para a pessoa.
+  it("chave de API válida é identificada como tal", async () => {
+    const app = await montar(
+      async () => USUARIO,
+      async () => ({ id: "t1", expiredAt: null, user: { ...USUARIO, isActive: true } })
+    );
+    const res = await chamar(app, { "x-api-key": "plane_api_qualquer" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: USUARIO.id, credencial: "chave-de-api" });
+  });
+
+  it("chave de API recusada cai para a sessão, que vale como sessão", async () => {
+    const app = await montar(async () => USUARIO);
+    const res = await chamar(app, {
+      "x-api-key": "plane_api_invalida",
+      authorization: `Bearer ${await assinar(USUARIO.id)}`,
+    });
+    expect(await res.json()).toEqual({ id: USUARIO.id, credencial: "sessao" });
   });
 
   it("lê o JWT também do cookie plane_auth", async () => {

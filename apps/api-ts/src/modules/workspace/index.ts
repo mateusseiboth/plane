@@ -19,7 +19,8 @@ import {nextSequenceId} from "@utils/sequence";
 import {whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {findChamados, findPaginasDaPessoa, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
-import {ISSUE_INCLUDE, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
+import {ISSUE_INCLUDE, serializeDraftIssue, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
+import {buildDraftData} from "@modules/workspace/rascunho";
 import {ATIVIDADE_INCLUDE, serializeTrilha, withoutMarcadorInterno} from "@utils/trilha";
 import {dataLocal} from "@utils/prazo";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
@@ -1447,6 +1448,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       query: (skip, take) => prisma.draftIssue.findMany({where, skip, take, orderBy: {createdAt: "desc"}}),
       count: () => prisma.draftIssue.count({where}),
       cursor: query.cursor as string | undefined,
+      transform: (items) => items.map(serializeDraftIssue),
     });
   })
 
@@ -1456,17 +1458,17 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const b = body as any;
     const draft = await prisma.draftIssue.create({
       data: {
+        name: "Sem título",
+        priority: "none",
+        descriptionHtml: "<p></p>",
+        ...buildDraftData(b),
         projectId: b.project_id,
         workspaceId: ws.id,
-        name: b.name ?? "Untitled",
         createdById: user.id,
-        priority: b.priority ?? "none",
-        stateId: b.state ?? null,
-        descriptionHtml: b.description_html ?? "<p></p>",
       },
     });
     set.status = 201;
-    return draft;
+    return serializeDraftIssue(draft);
   })
 
   .get("/:slug/draft-issues/:pk/", async ({params: {slug, pk}, user, set}) => {
@@ -1477,19 +1479,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       set.status = 404;
       return {detail: "Não encontrado."};
     }
-    return draft;
+    return serializeDraftIssue(draft);
   })
 
-  .patch("/:slug/draft-issues/:pk/", async ({params: {slug, pk}, body, user, set}) => {
+  .patch("/:slug/draft-issues/:pk/", async ({params: {slug, pk}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const b = body as any;
-    const data: any = {};
-    if (b.name !== undefined) data.name = b.name;
-    if (b.priority !== undefined) data.priority = b.priority;
-    if (b.state !== undefined) data.stateId = b.state;
-    if (b.description_html !== undefined) data.descriptionHtml = b.description_html;
-    return prisma.draftIssue.update({where: {id: pk}, data});
+    return serializeDraftIssue(await prisma.draftIssue.update({where: {id: pk}, data: buildDraftData(body as any)}));
   })
 
   .delete("/:slug/draft-issues/:pk/", async ({params: {slug, pk}, user, set}) => {
@@ -1524,17 +1520,20 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           name: draft.name,
           priority: draft.priority,
           stateId: draft.stateId,
+          startDate: draft.startDate,
+          targetDate: draft.targetDate,
           descriptionHtml: draft.descriptionHtml,
           createdById: user.id,
           isDraft: false,
           sequenceId,
         },
+        include: ISSUE_INCLUDE,
       });
       await tx.draftIssue.update({where: {id: draft_id}, data: {deletedAt: new Date()}});
       return i;
     });
     set.status = 201;
-    return issue;
+    return serializeIssue(issue);
   })
 
   // ── Dashboard (home widgets) ──────────────────────────────────────────────────
