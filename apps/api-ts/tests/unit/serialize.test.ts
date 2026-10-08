@@ -7,6 +7,7 @@ import {
   dateOnly,
   isoDate,
   serializeComment,
+  serializeDraftIssue,
   serializeIssue,
   serializeLabel,
   serializeModule,
@@ -242,5 +243,52 @@ describe("serializeTimeLog", () => {
     expect(out.description).toBeNull();
     expect(out.duration_minutes).toBe(0);
     expect(out.logged_date).toBeNull();
+  });
+});
+
+describe("serializeDraftIssue", () => {
+  // A tela de rascunhos esconde a linha sem `project_id` e ordena por `created_at`:
+  // com o objeto cru do Prisma o cabeçalho contava 1 e a lista ficava vazia.
+  const raw = {
+    id: "d1",
+    name: "Rascunho",
+    projectId: "p1",
+    workspaceId: "w1",
+    stateId: "s1",
+    priority: "high",
+    descriptionHtml: "<p>texto</p>",
+    startDate: new Date("2026-10-01T12:00:00.000Z"),
+    targetDate: new Date("2026-10-09T23:59:00.000Z"),
+    createdAt: new Date("2026-10-08T10:00:00.000Z"),
+    updatedAt: new Date("2026-10-08T11:00:00.000Z"),
+    createdById: "u1",
+    typeId: null,
+  };
+
+  it("entrega o rascunho no formato TWorkspaceDraftIssue", () => {
+    expect(serializeDraftIssue(raw)).toMatchObject({
+      id: "d1",
+      name: "Rascunho",
+      project_id: "p1",
+      workspace_id: "w1",
+      state_id: "s1",
+      priority: "high",
+      description_html: "<p>texto</p>",
+      start_date: "2026-10-01",
+      target_date: "2026-10-09T23:59:00.000Z",
+      created_at: "2026-10-08T10:00:00.000Z",
+      updated_at: "2026-10-08T11:00:00.000Z",
+      created_by: "u1",
+      label_ids: [],
+      assignee_ids: [],
+      module_ids: [],
+      is_draft: true,
+    });
+  });
+
+  it("não vaza o camelCase do Prisma", () => {
+    const out = serializeDraftIssue(raw);
+    expect(out).not.toHaveProperty("projectId");
+    expect(out).not.toHaveProperty("createdAt");
   });
 });

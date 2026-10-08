@@ -89,6 +89,40 @@ export function serializeIssue(issue: any): Record<string, unknown> {
   };
 }
 
+/**
+ * Rascunho do espaço de trabalho no formato `TWorkspaceDraftIssue`. A tela de
+ * /drafts esconde a linha sem `project_id`: com o objeto cru do Prisma o
+ * cabeçalho contava os rascunhos e a lista ficava VAZIA.
+ */
+export function serializeDraftIssue(draft: any): Record<string, unknown> {
+  return {
+    id:               draft.id,
+    name:             draft.name,
+    sort_order:       65535,
+    state_id:         draft.stateId ?? null,
+    priority:         draft.priority ?? "none",
+    label_ids:        [],
+    assignee_ids:     [],
+    estimate_point:   null,
+    project_id:       draft.projectId ?? null,
+    workspace_id:     draft.workspaceId ?? null,
+    parent_id:        null,
+    cycle_id:         null,
+    module_ids:       [],
+    start_date:       dateOnly(draft.startDate),
+    target_date:      vencimento(draft.targetDate),
+    completed_at:     null,
+    created_at:       isoDate(draft.createdAt),
+    updated_at:       isoDate(draft.updatedAt),
+    created_by:       draft.createdById ?? null,
+    updated_by:       null,
+    is_draft:         true,
+    type_id:          draft.typeId ?? null,
+    description_html: draft.descriptionHtml ?? "<p></p>",
+    description:      draft.descriptionJson ?? null,
+  };
+}
+
 // Include shape for comments so serializeComment can build actor_detail.
 // `issue.portalRequest.account` dá nome ao comentário que o cliente escreveu
 // pelo portal: ele não tem `actor` (a conta do portal não é usuário do Plane).
