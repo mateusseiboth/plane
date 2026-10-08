@@ -4,9 +4,9 @@
  * Fica no layout raiz, FORA do roteador, por dois motivos: aparece já no HTML
  * pré-renderizado (antes de o bundle chegar) e não é remontada por navegação
  * dentro da aplicação. Aparece a cada recarga, e só sai quando a aplicação
- * avisou que montou (`prontidaoDaApp`) E o avião completou o ciclo: quem
- * recarrega vê a cena inteira ao menos uma vez, e o avião sempre pousa antes
- * de a tela sumir. Se a aplicação demora, o ciclo repete.
+ * avisou que montou (`prontidaoDaApp`): a cena anima enquanto o bundle carrega
+ * e some assim que a aplicação está pronta, sem esperar o avião pousar (a
+ * espera pelo ciclo inteiro cansou quem recarrega muitas vezes por dia).
  *
  * A primeira renderização no cliente precisa bater com o HTML pré-renderizado,
  * por isso o estado inicial é sempre "aberta": nada aqui depende de tema,
@@ -28,16 +28,13 @@ const ANIMACAO_DE_SAIDA = "abertura-sair";
 
 type Fase = "aberta" | "saindo" | "encerrada";
 
-const isMovimentoReduzido = () =>
-  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 export function AberturaDoAviao() {
   const [fase, setFase] = useState<Fase>("aberta");
   const controle = useRef<ControleDaAbertura | null>(null);
 
   useEffect(() => {
     const atual = buildControleDaAbertura({
-      exigirCicloCompleto: !isMovimentoReduzido(),
+      exigirCicloCompleto: false,
       onEncerrar: () => setFase("saindo"),
     });
     controle.current = atual;
