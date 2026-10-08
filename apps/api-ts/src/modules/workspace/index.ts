@@ -7,7 +7,14 @@ import {serializarCiclos} from "@modules/cycle";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
 import {resolverOrdenacao} from "@utils/issue-order";
 import {paginate} from "@utils/pagination";
-import {seedWorkflowRoles, syncFuncaoNosProjetos} from "@utils/permissions";
+import {seedWorkflowRoles} from "@utils/permissions";
+import {
+  MEMBRO_NAO_ENCONTRADO,
+  findMembroDoEspaco,
+  removeMembroDoEspaco,
+  serializeMembroDoEspaco,
+  updateFuncaoDoMembro,
+} from "@modules/workspace/membro-do-espaco.service";
 import {nextSequenceId} from "@utils/sequence";
 import {whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {invalidateStorageCache, type S3Config} from "@utils/storage";
@@ -883,28 +890,34 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     }));
   })
 
+  // `:pk` é o id do usuário. Ver membro-do-espaco.service.ts.
   .get("/:slug/members/:pk/", async ({params: {slug, pk}, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const m = await prisma.workspaceMember.findFirst({
-      where: {workspaceId: ws.id, memberId: pk, deletedAt: null},
-      include: {member: {select: {id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true}}},
-    });
+    const m = await findMembroDoEspaco(ws.id, pk);
     if (!m) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return {detail: MEMBRO_NAO_ENCONTRADO};
     }
-    return m;
+    return serializeMembroDoEspaco(m);
   })
 
   .patch("/:slug/members/:pk/", async ({params: {slug, pk}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
-    const b = body as any;
-    const data: any = {};
-    if (b.role !== undefined) data.role = parseInt(b.role, 10);
-    const antes = await prisma.workspaceMember.findFirst({where: {workspaceId: ws.id, memberId: pk, deletedAt: null}});
-    if (data.role !== undefined && antes && antes.role !== data.role) {
+    const antes = await findMembroDoEspaco(ws.id, pk);
+    if (!antes) {
+      set.status = 404;
+      return {detail: MEMBRO_NAO_ENCONTRADO};
+    }
+    const b = (body ?? {}) as {role?: unknown};
+    if (b.role === undefined) return serializeMembroDoEspaco(antes);
+    const role = parseInt(String(b.role), 10);
+    if (!Number.isInteger(role)) {
+      set.status = 400;
+      return {detail: "Escolha uma função válida.", errors: [{path: "role", message: "Escolha uma função válida."}]};
+    }
+    if (antes.role !== role) {
       recordAudit({
         workspaceId: ws.id,
         entity: AUDIT_ENTITIES.MEMBER,
@@ -912,36 +925,20 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         action: AUDIT_ACTIONS.PERMISSION_CHANGE,
         actor: user,
         headers,
-        changes: auditDiff(antes, data, ["role"]),
+        changes: auditDiff(antes, {role}, ["role"]),
       });
     }
-
-    // Quem manda no que a pessoa pode arrastar no quadro é a função do
-    // PROJETO, não a do espaço de trabalho. Sem propagar, o administrador
-    // marcava alguém como TI aqui, a tela passava a mostrar "TI" e no quadro
-    // nada mudava: o vínculo de projeto continuava com a função antiga e as
-    // transições eram avaliadas por ela. Foi assim que um TI concluiu e mandou
-    // chamado para a Triagem.
-    return prisma.$transaction(async (tx) => {
-      const atualizado = await tx.workspaceMember.updateMany({where: {workspaceId: ws.id, memberId: pk}, data});
-      if (data.role !== undefined) {
-        await tx.workspaceMember.updateMany({
-          where: {workspaceId: ws.id, memberId: pk},
-          data: {workflowRoleId: (await tx.workflowRole.findFirst({where: {workspaceId: ws.id, level: data.role, deletedAt: null}}))?.id ?? null},
-        });
-        await syncFuncaoNosProjetos(tx as any, ws.id, pk, data.role);
-      }
-      return atualizado;
-    });
+    return serializeMembroDoEspaco((await updateFuncaoDoMembro(ws.id, pk, role))!);
   })
 
   .delete("/:slug/members/:pk/", async ({params: {slug, pk}, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
-    await prisma.workspaceMember.updateMany({
-      where: {workspaceId: ws.id, memberId: pk},
-      data: {isActive: false, deletedAt: new Date()},
-    });
+    const {count} = await removeMembroDoEspaco(ws.id, pk);
+    if (!count) {
+      set.status = 404;
+      return {detail: MEMBRO_NAO_ENCONTRADO};
+    }
     recordAudit({workspaceId: ws.id, entity: AUDIT_ENTITIES.MEMBER, entityId: pk, action: AUDIT_ACTIONS.DELETE, actor: user, headers});
     set.status = 204;
     return null;

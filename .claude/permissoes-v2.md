@@ -225,3 +225,20 @@ não pôde ser conferido no legado (consulta ao MySQL bloqueada). Ver pendência
    (fora do escopo); `EProjectAction` já é objeto `as const` nos dois lados.
 7. `apps/chat-backend`: `bun test` da pasta inteira falha porque `tests/horario-atendimento.test.ts`
    faz `mock.module("@db")` e o mock vaza para os e2e. Rodando cada arquivo, todos passam.
+
+## 8. Trocar a função de alguém (Configurações > Membros)
+
+`/workspaces/:slug/members/:pk/` (GET, PATCH, DELETE) endereça a pessoa pelo **id do usuário**
+(`member.id` da listagem), igual a `reset-password` e `freeze`. Nunca pelo `id` da associação.
+
+- `PATCH {role}` grava `workspace_members.role` **e** `workflow_role_id` (a função de sistema do
+  mesmo nível), propaga para os vínculos de projeto (`syncFuncaoNosProjetos`) e devolve o membro
+  no formato da listagem, mais `workflow_role: {id, key, name, level}`. `role` que não é inteiro
+  responde 400 com `errors: [{path: "role", ...}]`.
+- Id que não é de um membro do espaço responde **404** no GET, no PATCH e no DELETE. Antes o
+  `updateMany` não casava ninguém e a rota devolvia 200 sem gravar: a tela mandava o id da
+  associação, mostrava a função nova e, ao recarregar, cada linha voltava para a antiga (W34).
+- Serviço: `apps/api-ts/src/modules/workspace/membro-do-espaco.service.ts`. Contrato:
+  `tests/contract/troca-de-funcao-do-membro.test.ts` (duas pessoas de mesmo nome, listagem,
+  detalhe, `/workspace-members/me/`, `/members/me/`, `/roles/me/`). No web,
+  `core/store/member/workspace/workspace-member.store.test.ts`.

@@ -267,7 +267,8 @@ export class WorkspaceMemberStore implements IWorkspaceMemberStore {
       runInAction(() => {
         set(this.workspaceMemberMap, [workspaceSlug, userId, "role"], data.role);
       });
-      await this.workspaceService.updateWorkspaceMember(workspaceSlug, memberDetails.id, data);
+      // A rota do api-ts endereça a pessoa pelo id do usuário, não pelo da associação.
+      await this.workspaceService.updateWorkspaceMember(workspaceSlug, userId, data);
     } catch (error) {
       // revert back to original members in case of error
       runInAction(() => {
@@ -285,7 +286,7 @@ export class WorkspaceMemberStore implements IWorkspaceMemberStore {
   removeMemberFromWorkspace = async (workspaceSlug: string, userId: string) => {
     const memberDetails = this.getWorkspaceMemberDetails(userId);
     if (!memberDetails) throw new Error("Member not found");
-    await this.workspaceService.deleteWorkspaceMember(workspaceSlug, memberDetails?.id).then(() => {
+    await this.workspaceService.deleteWorkspaceMember(workspaceSlug, userId).then(() => {
       runInAction(() => {
         set(this.workspaceMemberMap, [workspaceSlug, userId, "is_active"], false);
       });
