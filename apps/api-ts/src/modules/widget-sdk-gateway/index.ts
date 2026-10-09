@@ -34,8 +34,14 @@ const widgetAuthPlugin = new Elysia({ name: "widget-auth" }).use(authPlugin).der
     ctx.set.status = 400;
     throw Object.assign(new Error("Cabeçalho X-Widget-Id ausente."), { status: 400 });
   }
+  // Widget privado ("meu widget") só responde para quem o enviou.
   const widget = await prisma.widget.findFirst({
-    where: { id: widgetId, status: "ACTIVE", deletedAt: null },
+    where: {
+      id: widgetId,
+      status: "ACTIVE",
+      deletedAt: null,
+      OR: [{ ownerUserId: null }, { ownerUserId: ctx.user.id }],
+    },
   });
   if (!widget) {
     ctx.set.status = 403;

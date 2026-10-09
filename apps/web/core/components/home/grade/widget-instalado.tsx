@@ -32,6 +32,8 @@ function WidgetInstalado({ chave, tamanho }: TPropsDoWidget) {
   );
 }
 
+const ORIGEM_PELO_ESCOPO: Record<IWidget["scope"], TWidgetDaHome["origem"]> = { global: "instalado", user: "meu" };
+
 /** Um widget instalado vira uma entrada do catálogo com o mesmo contrato dos nativos. */
 export const buildWidgetInstalado = (widget: IWidget): TWidgetDaHome => {
   const { titulo, tamanhoPadrao } = readManifestoDaHome(widget.manifest, widget.name);
@@ -40,7 +42,7 @@ export const buildWidgetInstalado = (widget: IWidget): TWidgetDaHome => {
     titulo,
     descricao: widget.description ?? `Widget de ${widget.author}.`,
     tamanhoPadrao,
-    origem: "instalado",
+    origem: ORIGEM_PELO_ESCOPO[widget.scope] ?? "instalado",
     componente: WidgetInstalado,
   };
 };

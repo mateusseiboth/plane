@@ -7,6 +7,10 @@ interface WidgetUploadModalProps {
   onClose: () => void;
   onUpload: (file: File) => Promise<void>;
   isUploading: boolean;
+  /** Título do modal. Padrão: Enviar widget. */
+  titulo?: string;
+  /** Uma frase abaixo do título, quando o envio tem um efeito que a pessoa precisa saber. */
+  aviso?: string;
 }
 
 export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
@@ -14,6 +18,8 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
   onClose,
   onUpload,
   isUploading,
+  titulo = "Enviar widget",
+  aviso,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -51,18 +57,19 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-neutral-900">
-        <h2 className="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">
-          Enviar widget
-        </h2>
+      <div className="shadow-xl w-full max-w-md rounded-xl bg-surface-1 p-6">
+        <h2 className="text-16 font-semibold text-primary">{titulo}</h2>
+        {aviso && <p className="mt-1 text-13 text-tertiary">{aviso}</p>}
+        <div className="mb-4" />
 
         <div
           className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
-            dragging
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-              : "border-neutral-300 hover:border-blue-400 dark:border-neutral-600"
+            dragging ? "border-accent-strong bg-accent-subtle" : "border-subtle hover:border-accent-strong"
           }`}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
@@ -72,22 +79,27 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
             type="file"
             accept=".zip"
             className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+            }}
           />
-          <div className="text-3xl text-neutral-400">📦</div>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="text-24 text-tertiary">📦</div>
+          <p className="mt-2 text-13 text-tertiary">
             {selectedFile ? selectedFile.name : "Arraste e solte widget.zip ou clique para procurar"}
           </p>
         </div>
 
-        {error && (
-          <p className="mt-2 text-sm text-red-500">{error}</p>
-        )}
+        {error && <p className="mt-2 text-13 text-danger-primary">{error}</p>}
 
         <div className="mt-6 flex justify-end gap-3">
           <button
-            onClick={() => { setSelectedFile(null); setError(null); onClose(); }}
-            className="rounded-lg px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            onClick={() => {
+              setSelectedFile(null);
+              setError(null);
+              onClose();
+            }}
+            className="rounded-lg px-4 py-2 text-13 text-secondary hover:bg-layer-1"
             disabled={isUploading}
           >
             Cancelar
@@ -95,7 +107,7 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
           <button
             onClick={handleSubmit}
             disabled={!selectedFile || isUploading}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-13 font-medium text-on-color hover:opacity-90 disabled:opacity-50"
           >
             {isUploading ? "Enviando…" : "Enviar"}
           </button>

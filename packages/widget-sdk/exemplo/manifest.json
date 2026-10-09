@@ -1,0 +1,10 @@
+{
+  "name": "Meu primeiro widget",
+  "version": "1.0.0",
+  "author": "Seu nome",
+  "entry": "widget.js",
+  "description": "Saudação, chamados abertos e os últimos chamados em atendimento.",
+  "permissions": ["worker-items.read", "stats.read", "users.read"],
+  "title": "Meu primeiro widget",
+  "defaultSize": "1/2"
+}

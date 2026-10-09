@@ -1,38 +1,25 @@
 import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
-import prisma from "@db";
-import { paginate } from "@utils/pagination";
+import { widgetDao } from "@modules/widget/widget.dao";
+import { ENVIOS_POR_MINUTO, serializeWidget } from "@modules/widget/widget.rules";
+import { createWidgetService } from "@modules/widget/widget.service";
 import { widgetStorage } from "@utils/widget-storage";
-import { extractWidgetZip } from "@utils/widget-zip";
-import { validateManifest } from "@utils/widget-manifest";
 import { checkRateLimit } from "@utils/rate-limiter";
-import { requireUploader } from "@utils/registry-access";
+import { isUploader, requireUploader } from "@utils/registry-access";
+
+const widgets = createWidgetService({ dao: widgetDao, storage: widgetStorage, isUploader });
 
 function auditLog(action: string, userId: string, widgetId?: string, meta?: Record<string, unknown>) {
-  console.log(JSON.stringify({
-    ts: new Date().toISOString(),
-    source: "widget-module",
-    action,
-    user_id: userId,
-    widget_id: widgetId ?? null,
-    ...meta,
-  }));
-}
-
-const ALLOWED_BUNDLE_MIME = new Set([
-  "application/javascript",
-  "text/javascript",
-  "application/octet-stream",
-]);
-
-function validateBundleMime(file: Blob) {
-  const mime = (file as any).type as string | undefined;
-  if (mime && !ALLOWED_BUNDLE_MIME.has(mime.split(";")[0].trim())) {
-    throw Object.assign(
-      new Error(`Tipo MIME do bundle inválido: "${mime}". Esperado application/javascript.`),
-      { status: 400 }
-    );
-  }
+  console.log(
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      source: "widget-module",
+      action,
+      user_id: userId,
+      widget_id: widgetId ?? null,
+      ...meta,
+    })
+  );
 }
 
 function requireInstanceAdmin(user: { isInstanceAdmin: boolean; isSuperuser: boolean }, set: any) {
@@ -42,178 +29,127 @@ function requireInstanceAdmin(user: { isInstanceAdmin: boolean; isSuperuser: boo
   }
 }
 
-function serializeWidget(w: any) {
-  return {
-    id: w.id,
-    name: w.name,
-    description: w.description ?? null,
-    version: w.version,
-    author: w.author,
-    entry_file: w.entryFile,
-    manifest: w.manifest,
-    permissions: w.permissions,
-    status: w.status,
-    storage_key: w.storageKey,
-    created_by: w.createdById ?? null,
-    created_at: w.createdAt?.toISOString(),
-    updated_at: w.updatedAt?.toISOString(),
-  };
+/** Limite de envios por minuto por pessoa, valendo para o global e para o "meu". */
+const isEnvioLiberado = (userId: string, request: Request) =>
+  checkRateLimit(
+    `widget-upload:${userId}:${request.headers.get("x-forwarded-for") ?? userId}`,
+    ENVIOS_POR_MINUTO,
+    60_000
+  );
+
+/** O `.zip` do campo multipart `file`, ou null quando não veio. */
+async function readZipDoCorpo(body: unknown): Promise<Buffer | null> {
+  const file: Blob | null = (body as any)?.file ?? null;
+  if (!file) return null;
+  return Buffer.from(await file.arrayBuffer());
 }
+
+const ENVIO_LIMITADO = { detail: "Muitas solicitações de envio. Aguarde antes de tentar novamente." };
+const SEM_ARQUIVO = { detail: "O campo multipart 'file' (widget.zip) é obrigatório." };
 
 export const widgetModule = new Elysia({ prefix: "/widgets" })
   .use(authPlugin)
 
-  // ── Upload widget (multipart ZIP) ────────────────────────────────────────────
+  // ── Upload global (multipart ZIP): admin da instância, superusuário ou TI ────
   .post("/", async ({ body, user, set, request }) => {
-    // Admins de instância, superusuários e usuários do grupo TI podem enviar.
     await requireUploader(user, set);
-
-    // Rate limit: 5 uploads per minute per user
-    const ip = request.headers.get("x-forwarded-for") ?? user.id;
-    if (!checkRateLimit(`widget-upload:${user.id}:${ip}`, 5, 60_000)) {
+    if (!isEnvioLiberado(user.id, request)) {
       set.status = 429;
-      return { detail: "Muitas solicitações de envio. Aguarde antes de tentar novamente." };
+      return ENVIO_LIMITADO;
     }
-
-    const file: Blob | null = (body as any).file ?? null;
-    if (!file) {
+    const zip = await readZipDoCorpo(body);
+    if (!zip) {
       set.status = 400;
-      return { detail: "O campo multipart 'file' (widget.zip) é obrigatório." };
+      return SEM_ARQUIVO;
     }
-
-    const zipBuffer = Buffer.from(await file.arrayBuffer());
-    const { manifest: rawManifest, entryBuffer, entryFilename } = extractWidgetZip(zipBuffer);
-    const manifest = validateManifest(rawManifest);
-
-    // Conflict check: same name + version
-    const existing = await prisma.widget.findFirst({
-      where: { name: manifest.name, version: manifest.version, deletedAt: null },
-    });
-    if (existing) {
-      set.status = 409;
-      return { detail: `O widget "${manifest.name}" na versão ${manifest.version} já existe.` };
-    }
-
-    // Persist bundle to storage
-    const storageKey = `${manifest.name.toLowerCase().replace(/\s+/g, "-")}/${manifest.version}/${entryFilename}`;
-    await widgetStorage.put(storageKey, entryBuffer);
-
-    const widget = await prisma.$transaction(async (tx) => {
-      const w = await tx.widget.create({
-        data: {
-          name: manifest.name,
-          description: manifest.description || null,
-          version: manifest.version,
-          author: manifest.author,
-          entryFile: entryFilename,
-          manifest: rawManifest as any,
-          permissions: manifest.permissions,
-          // Uploads por admin/TI já entram ativos (sem aprovação).
-          status: "ACTIVE",
-          storageKey,
-          createdById: user.id,
-        },
-      });
-      await tx.widgetVersion.create({
-        data: {
-          widgetId: w.id,
-          version: manifest.version,
-          storageKey,
-          manifest: rawManifest as any,
-        },
-      });
-      return w;
-    });
-
+    const widget = await widgets.upload(zip, user, null);
     auditLog("widget.upload", user.id, widget.id, { name: widget.name, version: widget.version });
     set.status = 201;
-    return serializeWidget(widget);
+    return widget;
   })
 
-  // ── List widgets ─────────────────────────────────────────────────────────────
-  .get("/", async ({ query, user }) => {
-    const q = query as any;
-    const where: any = { deletedAt: null };
-    if (q.name) where.name = { contains: q.name, mode: "insensitive" };
-    if (q.author) where.author = { contains: q.author, mode: "insensitive" };
-    if (q.status) where.status = q.status;
-    if (q.version) where.version = q.version;
+  // ── Meus widgets: qualquer membro ativo; aparecem só na home de quem enviou ──
+  .post("/mine/", async ({ body, user, set, request }) => {
+    await widgets.requireMembroAtivo(user);
+    if (!isEnvioLiberado(user.id, request)) {
+      set.status = 429;
+      return ENVIO_LIMITADO;
+    }
+    const zip = await readZipDoCorpo(body);
+    if (!zip) {
+      set.status = 400;
+      return SEM_ARQUIVO;
+    }
+    const widget = await widgets.upload(zip, user, user.id);
+    auditLog("widget.upload_mine", user.id, widget.id, { name: widget.name, version: widget.version });
+    set.status = 201;
+    return widget;
+  })
 
-    return paginate({
-      query: (skip, take) =>
-        prisma.widget.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
-      count: () => prisma.widget.count({ where }),
-      cursor: q.cursor as string | undefined,
-      transform: (items) => items.map(serializeWidget),
-    });
+  .get("/mine/", ({ query, user }) => widgets.listMine(user, (query as any).cursor))
+
+  .delete("/mine/:id/", async ({ params: { id }, user, set }) => {
+    await widgets.removeMine(id, user);
+    auditLog("widget.delete_mine", user.id, id);
+    set.status = 204;
+    return null;
+  })
+
+  // ── Listagem: home (globais + os meus), ?scope=global ou ?scope=users (admin) ─
+  .get("/", ({ query, user }) => widgets.listByEscopo(query as any, user))
+
+  // ── Tornar global um widget de usuário (mesma regra do uploader) ─────────────
+  .post("/:id/make-global/", async ({ params: { id }, user }) => {
+    const widget = await widgets.makeGlobal(id, user);
+    auditLog("widget.make_global", user.id, id, { name: widget.name, version: widget.version });
+    return widget;
   })
 
   // ── Get widget by ID ─────────────────────────────────────────────────────────
-  .get("/:id", async ({ params: { id }, set }) => {
-    const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
-    return serializeWidget(widget);
-  })
+  .get("/:id", async ({ params: { id }, user }) => serializeWidget(await widgets.findVisivel(id, user)))
 
   // ── Update metadata ──────────────────────────────────────────────────────────
   .put("/:id", async ({ params: { id }, body, user, set }) => {
     requireInstanceAdmin(user, set);
+    await widgets.findVisivel(id, user);
     const b = body as any;
-    const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
-
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (b.name !== undefined) data.name = String(b.name).trim().slice(0, 255);
     if (b.description !== undefined) data.description = b.description;
-
-    const updated = await prisma.widget.update({ where: { id }, data });
-    return serializeWidget(updated);
+    return serializeWidget(await widgetDao.update(id, data));
   })
 
   // ── Activate ─────────────────────────────────────────────────────────────────
   .post("/:id/activate", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
-    const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
+    await widgets.findVisivel(id, user);
     auditLog("widget.activate", user.id, id);
-    const updated = await prisma.widget.update({ where: { id }, data: { status: "ACTIVE" } });
-    return serializeWidget(updated);
+    return serializeWidget(await widgetDao.update(id, { status: "ACTIVE" }));
   })
 
   // ── Deactivate ────────────────────────────────────────────────────────────────
   .post("/:id/deactivate", async ({ params: { id }, user, set }) => {
     requireInstanceAdmin(user, set);
-    const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
+    await widgets.findVisivel(id, user);
     auditLog("widget.deactivate", user.id, id);
-    const updated = await prisma.widget.update({ where: { id }, data: { status: "INACTIVE" } });
-    return serializeWidget(updated);
+    return serializeWidget(await widgetDao.update(id, { status: "INACTIVE" }));
   })
 
-  // ── Soft delete ───────────────────────────────────────────────────────────────
+  // ── Soft delete (tela de administração) ──────────────────────────────────────
   .delete("/:id", async ({ params: { id }, user, set }) => {
-    requireInstanceAdmin(user, set);
-    const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
+    await widgets.removeComoAdmin(id, user);
     auditLog("widget.delete", user.id, id);
-    await prisma.widget.update({
-      where: { id },
-      data: { deletedAt: new Date(), status: "ARCHIVED" },
-    });
     set.status = 204;
     return null;
   })
 
   // ── Serve bundle asset ────────────────────────────────────────────────────────
-  .get("/:id/assets/*", async ({ params, set, request }) => {
-    const id = (params as any).id as string;
-    const wildcard = (params as any)["*"] as string;
-
-    const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
-    if (widget.status !== "ACTIVE") { set.status = 403; return { detail: "O widget não está ativo." }; }
-
-    const key = wildcard ? `${widget.storageKey.split("/").slice(0, -1).join("/")}/${wildcard}` : widget.storageKey;
+  .get("/:id/assets/*", async ({ params, user, set }) => {
+    const widget = await widgets.findVisivel((params as any).id as string, user);
+    if (widget.status !== "ACTIVE") {
+      set.status = 403;
+      return { detail: "O widget não está ativo." };
+    }
 
     let buffer: Buffer;
     try {
@@ -226,7 +162,8 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/javascript",
-        "Cache-Control": "public, max-age=3600",
+        // O pacote de um widget privado não pode ficar em cache compartilhado.
+        "Cache-Control": widget.ownerUserId ? "private, max-age=3600" : "public, max-age=3600",
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "default-src 'none'",
       },
@@ -234,13 +171,9 @@ export const widgetModule = new Elysia({ prefix: "/widgets" })
   })
 
   // ── List versions ─────────────────────────────────────────────────────────────
-  .get("/:id/versions", async ({ params: { id }, set }) => {
-    const widget = await prisma.widget.findFirst({ where: { id, deletedAt: null } });
-    if (!widget) { set.status = 404; return { detail: "Widget não encontrado." }; }
-    const versions = await prisma.widgetVersion.findMany({
-      where: { widgetId: id },
-      orderBy: { createdAt: "desc" },
-    });
+  .get("/:id/versions", async ({ params: { id }, user }) => {
+    await widgets.findVisivel(id, user);
+    const versions = await widgetDao.findVersoes(id);
     return versions.map((v) => ({
       id: v.id,
       version: v.version,

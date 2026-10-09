@@ -13,6 +13,11 @@ export interface IWidget {
   status: "ACTIVE" | "INACTIVE" | "PENDING_APPROVAL" | "ARCHIVED";
   storage_key: string;
   created_by: string | null;
+  /** `global` aparece para todos; `user` só na home de quem enviou. */
+  scope: "global" | "user";
+  owner_user_id: string | null;
+  /** Quem enviou o widget de usuário (null no global). */
+  owner: { id: string; display_name: string; email: string; first_name: string; last_name: string } | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,18 +30,52 @@ export interface IWidgetListResponse {
   next_page_results: boolean;
 }
 
+/** `global`: só os de todos. `users`: os privados de todo mundo (só quem administra). Sem valor: os globais mais os meus. */
+export type TEscopoDaListagem = "global" | "users";
+
+const toFormDoZip = (file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+};
+
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+
 export class WidgetService extends APIService {
   constructor() {
     super(API_BASE_URL);
   }
 
-  async list(filters?: { name?: string; author?: string; status?: string; version?: string }): Promise<IWidgetListResponse> {
-    const params = new URLSearchParams();
-    if (filters?.name) params.set("name", filters.name);
-    if (filters?.author) params.set("author", filters.author);
-    if (filters?.status) params.set("status", filters.status);
-    if (filters?.version) params.set("version", filters.version);
+  async list(filters?: {
+    name?: string;
+    author?: string;
+    status?: string;
+    version?: string;
+    scope?: TEscopoDaListagem;
+  }): Promise<IWidgetListResponse> {
+    const params = new URLSearchParams(
+      Object.entries(filters ?? {}).filter((entrada): entrada is [string, string] => Boolean(entrada[1]))
+    );
     return this.get(`/api/v1/widgets/?${params.toString()}`).then((r) => r.data);
+  }
+
+  /** Os widgets que a própria pessoa enviou (só na home dela). */
+  async listMine(): Promise<IWidgetListResponse> {
+    return this.get("/api/v1/widgets/mine/").then((r) => r.data);
+  }
+
+  /** Envia um widget "meu": qualquer membro ativo, sem precisar de quem administra. */
+  async uploadMine(file: File): Promise<IWidget> {
+    return this.post("/api/v1/widgets/mine/", toFormDoZip(file), MULTIPART).then((r) => r.data);
+  }
+
+  async removeMine(id: string): Promise<void> {
+    return this.delete(`/api/v1/widgets/mine/${id}/`).then(() => undefined);
+  }
+
+  /** Widget de usuário passa a aparecer para todos (quem administra). */
+  async makeGlobal(id: string): Promise<IWidget> {
+    return this.post(`/api/v1/widgets/${id}/make-global/`).then((r) => r.data);
   }
 
   async getById(id: string): Promise<IWidget> {
@@ -44,11 +83,7 @@ export class WidgetService extends APIService {
   }
 
   async upload(file: File): Promise<IWidget> {
-    const form = new FormData();
-    form.append("file", file);
-    return this.post("/api/v1/widgets/", form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }).then((r) => r.data);
+    return this.post("/api/v1/widgets/", toFormDoZip(file), MULTIPART).then((r) => r.data);
   }
 
   async update(id: string, data: { name?: string; description?: string }): Promise<IWidget> {

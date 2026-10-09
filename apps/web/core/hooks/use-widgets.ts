@@ -19,6 +19,9 @@ export function useWidgets(filters?: { name?: string; status?: string }) {
     activateWidget: store.activateWidget.bind(store),
     deactivateWidget: store.deactivateWidget.bind(store),
     removeWidget: store.removeWidget.bind(store),
+    makeWidgetGlobal: store.makeWidgetGlobal.bind(store),
+    escopo: store.escopo,
+    setEscopo: store.setEscopo.bind(store),
     updateWidget: store.updateWidget.bind(store),
     refetch: () => store.fetchWidgets(filters),
   };

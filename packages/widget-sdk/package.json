@@ -1,36 +1,57 @@
 {
   "name": "@mateusseiboth/widgets-aviao",
   "version": "1.0.0",
-  "description": "Official SDK for the Avião Widget Marketplace",
+  "description": "SDK oficial dos widgets da página inicial do Avião: hooks React, APIs de dados e o contrato com a plataforma.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mateusseiboth/plane.git",
     "directory": "packages/widget-sdk"
   },
-  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "referencia.json",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "src/index.ts",
-  "publishConfig": {
-    "@mateusseiboth:registry": "https://npm.pkg.github.com",
-    "access": "public"
-  },
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
       "types": "./src/index.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
       "default": "./src/index.ts"
+    },
+    "./referencia.json": "./referencia.json",
+    "./referencia-tipos": {
+      "types": "./scripts/referencia-tipos.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.cjs"
+      },
+      "./referencia.json": "./referencia.json"
+    },
+    "types": "dist/index.d.ts"
+  },
   "scripts": {
-    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "build": "vite build && tsc --emitDeclarationOnly --outDir dist && node scripts/gerar-referencia.ts && node scripts/empacotar.ts",
     "dev": "vite build --watch",
+    "referencia": "node scripts/gerar-referencia.ts",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build",
     "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.8.0",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "^3.0.0"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -43,12 +64,5 @@
     "react-dom": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "typescript": "^5.8.0",
-    "vite": "^5.0.0",
-    "vite-plugin-dts": "^3.0.0"
   }
 }

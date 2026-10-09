@@ -2,6 +2,10 @@
 export { initializeSDK } from "./init";
 export type { WidgetSDKInstance } from "./init";
 
+// Contrato com a plataforma
+export { WIDGET_PERMISSIONS, WIDGET_LIMITS, WIDGET_LIFECYCLE, WIDGET_EVENTS, GATEWAY_ERRORS } from "./contrato";
+export type { WidgetPermission } from "./contrato";
+
 // APIs
 export { workerItemsApi } from "./api/worker-items";
 export { intakesApi } from "./api/intakes";
@@ -32,6 +36,7 @@ export {
 export type {
   PaginatedResponse,
   WorkerItem,
+  WorkerItemState,
   WorkerItemFilters,
   WorkerItemStats,
   Intake,
@@ -42,6 +47,7 @@ export type {
   ActionStats,
   StatsOverview,
   EntityStats,
+  PeriodFilters,
   PeriodStats,
   User,
   UserFilters,
@@ -54,4 +60,5 @@ export type {
   WidgetSize,
   WidgetManifest,
   WidgetHomeProps,
+  WidgetQueryResult,
 } from "./types";

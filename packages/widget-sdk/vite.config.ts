@@ -6,7 +6,7 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "WidgetSDK",
-      fileName: (format) => `index.${format === "es" ? "mjs" : "js"}`,
+      fileName: (format) => `index.${format === "es" ? "mjs" : "cjs"}`,
       formats: ["es", "cjs"],
     },
     rollupOptions: {

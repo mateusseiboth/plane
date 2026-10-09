@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, type ComponentType } from "react";
 import { useParams } from "next/navigation";
 import { initializeSDK } from "@mateusseiboth/widgets-aviao";
+import { loadPluginModule } from "@/lib/plugin-module-runtime";
 import { widgetRegistry } from "@/services/widget-registry.service";
 
 interface DynamicWidgetProps {
@@ -46,7 +47,9 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = 
         });
 
         const url = widgetRegistry.resolveAssetUrl(widget);
-        const mod = (await loadModule(url)) as WidgetModule;
+        // Mesmo carregador dos plugins: react, react/jsx-runtime e o SDK vêm do host,
+        // então os hooks do widget usam o React da home e o SDK já inicializado.
+        const mod = (await loadPluginModule(url)) as unknown as WidgetModule;
 
         if (cancelled) return;
         if (!mod?.default || typeof mod.default !== "function") {
@@ -76,35 +79,6 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({ widgetId, props = 
     </React.Suspense>
   );
 };
-
-// ── Carrega o bundle do widget via script tag ESM ─────────────────────────────
-
-function loadModule(url: string): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const callbackName = `__widget_cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    (window as any)[callbackName] = (mod: unknown) => {
-      delete (window as any)[callbackName];
-      resolve(mod);
-    };
-
-    const script = document.createElement("script");
-    script.type = "module";
-    script.textContent = `
-      import * as mod from ${JSON.stringify(url)};
-      window[${JSON.stringify(callbackName)}](mod);
-    `;
-    script.addEventListener(
-      "error",
-      () => {
-        delete (window as any)[callbackName];
-        reject(new Error(`Falha ao carregar o bundle do widget: ${url}`));
-      },
-      { once: true }
-    );
-    document.head.appendChild(script);
-    script.addEventListener("load", () => script.remove(), { once: true });
-  });
-}
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 

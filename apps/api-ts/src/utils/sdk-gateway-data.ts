@@ -25,8 +25,11 @@ const isoDate = (d: unknown): string | null => {
   return d instanceof Date ? d.toISOString() : String(d);
 };
 
+/** Itens por página nas listagens dos gateways: padrão e máximo aceito em `limit`. */
+export const PAGINA_DO_GATEWAY = { padrao: 20, maximo: 100 } as const;
+
 const readPagination = (q: Query) => {
-  const perPage = Math.min(Number(q.limit ?? 20), 100);
+  const perPage = Math.min(Number(q.limit ?? PAGINA_DO_GATEWAY.padrao), PAGINA_DO_GATEWAY.maximo);
   const page = Math.max(Number(q.page ?? 0), 0);
   return { perPage, page, skip: page * perPage };
 };

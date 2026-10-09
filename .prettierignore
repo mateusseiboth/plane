@@ -8,3 +8,5 @@ node_modules/
 out/
 pnpm-lock.yaml
 storybook-static/
+# Gerado por packages/widget-sdk/scripts/gerar-referencia.ts
+packages/widget-sdk/referencia.json
