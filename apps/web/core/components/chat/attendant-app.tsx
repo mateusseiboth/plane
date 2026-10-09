@@ -16,7 +16,6 @@ import {
   Mail,
   MessageSquare,
   History,
-  Mic,
   Paperclip,
   Pencil,
   Phone,
@@ -463,7 +462,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [slaSessions, setSlaSessions] = useState<Set<string>>(new Set());
-  const [recording, setRecording] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -471,7 +469,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
   const conexaoRef = useRef<ConexaoDoAtendente | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const recRef = useRef<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const api = useMemo(() => (config?.api_url ? chatApi(config.api_url) : null), [config?.api_url]);
@@ -892,29 +889,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
           ? "audio"
           : "file";
     send({ type: "agent.message", session_id: activeId, media_key: r.media_key, media_mime: r.media_mime, media_name: r.media_name, media_type: t });
-  };
-
-  const toggleRecord = async () => {
-    if (recRef.current && recRef.current.state === "recording") {
-      recRef.current.stop();
-      setRecording(false);
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const chunks: BlobPart[] = [];
-      const rec = new MediaRecorder(stream);
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = () => {
-        uploadFile(new File([new Blob(chunks, { type: "audio/webm" })], "audio.webm", { type: "audio/webm" }));
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      recRef.current = rec;
-      rec.start();
-      setRecording(true);
-    } catch {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "Não foi possível acessar o microfone." });
-    }
   };
 
   const filteredSessions = useMemo(() => {
@@ -1563,13 +1537,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   title="Anexar arquivo"
                 >
                   <Paperclip className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={toggleRecord}
-                  className={`rounded-lg p-2 transition-colors ${recording ? "text-danger-primary hover:bg-danger-subtle" : "text-secondary hover:bg-layer-2 hover:text-primary"}`}
-                  title={recording ? "Parar gravação" : "Gravar áudio"}
-                >
-                  <Mic className="h-5 w-5" />
                 </button>
                 <FerramentasDoCompositor
                   slug={slug}
