@@ -7,22 +7,15 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { AlertCircle, Pause, Play, Ticket } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
 import { ModalDeChamado, type PedidoDeChamado } from "@/components/chat/modal-de-chamado";
-import { buildPermissoesDoAtendimento } from "@/components/chat/permissoes-do-atendimento";
-// hooks
-import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { ChatService, chatApi, type ChatMessage, type ChatSession } from "@/services/chat.service";
 
 const chatService = new ChatService();
-
-const BOTAO =
-  "flex items-center gap-1 rounded-md border border-subtle px-2.5 py-1.5 text-12 text-secondary transition-colors hover:bg-layer-1 disabled:opacity-50";
 
 const mensagemDoErro = (e: unknown, padrao: string) => (e as { detail?: string } | null)?.detail ?? padrao;
 
@@ -37,20 +30,18 @@ type Props = {
 };
 
 /** Pausar e retomar valem para conversa escrita em atendimento; ligação não pausa. */
-const PODE_PAUSAR: Record<string, "pause" | "resume"> = { active: "pause", paused: "resume" };
+const PAUSA_DO_STATUS: Record<string, "pause" | "resume"> = { active: "pause", paused: "resume" };
 
 /**
- * Ações do ciclo de vida no cabeçalho da conversa: abrir o chamado (ou ir até
- * ele, quando já existe) e pausar/retomar o atendimento. Cada botão só aparece
- * com a sua ação do chat (`chat.abrir_chamado`, `chat.pausar`).
+ * Ações do ciclo de vida da conversa: abrir o chamado e pausar/retomar o
+ * atendimento. Quem mostra o botão (e decide se cabe no cabeçalho ou vai para o
+ * menu "Mais") é o `CabecalhoDaConversa`; aqui ficam os handlers e o modal.
  */
-export function AcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, onAtualizada }: Props) {
+export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, onAtualizada }: Props) {
   const [abrindoChamado, setAbrindoChamado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const api = chatApi(apiUrl);
-  const { can } = useMyWorkspaceActions(slug);
-  const { canAbrirChamado, canPausar } = buildPermissoesDoAtendimento(can);
-  const pausa = sessao.channel === "phone" || !canPausar ? undefined : PODE_PAUSAR[sessao.status];
+  const pausa = PAUSA_DO_STATUS[sessao.status] ?? "pause";
 
   const createChamado = async ({ projectId, dados }: PedidoDeChamado) => {
     setEnviando(true);
@@ -77,7 +68,6 @@ export function AcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, onAtu
   };
 
   const changePausa = async () => {
-    if (!pausa) return;
     try {
       onAtualizada(await (pausa === "pause" ? api.pauseSession : api.resumeSession)(slug, sessao.id));
     } catch (e) {
@@ -85,39 +75,23 @@ export function AcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, onAtu
     }
   };
 
-  return (
-    <>
-      {sessao.issue_label ? (
-        <Link href={`/${slug}/browse/${sessao.issue_label}/`} className={BOTAO} title="Abrir o chamado desta conversa">
-          <Ticket className="h-3.5 w-3.5" />
-          {sessao.issue_label}
-        </Link>
-      ) : (
-        canAbrirChamado && (
-          <button onClick={() => setAbrindoChamado(true)} className={BOTAO} title="Abrir chamado com esta conversa">
-            <Ticket className="h-3.5 w-3.5" />
-            Chamado
-          </button>
-        )
-      )}
-      {pausa && (
-        <button onClick={changePausa} className={BOTAO} title={pausa === "pause" ? "Pausar atendimento" : "Retomar"}>
-          {pausa === "pause" ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-          {pausa === "pause" ? "Pausar" : "Retomar"}
-        </button>
-      )}
-      {abrindoChamado && (
-        <ModalDeChamado
-          sessao={sessao}
-          workspaceSlug={slug}
-          projetos={projetos}
-          onConfirmar={(pedido) => void createChamado(pedido)}
-          onCancelar={() => setAbrindoChamado(false)}
-          enviando={enviando}
-        />
-      )}
-    </>
+  const modalDoChamado = abrindoChamado && (
+    <ModalDeChamado
+      sessao={sessao}
+      workspaceSlug={slug}
+      projetos={projetos}
+      onConfirmar={(pedido) => void createChamado(pedido)}
+      onCancelar={() => setAbrindoChamado(false)}
+      enviando={enviando}
+    />
   );
+
+  return {
+    pausa,
+    openChamado: () => setAbrindoChamado(true),
+    changePausa: () => void changePausa(),
+    modalDoChamado,
+  };
 }
 
 /** Mensagem que não chegou ao WhatsApp: o atendente vê e reenvia. */

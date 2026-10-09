@@ -38,7 +38,11 @@ apps/web/core/
     atendente-helpers.ts (+ .test.ts)    formatSegundos, insertFrase, listClientInfo, readErroDoCampo...
     use-atendente.ts                     hooks SWR (frases, cadastro, feriados, gerenciador, monitor)
     ferramentas-do-compositor.tsx        menu de frases, botão da chave, "Sem meu nome"
-    alerta-sem-resposta.tsx              Pausar/Retomar alerta + MensagemDaChave
+    alerta-sem-resposta.tsx              useAlertaSemResposta (pausar/retomar alerta) + MensagemDaChave
+    cabecalho-da-conversa.tsx            cabeçalho da conversa aberta: nome, etiquetas, ações e menu "Mais" (W41)
+    acoes-do-cabecalho.ts (+ .test.ts)   quais ações a conversa tem e quais cabem pela largura (W41)
+    cores-do-atendimento.ts (+ .test.ts) classes de bolha, status, etiquetas e avatar, só tokens do tema (W41)
+    avatar-da-sessao.tsx                 SessionAvatar (inicial do cliente)
     painel-do-cadastro.tsx               painel lateral: responsável, entidade, sistema, dados técnicos
     aba-de-frases.tsx                    aba "Frases" da configuração (admin)
     calendario-de-feriados.tsx           dentro da aba Horários
@@ -184,3 +188,22 @@ alias quando os dois estiverem no preview. `tests/helpers/harness.ts` (`criarEnt
 - Testes: `tests/visibilidade-da-lista.test.ts` (10, puro), `tests/atendente-regras.test.ts`
   (+3, dono da frase), `tests/atendente.db.test.ts` (+6, frases pessoais),
   `atendente-helpers.test.ts` no web (+6).
+
+## 9. Cabeçalho da conversa e cores da bolha (W41)
+
+- **Cabeçalho**: `CabecalhoDaConversa` mede a própria largura (ResizeObserver) e
+  `splitAcoesPorLargura` decide: a partir de 900 px todas as ações com rótulo; de 480 a 899 px só
+  as principais (Assumir, Chamado, Encerrar) com rótulo e o resto (Link, Pausar, Alerta,
+  Transferir) no menu "Mais"; abaixo de 480 px as principais só com ícone (`title` e
+  `aria-label` com o nome). O nome do cliente trunca com reticências e nunca fica embaixo dos
+  botões. `findAcoesDaConversa` repete as regras de antes (status, ligação, `permissoes.*` do W38).
+  `useAcoesDaConversa` (chamado, pausa) e `useAlertaSemResposta` viraram hooks: o botão é do
+  cabeçalho, que decide se ele aparece ou vai para o menu.
+- **Cores**: o tema desliga a paleta padrão do Tailwind (`--color-*: initial` em
+  `@plane/tailwind-config/variables.css`). `bg-indigo-600`, `bg-green-100` etc. não geram CSS: a
+  bolha do atendente ficava transparente com texto branco. Use só tokens (`bg-accent-primary`,
+  `text-on-color`, `bg-success-subtle`, `bg-label-*-bg-strong`...). O teste
+  `cores-do-atendimento.test.ts` lê o tema e falha se uma classe de cor não existir.
+  Ainda há classes da paleta padrão em `attendant-app.tsx` fora do cabeçalho e da bolha (faixa da
+  fila em `amber`, botão "Encerrar atendimento" das ações rápidas em `red`, ícones `green`).
+

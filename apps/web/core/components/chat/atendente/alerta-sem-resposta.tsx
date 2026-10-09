@@ -7,25 +7,20 @@
 "use client";
 
 import { useState } from "react";
-import { BellOff, BellRing, Copy } from "lucide-react";
+import { Copy } from "lucide-react";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // local imports
 import { rotuloDoAlertaPausado } from "@/components/chat/atendente/atendente-helpers";
 import { useAtendenteApi } from "@/components/chat/atendente/use-atendente";
-import { ACAO_DO_CHAT } from "@/components/chat/permissoes-do-atendimento";
-import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { ChatSession } from "@/services/chat.service";
-
-const BOTAO =
-  "flex items-center gap-1 rounded-md border border-subtle px-2.5 py-1.5 text-12 text-secondary transition-colors hover:bg-layer-1 disabled:opacity-50";
 
 /**
  * Pausar o alerta de cliente sem resposta desta conversa (o cliente avisou que
  * ia verificar algo). Volta sozinho em 40 minutos. Legado:
- * `popChatAt_pausar_alerta_semresp.php`.
+ * `popChatAt_pausar_alerta_semresp.php`. O botão é do `CabecalhoDaConversa`.
  */
-export function AlertaSemResposta({
+export function useAlertaSemResposta({
   sessao,
   slug,
   apiUrl,
@@ -38,9 +33,6 @@ export function AlertaSemResposta({
 }) {
   const api = useAtendenteApi(apiUrl);
   const [enviando, setEnviando] = useState(false);
-  const { can } = useMyWorkspaceActions(slug);
-  if (!can(ACAO_DO_CHAT.PAUSAR)) return null;
-  if (sessao.status !== "active" || sessao.channel === "phone") return null;
   const pausado = rotuloDoAlertaPausado(sessao.sla_alert_paused_until);
 
   const change = async () => {
@@ -58,18 +50,7 @@ export function AlertaSemResposta({
     }
   };
 
-  return (
-    <button
-      type="button"
-      onClick={() => void change()}
-      disabled={enviando}
-      className={BOTAO}
-      title={pausado ?? "Pausar o alerta de cliente sem resposta por 40 minutos"}
-    >
-      {pausado ? <BellRing className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
-      {pausado ? "Retomar alerta" : "Pausar alerta"}
-    </button>
-  );
+  return { pausado, enviando, changeAlerta: () => void change() };
 }
 
 /** Mensagem do tipo `chave`: o código em destaque e um botão de copiar. */

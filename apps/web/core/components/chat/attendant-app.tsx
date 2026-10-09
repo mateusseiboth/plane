@@ -24,7 +24,6 @@ import {
   SendHorizontal,
   Star,
   Trash2,
-  Users,
   X,
 } from "lucide-react";
 // plane imports
@@ -44,13 +43,13 @@ import { MenuDoGestor } from "@/components/chat/menu-do-gestor";
 import { BotaoDoDisparo } from "@/components/chat/disparo/botao-do-disparo";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
 import {ModalDeEncerramento, type DadosDoEncerramento} from "@/components/chat/modal-de-encerramento";
-import {AcoesDaConversa, FalhaDeEnvio} from "@/components/chat/acoes-da-conversa";
+import {FalhaDeEnvio} from "@/components/chat/acoes-da-conversa";
 import { FiltroDeCanal, MarcaDeLigacao } from "@/components/chat/ligacoes/filtro-de-canal";
 import { HistoricoDoCliente } from "@/components/chat/ligacoes/historico-do-cliente";
 import { isLigacao } from "@/components/chat/ligacoes/ligacao-helpers";
 import { PainelDaLigacao } from "@/components/chat/ligacoes/painel-da-ligacao";
 // Ferramentas do atendente e gestão (W05): ver .claude/chat-atendente.md.
-import { AlertaSemResposta, MensagemDaChave } from "@/components/chat/atendente/alerta-sem-resposta";
+import { MensagemDaChave } from "@/components/chat/atendente/alerta-sem-resposta";
 import {
   applyTransferenciaNaLista,
   insertFrase,
@@ -60,6 +59,9 @@ import {
 import { FerramentasDoCompositor } from "@/components/chat/atendente/ferramentas-do-compositor";
 import { GerenciadorDeConversas } from "@/components/chat/atendente/gerenciador-de-conversas";
 import { PainelDoCadastro } from "@/components/chat/atendente/painel-do-cadastro";
+import { SessionAvatar } from "@/components/chat/atendente/avatar-da-sessao";
+import { CabecalhoDaConversa } from "@/components/chat/atendente/cabecalho-da-conversa";
+import { COR_DE_LIDA, findClasseDaBolha, findCorDoStatus, findRotuloDoStatus } from "@/components/chat/atendente/cores-do-atendimento";
 import { IniciarPeloResponsavel } from "@/components/chat/atendente/whatsapp-do-responsavel";
 // Conexão e alertas são compartilhados com a presença global (fora desta tela).
 import { notifyDesktop, playAlert } from "@/components/chat/avisos-do-chat";
@@ -119,50 +121,6 @@ function formatDate(ts: string | undefined) {
 const STATUS_DA_ABA: Record<string, string[]> = { active: ["active", "paused"] };
 /** Já tem dono (ou acabou): não há o que assumir. */
 const SEM_ASSUMIR = ["active", "paused", "closed"];
-
-function statusLabel(status: string) {
-  const map: Record<string, string> = {
-    active: "Ativo",
-    paused: "Em pausa",
-    queued: "Na fila",
-    bot: "Bot",
-    closed: "Encerrado",
-  };
-  return map[status] ?? status;
-}
-
-function statusBadgeCls(status: string) {
-  const map: Record<string, string> = {
-    active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    paused: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    queued: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    bot: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-    closed: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
-  };
-  return map[status] ?? "bg-layer-2 text-secondary";
-}
-
-function SessionAvatar({ name, phone, size = "md" }: { name?: string | null; phone?: string | null; size?: "sm" | "md" | "lg" }) {
-  const label = ((name || phone || "?")[0] ?? "?").toUpperCase();
-  const sizeCls = size === "sm" ? "h-9 w-9 text-sm" : size === "lg" ? "h-12 w-12 text-lg" : "h-10 w-10";
-  const hash = [...(name || phone || "A")].reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const colors = [
-    "bg-indigo-500",
-    "bg-violet-500",
-    "bg-blue-500",
-    "bg-teal-500",
-    "bg-emerald-500",
-    "bg-pink-500",
-    "bg-rose-500",
-    "bg-orange-500",
-  ];
-  const bg = colors[hash % colors.length];
-  return (
-    <div className={`${sizeCls} ${bg} shrink-0 rounded-full flex items-center justify-center text-white font-semibold`}>
-      {label}
-    </div>
-  );
-}
 
 // ── New outbound chat modal ──────────────────────────────────────
 function NewChatModal({
@@ -1115,9 +1073,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-10 font-medium ${statusBadgeCls(s.status)}`}
+                    className={`rounded-full px-1.5 py-0.5 text-10 font-medium ${findCorDoStatus(s.status)}`}
                   >
-                    {statusLabel(s.status)}
+                    {findRotuloDoStatus(s.status)}
                   </span>
                   {s.channel === "whatsapp" && (
                     <span className="flex items-center gap-0.5 text-10 text-tertiary">
@@ -1186,102 +1144,26 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
           </div>
         ) : (
           <>
-            {/* Chat header */}
-            <header className="flex items-center justify-between border-b border-subtle bg-surface-1 px-4 py-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <SessionAvatar name={activeSession.client_name} phone={activeSession.client_phone} />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-semibold text-primary">
-                      {activeSession.client_name || activeSession.client_phone || "Visitante"}
-                    </span>
-                    {activeSession.channel === "whatsapp" && (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-10 font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                        <Phone className="h-2.5 w-2.5" />
-                        WhatsApp
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-11 text-tertiary">#{activeSession.protocol}</span>
-                    <span className="text-tertiary">·</span>
-                    <span className={`rounded-full px-1.5 py-0.5 text-10 font-medium ${statusBadgeCls(activeSession.status)}`}>
-                      {statusLabel(activeSession.status)}
-                    </span>
-                    {(activeSession.project_identifier || activeSession.project_name) && (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-10 font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                        {activeSession.project_identifier || activeSession.project_name}
-                      </span>
-                    )}
-                    {slaActive && (
-                      <span className="text-11 font-medium text-danger-primary">· ⚠ Aguardando resposta</span>
-                    )}
-                    {clientTyping && (
-                      <span className="text-11 font-medium text-green-600 dark:text-green-400">· digitando…</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-1.5 ml-3">
-                {!SEM_ASSUMIR.includes(activeSession.status) && !isLigacao(activeSession) && (
-                  <button
-                    onClick={assign}
-                    className="rounded-md bg-primary px-3 py-1.5 text-12 font-medium text-on-color hover:bg-primary/90 transition-colors"
-                  >
-                    Assumir
-                  </button>
-                )}
-                <button
-                  onClick={copyLink}
-                  className="rounded-md border border-subtle px-2.5 py-1.5 text-12 text-secondary hover:bg-layer-1 transition-colors"
-                  title="Copiar link do chat"
-                >
-                  Link
-                </button>
-                {/* Ligação tem o próprio painel, com chamado (W06). */}
-                {!isLigacao(activeSession) && (
-                  <AcoesDaConversa
-                    sessao={activeSession}
-                    slug={slug}
-                    apiUrl={config.api_url}
-                    projetos={projetos}
-                    chatUrl={chatUrl}
-                    onAtualizada={replaceSession}
-                  />
-                )}
-                <AlertaSemResposta
-                  sessao={activeSession}
-                  slug={slug}
-                  apiUrl={config.api_url}
-                  onAtualizada={(atualizada) => {
-                    replaceSession(atualizada);
-                    // Pausado: some a borda vermelha desta conversa.
-                    setSlaSessions((prev) => new Set([...prev].filter((id) => id !== atualizada.id)));
-                  }}
-                />
-                {permissoes.canTransferir && activeSession.status !== "closed" && activeSession.status !== "bot" && (
-                  <button
-                    onClick={() => setShowTransfer(true)}
-                    className="flex items-center gap-1 rounded-md border border-subtle px-2.5 py-1.5 text-12 text-secondary hover:bg-layer-1 transition-colors"
-                    title="Transferir atendimento"
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    Transferir
-                  </button>
-                )}
-                {permissoes.canEncerrar && (activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
-                  <button
-                    onClick={closeChat}
-                    className="flex items-center gap-1 rounded-md border border-red-300 px-2.5 py-1.5 text-12 text-red-600 hover:bg-red-50 transition-colors dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                    title="Encerrar atendimento"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Encerrar
-                  </button>
-                )}
-              </div>
-            </header>
+            <CabecalhoDaConversa
+              sessao={activeSession}
+              slug={slug}
+              apiUrl={config.api_url}
+              projetos={projetos}
+              chatUrl={chatUrl}
+              permissoes={permissoes}
+              isSemResposta={slaActive}
+              isClienteDigitando={clientTyping}
+              onAssumir={assign}
+              onCopyLink={() => void copyLink()}
+              onTransferir={() => setShowTransfer(true)}
+              onEncerrar={closeChat}
+              onAtualizada={replaceSession}
+              onAlertaPausado={(atualizada) => {
+                replaceSession(atualizada);
+                // Pausado: some a borda vermelha desta conversa.
+                setSlaSessions((prev) => new Set([...prev].filter((id) => id !== atualizada.id)));
+              }}
+            />
 
             {/* Ligação do PBX: dados, assumir, concluir e abrir chamado ficam no painel. */}
             {isLigacao(activeSession) && (
@@ -1451,11 +1333,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                         </div>
                       ) : (
                         <div
-                          className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                            mine
-                              ? `rounded-br-sm border border-indigo-600 bg-indigo-600 text-white ${isTemp ? "opacity-70" : ""}`
-                              : "rounded-bl-sm border border-subtle bg-surface-1 text-primary"
-                          }`}
+                          className={`rounded-2xl px-4 py-2.5 shadow-sm ${findClasseDaBolha(m.sender)} ${isTemp ? "opacity-70" : ""}`}
                         >
                           {/* Teto de ALTURA, não só de largura: retrato alto passava
                               da tela inteira e empurrava a conversa para longe. */}
@@ -1492,7 +1370,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                       <div className={`mt-1 flex items-center gap-1 text-10 text-tertiary ${mine ? "flex-row-reverse" : ""}`}>
                         <span>{formatTime(m.created_at)}</span>
                         {mine && !isTemp && (
-                          <CheckCheck className={`h-3 w-3 ${readByClient ? "text-blue-500" : ""}`} />
+                          <CheckCheck className={`h-3 w-3 ${readByClient ? COR_DE_LIDA : ""}`} />
                         )}
                         {m.edited_at && <span className="italic">· editado</span>}
                         {mine && m.without_sender_name && <span className="italic">· sem nome</span>}
@@ -1669,8 +1547,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               </div>
               <div className="flex justify-between">
                 <span className="text-tertiary">Status</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-10 font-medium ${statusBadgeCls(activeSession.status)}`}>
-                  {statusLabel(activeSession.status)}
+                <span className={`rounded-full px-1.5 py-0.5 text-10 font-medium ${findCorDoStatus(activeSession.status)}`}>
+                  {findRotuloDoStatus(activeSession.status)}
                 </span>
               </div>
             </div>
