@@ -44,7 +44,15 @@ export type TConstanteDaReferencia = {
 };
 
 export type TReferencia = {
-  pacote: { nome: string; versao: string; descricao: string };
+  pacote: {
+    nome: string;
+    versao: string;
+    descricao: string;
+    /** URL git do repositório (campo `repository.url` do package.json). */
+    repositorio: string;
+    /** Pasta do pacote dentro do repositório. */
+    diretorio: string;
+  };
   /** Todos os exports públicos do pacote, em ordem alfabética. */
   exports: string[];
   funcoes: TFuncaoDaReferencia[];

@@ -19,6 +19,7 @@ import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as JsxRuntime from "react/jsx-runtime";
 import * as PluginSDKModule from "@mateusseiboth/plugins-aviao";
+import * as WidgetSDKModule from "@mateusseiboth/widgets-aviao";
 
 const g = globalThis as any;
 g.__PLUGIN_REACT__ ??= React;
@@ -26,6 +27,13 @@ g.__PLUGIN_REACTDOM__ ??= ReactDOM;
 g.__PLUGIN_REACTDOM_CLIENT__ ??= ReactDOMClient;
 g.__PLUGIN_JSX__ ??= JsxRuntime;
 g.__PLUGIN_SDK_MODULE__ ??= PluginSDKModule;
+// Widgets da home: o SDK é o MESMO módulo que a home já inicializou (initializeSDK
+// antes de montar), então o bundle do widget o recebe configurado.
+g.__WIDGET_SDK_MODULE__ ??= WidgetSDKModule;
+
+/** Reexporta todos os nomes do módulo do host: um export novo no SDK chega ao widget sem lista à mão. */
+const buildShimDeModulo = (global: string, modulo: Record<string, unknown>) =>
+  `const M=window.${global};export default M;export const {${Object.keys(modulo).join(",")}}=M;`;
 
 // Shim ESM por specifier: reexporta dos globais do host (mesma instância).
 function shimSource(spec: string): string {
@@ -42,6 +50,8 @@ function shimSource(spec: string): string {
       return `const C=window.__PLUGIN_REACTDOM_CLIENT__;export default C;export const {createRoot,hydrateRoot}=C;`;
     case "@mateusseiboth/plugins-aviao":
       return `const M=window.__PLUGIN_SDK_MODULE__;export default M;export const {initializeSDK,workerItemsApi,intakesApi,actionsApi,statsApi,usersApi,entitiesApi,storageApi,notificationsApi,uiApi,navigationApi,pagesApi,configApi,permissionsApi,backendApi,useWorkerItems,useWorkerItem,useIntakes,useIntake,useActions,useAction,useStats,useEntities,useEntity,useUsers,useCurrentUser,sdkRequest,sdkFetchRaw}=M;`;
+    case "@mateusseiboth/widgets-aviao":
+      return buildShimDeModulo("__WIDGET_SDK_MODULE__", WidgetSDKModule);
     default:
       return "";
   }
@@ -54,6 +64,7 @@ const SHARED_SPECS = [
   "react-dom",
   "react-dom/client",
   "@mateusseiboth/plugins-aviao",
+  "@mateusseiboth/widgets-aviao",
 ];
 
 let shimUrls: Map<string, string> | null = null;
@@ -72,18 +83,21 @@ function rewriteImports(code: string): string {
   for (const [spec, url] of urls) {
     const esc = spec.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
     // from "spec" | import "spec" | import("spec")
-    code = code.replace(new RegExp(`(from\\s*|import\\s*\\(?\\s*)(["'])${esc}\\2`, "g"), (_m, p1, q) => `${p1}${q}${url}${q}`);
+    code = code.replace(
+      new RegExp(`(from\\s*|import\\s*\\(?\\s*)(["'])${esc}\\2`, "g"),
+      (_m, p1, q) => `${p1}${q}${url}${q}`
+    );
   }
   return code;
 }
 
 /**
- * Carrega o bundle ESM de um plugin compartilhando o React do host. Retorna o
- * namespace do módulo (com `default` e exports nomeados).
+ * Carrega o bundle ESM de um plugin ou de um widget compartilhando o React e o
+ * SDK do host. Retorna o namespace do módulo (com `default` e exports nomeados).
  */
 export async function loadPluginModule(url: string): Promise<Record<string, unknown>> {
   const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error(`Falha ao carregar o bundle do plugin: ${url} (${res.status})`);
+  if (!res.ok) throw new Error(`Falha ao carregar o pacote: ${url} (${res.status})`);
   const rewritten = rewriteImports(await res.text());
   const blobUrl = URL.createObjectURL(new Blob([rewritten], { type: "text/javascript" }));
   try {

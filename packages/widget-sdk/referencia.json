@@ -2,7 +2,9 @@
   "pacote": {
     "nome": "@mateusseiboth/widgets-aviao",
     "versao": "1.0.0",
-    "descricao": "SDK oficial dos widgets da página inicial do Avião: hooks React, APIs de dados e o contrato com a plataforma."
+    "descricao": "SDK oficial dos widgets da página inicial do Avião: hooks React, APIs de dados e o contrato com a plataforma.",
+    "repositorio": "git+https://github.com/mateusseiboth/plane.git",
+    "diretorio": "packages/widget-sdk"
   },
   "exports": [
     "Action",

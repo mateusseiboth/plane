@@ -4,9 +4,11 @@
  * See the LICENSE file for details.
  */
 
+import { useRef } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, RotateCcw, X } from "lucide-react";
+import { ArrowDown, ArrowUp, RotateCcw, Trash2, Upload, X } from "lucide-react";
+import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { EModalWidth, ModalCore, ToggleSwitch } from "@plane/ui";
 import { cn } from "@plane/utils";
 // components
@@ -15,6 +17,7 @@ import {
   TAMANHOS_DE_WIDGET,
   isTamanhoDeWidget,
   moveWidgetBy,
+  readIdDeInstalado,
   setLigado,
   setTamanho,
 } from "@/components/home/grade/grade-rules";
@@ -24,9 +27,17 @@ import type { TWidgetDaHome } from "@/components/home/grade/tipos";
 import { useHome } from "@/hooks/store/use-home";
 import { useGradeDaHome } from "@/hooks/use-grade-da-home";
 import type { TGradeDaHome } from "@/hooks/use-grade-da-home";
+import { useMeusWidgets } from "@/hooks/use-meus-widgets";
 
 const BOTAO_DE_ICONE =
   "flex size-7 items-center justify-center rounded-md text-secondary hover:bg-layer-1 hover:text-primary disabled:pointer-events-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-accent-strong focus-visible:outline-none";
+
+/** Selo ao lado do título: o nativo não tem; o instalado e o meu, sim. */
+const SELO_DA_ORIGEM: Partial<Record<TWidgetDaHome["origem"], string>> = { instalado: "Instalado", meu: "Meu" };
+
+const readMensagemDoErro = (erro: unknown) =>
+  (erro as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+  "Não foi possível concluir. Tente de novo.";
 
 type TLinhaProps = {
   widget: TWidgetDaHome;
@@ -34,9 +45,10 @@ type TLinhaProps = {
   indice: number;
   total: number;
   grade: TGradeDaHome;
+  onRemoveMeu: (widget: TWidgetDaHome) => void;
 };
 
-function LinhaDoWidget({ widget, item, indice, total, grade }: TLinhaProps) {
+function LinhaDoWidget({ widget, item, indice, total, grade, onRemoveMeu }: TLinhaProps) {
   const salvar = (novo: TItemDaGrade[]) => void grade.saveLayout(novo);
   return (
     <li className="flex items-center gap-3 py-3">
@@ -63,9 +75,9 @@ function LinhaDoWidget({ widget, item, indice, total, grade }: TLinhaProps) {
       <div className={cn("min-w-0 flex-1", !item.ligado && "opacity-60")}>
         <p className="flex items-center gap-2 text-13 font-medium text-primary">
           <span className="truncate">{widget.titulo}</span>
-          {widget.origem === "instalado" && (
+          {SELO_DA_ORIGEM[widget.origem] && (
             <span className="shrink-0 rounded-full bg-accent-subtle px-1.5 py-0.5 text-10 font-medium text-accent-primary">
-              Instalado
+              {SELO_DA_ORIGEM[widget.origem]}
             </span>
           )}
         </p>
@@ -90,6 +102,16 @@ function LinhaDoWidget({ widget, item, indice, total, grade }: TLinhaProps) {
         label={`Mostrar ${widget.titulo}`}
         onChange={(ligado) => salvar(setLigado(grade.layout, item.chave, ligado))}
       />
+      {widget.origem === "meu" && (
+        <button
+          type="button"
+          aria-label={`Remover ${widget.titulo}`}
+          onClick={() => onRemoveMeu(widget)}
+          className={BOTAO_DE_ICONE}
+        >
+          <Trash2 aria-hidden className="size-3.5" />
+        </button>
+      )}
     </li>
   );
 }
@@ -102,7 +124,34 @@ function LinhaDoWidget({ widget, item, indice, total, grade }: TLinhaProps) {
 export const GerenciarWidgets = observer(function GerenciarWidgets({ workspaceSlug }: { workspaceSlug: string }) {
   const { showWidgetSettings, toggleWidgetSettings } = useHome();
   const grade = useGradeDaHome(workspaceSlug);
+  const meus = useMeusWidgets();
+  const seletorDoZip = useRef<HTMLInputElement>(null);
   const fechar = () => toggleWidgetSettings(false);
+
+  const onZipEscolhido = async (arquivo: File | undefined) => {
+    if (!arquivo) return;
+    try {
+      const widget = await meus.uploadMeuWidget(arquivo);
+      setToast({
+        type: TOAST_TYPE.SUCCESS,
+        title: "Widget enviado",
+        message: `${widget.name} entrou no fim da sua página inicial.`,
+      });
+    } catch (erro) {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Widget não enviado", message: readMensagemDoErro(erro) });
+    }
+  };
+
+  const onRemoveMeu = async (widget: TWidgetDaHome) => {
+    const id = readIdDeInstalado(widget.chave);
+    if (!id || !window.confirm(`Remover "${widget.titulo}" da sua página inicial?`)) return;
+    try {
+      await meus.removeMeuWidget(id);
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Widget removido", message: `${widget.titulo} foi removido.` });
+    } catch (erro) {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Widget não removido", message: readMensagemDoErro(erro) });
+    }
+  };
 
   return (
     <ModalCore isOpen={showWidgetSettings} handleClose={fechar} width={EModalWidth.XXL}>
@@ -130,6 +179,7 @@ export const GerenciarWidgets = observer(function GerenciarWidgets({ workspaceSl
                 indice={indice}
                 total={grade.layout.length}
                 grade={grade}
+                onRemoveMeu={(alvo) => void onRemoveMeu(alvo)}
               />
             );
           })}
@@ -142,7 +192,26 @@ export const GerenciarWidgets = observer(function GerenciarWidgets({ workspaceSl
           >
             <RotateCcw aria-hidden className="size-3.5" /> Restaurar padrão
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              ref={seletorDoZip}
+              type="file"
+              accept=".zip"
+              hidden
+              onChange={(evento) => {
+                void onZipEscolhido(evento.target.files?.[0]);
+                evento.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              disabled={meus.isUploading}
+              onClick={() => seletorDoZip.current?.click()}
+              title="O widget aparece só na sua página inicial."
+              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-13 text-secondary hover:bg-layer-1 hover:text-primary focus-visible:ring-2 focus-visible:ring-accent-strong focus-visible:outline-none disabled:opacity-50"
+            >
+              <Upload aria-hidden className="size-3.5" /> {meus.isUploading ? "Enviando…" : "Enviar meu widget"}
+            </button>
             <Link
               href={`/${workspaceSlug}/developers/widgets`}
               onClick={fechar}

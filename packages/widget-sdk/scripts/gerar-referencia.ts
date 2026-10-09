@@ -212,7 +212,13 @@ const BUILDERS = {
 
 function readPacote() {
   const pacote = JSON.parse(readFileSync(path.join(RAIZ, "package.json"), "utf8"));
-  return { nome: pacote.name as string, versao: pacote.version as string, descricao: pacote.description as string };
+  return {
+    nome: pacote.name as string,
+    versao: pacote.version as string,
+    descricao: pacote.description as string,
+    repositorio: pacote.repository.url as string,
+    diretorio: pacote.repository.directory as string,
+  };
 }
 
 export function buildReferencia(): TReferencia {

@@ -26,6 +26,7 @@ export type TWidgetDaHome = {
   titulo: string;
   descricao: string;
   tamanhoPadrao: TTamanhoDeWidget;
-  origem: "nativo" | "instalado";
+  /** `meu`: widget que a própria pessoa enviou, só na home dela. */
+  origem: "nativo" | "instalado" | "meu";
   componente: ComponentType<TPropsDoWidget>;
 };
