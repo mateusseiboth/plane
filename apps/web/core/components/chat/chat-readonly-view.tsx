@@ -68,7 +68,7 @@ export function ChatReadOnlyView({ protocol }: { protocol: string }) {
                 deleted
                   ? "self-start border border-dashed border-subtle bg-transparent italic text-tertiary"
                   : mine
-                    ? "self-end bg-primary text-on-color"
+                    ? "self-end bg-accent-primary text-on-color"
                     : m.sender === "system"
                       ? "self-center bg-transparent text-11 text-secondary"
                       : "self-start bg-surface-2"

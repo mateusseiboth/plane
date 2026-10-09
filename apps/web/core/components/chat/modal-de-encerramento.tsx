@@ -48,7 +48,7 @@ type Props = {
 const MINIMO_PARA_BUSCAR = 2;
 
 const CAIXA =
-  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-primary";
+  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-strong";
 
 /**
  * Encerramento do atendimento: classifica o sistema e diz quem era o cliente.

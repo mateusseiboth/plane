@@ -19,7 +19,7 @@ import type { ErroDaLigacao, RamalConfigurado } from "@/services/ligacoes.servic
 type Props = { slug: string; apiUrl: string };
 
 const CAIXA = "w-full rounded-md border border-subtle bg-surface-1 px-2 py-1.5 text-sm text-primary outline-none";
-const BOTAO = "rounded-md bg-primary px-3 py-1.5 text-13 text-on-color disabled:opacity-50";
+const BOTAO = "rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color disabled:opacity-50";
 const BOTAO_SECUNDARIO = "rounded-md border border-subtle px-3 py-1.5 text-13 text-secondary hover:bg-layer-1";
 
 const toastErro = (e: unknown, padrao: string) =>

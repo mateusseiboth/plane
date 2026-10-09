@@ -248,7 +248,7 @@ export function GerenciadorDeConversas({ slug, apiUrl, projetos }: Props) {
             <thead>
               <tr>
                 {["Protocolo", ...COLUNAS.map((c) => c.titulo)].map((t) => (
-                  <th key={t} className="border-neutral-400 border-b p-1 text-left">
+                  <th key={t} className="border-b border-strong p-1 text-left">
                     {t}
                   </th>
                 ))}
@@ -257,9 +257,9 @@ export function GerenciadorDeConversas({ slug, apiUrl, projetos }: Props) {
             <tbody>
               {linhas.map((l) => (
                 <tr key={l.id}>
-                  <td className="border-neutral-200 border-b p-1">{l.protocol}</td>
+                  <td className="border-b border-subtle p-1">{l.protocol}</td>
                   {COLUNAS.map((c) => (
-                    <td key={c.titulo} className="border-neutral-200 border-b p-1">
+                    <td key={c.titulo} className="border-b border-subtle p-1">
                       {c.valor(l)}
                     </td>
                   ))}

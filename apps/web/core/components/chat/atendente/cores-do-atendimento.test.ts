@@ -12,7 +12,11 @@ import {
   BOLHA_DA_MENSAGEM,
   COR_DE_LIDA,
   CORES_DO_AVATAR,
+  COR_DA_ESTRELA,
+  COR_DE_LIGACAO_ATENDIDA,
+  COR_DO_CONTADOR,
   COR_DO_STATUS,
+  FAIXA_DA_FILA,
   ETIQUETA_DO_CABECALHO,
   TOM_DO_BOTAO,
   findClasseDaBolha,
@@ -69,10 +73,12 @@ describe("bolha da mensagem", () => {
 });
 
 describe("cabeçalho e lista de atendimentos", () => {
-  it("toda classe de cor de status, etiqueta e botão existe no tema", () => {
+  it("toda classe de cor de status, etiqueta, botão, faixa da fila, estrela e contador existe no tema", () => {
     expect(Object.values(COR_DO_STATUS).flatMap(findCoresInexistentes)).toEqual([]);
     expect(Object.values(ETIQUETA_DO_CABECALHO).flatMap(findCoresInexistentes)).toEqual([]);
     expect(Object.values(TOM_DO_BOTAO).flatMap(findCoresInexistentes)).toEqual([]);
+    expect(Object.values(FAIXA_DA_FILA).flatMap(findCoresInexistentes)).toEqual([]);
+    expect([COR_DA_ESTRELA, COR_DE_LIGACAO_ATENDIDA, COR_DO_CONTADOR].flatMap(findCoresInexistentes)).toEqual([]);
   });
 
   it("status conhecido tem rótulo em português; desconhecido volta como veio", () => {

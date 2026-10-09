@@ -67,8 +67,8 @@ const ESTILO = {
   },
   impressao: {
     tabela: "w-full border-collapse text-[10px]",
-    cabecalho: "bg-neutral-100",
-    celula: "border border-neutral-300 px-2 py-1 text-left",
+    cabecalho: "bg-layer-2",
+    celula: "border border-subtle px-2 py-1 text-left",
     linha: "",
   },
 } as const;

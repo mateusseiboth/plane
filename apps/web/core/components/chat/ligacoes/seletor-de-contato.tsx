@@ -17,7 +17,7 @@ import { useEntityContacts } from "@/hooks/use-entity-contacts";
 const MINIMO_PARA_BUSCAR = 2;
 
 const CAIXA =
-  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-primary";
+  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-strong";
 
 type Props = {
   workspaceSlug: string;

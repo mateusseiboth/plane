@@ -19,7 +19,7 @@ function IconeDoItem({ item }: { item: ItemDoHistorico }) {
   if (!isLigacao(item)) return <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />;
   if (item.ligacao?.status === "missed")
     return <PhoneMissed className="mt-0.5 h-3.5 w-3.5 shrink-0 text-danger-primary" />;
-  return <PhoneCall className="text-green-600 mt-0.5 h-3.5 w-3.5 shrink-0" />;
+  return <PhoneCall className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success-primary" />;
 }
 
 function Item({ slug, item, atual }: { slug: string; item: ItemDoHistorico; atual: boolean }) {

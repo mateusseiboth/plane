@@ -59,6 +59,23 @@ export const TOM_DO_BOTAO = {
 
 export type TomDoBotao = keyof typeof TOM_DO_BOTAO;
 
+/** Faixa "Aguardando atendente" da conversa na fila. */
+export const FAIXA_DA_FILA = {
+  faixa: "border-warning-subtle bg-warning-subtle",
+  texto: "text-warning-primary",
+  dica: "text-warning-secondary",
+  botao: "bg-warning-primary text-on-color hover:opacity-90",
+} as const;
+
+/** Estrela preenchida da avaliação do cliente. */
+export const COR_DA_ESTRELA = "fill-current text-warning-primary";
+
+/** Ícone de ligação atendida (a perdida usa `text-danger-primary`). */
+export const COR_DE_LIGACAO_ATENDIDA = "text-success-primary";
+
+/** Contador de mensagens não lidas e selo "Novo" na lista. */
+export const COR_DO_CONTADOR = "bg-danger-primary text-on-color";
+
 export const findClasseDaBolha = (sender: string): string =>
   sender === "attendant" ? BOLHA_DA_MENSAGEM.atendente : BOLHA_DA_MENSAGEM.cliente;
 

@@ -31,7 +31,7 @@ const ok = (m: string) => setToast({ type: TOAST_TYPE.SUCCESS, title: "Salvo", m
 const err = (e: any) => setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Falhou." });
 
 const inputCls = "w-full rounded-md border border-subtle bg-surface-1 text-primary px-2 py-1.5 text-sm outline-none";
-const btn = "rounded-md bg-primary px-3 py-1.5 text-13 text-on-color";
+const btn = "rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color";
 const btnGhost = "rounded-md border border-subtle px-3 py-1.5 text-13";
 
 export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl }: { slug: string; apiUrl: string }) {
@@ -58,7 +58,7 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl 
           <button
             key={tabDef.key}
             onClick={() => setAbaEscolhida(tabDef.key)}
-            className={`rounded-t-md px-3 py-2 text-13 ${tab === tabDef.key ? "border-b-2 border-primary font-medium text-primary" : "text-secondary"}`}
+            className={`rounded-t-md px-3 py-2 text-13 ${tab === tabDef.key ? "border-b-2 border-accent-strong font-medium text-primary" : "text-secondary"}`}
           >
             {tabDef.label}
           </button>
@@ -238,7 +238,7 @@ function SeletorDeAtendentes({
               key={m.id}
               onClick={() => onAlternar(m.id)}
               title={`Remover ${m.name}`}
-              className="flex items-center gap-1 rounded-full border border-accent-subtle-1 bg-accent-subtle px-2 py-0.5 text-11 text-accent-primary"
+              className="flex items-center gap-1 rounded-full border border-accent-subtle bg-accent-subtle px-2 py-0.5 text-11 text-accent-primary"
             >
               {m.name}
               <span aria-hidden>×</span>

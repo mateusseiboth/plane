@@ -17,6 +17,7 @@ import {
   groupErrosPorCampo,
   statusDaLigacaoLabel,
 } from "@/components/chat/ligacoes/ligacao-helpers";
+import { COR_DE_LIGACAO_ATENDIDA } from "@/components/chat/atendente/cores-do-atendimento";
 import { SeletorDeContato } from "@/components/chat/ligacoes/seletor-de-contato";
 import { useLigacao } from "@/components/chat/ligacoes/use-ligacoes";
 import type { ChatSession } from "@/services/chat.service";
@@ -37,9 +38,9 @@ type Props = {
 };
 
 const CAIXA =
-  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-primary";
+  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-strong";
 const BOTAO =
-  "rounded-md bg-primary px-3 py-1.5 text-12 font-medium text-on-color hover:bg-primary/90 disabled:opacity-50";
+  "rounded-md bg-accent-primary px-3 py-1.5 text-12 font-medium text-on-color hover:bg-accent-primary-hover disabled:opacity-50";
 const BOTAO_SECUNDARIO =
   "rounded-md border border-subtle px-3 py-1.5 text-12 text-secondary hover:bg-layer-1 disabled:opacity-50";
 
@@ -65,7 +66,7 @@ function DadosDaLigacao({ detalhe }: { detalhe: LigacaoDetalhe }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-13 font-semibold text-primary">
-        <Icone className={`h-4 w-4 ${l.status === "missed" ? "text-danger-primary" : "text-green-600"}`} />
+        <Icone className={`h-4 w-4 ${l.status === "missed" ? "text-danger-primary" : COR_DE_LIGACAO_ATENDIDA}`} />
         {statusDaLigacaoLabel(l.status)}
       </div>
       <Linha rotulo="Origem" valor={l.caller} />

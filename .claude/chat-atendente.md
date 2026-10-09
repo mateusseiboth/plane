@@ -204,6 +204,15 @@ alias quando os dois estiverem no preview. `tests/helpers/harness.ts` (`criarEnt
   bolha do atendente ficava transparente com texto branco. Use só tokens (`bg-accent-primary`,
   `text-on-color`, `bg-success-subtle`, `bg-label-*-bg-strong`...). O teste
   `cores-do-atendimento.test.ts` lê o tema e falha se uma classe de cor não existir.
-  Ainda há classes da paleta padrão em `attendant-app.tsx` fora do cabeçalho e da bolha (faixa da
-  fila em `amber`, botão "Encerrar atendimento" das ações rápidas em `red`, ícones `green`).
+- **Varredura da pasta**: `components/chat/classes-do-tema.ts` (`findClassesForaDoTema`) e o
+  teste `classes-do-tema.test.ts` leem TODO `.ts/.tsx` de `components/chat/**` e falham se aparecer
+  classe de cor que o tema não gera. Além da paleta (`amber`, `red`, `green`, `indigo`...), o tema
+  também não tem `bg-primary`, `border-primary`, `border-accent-primary`, `border-danger-primary`,
+  `ring-danger-primary`, `bg-tertiary`, `bg-surface-3`, `border-surface-1`, `text-secondary-text`:
+  o botão de enviar, os botões primários da configuração e a borda vermelha de cliente sem resposta
+  saíam sem cor. Equivalências usadas: `bg-primary` → `bg-accent-primary` (hover
+  `bg-accent-primary-hover`), `border-primary` / `border-accent-primary` → `border-accent-strong`,
+  `*-danger-primary` em borda/anel → `*-danger-strong`, `amber` → `warning`, `red` → `danger`,
+  `green` → `success`, `indigo` → `accent`. Faixa da fila, estrela, contador de não lidas e ligação
+  atendida têm helper em `cores-do-atendimento.ts`.
 

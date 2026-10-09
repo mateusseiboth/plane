@@ -61,7 +61,7 @@ import { GerenciadorDeConversas } from "@/components/chat/atendente/gerenciador-
 import { PainelDoCadastro } from "@/components/chat/atendente/painel-do-cadastro";
 import { SessionAvatar } from "@/components/chat/atendente/avatar-da-sessao";
 import { CabecalhoDaConversa } from "@/components/chat/atendente/cabecalho-da-conversa";
-import { COR_DE_LIDA, findClasseDaBolha, findCorDoStatus, findRotuloDoStatus } from "@/components/chat/atendente/cores-do-atendimento";
+import { COR_DA_ESTRELA, COR_DE_LIDA, COR_DO_CONTADOR, FAIXA_DA_FILA, TOM_DO_BOTAO, findClasseDaBolha, findCorDoStatus, findRotuloDoStatus } from "@/components/chat/atendente/cores-do-atendimento";
 import { IniciarPeloResponsavel } from "@/components/chat/atendente/whatsapp-do-responsavel";
 // Conexão e alertas são compartilhados com a presença global (fora desta tela).
 import { notifyDesktop, playAlert } from "@/components/chat/avisos-do-chat";
@@ -224,7 +224,7 @@ function NewChatModal({
                     disabled={loading}
                     className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-layer-1 transition-colors border-b border-subtle last:border-b-0"
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-primary text-sm font-semibold text-on-color">
                       {((c.name || c.phone || "?")[0] ?? "?").toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -270,7 +270,7 @@ function NewChatModal({
               onChange={(e) => setFirstMessage(e.target.value)}
               placeholder="Olá! Como posso ajudá-lo?"
               rows={2}
-              className="w-full resize-none rounded-lg border border-subtle bg-layer-2 px-3 py-2 text-sm text-primary outline-none placeholder:text-tertiary focus:border-primary/50"
+              className="w-full resize-none rounded-lg border border-subtle bg-layer-2 px-3 py-2 text-sm text-primary outline-none placeholder:text-tertiary focus:border-accent-strong"
             />
           </div>
 
@@ -279,7 +279,7 @@ function NewChatModal({
             <button
               onClick={startWithPhone}
               disabled={loading}
-              className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-on-color hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-xl bg-accent-primary px-4 py-2.5 text-sm font-medium text-on-color hover:bg-accent-primary-hover disabled:opacity-50 transition-colors"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
               Iniciar chat no WhatsApp
@@ -364,11 +364,11 @@ function TransferModal({
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-layer-1 transition-colors disabled:opacity-50"
               >
                 <div className="relative">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-primary text-sm font-semibold text-on-color">
                     {(a.name?.[0] ?? "?").toUpperCase()}
                   </div>
                   {a.online && (
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-1 bg-green-500" />
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-subtle bg-success-primary" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -1039,7 +1039,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               >
                 <span className={`text-base font-semibold ${selected ? "text-primary" : "text-secondary"}`}>{count}</span>
                 <span className={`text-10 ${selected ? "font-semibold text-primary" : "text-tertiary"}`}>{label}</span>
-                {selected && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" />}
+                {selected && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent-primary" />}
               </button>
             );
           })}
@@ -1055,9 +1055,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               onClick={() => openSession(s.id)}
               className={`relative flex w-full items-start gap-3 border-b border-subtle px-3 py-3 text-left transition-colors ${
                 activeId === s.id
-                  ? "bg-layer-1 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary"
+                  ? "bg-layer-1 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent-primary"
                   : isUnread
-                    ? "bg-indigo-50 hover:bg-indigo-100 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-indigo-500 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30"
+                    ? "bg-accent-subtle hover:bg-accent-subtle-hover before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-accent-primary"
                     : "hover:bg-layer-1"
               }`}
             >
@@ -1067,7 +1067,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   <span className={`truncate text-13 ${isUnread ? "font-bold text-primary" : "font-medium text-primary"}`}>
                     {s.client_name || s.client_phone || "Visitante"}
                   </span>
-                  <span className={`shrink-0 text-10 ${isUnread ? "font-semibold text-indigo-600 dark:text-indigo-400" : "text-tertiary"}`}>
+                  <span className={`shrink-0 text-10 ${isUnread ? "font-semibold text-accent-primary" : "text-tertiary"}`}>
                     {formatDate(s.last_message_at)}
                   </span>
                 </div>
@@ -1085,7 +1085,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   )}
                   {isLigacao(s) && <MarcaDeLigacao />}
                   {s.project_identifier && (
-                    <span className="rounded bg-indigo-100 px-1 py-0.5 text-9 font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                    <span className="rounded bg-accent-subtle px-1 py-0.5 text-9 font-medium text-accent-primary">
                       {s.project_identifier}
                     </span>
                   )}
@@ -1096,12 +1096,12 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                     {s.last_message || "Sem mensagens"}
                   </span>
                   {(s.unread ?? 0) > 0 ? (
-                    <span className="ml-2 flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-11 font-bold text-white shadow-sm">
+                    <span className={`ml-2 flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full ${COR_DO_CONTADOR} px-1.5 text-11 font-bold shadow-sm`}>
                       {s.unread}
                     </span>
                   ) : (
                     newAssigned.has(s.id) && (
-                      <span className="ml-2 flex h-5 shrink-0 items-center rounded-full bg-red-500 px-2 text-10 font-bold uppercase tracking-wide text-white shadow-sm">
+                      <span className={`ml-2 flex h-5 shrink-0 items-center rounded-full ${COR_DO_CONTADOR} px-2 text-10 font-bold uppercase tracking-wide shadow-sm`}>
                         Novo
                       </span>
                     )
@@ -1135,7 +1135,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
       {/* ── Chat window ─────────────────────────────────────────────────── */}
       <section
-        className={`flex min-w-0 flex-1 flex-col bg-layer-1 ${slaActive ? "ring-4 ring-danger-primary ring-inset" : ""}`}
+        className={`flex min-w-0 flex-1 flex-col bg-layer-1 ${slaActive ? "ring-4 ring-danger-strong ring-inset" : ""}`}
       >
         {!activeSession ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-secondary">
@@ -1178,14 +1178,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
             {/* Queued banner — prominent call to action */}
             {activeSession.status === "queued" && !isLigacao(activeSession) && (
-              <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-900/20">
-                <div className="flex items-center gap-2 text-13 text-amber-800 dark:text-amber-400">
+              <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${FAIXA_DA_FILA.faixa}`}>
+                <div className={`flex items-center gap-2 text-13 ${FAIXA_DA_FILA.texto}`}>
                   <span className="font-semibold">Aguardando atendente.</span>
-                  <span className="text-amber-700 dark:text-amber-500">Clique em Assumir para iniciar o atendimento.</span>
+                  <span className={FAIXA_DA_FILA.dica}>Clique em Assumir para iniciar o atendimento.</span>
                 </div>
                 <button
                   onClick={assign}
-                  className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-13 font-semibold text-white hover:bg-amber-700 transition-colors"
+                  className={`shrink-0 rounded-lg px-4 py-2 text-13 font-semibold transition-colors ${FAIXA_DA_FILA.botao}`}
                 >
                   Assumir agora
                 </button>
@@ -1214,7 +1214,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               }}
             >
               {dragOver && (
-                <div className="pointer-events-none absolute inset-2 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary bg-primary/10 text-primary backdrop-blur-sm">
+                <div className="pointer-events-none absolute inset-2 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-accent-strong bg-accent-subtle text-primary backdrop-blur-sm">
                   <Paperclip className="h-7 w-7" />
                   <span className="text-13 font-medium">Solte para enviar</span>
                 </div>
@@ -1307,7 +1307,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                         <span className="mb-1 text-11 text-secondary">{m.sender_name}</span>
                       )}
                       {editing ? (
-                        <div className="flex w-72 flex-col gap-1.5 rounded-2xl border border-primary/40 bg-surface-1 p-2">
+                        <div className="flex w-72 flex-col gap-1.5 rounded-2xl border border-accent-subtle bg-surface-1 p-2">
                           <textarea
                             value={editingText}
                             onChange={(e) => setEditingText(e.target.value)}
@@ -1326,7 +1326,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                             <button onClick={() => setEditingId(null)} className="rounded-md px-2.5 py-1 text-12 text-secondary hover:bg-layer-2">
                               Cancelar
                             </button>
-                            <button onClick={saveEdit} className="rounded-md bg-primary px-2.5 py-1 text-12 font-medium text-on-color hover:bg-primary/90">
+                            <button onClick={saveEdit} className="rounded-md bg-accent-primary px-2.5 py-1 text-12 font-medium text-on-color hover:bg-accent-primary-hover">
                               Salvar
                             </button>
                           </div>
@@ -1413,9 +1413,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 <div className="flex items-end gap-2">
                   <SessionAvatar name={activeSession.client_name} phone={activeSession.client_phone} size="sm" />
                   <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-subtle bg-surface-1 px-4 py-3">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-tertiary" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-tertiary [animation-delay:150ms]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-tertiary [animation-delay:300ms]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current text-tertiary" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current text-tertiary [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current text-tertiary [animation-delay:300ms]" />
                   </div>
                 </div>
               )}
@@ -1466,12 +1466,12 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   }}
                   placeholder="Digite sua mensagem… (Enter para enviar, Shift+Enter para nova linha)"
                   rows={1}
-                  className="flex-1 resize-none rounded-xl border border-subtle bg-layer-2 px-4 py-2.5 text-sm text-primary outline-none placeholder:text-tertiary focus:border-primary/50 max-h-32 overflow-y-auto"
+                  className="flex-1 resize-none rounded-xl border border-subtle bg-layer-2 px-4 py-2.5 text-sm text-primary outline-none placeholder:text-tertiary focus:border-accent-strong max-h-32 overflow-y-auto"
                 />
                 <button
                   onClick={handleSend}
                   disabled={!draft.trim()}
-                  className="rounded-xl bg-primary p-2.5 text-on-color transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-xl bg-accent-primary p-2.5 text-on-color transition-all hover:bg-accent-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
                   title="Enviar mensagem"
                 >
                   <SendHorizontal className="h-5 w-5" />
@@ -1500,7 +1500,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   {activeSession.client_name || "Visitante"}
                 </div>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <div className="h-2 w-2 rounded-full bg-success-primary" />
                   <span className="text-11 text-secondary">Online</span>
                 </div>
               </div>
@@ -1515,7 +1515,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             <div className="flex flex-col gap-2">
               {activeSession.client_phone && (
                 <div className="flex items-center gap-2 text-13">
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-success-primary" />
                   <span className="text-primary">{activeSession.client_phone}</span>
                 </div>
               )}
@@ -1565,7 +1565,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star
                     key={n}
-                    className={`h-4 w-4 ${n <= (activeSession.rating_score ?? 0) ? "fill-current text-amber-400" : "text-tertiary"}`}
+                    className={`h-4 w-4 ${n <= (activeSession.rating_score ?? 0) ? COR_DA_ESTRELA : "text-tertiary"}`}
                   />
                 ))}
                 <span className="ml-1 text-13 font-medium text-primary">{activeSession.rating_score}/5</span>
@@ -1618,7 +1618,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               {(activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
                 <button
                   onClick={closeChat}
-                  className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-13 text-red-600 hover:bg-red-50 transition-colors text-left dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-13 transition-colors text-left ${TOM_DO_BOTAO.perigo}`}
                 >
                   <X className="h-3.5 w-3.5 shrink-0" />
                   Encerrar atendimento
