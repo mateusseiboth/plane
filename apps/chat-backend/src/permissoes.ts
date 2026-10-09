@@ -1,15 +1,22 @@
 /**
  * Permissões do chat pela matriz de ações do Plane (permissões v2).
  *
- * O chat perguntava pelo NÚMERO do papel (`>= 6` atende, `>= 15` gerencia,
- * `>= 20` administra) e por isso ignorava a função configurada na tela de
- * Funções e as exceções por pessoa. Agora são ações do catálogo do api-ts
- * (`apps/api-ts/src/utils/permissions.ts`), lidas do banco compartilhado:
+ * O módulo do chat registra as próprias ações no catálogo do api-ts
+ * (`apps/api-ts/src/utils/acoes-do-chat.ts`), e a tela de Funções deixa o admin
+ * escolher quais funções fazem cada uma. Aqui elas são lidas do banco
+ * compartilhado (função gravada + exceções por pessoa):
  *
- *  - `chat.atender`     aparece nas listas, recebe conversa da fila e conecta.
- *  - `chat.gerenciar`   transfere atendimento e lê os relatórios.
- *  - `chat.administrar` vê fila, robô e avaliação, e configura o chat.
- *  - `chat.disparo`     dispara mensagens em massa (src/disparo/).
+ *  - `chat.atender`          conecta, aparece nas listas, assume e responde.
+ *  - `chat.pausar`           pausa e retoma a conversa e o alerta sem resposta.
+ *  - `chat.encerrar`         encerra a conversa (REST e WS).
+ *  - `chat.abrir_chamado`    vincula o chamado aberto a partir da conversa.
+ *  - `chat.transferir`       passa a conversa para outro atendente.
+ *  - `chat.ver_todas`        vê as conversas dos outros (lista, gerenciador, ligações).
+ *  - `chat.ver_fila`         vê a fila e o robô na lista.
+ *  - `chat.relatorios`       painel, monitor, avaliações, prazos e ligações.
+ *  - `chat.disparo`          dispara mensagens em massa (src/disparo/).
+ *  - `chat.configurar`       fila, robô, horários, atendentes, telefonia e a avaliação do cliente.
+ *  - `chat.frases_do_espaco` edita as frases prontas compartilhadas.
  *
  * O container do chat não leva o código do api-ts, então as chaves e a
  * regra de exceção estão repetidas aqui; `tests/permissoes-do-chat.test.ts`
@@ -21,9 +28,16 @@ import prisma from "@db";
 
 export const CHAT_ACTION = {
   ATENDER: "chat.atender",
-  GERENCIAR: "chat.gerenciar",
-  ADMINISTRAR: "chat.administrar",
+  PAUSAR: "chat.pausar",
+  ENCERRAR: "chat.encerrar",
+  ABRIR_CHAMADO: "chat.abrir_chamado",
+  TRANSFERIR: "chat.transferir",
+  VER_TODAS: "chat.ver_todas",
+  VER_FILA: "chat.ver_fila",
+  RELATORIOS: "chat.relatorios",
   DISPARO: "chat.disparo",
+  CONFIGURAR: "chat.configurar",
+  FRASES_DO_ESPACO: "chat.frases_do_espaco",
 } as const;
 export type ChatAction = (typeof CHAT_ACTION)[keyof typeof CHAT_ACTION];
 

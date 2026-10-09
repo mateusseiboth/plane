@@ -1,7 +1,9 @@
 /**
- * Rotas do ciclo de vida da conversa, para o atendente (`chat.atender`):
- * encerrar com classificação, pausar e retomar, reenviar mensagem que falhou,
- * vincular o chamado aberto a partir da conversa e ler o catálogo de motivos.
+ * Rotas do ciclo de vida da conversa, cada uma com a sua ação da matriz:
+ * encerrar com classificação (`chat.encerrar`), pausar e retomar
+ * (`chat.pausar`), vincular o chamado aberto a partir da conversa
+ * (`chat.abrir_chamado`), reenviar mensagem que falhou e ler o catálogo de
+ * motivos (`chat.atender`).
  *
  * Toda rota confere que a conversa é do espaço da URL: o `workspaceId` do chat
  * é o slug, e sem essa conferência o id de outra conversa bastaria.
@@ -46,7 +48,7 @@ const changePausa =
     headers: unknown;
     set: Set;
   }) => {
-    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.ATENDER);
+    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.PAUSAR);
     if (isNegado(acesso)) return deny(set, acesso.status, acesso.body);
     if (!(await isDoEspaco(id, slug))) return deny(set, 404, NAO_ENCONTRADO);
     if (!(await mudar(id))) return deny(set, 409, { detail: conflito });
@@ -55,7 +57,7 @@ const changePausa =
 
 export const cicloDeVidaModule = new Elysia()
   .post("/workspaces/:slug/sessions/:id/close/", async ({ params: { slug, id }, body, headers, set }) => {
-    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.ATENDER);
+    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.ENCERRAR);
     if (isNegado(acesso)) return deny(set, acesso.status, acesso.body);
     if (!(await isDoEspaco(id, slug))) return deny(set, 404, NAO_ENCONTRADO);
     try {
@@ -87,7 +89,7 @@ export const cicloDeVidaModule = new Elysia()
   })
 
   .post("/workspaces/:slug/sessions/:id/chamado/", async ({ params: { slug, id }, body, headers, set }) => {
-    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.ATENDER);
+    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.ABRIR_CHAMADO);
     if (isNegado(acesso)) return deny(set, acesso.status, acesso.body);
     if (!(await isDoEspaco(id, slug))) return deny(set, 404, NAO_ENCONTRADO);
     const issueId = String((body as { issue_id?: unknown } | null)?.issue_id ?? "");

@@ -105,11 +105,11 @@ describe("applyTransferenciaNaLista", () => {
   ];
   const aviso = { session_id: "s1", to_user_id: "outro" };
 
-  it("quem não administra: a conversa transferida sai da lista na hora", () => {
+  it("sem chat.ver_todas: a conversa transferida sai da lista na hora", () => {
     expect(applyTransferenciaNaLista(sessoes, aviso, false)).toEqual([{ id: "s2", assigned_attendant_id: "eu" }]);
   });
 
-  it("quem administra: a conversa fica, com o novo dono", () => {
+  it("com chat.ver_todas: a conversa fica, com o novo dono", () => {
     expect(applyTransferenciaNaLista(sessoes, aviso, true)).toEqual([
       { id: "s1", assigned_attendant_id: "outro" },
       { id: "s2", assigned_attendant_id: "eu" },

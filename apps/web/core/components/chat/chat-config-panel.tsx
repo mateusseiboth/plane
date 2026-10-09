@@ -22,27 +22,10 @@ import { useDestinosDoRobo } from "@/hooks/use-destinos-do-robo";
 import { AbaDeFrases } from "@/components/chat/atendente/aba-de-frases";
 import { CalendarioDeFeriados } from "@/components/chat/atendente/calendario-de-feriados";
 import { Search } from "lucide-react";
+import { type AbaDaConfiguracao, buildAbasDaConfiguracao } from "@/components/chat/permissoes-do-atendimento";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
-type Tab =
-  | "messages"
-  | "menu"
-  | "queues"
-  | "flows"
-  | "schedules"
-  | "encerramento"
-  | "frases"
-  | "attendants"
-  | "provider"
-  | "telefonia";
-const BASE_TABS: { key: Tab; label: string }[] = [
-  { key: "messages", label: "Mensagens" },
-  { key: "menu", label: "Menu" },
-  { key: "queues", label: "Filas" },
-  { key: "flows", label: "Fluxos" },
-  { key: "schedules", label: "Horários" },
-  { key: "encerramento", label: "Encerramento" },
-  { key: "provider", label: "WhatsApp (Z-API)" },
-];
+type Tab = AbaDaConfiguracao;
 
 const ok = (m: string) => setToast({ type: TOAST_TYPE.SUCCESS, title: "Salvo", message: m });
 const err = (e: any) => setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: e?.detail || "Falhou." });
@@ -51,18 +34,13 @@ const inputCls = "w-full rounded-md border border-subtle bg-surface-1 text-prima
 const btn = "rounded-md bg-primary px-3 py-1.5 text-13 text-on-color";
 const btnGhost = "rounded-md border border-subtle px-3 py-1.5 text-13";
 
-export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl, isAdmin = false }: { slug: string; apiUrl: string; isAdmin?: boolean }) {
-  const [tab, setTab] = useState<Tab>("messages");
+export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl }: { slug: string; apiUrl: string }) {
+  const [abaEscolhida, setAbaEscolhida] = useState<Tab | null>(null);
   const api = chatApi(apiUrl);
-  const TABS = isAdmin
-    ? [
-        ...BASE_TABS.slice(0, 6),
-        { key: "frases" as Tab, label: "Frases" },
-        { key: "attendants" as Tab, label: "Atendentes" },
-        BASE_TABS[6],
-        { key: "telefonia" as Tab, label: "Telefonia" },
-      ]
-    : BASE_TABS;
+  // Cada aba pede a sua ação do chat (chat.configurar ou chat.frases_do_espaco).
+  const { can } = useMyWorkspaceActions(slug);
+  const TABS = buildAbasDaConfiguracao(can);
+  const tab = TABS.find((t) => t.key === abaEscolhida)?.key ?? TABS[0]?.key;
 
   // workspace members for queue/schedule assignment
   const {
@@ -79,7 +57,7 @@ export const ChatConfigPanel = observer(function ChatConfigPanel({ slug, apiUrl,
         {TABS.map((tabDef) => (
           <button
             key={tabDef.key}
-            onClick={() => setTab(tabDef.key)}
+            onClick={() => setAbaEscolhida(tabDef.key)}
             className={`rounded-t-md px-3 py-2 text-13 ${tab === tabDef.key ? "border-b-2 border-primary font-medium text-primary" : "text-secondary"}`}
           >
             {tabDef.label}

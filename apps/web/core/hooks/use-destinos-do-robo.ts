@@ -8,7 +8,7 @@ import useSWR from "swr";
 // services
 import type { chatApi, ChatDestino } from "@/services/chat.service";
 
-/** Catálogo de destinos do chat (exige `chat.administrar`, como a tela de configuração). */
+/** Catálogo de destinos do chat (exige `chat.configurar`, como a tela de configuração). */
 export function useDestinosDoRobo(api: ReturnType<typeof chatApi>, slug: string) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<ChatDestino[]>(
     slug ? ["CHAT_DESTINOS_DO_ROBO", api.base, slug] : null,

@@ -11,6 +11,7 @@ import { BarChart2, ListFilter, MoreHorizontal, Settings2, type LucideIcon } fro
 import { CustomMenu } from "@plane/ui";
 // local imports
 import { findAcoesDoMenu, type AcaoDoGestor } from "@/components/chat/cabecalho-da-lista";
+import type { PermissoesDoAtendimento } from "@/components/chat/permissoes-do-atendimento";
 
 const ITEM_DO_MENU: Record<AcaoDoGestor, { rotulo: string; Icone: LucideIcon }> = {
   gerenciador: { rotulo: "Gerenciador de conversas", Icone: ListFilter },
@@ -19,13 +20,13 @@ const ITEM_DO_MENU: Record<AcaoDoGestor, { rotulo: string; Icone: LucideIcon }> 
 };
 
 type Props = {
-  isManager: boolean;
+  permissoes: PermissoesDoAtendimento;
   onAcao: Record<AcaoDoGestor, () => void>;
 };
 
-/** Menu "Mais ações" do cabeçalho da lista de atendimentos (só para gestor). */
-export function MenuDoGestor({ isManager, onAcao }: Props) {
-  const acoes = findAcoesDoMenu(isManager);
+/** Menu "Mais ações" do cabeçalho da lista de atendimentos (cada item pela sua ação do chat). */
+export function MenuDoGestor({ permissoes, onAcao }: Props) {
+  const acoes = findAcoesDoMenu(permissoes);
   if (!acoes.length) return null;
   return (
     <CustomMenu

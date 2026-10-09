@@ -13,6 +13,8 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // local imports
 import { rotuloDoAlertaPausado } from "@/components/chat/atendente/atendente-helpers";
 import { useAtendenteApi } from "@/components/chat/atendente/use-atendente";
+import { ACAO_DO_CHAT } from "@/components/chat/permissoes-do-atendimento";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { ChatSession } from "@/services/chat.service";
 
 const BOTAO =
@@ -36,6 +38,8 @@ export function AlertaSemResposta({
 }) {
   const api = useAtendenteApi(apiUrl);
   const [enviando, setEnviando] = useState(false);
+  const { can } = useMyWorkspaceActions(slug);
+  if (!can(ACAO_DO_CHAT.PAUSAR)) return null;
   if (sessao.status !== "active" || sessao.channel === "phone") return null;
   const pausado = rotuloDoAlertaPausado(sessao.sla_alert_paused_until);
 

@@ -6,12 +6,20 @@
 
 // A barra lateral do atendimento tem largura fixa (w-72): título + cinco ícones
 // não cabem e o último saía cortado. Adicionar e Disparo ficam à vista; o que é
-// de gestor vai para o menu "Mais ações".
+// de gestão vai para o menu "Mais ações", cada item pela sua ação do chat.
+import type { PermissoesDoAtendimento } from "@/components/chat/permissoes-do-atendimento";
+
 export const ACOES_DO_GESTOR = ["gerenciador", "dashboard", "configuracoes"] as const;
 
 export type AcaoDoGestor = (typeof ACOES_DO_GESTOR)[number];
 
-const SEM_ACOES: readonly AcaoDoGestor[] = [];
+type PermissoesDoMenu = Pick<PermissoesDoAtendimento, "canVerTodas" | "canVerRelatorios" | "hasConfiguracao">;
 
-export const findAcoesDoMenu = (isManager: boolean): readonly AcaoDoGestor[] =>
-  isManager ? ACOES_DO_GESTOR : SEM_ACOES;
+const PERMISSAO_DO_ITEM: Record<AcaoDoGestor, (p: PermissoesDoMenu) => boolean> = {
+  gerenciador: (p) => p.canVerTodas,
+  dashboard: (p) => p.canVerRelatorios,
+  configuracoes: (p) => p.hasConfiguracao,
+};
+
+export const findAcoesDoMenu = (permissoes: PermissoesDoMenu): readonly AcaoDoGestor[] =>
+  ACOES_DO_GESTOR.filter((acao) => PERMISSAO_DO_ITEM[acao](permissoes));

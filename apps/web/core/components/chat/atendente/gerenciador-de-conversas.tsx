@@ -72,7 +72,7 @@ const COLUNAS: { titulo: string; valor: (l: LinhaDoGerenciador) => string }[] = 
 type Props = { slug: string; apiUrl: string; projetos: { value: string; label: string }[] };
 
 /**
- * Gerenciador de conversas (`chat.gerenciar`): todo o histórico do espaço, com
+ * Gerenciador de conversas (`chat.ver_todas`): todo o histórico do espaço, com
  * filtros por atendente, entidade, sistema, período, número ou protocolo, canal
  * e situação, paginado, e a lista impressa. Legado: `sac_chatGer_lista.php` e
  * `popImprimeChatLista.php`.

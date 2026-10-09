@@ -56,7 +56,7 @@ function Tabela({ titulo, linhas, comPerdidas = false }: { titulo: string; linha
   );
 }
 
-/** Ligações por atendente, entidade e sistema (`chat.gerenciar`). */
+/** Ligações por atendente, entidade e sistema (`chat.relatorios`). */
 export function RelatorioDeLigacoes({ slug, apiUrl }: Props) {
   const [dias, setDias] = useState<number>(30);
   const { data, error } = useRelatorioDeLigacoes(apiUrl, slug, dias);

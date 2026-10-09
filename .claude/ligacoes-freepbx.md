@@ -102,7 +102,7 @@ Corpo das duas: `{ session: <sessão serializada>, ligacao: <ligação> }`.
 
 ### 2.2 Atendente (`chat.atender`)
 
-Visibilidade igual à da lista de atendimentos: quem tem `chat.administrar` vê todas;
+Visibilidade igual à da lista de atendimentos: quem tem `chat.ver_todas` vê todas;
 os demais, as suas e as sem atendente. Ligação de outra pessoa responde 404.
 
 | Rota                                                              | Corpo                                     | Resposta                                                                           |
@@ -133,7 +133,7 @@ devolvido. O chat confere que a issue existe no espaço e grava o número
 Lista: `GET /workspaces/:slug/sessions/?channel=phone` (ligações) ou
 `?channel=whatsapp,native` (conversas). Canal desconhecido é ignorado.
 
-### 2.3 Configuração (`chat.administrar`)
+### 2.3 Configuração (`chat.configurar`)
 
 | Rota                                               | Corpo                                  | Resposta                                                                                                  |
 | -------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -142,7 +142,7 @@ Lista: `GET /workspaces/:slug/sessions/?channel=phone` (ligações) ou
 | `DELETE /workspaces/:slug/config/telefonia/token/` |                                        | `{ has_token: false }`                                                                                    |
 | `PUT /workspaces/:slug/config/telefonia/ramais/`   | `{ ramais: [{ extension, user_id }] }` | configuração; a lista é SUBSTITUÍDA. Ramal vazio/repetido e pessoa sem `chat.atender` voltam em `errors`. |
 
-### 2.4 Relatório (`chat.gerenciar`)
+### 2.4 Relatório (`chat.relatorios`)
 
 `GET /workspaces/:slug/reports/ligacoes/?days=30` (1 a 365):
 
@@ -211,7 +211,7 @@ Arquivos novos em `core/components/chat/ligacoes/`:
 - `historico-do-cliente.tsx`: conversas e ligações da mesma pessoa, no painel lateral
   de qualquer atendimento.
 - `config-de-telefonia.tsx`: aba **Telefonia** da configuração do chat (só com
-  `chat.administrar`): endereço, token (mostrado uma vez) e ramais.
+  `chat.configurar`): endereço, token (mostrado uma vez) e ramais.
 - `relatorio-de-ligacoes.tsx`: no dashboard do atendimento.
 - `filtro-de-canal.tsx`: filtro Todos / Conversas / Ligações e a marca "Ligação" na
   lista.
@@ -226,10 +226,11 @@ parâmetro `canal` em `listSessions`.
 ## 5. Decisões e pendências
 
 - **Sem ação nova na matriz.** Receber/assumir/concluir = `chat.atender`; configurar =
-  `chat.administrar`; relatório = `chat.gerenciar`. O PBX não é pessoa: entra pelo token
+  `chat.configurar`; relatório = `chat.relatorios` (eram `chat.administrar`/`chat.gerenciar`
+  até a W38, ver `.claude/permissoes-v2.md` §9). O PBX não é pessoa: entra pelo token
   de serviço do espaço.
 - **Ligação sem ramal conhecido fica `queued`**: pela regra da lista, só quem tem
-  `chat.administrar` vê fila. O atendente comum só a vê se abrir pelo histórico. Se a
+  `chat.ver_fila` vê fila. O atendente comum só a vê se abrir pelo histórico. Se a
   operação quiser que qualquer atendente veja ligações sem dono, é mudar a regra da
   lista para o canal `phone`.
 - **Ligação perdida guarda o dono do ramal** (aparece nos encerrados dele, para retornar).

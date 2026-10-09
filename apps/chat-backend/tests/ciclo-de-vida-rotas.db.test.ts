@@ -200,7 +200,7 @@ describe("relatórios", () => {
     expect(registros.body.results.every((x: { entity_id: string }) => x.entity_id === entidade)).toBe(true);
   });
 
-  it("sem chat.gerenciar: 403", async () => {
+  it("sem chat.relatorios: 403", async () => {
     expect(
       (await call(relatoriosModule, "GET", `/workspaces/${slug}/reports/atendimentos/`, undefined, estranho)).status
     ).toBe(403);

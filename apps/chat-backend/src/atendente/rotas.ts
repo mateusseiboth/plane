@@ -3,9 +3,13 @@
  * autenticam, conferem a ação da matriz, chamam o service e traduzem
  * `AtendenteError` por `instanceof` (status, `detail` e `errors` por campo).
  *
- *   chat.atender      frases (leitura e as próprias), chave, alerta, cadastro, WhatsApp do responsável
- *   chat.administrar  cadastro das frases do espaço e feriados
- *   chat.gerenciar    gerenciador de conversas e monitor ao vivo
+ *   chat.atender           frases do compositor e as próprias (com dono), chave, cadastro,
+ *                          WhatsApp do responsável
+ *   chat.pausar            pausar e retomar o alerta de cliente sem resposta
+ *   chat.frases_do_espaco  cadastro das frases do espaço
+ *   chat.configurar        feriados
+ *   chat.ver_todas         gerenciador de conversas
+ *   chat.relatorios        monitor ao vivo
  *
  * Caminhos completos (sem prefixo com :slug) pelo bug do Elysia 1.4 descrito em
  * config-routes.ts.
@@ -61,7 +65,7 @@ const guarded =
   (ctx: Ctx) =>
     respond(ctx.set, async () => fn(ctx, await requireAction(ctx.params.slug!, ctx.headers, action)), okStatus);
 
-const { ATENDER, ADMINISTRAR, GERENCIAR } = CHAT_ACTION;
+const { ATENDER, PAUSAR, CONFIGURAR, FRASES_DO_ESPACO, VER_TODAS, RELATORIOS } = CHAT_ACTION;
 
 const pessoal = (slug: string, userId: string): DonoDaFrase => ({ slug, escopo: ESCOPO_DA_FRASE.PESSOAL, userId });
 const doEspaco = (slug: string, userId: string): DonoDaFrase => ({ slug, escopo: ESCOPO_DA_FRASE.ESPACO, userId });
@@ -87,23 +91,25 @@ export const atendenteModule = new Elysia()
   // ── Frases do espaço (configuração) ──
   .get(
     "/workspaces/:slug/config/frases/",
-    guarded(ADMINISTRAR, ({ params }, userId) => listFrasesDoDono(doEspaco(params.slug!, userId)))
+    guarded(FRASES_DO_ESPACO, ({ params }, userId) => listFrasesDoDono(doEspaco(params.slug!, userId)))
   )
   .post(
     "/workspaces/:slug/config/frases/",
-    guarded(ADMINISTRAR, ({ params, body }, userId) => createFrase(doEspaco(params.slug!, userId), body), 201)
+    guarded(FRASES_DO_ESPACO, ({ params, body }, userId) => createFrase(doEspaco(params.slug!, userId), body), 201)
   )
   .post(
     "/workspaces/:slug/config/frases/padrao/",
-    guarded(ADMINISTRAR, ({ params }, userId) => seedFrasesPadrao(params.slug!, userId))
+    guarded(FRASES_DO_ESPACO, ({ params }, userId) => seedFrasesPadrao(params.slug!, userId))
   )
   .patch(
     "/workspaces/:slug/config/frases/:id/",
-    guarded(ADMINISTRAR, ({ params, body }, userId) => updateFrase(doEspaco(params.slug!, userId), params.id!, body))
+    guarded(FRASES_DO_ESPACO, ({ params, body }, userId) =>
+      updateFrase(doEspaco(params.slug!, userId), params.id!, body)
+    )
   )
   .delete(
     "/workspaces/:slug/config/frases/:id/",
-    guarded(ADMINISTRAR, ({ params }, userId) => deleteFrase(doEspaco(params.slug!, userId), params.id!))
+    guarded(FRASES_DO_ESPACO, ({ params }, userId) => deleteFrase(doEspaco(params.slug!, userId), params.id!))
   )
 
   // ── Feriados (aba Horários) ──
@@ -113,7 +119,7 @@ export const atendenteModule = new Elysia()
   )
   .put(
     "/workspaces/:slug/config/feriados/",
-    guarded(ADMINISTRAR, ({ params, body }) => saveFeriados(params.slug!, body))
+    guarded(CONFIGURAR, ({ params, body }) => saveFeriados(params.slug!, body))
   )
 
   // ── Na conversa ──
@@ -123,11 +129,11 @@ export const atendenteModule = new Elysia()
   )
   .post(
     "/workspaces/:slug/sessions/:id/sla-alert/pause/",
-    guarded(ATENDER, ({ params }) => changeAlerta(params.slug!, params.id!, true))
+    guarded(PAUSAR, ({ params }) => changeAlerta(params.slug!, params.id!, true))
   )
   .post(
     "/workspaces/:slug/sessions/:id/sla-alert/resume/",
-    guarded(ATENDER, ({ params }) => changeAlerta(params.slug!, params.id!, false))
+    guarded(PAUSAR, ({ params }) => changeAlerta(params.slug!, params.id!, false))
   )
   .get(
     "/workspaces/:slug/sessions/:id/cadastro/",
@@ -145,9 +151,9 @@ export const atendenteModule = new Elysia()
   // ── Gestão ──
   .get(
     "/workspaces/:slug/gerenciador/",
-    guarded(GERENCIAR, ({ params, query }) => listGerenciador(params.slug!, (query ?? {}) as Consulta))
+    guarded(VER_TODAS, ({ params, query }) => listGerenciador(params.slug!, (query ?? {}) as Consulta))
   )
   .get(
     "/workspaces/:slug/monitor/",
-    guarded(GERENCIAR, ({ params }) => readMonitor(params.slug!))
+    guarded(RELATORIOS, ({ params }) => readMonitor(params.slug!))
   );

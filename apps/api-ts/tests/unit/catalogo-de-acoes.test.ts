@@ -184,11 +184,6 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(donosDe("chat.atender")).toEqual(["admin", "atendimento", "gestor_projeto", "member", "qualidade", "ti"]);
   });
 
-  it("gerencia o chat de Membro para cima; administra só o admin", () => {
-    expect(donosDe("chat.gerenciar")).toEqual(["admin", "gestor_projeto", "member"]);
-    expect(donosDe("chat.administrar")).toEqual(["admin"]);
-  });
-
   it("disparar mensagens em massa é de Gestor e admin; os demais recebem por pessoa", () => {
     expect(donosDe("chat.disparo")).toEqual(["admin", "gestor_projeto"]);
     expect(ACTION_CATALOG.CHAT_DISPARO).toMatchObject({ label: "Disparar mensagens em massa", scope: "workspace" });

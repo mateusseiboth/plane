@@ -19,14 +19,14 @@ apps/chat-backend/src/
     inatividade(-regras).ts  robô/fila (pergunta e fecha em 10+10 min) e em atendimento (1/99)
     pausa(-regras).ts      pausar, retomar, vencer em 3 dias (abandono 4)
     fim-do-dia(-regras).ts corte no horário configurado ou no fim do expediente, no fuso da empresa
-    rotas.ts               REST do atendente (chat.atender)
+    rotas.ts               REST do atendente (chat.encerrar, chat.pausar, chat.abrir_chamado, chat.atender)
   encerramento.ts          closeWithEncerramento: valida, grava classificação e cadastro, encerra
   chamado.ts               linkChamado: só aceita chamado com external_id = id da sessão
   outbound.ts              falha de envio (status failed + send_error) e resendMessage
   webhook/regras.ts        isWebhookAutorizado, isMensagemAntiga (2 dias)
   webhook/zapi.ts          rota do webhook (saiu do index.ts)
   relatorios/atendimentos.ts  aggregateAtendimentos (puro), readPeriodo, buildFiltroDosRegistros
-  relatorios/rotas.ts      relatórios e registros (chat.gerenciar)
+  relatorios/rotas.ts      painel, relatórios e registros (chat.relatorios)
   acesso.ts                authorizeChat: guarda REST pela matriz de ações
   sequencia.ts             runInSequence: timers encerram um por vez (limite da Z-API)
   prisma/sql/0013_ciclo_de_vida.sql
@@ -120,13 +120,13 @@ a mostrar o link. Arquivo do WhatsApp (`ext:`) só por https; arquivo do chat ve
 `CHAT_INTERNAL_URL` (padrão `http://chat-backend:8002`). Arquivo que falha é pulado e contado.
 A tela NÃO redireciona mais para a triagem: o atendente segue na conversa.
 
-**Relatórios** (`chat.gerenciar`): período padrão = últimos 7 dias; filtros entidade, sistema,
+**Relatórios** (`chat.relatorios`): período padrão = últimos 7 dias; filtros entidade, sistema,
 motivo, atendente. Agregação em memória (uma passada), sem `_count` de relação.
 
 **Auditoria**: troca de visibilidade do atendente grava `audit_logs` com
 `entity = "chat_attendant"`, `entity_id = <usuário>`, `action = "update"`.
 
-**Configuração do robô** (`PATCH /config/bot/`) passou a exigir `chat.administrar`: além das
+**Configuração do robô** (`PATCH /config/bot/`) passou a exigir `chat.configurar` (era `chat.administrar`): além das
 mensagens, é ali que se liga o encerramento automático do fim do dia.
 
 ## 4. Testes

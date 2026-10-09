@@ -182,7 +182,7 @@ function Ramais({ slug, apiUrl }: Props) {
   );
 }
 
-/** Aba Telefonia da configuração do chat (`chat.administrar`): token do PBX e ramais. */
+/** Aba Telefonia da configuração do chat (`chat.configurar`): token do PBX e ramais. */
 export function ConfigDeTelefonia({ slug, apiUrl }: Props) {
   return (
     <div className="max-w-2xl space-y-8">

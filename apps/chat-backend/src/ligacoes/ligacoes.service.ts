@@ -165,13 +165,14 @@ export async function registerLigacao(slug: string, headers: Record<string, stri
 // ── Atendente ─────────────────────────────────────────────────────────────────
 
 /**
- * Mesma regra da lista de atendimentos: o administrador vê tudo; o atendente,
- * o que é dele. Ligação sem ninguém fica aberta a quem atende, para assumir.
+ * Mesma regra da lista de atendimentos: quem tem `chat.ver_todas` vê as dos
+ * outros; o atendente, o que é dele. Ligação sem ninguém fica aberta a quem
+ * atende, para assumir.
  */
 async function requireLigacaoAcessivel(slug: string, sessionId: string, atendente: Atendente) {
   const sessao = await readRegistrada(slug, sessionId);
   const livreOuMinha = !sessao.assignedAttendantId || sessao.assignedAttendantId === atendente.id;
-  if (livreOuMinha || (await hasChatAction(slug, atendente.id, CHAT_ACTION.ADMINISTRAR))) return sessao;
+  if (livreOuMinha || (await hasChatAction(slug, atendente.id, CHAT_ACTION.VER_TODAS))) return sessao;
   throw new LigacaoNaoEncontradaError();
 }
 

@@ -10,7 +10,7 @@ const CONTEXTO: TContextoDosLinks = {
   slug: "quality",
   isInscricaoAberta: true,
   isChatLigado: true,
-  podeAdministrarChat: false,
+  canConfigurarChat: false,
   isAdminDaInstancia: false,
   sistemas: [
     { identifier: "SIART", name: "SIART" },
@@ -68,7 +68,7 @@ describe("buildLinksUteis: os caminhos", () => {
   });
 
   it("todo cartão diz para que serve e quem pode usar", () => {
-    const cartoes = grupos(contextoCom({ podeAdministrarChat: true, isAdminDaInstancia: true })).flatMap(
+    const cartoes = grupos(contextoCom({ canConfigurarChat: true, isAdminDaInstancia: true })).flatMap(
       (g) => g.cartoes
     );
     expect(cartoes.length).toBeGreaterThan(0);
@@ -87,7 +87,7 @@ describe("buildLinksUteis: os caminhos", () => {
   });
 
   it("nenhum caminho carrega origem: o link é montado na tela", () => {
-    const caminhos = grupos(contextoCom({ podeAdministrarChat: true, isAdminDaInstancia: true })).flatMap((g) =>
+    const caminhos = grupos(contextoCom({ canConfigurarChat: true, isAdminDaInstancia: true })).flatMap((g) =>
       g.cartoes.flatMap((c) => [c.caminho, c.campo?.prefixo ?? ""])
     );
     expect(caminhos.filter((c) => c.includes("http") || c.includes("localhost"))).toEqual([]);
@@ -125,7 +125,7 @@ describe("buildLinksUteis: quem vê o quê", () => {
   });
 
   it("quem administra o chat vê o webhook da Z-API e a rota do FreePBX", () => {
-    const comChat = contextoCom({ podeAdministrarChat: true });
+    const comChat = contextoCom({ canConfigurarChat: true });
     expect(cartao(comChat, "integracoes", "zapi-webhook")?.caminho).toBe("/chat-api/providers/zapi/webhook/quality/");
     expect(cartao(comChat, "integracoes", "freepbx-ligacoes")?.caminho).toBe(
       "/chat-api/workspaces/quality/telefonia/ligacoes/"

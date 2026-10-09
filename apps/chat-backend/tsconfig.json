@@ -15,7 +15,8 @@
       "@generated/*": ["./generated/*"],
       "@tests/*": ["./tests/*"],
       "@scripts/*": ["./scripts/*"],
-      "@api-ts/*": ["../api-ts/src/*"]
+      "@api-ts/*": ["../api-ts/src/*"],
+      "@utils/*": ["../api-ts/src/utils/*"]
     }
   },
   "include": ["./src/**/*", "./tests/**/*", "./scripts/**/*", "./prisma.config.ts"],

@@ -51,7 +51,7 @@ beforeAll(async () => {
   await addMember(slug, ids.atendente, 6);
   await addMember(slug, ids.visitante, 5);
   await addMember(slug, ids.negado, 6, [], ["chat.atender"]);
-  await addMember(slug, ids.concedido, 5, ["chat.atender", "chat.gerenciar"]);
+  await addMember(slug, ids.concedido, 5, ["chat.atender", "chat.transferir"]);
   await addMember(semFuncoes, ids.atendente, 20);
 });
 
@@ -63,16 +63,16 @@ afterAll(async () => {
 describe("hasChatAction", () => {
   it("função pelo nível dá o que ela tem", async () => {
     expect(await hasChatAction(slug, ids.atendente, CHAT_ACTION.ATENDER)).toBe(true);
-    expect(await hasChatAction(slug, ids.atendente, CHAT_ACTION.GERENCIAR)).toBe(false);
+    expect(await hasChatAction(slug, ids.atendente, CHAT_ACTION.TRANSFERIR)).toBe(false);
   });
 
   it("exceção por pessoa soma e tira", async () => {
     expect(await hasChatAction(slug, ids.negado, CHAT_ACTION.ATENDER)).toBe(false);
-    expect(await hasChatAction(slug, ids.concedido, CHAT_ACTION.GERENCIAR)).toBe(true);
+    expect(await hasChatAction(slug, ids.concedido, CHAT_ACTION.TRANSFERIR)).toBe(true);
   });
 
   it("espaço sem função gravada nega, mesmo para quem tem papel 20", async () => {
-    expect(await hasChatAction(semFuncoes, ids.atendente, CHAT_ACTION.ADMINISTRAR)).toBe(false);
+    expect(await hasChatAction(semFuncoes, ids.atendente, CHAT_ACTION.CONFIGURAR)).toBe(false);
   });
 
   it("quem não é do espaço não tem nada", async () => {

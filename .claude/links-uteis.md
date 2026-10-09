@@ -66,7 +66,7 @@ Três estados, nunca misturados:
 | Grupo | Regra |
 | --- | --- |
 | Para o cliente, Para candidato, Painéis de TV, Internos úteis | todo membro do espaço |
-| Integrações (Z-API, FreePBX) | `chat.administrar` (exigem token, então só quem administra) |
+| Integrações (Z-API, FreePBX) | `chat.configurar` (exigem token, então só quem configura o chat) |
 | Cartão "God mode" | administrador da instância (`isInstanceAdmin`/`isSuperuser`) |
 
 A página **não criou ação nova** no `ACTION_CATALOG`: ela só reúne endereços, e o recorte é

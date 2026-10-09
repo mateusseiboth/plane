@@ -3,9 +3,9 @@
  * chamam o service e traduzem `LigacaoError` por `instanceof`.
  *
  *   PBX (token de serviço)   POST /workspaces/:slug/telefonia/ligacoes/
- *   chat.administrar         /workspaces/:slug/config/telefonia/...
+ *   chat.configurar          /workspaces/:slug/config/telefonia/...
  *   chat.atender             /workspaces/:slug/ligacoes/:id/...  e o histórico do cliente
- *   chat.gerenciar           GET /workspaces/:slug/reports/ligacoes/
+ *   chat.relatorios          GET /workspaces/:slug/reports/ligacoes/
  *
  * Caminhos completos (sem prefixo com :slug) pelo mesmo bug do Elysia 1.4
  * descrito em config-routes.ts.
@@ -67,10 +67,10 @@ export const ligacoesModule = new Elysia()
     })
   )
 
-  // ── Configuração (chat.administrar) ──
+  // ── Configuração (chat.configurar) ──
   .get("/workspaces/:slug/config/telefonia/", ({ params: { slug }, headers, set }) =>
     respond(set, async () => {
-      await requireAction(slug, headers, CHAT_ACTION.ADMINISTRAR);
+      await requireAction(slug, headers, CHAT_ACTION.CONFIGURAR);
       return readTelefoniaConfig(slug);
     })
   )
@@ -78,7 +78,7 @@ export const ligacoesModule = new Elysia()
     respond(
       set,
       async () => {
-        const user = await requireAction(slug, headers, CHAT_ACTION.ADMINISTRAR);
+        const user = await requireAction(slug, headers, CHAT_ACTION.CONFIGURAR);
         return generateTelefoniaToken(slug, user.id);
       },
       201
@@ -86,13 +86,13 @@ export const ligacoesModule = new Elysia()
   )
   .delete("/workspaces/:slug/config/telefonia/token/", ({ params: { slug }, headers, set }) =>
     respond(set, async () => {
-      const user = await requireAction(slug, headers, CHAT_ACTION.ADMINISTRAR);
+      const user = await requireAction(slug, headers, CHAT_ACTION.CONFIGURAR);
       return revokeTelefoniaToken(slug, user.id);
     })
   )
   .put("/workspaces/:slug/config/telefonia/ramais/", ({ params: { slug }, headers, body, set }) =>
     respond(set, async () => {
-      await requireAction(slug, headers, CHAT_ACTION.ADMINISTRAR);
+      await requireAction(slug, headers, CHAT_ACTION.CONFIGURAR);
       return saveRamais(slug, body);
     })
   )
@@ -117,10 +117,10 @@ export const ligacoesModule = new Elysia()
     })
   )
 
-  // ── Relatório (chat.gerenciar) ──
+  // ── Relatório (chat.relatorios) ──
   .get("/workspaces/:slug/reports/ligacoes/", ({ params: { slug }, query, headers, set }) =>
     respond(set, async () => {
-      await requireAction(slug, headers, CHAT_ACTION.GERENCIAR);
+      await requireAction(slug, headers, CHAT_ACTION.RELATORIOS);
       return readRelatorioDeLigacoes(slug, readDays((query as Record<string, unknown>)?.days));
     })
   );

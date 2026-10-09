@@ -1,5 +1,5 @@
 /**
- * Gerenciador de conversas (`chat.gerenciar`): o histórico inteiro do espaço,
+ * Gerenciador de conversas (`chat.ver_todas`): o histórico inteiro do espaço,
  * filtrado e paginado de verdade. Filtros e paginação em
  * `gerenciador-regras.ts`; aqui a consulta e os nomes para a tela.
  */

@@ -156,4 +156,17 @@ describe("POST .../inbox-issues/from-chat/", () => {
     const res = await apiClient(visitante.token).post(url(), { session_id: conversa });
     expect(res.status).toBe(403);
   });
+
+  it("atendente com chat.abrir_chamado abre; negada a ação por pessoa, 403", async () => {
+    const atendente = await createMemberWithToken(wsId, 6, projetoId, 6);
+    const cliente = apiClient(atendente.token);
+    expect((await cliente.post(url(), { session_id: await createConversa(wsSlug) })).status).toBe(201);
+
+    await prisma.workspaceMember.updateMany({
+      where: { workspaceId: wsId, memberId: atendente.user.id },
+      data: { revokedActions: ["chat.abrir_chamado"] },
+    });
+    const res = await cliente.post(url(), { session_id: await createConversa(wsSlug) });
+    expect(res.status).toBe(403);
+  });
 });
