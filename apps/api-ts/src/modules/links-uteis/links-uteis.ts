@@ -41,7 +41,7 @@ export type TContextoDosLinks = {
   slug: string;
   isInscricaoAberta: boolean;
   isChatLigado: boolean;
-  podeAdministrarChat: boolean;
+  canConfigurarChat: boolean;
   isAdminDaInstancia: boolean;
   sistemas: { identifier: string; name: string }[];
 };
@@ -238,7 +238,7 @@ const GRUPOS: GrupoStrategy[] = [
   {
     chave: "integracoes",
     titulo: "Integrações",
-    isVisivel: (contexto) => contexto.podeAdministrarChat,
+    isVisivel: (contexto) => contexto.canConfigurarChat,
     buildCartoes: (contexto) => [buildZapiWebhook(contexto), buildFreePbxLigacoes(contexto)],
   },
   {

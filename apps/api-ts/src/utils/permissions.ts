@@ -13,8 +13,13 @@
 // `utils/permission-checks.ts`; este módulo não importa o `@db` para que os
 // scripts de seed e o chat (nos testes) possam importá-lo.
 //
+// As ações de um módulo com tela própria (o chat) moram no módulo e entram aqui
+// por espalhamento: continua uma linha por ação, só que escrita lá.
+//
 // Visibilidade: NÃO existe recorte por papel. Quem participa do projeto vê todos
 // os chamados; o que a função controla é o que a pessoa pode FAZER e MOVER.
+
+import {ACOES_DO_CHAT} from "@utils/acoes-do-chat";
 
 /** Funções de sistema. O admin recebe TODA ação, sem precisar ser citado. */
 export type SystemRoleKey = "guest" | "atendimento" | "qualidade" | "ti" | "member" | "gestor_projeto" | "admin";
@@ -48,7 +53,6 @@ const G = {
   SOLICITACOES: "Solicitações",
   ORGANIZACAO: "Organização do trabalho",
   SISTEMA: "Administração do sistema",
-  CHAT: "Atendimento (chat)",
   ESPACO: "Espaço de trabalho",
   CADASTROS: "Cadastros e integrações",
   OUVIDORIA: "Ouvidoria, denúncias e currículos",
@@ -94,10 +98,8 @@ export const ACTION_CATALOG = {
   STATE_DELETE: {key: "state.delete", label: "Excluir etapas do sistema", group: G.SISTEMA, scope: "project", roles: SO_ADMIN},
   PROJECT_SETTINGS: {key: "project.settings", label: "Configurações do sistema", group: G.SISTEMA, scope: "project", roles: MEMBRO_E_GESTOR},
   PROJECT_DELETE: {key: "project.delete", label: "Excluir o sistema", group: G.SISTEMA, scope: "project", roles: SO_ADMIN},
-  CHAT_ATENDER: {key: "chat.atender", label: "Atender no chat", group: G.CHAT, scope: "workspace", roles: OPERAM},
-  CHAT_GERENCIAR: {key: "chat.gerenciar", label: "Transferir atendimentos e ver relatórios do chat", group: G.CHAT, scope: "workspace", roles: MEMBRO_E_GESTOR},
-  CHAT_ADMINISTRAR: {key: "chat.administrar", label: "Ver fila, robô e avaliações e configurar o chat", group: G.CHAT, scope: "workspace", roles: SO_ADMIN},
-  CHAT_DISPARO: {key: "chat.disparo", label: "Disparar mensagens em massa", group: G.CHAT, scope: "workspace", roles: GESTOR},
+  // O chat registra as próprias ações (@utils/acoes-do-chat).
+  ...ACOES_DO_CHAT,
   PROJECT_CREATE: {key: "project.create", label: "Criar sistemas", group: G.ESPACO, scope: "workspace", roles: GESTOR},
   REPORT_VIEW: {key: "report.view", label: "Ver relatórios e análises", group: G.ESPACO, scope: "workspace", roles: MEMBRO_E_GESTOR},
   WORKSPACE_INVITE: {key: "workspace.invite", label: "Convidar pessoas", group: G.ESPACO, scope: "workspace", roles: MEMBRO_E_GESTOR},

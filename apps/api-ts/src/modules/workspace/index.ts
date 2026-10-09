@@ -1104,7 +1104,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   })
   .patch("/:slug/chat-config/", async ({params: {slug}, body, user, set}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceAction(ws.id, user.id, EProjectAction.CHAT_ADMINISTRAR);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.CHAT_CONFIGURAR);
     const b = (body as any) ?? {};
     const instance = await prisma.instance.findFirst();
     if (!instance) {
