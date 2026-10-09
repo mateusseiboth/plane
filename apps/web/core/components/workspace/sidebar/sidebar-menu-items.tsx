@@ -11,27 +11,23 @@ import { useParams, usePathname } from "next/navigation";
 import { Ellipsis, LayoutDashboard } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
-import {
-  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS,
-  WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS,
-  WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS,
-  WORKSPACE_SIDEBAR_STATIC_PINNED_NAVIGATION_ITEMS_LINKS,
-  EUserPermissionsLevel,
-} from "@plane/constants";
+import { WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS, EUserPermissionsLevel } from "@plane/constants";
 import { EUserWorkspaceRoles } from "@plane/types";
 import { useTranslation } from "@plane/i18n";
 import { ChevronRightIcon } from "@plane/propel/icons";
 import { cn } from "@plane/utils";
 // components
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
+import {
+  ITENS_DO_ESPACO_NA_BARRA,
+  ITENS_PESSOAIS_DA_BARRA,
+  buildItensDaBarra,
+} from "@/components/workspace/sidebar/fixacao-na-barra";
 // store hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUserPermissions } from "@/hooks/store/user";
 import useLocalStorage from "@/hooks/use-local-storage";
-import {
-  usePersonalNavigationPreferences,
-  useWorkspaceNavigationPreferences,
-} from "@/hooks/use-navigation-preferences";
+import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
 // plane-web imports
 import { SidebarItem } from "@/plane-web/components/workspace/sidebar/sidebar-item";
 // plugin imports
@@ -50,7 +46,6 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
   const { isExtendedSidebarOpened, toggleExtendedSidebar } = useAppTheme();
   const { allowPermissions } = useUserPermissions();
   // hooks
-  const { preferences: personalPreferences } = usePersonalNavigationPreferences();
   const { preferences: workspacePreferences } = useWorkspaceNavigationPreferences();
 
   const canAccessExtensions = allowPermissions(
@@ -64,56 +59,25 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
     toggleWorkspaceMenu(isOpen);
   };
 
-  // Filter static navigation items based on personal preferences
-  const filteredStaticNavigationItems = useMemo(() => {
-    const items = [...WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS];
-    const personalItems: Array<(typeof items)[0] & { sort_order: number }> = [];
+  // Página inicial sempre; os pessoais e os do espaço só quando fixados.
+  const itensPessoais = useMemo(
+    () => [
+      ...WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS,
+      ...buildItensDaBarra(ITENS_PESSOAIS_DA_BARRA, workspacePreferences.items),
+    ],
+    [workspacePreferences]
+  );
 
-    // Add personal items based on preferences with their sort_order
-    const stickiesItem = WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["stickies"];
-    if (personalPreferences.items.stickies?.enabled && stickiesItem) {
-      personalItems.push({
-        ...stickiesItem,
-        sort_order: personalPreferences.items.stickies.sort_order,
-      });
-    }
-    if (personalPreferences.items.your_work?.enabled && WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["your-work"]) {
-      personalItems.push({
-        ...WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["your-work"],
-        sort_order: personalPreferences.items.your_work.sort_order,
-      });
-    }
-    if (personalPreferences.items.drafts?.enabled && WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["drafts"]) {
-      personalItems.push({
-        ...WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["drafts"],
-        sort_order: personalPreferences.items.drafts.sort_order,
-      });
-    }
-
-    // Sort personal items by sort_order
-    personalItems.sort((a, b) => a.sort_order - b.sort_order);
-
-    // Merge static items with sorted personal items
-    return [...items, ...personalItems];
-  }, [personalPreferences]);
-
-  const sortedNavigationItems = useMemo(
-    () =>
-      WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.map((item) => {
-        const preference = workspacePreferences.items[item.key];
-        return {
-          ...item,
-          sort_order: preference ? preference.sort_order : 0,
-        };
-      }).sort((a, b) => a.sort_order - b.sort_order),
+  const itensDoEspaco = useMemo(
+    () => buildItensDaBarra(ITENS_DO_ESPACO_NA_BARRA, workspacePreferences.items),
     [workspacePreferences]
   );
 
   return (
     <>
       <div className="flex flex-col gap-0.5">
-        {filteredStaticNavigationItems.map((item, _index) => (
-          <SidebarItem key={`static_${_index}`} item={item} />
+        {itensPessoais.map((item) => (
+          <SidebarItem key={item.key} item={item} />
         ))}
       </div>
       <Disclosure as="div" className="flex flex-col" defaultOpen={!!isWorkspaceMenuOpen}>
@@ -163,11 +127,8 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
           {isWorkspaceMenuOpen && (
             <Disclosure.Panel as="div" className="flex flex-col gap-0.5" static>
               <>
-                {WORKSPACE_SIDEBAR_STATIC_PINNED_NAVIGATION_ITEMS_LINKS.map((item, _index) => (
-                  <SidebarItem key={`static_${_index}`} item={item} />
-                ))}
-                {sortedNavigationItems.map((item, _index) => (
-                  <SidebarItem key={`dynamic_${_index}`} item={item} />
+                {itensDoEspaco.map((item) => (
+                  <SidebarItem key={item.key} item={item} />
                 ))}
                 <PluginSidebarItems />
                 {canAccessExtensions && (

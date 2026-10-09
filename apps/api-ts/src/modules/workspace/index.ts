@@ -21,6 +21,11 @@ import {invalidateStorageCache, type S3Config} from "@utils/storage";
 import {findChamados, findPaginasDaPessoa, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
 import {ISSUE_INCLUDE, serializeDraftIssue, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
 import {buildDraftData} from "@modules/workspace/rascunho";
+import {
+  applyPreferenciasDaBarra,
+  isPreferenciaRecebida,
+  readPreferenciasDaBarra,
+} from "@modules/workspace/preferencias-da-barra";
 import {ATIVIDADE_INCLUDE, serializeTrilha, withoutMarcadorInterno} from "@utils/trilha";
 import {dataLocal} from "@utils/prazo";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
@@ -1837,45 +1842,22 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/sidebar-preferences/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const setting = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: `sidebar_prefs:${user.id}`}});
-    return (setting?.value as any) ?? {};
+    return readPreferenciasDaBarra(ws.id, user.id);
   })
 
+  // Bulk: an array of {key, is_pinned, sort_order}. A missing field keeps the stored one.
   .patch("/:slug/sidebar-preferences/", async ({params: {slug}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const settingKey = `sidebar_prefs:${user.id}`;
-    const existing = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: settingKey}});
-    const map: Record<string, any> = (existing?.value as any) ?? {};
-    // Bulk: an array of {key, is_pinned, sort_order}.
-    const items = Array.isArray(body) ? body : [];
-    for (const it of items as any[]) {
-      if (!it?.key) continue;
-      map[it.key] = {...map[it.key], key: it.key, is_pinned: it.is_pinned, sort_order: it.sort_order};
-    }
-    await prisma.workspaceSetting.upsert({
-      where: {workspaceId_key: {workspaceId: ws.id, key: settingKey}},
-      create: {workspaceId: ws.id, key: settingKey, value: map},
-      update: {value: map},
-    });
-    return map;
+    const recebidas = (Array.isArray(body) ? body : []).filter(isPreferenciaRecebida);
+    return applyPreferenciasDaBarra(ws.id, user.id, recebidas);
   })
 
   .patch("/:slug/sidebar-preferences/:key/", async ({params: {slug, key}, body, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const settingKey = `sidebar_prefs:${user.id}`;
-    const existing = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: settingKey}});
-    const map: Record<string, any> = (existing?.value as any) ?? {};
-    const b = (body as any) ?? {};
-    const item = {...map[key], key, ...(b.is_pinned !== undefined ? {is_pinned: b.is_pinned} : {}), ...(b.sort_order !== undefined ? {sort_order: b.sort_order} : {})};
-    map[key] = item;
-    await prisma.workspaceSetting.upsert({
-      where: {workspaceId_key: {workspaceId: ws.id, key: settingKey}},
-      create: {workspaceId: ws.id, key: settingKey, value: map},
-      update: {value: map},
-    });
-    return item;
+    const mapa = await applyPreferenciasDaBarra(ws.id, user.id, [{...(body as object), key}]);
+    return mapa[key];
   })
 
   // ── User-favorites (alias for /favorites/ — Django uses this path) ───────────

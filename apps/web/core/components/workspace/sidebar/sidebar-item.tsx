@@ -20,26 +20,22 @@ import { SidebarBadge } from "@/components/workspace/sidebar/sidebar-badge";
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
-import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
 // plane web imports
 import { getSidebarNavigationItemIcon } from "@/plane-web/components/workspace/sidebar/helper";
 
 type Props = {
   item: IWorkspaceSidebarNavigationItem;
   additionalRender?: (itemKey: string, workspaceSlug: string) => ReactNode;
-  additionalStaticItems?: string[];
 };
 
-export const SidebarItemBase = observer(function SidebarItemBase({
-  item,
-  additionalRender,
-  additionalStaticItems,
-}: Props) {
+// Quem decide se o item está fixado é a lista que o renderiza (fixacao-na-barra);
+// aqui só se confere se a pessoa pode ver o item.
+
+export const SidebarItemBase = observer(function SidebarItemBase({ item, additionalRender }: Props) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const { workspaceSlug } = useParams();
   const { allowPermissions } = useUserPermissions();
-  const { isWorkspaceItemPinned } = useWorkspaceNavigationPreferences();
   const { data } = useUser();
   const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
@@ -50,35 +46,11 @@ export const SidebarItemBase = observer(function SidebarItemBase({
     if (isExtendedSidebarOpened) toggleExtendedSidebar(false);
   };
 
-  const staticItems = [
-    "home",
-    "pi_chat",
-    "projects",
-    "your_work",
-    "stickies",
-    "drafts",
-    "all-work-items",
-    "global-intake",
-    "visits",
-    "contatos",
-    "mural",
-    "ouvidoria",
-    "denuncias",
-    "curriculos",
-    "wiki",
-    "pos-atendimento",
-    "links-uteis",
-    "reports",
-    ...(additionalStaticItems || []),
-  ];
   const slug = workspaceSlug?.toString() || "";
 
   if (!allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)) return null;
   // Item ligado a ação(ões) da matriz (ex.: a wiki) só aparece para quem tem uma delas.
   if (item.action && ![item.action].flat().some(can)) return null;
-
-  const isPinned = isWorkspaceItemPinned(item.key);
-  if (!isPinned && !staticItems.includes(item.key)) return null;
 
   const itemHref =
     item.key === "your_work" && data?.id ? joinUrlPath(slug, item.href, data?.id) : joinUrlPath(slug, item.href);

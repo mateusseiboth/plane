@@ -22,6 +22,7 @@ import {
   DEFAULT_WORKSPACE_PREFERENCES,
   DEFAULT_APP_RAIL_PREFERENCES,
 } from "@/types/navigation-preferences";
+import { isItemFixadoNaBarra } from "@/components/workspace/sidebar/fixacao-na-barra";
 import { useWorkspace } from "./store/use-workspace";
 import useLocalStorage from "./use-local-storage";
 
@@ -41,19 +42,14 @@ export const usePersonalNavigationPreferences = () => {
     }
 
     // Extract personal items from the store (stickies, your_work, drafts)
+    const readItemPessoal = (key: TPersonalNavigationItemKey) => ({
+      enabled: isItemFixadoNaBarra(key, storePreferences),
+      sort_order: storePreferences[key]?.sort_order ?? DEFAULT_PERSONAL_PREFERENCES.items[key].sort_order,
+    });
     const personalItems: Record<TPersonalNavigationItemKey, { enabled: boolean; sort_order: number }> = {
-      stickies: {
-        enabled: storePreferences.stickies?.is_pinned ?? DEFAULT_PERSONAL_PREFERENCES.items.stickies.enabled,
-        sort_order: storePreferences.stickies?.sort_order ?? DEFAULT_PERSONAL_PREFERENCES.items.stickies.sort_order,
-      },
-      your_work: {
-        enabled: storePreferences.your_work?.is_pinned ?? DEFAULT_PERSONAL_PREFERENCES.items.your_work.enabled,
-        sort_order: storePreferences.your_work?.sort_order ?? DEFAULT_PERSONAL_PREFERENCES.items.your_work.sort_order,
-      },
-      drafts: {
-        enabled: storePreferences.drafts?.is_pinned ?? DEFAULT_PERSONAL_PREFERENCES.items.drafts.enabled,
-        sort_order: storePreferences.drafts?.sort_order ?? DEFAULT_PERSONAL_PREFERENCES.items.drafts.sort_order,
-      },
+      stickies: readItemPessoal("stickies"),
+      your_work: readItemPessoal("your_work"),
+      drafts: readItemPessoal("drafts"),
     };
 
     return {
@@ -205,13 +201,11 @@ export const useWorkspaceNavigationPreferences = () => {
     async (key: string, isPinned: boolean) => {
       if (!workspaceSlug) return;
 
-      const currentItem = preferences.items[key] || { is_pinned: false, sort_order: 0 };
-
       await updateBulkSidebarPreferences(workspaceSlug.toString(), [
         {
           key,
           is_pinned: isPinned,
-          sort_order: currentItem.sort_order,
+          sort_order: preferences.items[key]?.sort_order ?? 0,
         },
       ]);
     },
@@ -222,14 +216,11 @@ export const useWorkspaceNavigationPreferences = () => {
     async (items: Array<{ key: string; sortOrder: number }>) => {
       if (!workspaceSlug) return;
 
-      const bulkData = items.map((item) => {
-        const currentItem = preferences.items[item.key] || { is_pinned: true, sort_order: 0 };
-        return {
-          key: item.key,
-          is_pinned: currentItem.is_pinned,
-          sort_order: item.sortOrder,
-        };
-      });
+      const bulkData = items.map((item) => ({
+        key: item.key,
+        is_pinned: isItemFixadoNaBarra(item.key, preferences.items),
+        sort_order: item.sortOrder,
+      }));
 
       await updateBulkSidebarPreferences(workspaceSlug.toString(), bulkData);
     },
@@ -237,7 +228,10 @@ export const useWorkspaceNavigationPreferences = () => {
   );
 
   const getWorkspaceItemState = useCallback(
-    (key: string): TWorkspaceNavigationItemState => preferences.items[key] || { is_pinned: false, sort_order: 0 },
+    (key: string): TWorkspaceNavigationItemState => ({
+      is_pinned: isItemFixadoNaBarra(key, preferences.items),
+      sort_order: preferences.items[key]?.sort_order ?? 0,
+    }),
     [preferences]
   );
 
@@ -253,12 +247,10 @@ export const useWorkspaceNavigationPreferences = () => {
     async (key: string, sortOrder: number) => {
       if (!workspaceSlug) return;
 
-      const currentItem = preferences.items[key] || { is_pinned: false, sort_order: 0 };
-
       await updateBulkSidebarPreferences(workspaceSlug.toString(), [
         {
           key,
-          is_pinned: currentItem.is_pinned,
+          is_pinned: isItemFixadoNaBarra(key, preferences.items),
           sort_order: sortOrder,
         },
       ]);
