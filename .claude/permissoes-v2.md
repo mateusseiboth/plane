@@ -79,9 +79,13 @@ Permissão efetiva de uma pessoa =
    `EProjectAction` de `packages/constants/src/project-permissions.ts` (com rótulo e grupo; o teste
    do pacote cobra) e rode o build do dist.
 
-4. **Chat** (`apps/chat-backend`): só se a ação for do chat. Acrescente a chave em `CHAT_ACTION`
-   (`src/permissoes.ts`) e use `hasChatAction(slug, userId, CHAT_ACTION.X)`. O teste
-   `tests/permissoes-do-chat.test.ts` confere que a chave existe no catálogo do api-ts.
+4. **Chat** (`apps/chat-backend`): só se a ação for do chat. O módulo do chat registra as
+   próprias ações em `apps/api-ts/src/utils/acoes-do-chat.ts` (`ACOES_DO_CHAT`, que o
+   `ACTION_CATALOG` espalha); é lá que entra a linha, não no `permissions.ts`. Repita a chave em
+   `CHAT_ACTION` (`apps/chat-backend/src/permissoes.ts`, o container do chat não leva o api-ts) e
+   use `authorizeChat(slug, headers, CHAT_ACTION.X)` na rota (ou `hasChatAction`). O teste
+   `tests/permissoes-do-chat.test.ts` reprova se as duas listas divergirem. No web, a chave entra
+   em `ACAO_DO_CHAT` (`core/components/chat/permissoes-do-atendimento.ts`). Ver §9.
 
 5. **Teste**: acrescente em `apps/api-ts/tests/unit/catalogo-de-acoes.test.ts` quem recebe a ação
    por padrão (`donosDe("mural.publicar")`) e um teste de contrato da rota (403 sem, 2xx com, e com
@@ -118,7 +122,7 @@ Permissão efetiva de uma pessoa =
 | `workspace` PATCH/DELETE espaço, storage, impressão, reindexar busca                       | `role < 20` / writer                              | `workspace.settings`. **Reindexar: Membro perdeu.**                                                                    |
 | `workspace` membros (alterar, remover, redefinir senha)                                    | `role < 20`                                       | `workspace.members` (admin)                                                                                            |
 | `workspace` convites POST/PATCH/DELETE                                                     | writer / `role < 15`                              | `workspace.invite` + escopo por espaço (IDOR corrigido no PATCH/DELETE/GET)                                            |
-| `workspace` chat-config                                                                    | `role < 20`                                       | `chat.administrar`                                                                                                     |
+| `workspace` chat-config                                                                    | `role < 20`                                       | `chat.configurar` (era `chat.administrar`, W38)                                                                        |
 | `workspace` label-sla                                                                      | `role < 18`                                       | `label.sla` (Gestor, admin)                                                                                            |
 | `premium` import-jobs                                                                      | writer                                            | `import.manage`                                                                                                        |
 | `premium` issue-types/properties                                                           | writer                                            | `issue.type.manage`                                                                                                    |
@@ -153,9 +157,9 @@ Permissão efetiva de uma pessoa =
 | Onde                                           | Antes                                      | Agora                             |
 | ---------------------------------------------- | ------------------------------------------ | --------------------------------- |
 | `papeis.ts` `ehAtendente` / `listarAtendentes` | `role >= 6`                                | `chat.atender` (`listAtendentes`) |
-| `podeGerenciar` (transferir, relatórios)       | `role >= 15`                               | `chat.gerenciar`                  |
-| `ehAdmin` (fila, robô, avaliação)              | `role >= 20`                               | `chat.administrar`                |
-| `config-routes.ts` `isWorkspaceAdmin`          | SQL próprio, `role >= 20`                  | `chat.administrar`                |
+| `podeGerenciar` (transferir, relatórios)       | `role >= 15`                               | ações finas (W38, §9)             |
+| `ehAdmin` (fila, robô, avaliação)              | `role >= 20`                               | ações finas (W38, §9)             |
+| `config-routes.ts` `isWorkspaceAdmin`          | SQL próprio, `role >= 20`                  | `chat.configurar`                 |
 | `ws-ticket`                                    | **qualquer conta do Plane, qualquer slug** | `chat.atender` no espaço          |
 
 `papeis.ts` foi removido; a fonte é `src/permissoes.ts` (função gravada + exceções por pessoa, lidas
@@ -168,7 +172,7 @@ do banco compartilhado).
 | Tela _Funções e permissões_                                                | grupos/rótulos fixos de `@plane/constants`; só `ADMIN` | catálogo da API; `role.manage`; seção de exceções por pessoa          |
 | `use-project-role-permissions`                                             | função por nível                                       | + exceções por pessoa (`/roles/me/`), `canChangePriority`             |
 | Seletor de prioridade (detalhe, peek, lista/kanban, planilha, solicitação) | edição geral                                           | desabilitado sem `issue.priority`                                     |
-| Chat do atendente `isManager`/`isAdmin`                                    | `allowPermissions([ADMIN, GESTOR])` / `[ADMIN]`        | `chat.gerenciar` / `chat.administrar`                                 |
+| Chat do atendente `isManager`/`isAdmin`                                    | `allowPermissions([ADMIN, GESTOR])` / `[ADMIN]`        | uma ação por botão (`buildPermissoesDoAtendimento`, W38, §9)          |
 | Demais `allowPermissions([...])` (~centenas, herdados do Plane)            | papel por nível                                        | **pendente** (ver §7): a API já barra; a tela ainda esconde por nível |
 
 ## 5. Ações novas deste lote
@@ -254,3 +258,56 @@ não pôde ser conferido no legado (consulta ao MySQL bloqueada). Ver pendência
   `tests/contract/troca-de-funcao-do-membro.test.ts` (duas pessoas de mesmo nome, listagem,
   detalhe, `/workspace-members/me/`, `/members/me/`, `/roles/me/`). No web,
   `core/store/member/workspace/workspace-member.store.test.ts`.
+
+## 9. Ações do chat: o módulo registra as dele (W38)
+
+Pedido do dono: as permissões do chat fazem parte da matriz, mas quem as registra é o próprio
+módulo do chat, e o admin escolhe por função quem faz cada coisa (ex.: quem transfere).
+
+- **Registro**: `apps/api-ts/src/utils/acoes-do-chat.ts` (`ACOES_DO_CHAT`, grupo "Atendimento
+  (chat)", escopo `workspace`, com `description`). `ACTION_CATALOG` faz `...ACOES_DO_CHAT`: o
+  catálogo continua uma linha por ação, a tela de Funções as desenha sem mudança.
+- **Chat-backend**: `CHAT_ACTION` em `src/permissoes.ts` (mesma lista, conferida por teste). Cada
+  rota pede a sua; sem ela, 403 com `detail` em português. A lista de atendimentos usa
+  `src/visibilidade-da-lista.ts`.
+- **Web**: `core/components/chat/permissoes-do-atendimento.ts` (`buildPermissoesDoAtendimento`,
+  `buildAbasDaConfiguracao`) decide os botões e as abas da configuração pelo `can` de
+  `useMyWorkspaceActions`.
+
+| Ação                    | Rótulo                              | Padrão (além do admin)                       | O que libera                                                                                   |
+| ----------------------- | ----------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `chat.atender`          | Atender no chat                     | Atendimento, Qualidade, TI, Membro, Gestor   | conectar (ticket do WS), aparecer nas listas, assumir, responder, reenviar                     |
+| `chat.pausar`           | Pausar atendimentos                 | Atendimento, Qualidade, TI, Membro, Gestor   | pausar e retomar a conversa e o alerta de cliente sem resposta                                 |
+| `chat.encerrar`         | Encerrar atendimentos               | Atendimento, Qualidade, TI, Membro, Gestor   | encerrar (REST e `agent.close` do WS)                                                          |
+| `chat.abrir_chamado`    | Abrir chamado pela conversa         | Atendimento, Qualidade, TI, Membro, Gestor   | `POST .../inbox-issues/from-chat/` (api-ts, junto com `intake.create`) e o vínculo no chat      |
+| `chat.transferir`       | Transferir atendimentos             | Membro, Gestor                               | `POST .../sessions/:id/transfer/`                                                              |
+| `chat.ver_todas`        | Ver conversas de outros atendentes  | Membro, Gestor                               | conversas dos outros na lista (inclusive encerradas), gerenciador, ligações dos outros, original de mensagem apagada e versões editadas |
+| `chat.ver_fila`         | Ver a fila e o robô                 | nenhuma                                      | conversas `bot` e `queued` na lista (abas "Na fila" e "Bot")                                   |
+| `chat.relatorios`       | Ver relatórios do chat              | Membro, Gestor                               | painel, monitor ao vivo, avaliações por atendente, prazos, atendimentos, registros, ligações   |
+| `chat.disparo`          | Disparar mensagens em massa         | Gestor                                       | `/disparo/*`                                                                                   |
+| `chat.configurar`       | Configurar o chat                   | nenhuma                                      | robô, menu, filas, fluxos, horários, feriados, encerramento, atendentes, WhatsApp, telefonia, a avaliação do cliente na conversa, link de integrações em Links úteis, `PATCH /chat-config/` |
+| `chat.frases_do_espaco` | Editar as frases prontas do espaço  | nenhuma                                      | `/config/frases/*` e a aba Frases                                                              |
+
+Os padrões reproduzem o corte de antes (`chat.atender` = OPERAM; `chat.gerenciar` = Membro e
+Gestor; `chat.administrar` = só admin), então nada mudou em silêncio.
+
+**Migração** `apps/api-ts/prisma/migrations/20261009120000_acoes_finas_do_chat` (idempotente),
+em toda função gravada (de sistema e criada na tela) e nas exceções por pessoa:
+
+- `chat.atender` ganha `chat.pausar`, `chat.encerrar`, `chat.abrir_chamado` (vinham juntos);
+- `chat.gerenciar` vira `chat.transferir`, `chat.relatorios`, `chat.ver_todas`;
+- `chat.administrar` vira todas as ações do chat;
+- na NEGAÇÃO por pessoa: negar `chat.administrar` vira negar `chat.ver_fila`, `chat.configurar`,
+  `chat.frases_do_espaco` (o que só ela dava); as outras duas, como acima;
+- as legadas saem; `known_actions` recebe as chaves novas (senão o boot, via `mergeNewActions`,
+  devolveria a ação às funções de sistema de onde o admin a tirou).
+
+Contrato: `apps/api-ts/tests/contract/conversao-das-acoes-do-chat.test.ts` (grava função com as
+legadas, roda o SQL do arquivo, lê pela API). Catálogo: `tests/unit/acoes-do-chat.test.ts`.
+Chat: `tests/permissoes-do-chat-rotas.db.test.ts` (cada rota recusa sem a ação e passa com ela),
+`tests/permissoes-do-chat.e2e.test.ts` (transferir, lista, avaliação, `agent.close`),
+`tests/visibilidade-da-lista.test.ts`. Web: `permissoes-do-atendimento.test.ts`.
+
+**Diferença de comportamento** (de propósito): `GET /dashboard/` do chat não conferia nada além de
+login; agora pede `chat.relatorios`. Quem tem `chat.ver_todas` (Membro e Gestor por padrão) passa
+a ver, na própria lista, as conversas atribuídas aos outros; antes só as via pelo gerenciador.
