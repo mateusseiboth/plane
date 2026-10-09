@@ -24,6 +24,8 @@ export type ActionScope = "project" | "workspace";
 export type ActionDef = {
   key: string;
   label: string;
+  /** Explicação curta que a tela de Funções mostra abaixo do rótulo (opcional). */
+  description?: string;
   group: string;
   /** `project`: lida da associação ao sistema; `workspace`: da associação ao espaço. */
   scope: ActionScope;
@@ -62,6 +64,10 @@ export const ACTION_CATALOG = {
   ISSUE_EDIT_ALL: {key: "issue.edit.all", label: "Editar qualquer chamado", group: G.CHAMADOS, scope: "project", roles: ESCREVEM},
   ISSUE_DELETE_OWN: {key: "issue.delete.own", label: "Excluir os próprios chamados", group: G.CHAMADOS, scope: "project", roles: MEMBRO_E_GESTOR},
   ISSUE_DELETE_ALL: {key: "issue.delete.all", label: "Excluir qualquer chamado", group: G.CHAMADOS, scope: "project", roles: GESTOR},
+  // Ação de OBRIGAÇÃO: marcada, a pessoa comenta no chamado antes de mudar a
+  // etapa (@modules/issue/movimentacao.rules). Vem marcada para todas para nada
+  // mudar em silêncio; desmarcar é o que dispensa.
+  ISSUE_REQUIRE_COMMENT_TO_MOVE: {key: "issue.require_comment_to_move", label: "Precisa comentar antes de mudar a etapa", description: "Marcada, a pessoa só muda a etapa do chamado depois de comentar nele.", group: G.CHAMADOS, scope: "project", roles: TODOS},
   ISSUE_ASSIGN_SELF: {key: "issue.assign.self", label: "Atribuir-se a um chamado", group: G.RESPONSAVEIS, scope: "project", roles: ESCREVEM},
   ISSUE_ASSIGN_OTHERS: {key: "issue.assign.others", label: "Atribuir outros usuários", group: G.RESPONSAVEIS, scope: "project", roles: ["ti", "member", "gestor_projeto"]},
   STATE_MOVE_UNRESTRICTED: {key: "state.unrestricted", label: "Mover para qualquer etapa", group: G.RESPONSAVEIS, scope: "project", roles: GESTOR},

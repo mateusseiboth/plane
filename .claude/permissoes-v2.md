@@ -41,6 +41,8 @@ Permissão efetiva de uma pessoa =
 
    - `key`: `assunto.verbo`, minúsculo. É o que vai para o banco: NUNCA renomeie depois.
    - `label`: pt-BR, curto, sem travessão (o teste reprova).
+   - `description` (opcional): uma frase curta, sem travessão, que a tela de Funções e o painel de
+     exceções mostram abaixo do rótulo. Use quando o rótulo sozinho não diz o efeito de marcar.
    - `group`: um dos `G.*` (ou crie um novo em `G`; a tela cria o grupo sozinha).
    - `roles`: funções de sistema que recebem por padrão. Use as listas prontas (`TODOS`, `OPERAM`,
      `ESCREVEM`, `MEMBRO_E_GESTOR`, `GESTOR`, `SO_ADMIN`) ou uma lista literal. Admin não entra na
@@ -188,6 +190,16 @@ W12: `posatendimento.record` (Atendimento, Qualidade, Gestor, admin) e `posatend
 (Qualidade, Gestor, admin), ver `.claude/pos-atendimento.md`. Helper novo
 `requireWorkspaceAnyAction` (qualquer uma das ações, no escopo do espaço). O campo `action` do
 item da sidebar aceita `string | string[]` (qualquer uma libera).
+
+W35: `issue.require_comment_to_move` ("Precisa comentar antes de mudar a etapa", grupo Chamados,
+escopo `project`, padrão TODAS as funções). É a primeira ação de **obrigação**: marcada = a pessoa
+precisa comentar no chamado antes de mudar a etapa; desmarcada = move sem comentar. Ela não libera
+nada, então o padrão marcado não dá poder a ninguém (o Visualizador continua sem mover). As exceções
+por pessoa valem nos dois sentidos: "Negar" dispensa a pessoa, "Conceder" obriga quem a função
+dispensa. O admin recebe a ação como toda outra; para dispensar um admin, use "Negar" na exceção.
+A migração `20261009090000_comentar_antes_de_mover` marcou a ação em todas as funções já gravadas,
+inclusive as criadas na tela (que `mergeNewActions` não alcança). Regra e caminhos em
+`.claude/workflow.md`.
 
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já

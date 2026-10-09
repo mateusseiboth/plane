@@ -393,12 +393,15 @@ const WorkspaceRolesPage = observer(() => {
                           </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2">
-                          {grupo.actions.map(({ key, label }) => (
+                          {grupo.actions.map(({ key, label, description }) => (
                             <label
                               key={key}
                               className="flex cursor-pointer items-center justify-between gap-3 border-b border-subtle px-3 py-2 last:border-b-0 hover:bg-surface-2 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0"
                             >
-                              <span className="text-12 text-primary">{label}</span>
+                              <span className="text-12 text-primary">
+                                {label}
+                                {description && <span className="block text-11 text-tertiary">{description}</span>}
+                              </span>
                               <ToggleSwitch value={perms.has(key)} onChange={() => togglePerm(key)} size="sm" />
                             </label>
                           ))}

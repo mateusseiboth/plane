@@ -365,10 +365,10 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
           return {detail: "Sua função não permite esta transição de estado."};
         }
       }
-      // Trocar de etapa pede um comentário da pessoa depois da última troca.
-      // Ver @modules/issue/movimentacao.rules.
+      // Trocar de etapa pede um comentário da pessoa depois da última troca,
+      // se a função dela tem a obrigação. Ver @modules/issue/movimentacao.rules.
       if (before && before.stateId !== newStateId) {
-        await movimentacaoService.requireComentarioAntesDeMover({issueIds: [issue_id], userId: user.id, credencial});
+        await movimentacaoService.requireComentarioAntesDeMover({issueIds: [issue_id], userId: user.id, credencial, role});
       }
       data.stateId = newStateId;
     }

@@ -615,6 +615,7 @@ export const premiumModule = new Elysia()
       issueIds: antes.filter((c) => c.stateId !== b.state).map((c) => c.id),
       userId: user.id,
       credencial,
+      role,
     });
 
     const result = await prisma.issue.updateMany({

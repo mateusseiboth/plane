@@ -6,6 +6,10 @@
  * da última mudança de etapa (ou da criação). A regra vale para quem está
  * logado; script com chave de API, aceite na triagem e quem só cria o chamado
  * seguem livres.
+ *
+ * Quem move aqui é o admin, e a obrigação é a ação `issue.require_comment_to_move`,
+ * que vem marcada para todas as funções. Marcar e desmarcar por função e por
+ * pessoa: `permissao-comentar-antes-de-mover.test.ts`.
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import prisma from "@db";
