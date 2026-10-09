@@ -269,7 +269,8 @@ módulo do chat, e o admin escolhe por função quem faz cada coisa (ex.: quem t
   catálogo continua uma linha por ação, a tela de Funções as desenha sem mudança.
 - **Chat-backend**: `CHAT_ACTION` em `src/permissoes.ts` (mesma lista, conferida por teste). Cada
   rota pede a sua; sem ela, 403 com `detail` em português. A lista de atendimentos usa
-  `src/visibilidade-da-lista.ts`.
+  `src/visibilidade.ts` (`buildFiltroDaVisibilidade` e `isSessaoVisivel`, regra única com a da
+  transferência do W37).
 - **Web**: `core/components/chat/permissoes-do-atendimento.ts` (`buildPermissoesDoAtendimento`,
   `buildAbasDaConfiguracao`) decide os botões e as abas da configuração pelo `can` de
   `useMyWorkspaceActions`.
@@ -306,7 +307,9 @@ Contrato: `apps/api-ts/tests/contract/conversao-das-acoes-do-chat.test.ts` (grav
 legadas, roda o SQL do arquivo, lê pela API). Catálogo: `tests/unit/acoes-do-chat.test.ts`.
 Chat: `tests/permissoes-do-chat-rotas.db.test.ts` (cada rota recusa sem a ação e passa com ela),
 `tests/permissoes-do-chat.e2e.test.ts` (transferir, lista, avaliação, `agent.close`),
-`tests/visibilidade-da-lista.test.ts`. Web: `permissoes-do-atendimento.test.ts`.
+`tests/visibilidade-da-lista.test.ts`. Web: `permissoes-do-atendimento.test.ts` e `cabecalho-da-lista.test.ts`
+(menu "Mais ações": gerenciador por `chat.ver_todas`, dashboard por `chat.relatorios`, configurações
+por `chat.configurar` ou `chat.frases_do_espaco`).
 
 **Diferença de comportamento** (de propósito): `GET /dashboard/` do chat não conferia nada além de
 login; agora pede `chat.relatorios`. Quem tem `chat.ver_todas` (Membro e Gestor por padrão) passa

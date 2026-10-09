@@ -103,7 +103,9 @@ export const atendenteModule = new Elysia()
   )
   .patch(
     "/workspaces/:slug/config/frases/:id/",
-    guarded(FRASES_DO_ESPACO, ({ params, body }, userId) => updateFrase(doEspaco(params.slug!, userId), params.id!, body))
+    guarded(FRASES_DO_ESPACO, ({ params, body }, userId) =>
+      updateFrase(doEspaco(params.slug!, userId), params.id!, body)
+    )
   )
   .delete(
     "/workspaces/:slug/config/frases/:id/",
