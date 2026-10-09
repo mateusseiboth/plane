@@ -94,6 +94,20 @@ describe("fixação dos itens da barra lateral", () => {
     expect((await readPreferencias(dono, slug)).mural).toEqual({ key: "mural", is_pinned: true, sort_order: 5 });
   });
 
+  // Dois cliques seguidos no menu Mais saem como requisições simultâneas; a
+  // segunda não pode apagar o que a primeira gravou.
+  it("cliques simultâneos em itens diferentes gravam todos", async () => {
+    const chaves = ["contatos", "ouvidoria", "denuncias", "curriculos", "visits", "reports"];
+    const respostas = await Promise.all(
+      chaves.map((chave) => dono.patch(`/workspaces/${slug}/sidebar-preferences/${chave}/`, { is_pinned: true }))
+    );
+    expect(respostas.map((r) => r.status)).toEqual(chaves.map(() => 200));
+    await Promise.all(chaves.map((chave) => sendLote(dono, slug, [{ key: chave, is_pinned: false, sort_order: 7 }])));
+
+    const lidas = await readPreferencias(dono, slug);
+    for (const chave of chaves) expect(lidas[chave]).toEqual({ key: chave, is_pinned: false, sort_order: 7 });
+  });
+
   it("a escolha de uma pessoa não aparece para a outra nem em outro espaço", async () => {
     await sendLote(dono, slug, [{ key: "wiki", is_pinned: false, sort_order: 0 }]);
 

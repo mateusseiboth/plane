@@ -30,20 +30,27 @@ export const readPreferenciasDaBarra = async (workspaceId: string, userId: strin
   return (ajuste?.value as PreferenciasDaBarra | null) ?? {};
 };
 
-/** Grava as preferências recebidas por cima das gravadas e devolve o mapa inteiro. */
+/**
+ * Grava as preferências recebidas por cima das gravadas e devolve o mapa inteiro.
+ * Dois cliques seguidos no menu Mais chegam ao mesmo tempo: a trava por pessoa e
+ * espaço impede que a segunda gravação leia o mapa antigo e apague a primeira.
+ */
 export const applyPreferenciasDaBarra = async (
   workspaceId: string,
   userId: string,
   recebidas: PreferenciaRecebida[]
 ): Promise<PreferenciasDaBarra> => {
-  const atuais = await readPreferenciasDaBarra(workspaceId, userId);
-  const mapa: PreferenciasDaBarra = { ...atuais };
-  for (const recebida of recebidas) mapa[recebida.key] = mergePreferenciaDaBarra(mapa[recebida.key], recebida);
   const key = buildChaveDoAjuste(userId);
-  await prisma.workspaceSetting.upsert({
-    where: { workspaceId_key: { workspaceId, key } },
-    create: { workspaceId, key, value: mapa },
-    update: { value: mapa },
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext(${`${workspaceId}:${key}`}))) AS trava`;
+    const ajuste = await tx.workspaceSetting.findFirst({ where: { workspaceId, key } });
+    const mapa: PreferenciasDaBarra = { ...(ajuste?.value as PreferenciasDaBarra | null) };
+    for (const recebida of recebidas) mapa[recebida.key] = mergePreferenciaDaBarra(mapa[recebida.key], recebida);
+    await tx.workspaceSetting.upsert({
+      where: { workspaceId_key: { workspaceId, key } },
+      create: { workspaceId, key, value: mapa },
+      update: { value: mapa },
+    });
+    return mapa;
   });
-  return mapa;
 };
