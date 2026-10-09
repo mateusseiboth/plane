@@ -43,21 +43,29 @@ async function requireUser(headers: any, set: any) {
   return user;
 }
 
-// Configurar o chat é `chat.administrar` na matriz de ações do Plane (lida do
+// Configurar o chat é `chat.configurar` na matriz de ações do Plane (lida do
 // banco compartilhado). workspaceId aqui é o SLUG do workspace do Plane.
-const isWorkspaceAdmin = (slug: string, userId: string): Promise<boolean> =>
-  hasChatAction(slug, userId, CHAT_ACTION.ADMINISTRAR);
+const canConfigurar = (slug: string, userId: string): Promise<boolean> =>
+  hasChatAction(slug, userId, CHAT_ACTION.CONFIGURAR);
 
 async function requireAdmin(slug: string, headers: any, set: any) {
   const user = await requireUser(headers, set);
-  if (!(await isWorkspaceAdmin(slug, user.id))) {
+  if (!(await canConfigurar(slug, user.id))) {
     set.status = 403;
-    throw Object.assign(new Error("Apenas administradores."), { status: 403 });
+    throw Object.assign(new Error("Você não tem permissão para configurar o chat."), { status: 403 });
   }
   return user;
 }
 
 export const configModule = new Elysia()
+  // O erro com `status` (401/403 dos guardas acima) vira `{detail}` aqui também:
+  // testado sozinho, o módulo não herda o onError do app.
+  .onError(({ error, set }) => {
+    const status = (error as { status?: number } | null)?.status;
+    if (!status) return;
+    set.status = status;
+    return { detail: (error as Error).message };
+  })
   // ── Bot config (singleton per workspace) ──
   .get("/workspaces/:slug/config/bot/", async ({ params: { slug }, headers, set }: any) => {
     await requireUser(headers, set);

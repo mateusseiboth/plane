@@ -9,6 +9,7 @@
 
 import { SignJWT, decodeJwt } from "jose";
 import prisma from "@db";
+import { CHAT_ACTION } from "@/permissoes";
 
 export const CHAT_URL = (process.env.CHAT_URL ?? "http://localhost:8002").replace(/\/$/, "");
 // O padrão TEM de ser o mesmo de `src/auth.ts`. Quando divergia, rodar a suíte
@@ -120,9 +121,12 @@ export type AttendantSocket = {
   close(): void;
 };
 
+const ACOES_DO_ADMIN_DE_TESTE = Object.values(CHAT_ACTION).filter((a) => a !== CHAT_ACTION.DISPARO);
+
 /**
  * Garante que o espaço de teste exista no Plane e que a pessoa atenda nele
- * (`chat.atender` na função gravada). O ticket do WS exige a ação: sem isto o
+ * (todas as ações do chat na função gravada, menos o disparo, que os testes
+ * dele concedem por pessoa). O ticket do WS exige `chat.atender`: sem isto o
  * teste levaria 403 no slug aleatório. Idempotente.
  */
 export async function ensureAtendenteNoEspaco(workspace: string, userId: string): Promise<void> {
@@ -133,7 +137,7 @@ export async function ensureAtendenteNoEspaco(workspace: string, userId: string)
   await prisma.$executeRaw`
     INSERT INTO workflow_roles (id, created_at, updated_at, workspace_id, name, key, level, is_system, permissions)
     SELECT gen_random_uuid(), now(), now(), w.id, 'Administrador', 'admin', 20, true,
-           '["chat.atender","chat.gerenciar","chat.administrar"]'::jsonb
+           ${JSON.stringify(ACOES_DO_ADMIN_DE_TESTE)}::jsonb
     FROM workspaces w
     WHERE w.slug = ${workspace}
       AND NOT EXISTS (SELECT 1 FROM workflow_roles r WHERE r.workspace_id = w.id AND r.key = 'admin' AND r.deleted_at IS NULL)`;
@@ -146,6 +150,36 @@ export async function ensureAtendenteNoEspaco(workspace: string, userId: string)
         SELECT 1 FROM workspace_members m
         WHERE m.workspace_id = w.id AND m.member_id = ${userId}::uuid AND m.deleted_at IS NULL)`;
 }
+
+export type PessoaDeTeste = { id: string; token: string; funcaoId: string };
+
+/**
+ * Pessoa do espaço com uma função só dela (fora do nível de sistema), para
+ * testar ação por ação: troque as ações com `setAcoesDaFuncao`. O espaço precisa
+ * existir (`ensureAtendenteNoEspaco` ou `criarWorkspacePlane`).
+ */
+export async function createPessoaComAcoes(slug: string, acoes: readonly string[]): Promise<PessoaDeTeste> {
+  const email = `pessoa-${crypto.randomUUID().slice(0, 8)}-${slug}@teste.local`;
+  const [user] = (await prisma.$queryRaw`
+    INSERT INTO users (id, created_at, updated_at, email, username, display_name, first_name, last_name, password,
+                       is_active, is_email_verified, is_password_autoset, is_instance_admin, is_superuser, is_staff)
+    VALUES (gen_random_uuid(), now(), now(), ${email}, ${email}, 'Pessoa', 'Pessoa', '', 'x',
+            true, true, false, false, false, false)
+    RETURNING id::text AS id`) as Array<{ id: string }>;
+  const [funcao] = (await prisma.$queryRaw`
+    INSERT INTO workflow_roles (id, created_at, updated_at, workspace_id, name, key, level, is_system, permissions)
+    SELECT gen_random_uuid(), now(), now(), w.id, ${email}, ${email}, 7, false, ${JSON.stringify(acoes)}::jsonb
+    FROM workspaces w WHERE w.slug = ${slug}
+    RETURNING id::text AS id`) as Array<{ id: string }>;
+  await prisma.$executeRaw`
+    INSERT INTO workspace_members (id, created_at, updated_at, workspace_id, member_id, role, is_active, workflow_role_id)
+    SELECT gen_random_uuid(), now(), now(), w.id, ${user!.id}::uuid, 7, true, ${funcao!.id}::uuid
+    FROM workspaces w WHERE w.slug = ${slug}`;
+  return { id: user!.id, token: await signPlaneToken(user!.id, email), funcaoId: funcao!.id };
+}
+
+export const setAcoesDaFuncao = (funcaoId: string, acoes: readonly string[]) =>
+  prisma.$executeRaw`UPDATE workflow_roles SET permissions = ${JSON.stringify(acoes)}::jsonb WHERE id = ${funcaoId}::uuid`;
 
 /** Faz o fluxo real: pega o ticket via REST (com o token do Plane) e abre o WS. */
 export async function connectAttendant(workspace: string, token: string): Promise<AttendantSocket> {

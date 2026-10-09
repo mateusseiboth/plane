@@ -16,3 +16,5 @@ target = "bun"
 "@scripts" = "./scripts"
 # Só para os testes: conferem que o chat usa as mesmas ações do catálogo do api-ts.
 "@api-ts" = "../api-ts/src"
+# O catálogo do api-ts importa `@utils/acoes-do-chat`: o alias de lá, só para os testes.
+"@utils" = "../api-ts/src/utils"

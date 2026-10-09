@@ -1,51 +1,36 @@
 /**
  * Quem vê qual conversa na lista do atendente (`GET /workspaces/:slug/sessions/`).
  *
- * A regra é pela AÇÃO, não pelo papel: quem tem `chat.administrar` vê todas as
- * conversas do espaço, inclusive robô, fila e as que já transferiu para outra
- * pessoa. Os demais (gestor incluído) veem só as atribuídas a si, nunca robô
- * nem fila. É por isso que o administrador continua vendo um atendimento que
- * acabou de transferir, e quem não administra deixa de ver na hora.
+ * A regra é pela matriz de ações, não pelo papel:
+ *  - as conversas atribuídas a si, sempre;
+ *  - as dos outros (inclusive encerradas e as que a pessoa acabou de
+ *    transferir) com `chat.ver_todas`;
+ *  - a fila e o robô (`bot`, `queued`) só com `chat.ver_fila`.
  *
- * O filtro do banco e o predicado em memória ficam lado a lado, na mesma
- * estratégia, para não divergirem.
+ * É por isso que quem vê as dos outros continua vendo um atendimento que
+ * transferiu, e quem só vê as próprias deixa de ver na hora.
+ *
+ * O filtro do banco e o predicado em memória ficam lado a lado, sobre a mesma
+ * regra, para não divergirem.
  */
 
-export const ESCOPO_DA_LISTA = { TODAS: "todas", MINHAS: "minhas" } as const;
-export type EscopoDaLista = (typeof ESCOPO_DA_LISTA)[keyof typeof ESCOPO_DA_LISTA];
+const FILA = ["bot", "queued"];
 
-/** Robô e fila: só quem administra enxerga. */
-const OCULTOS_DE_QUEM_NAO_ADMINISTRA = ["bot", "queued"];
+export type AcessoDaLista = { userId: string; verTodas: boolean; verFila: boolean };
 
 type SessaoNaLista = { assignedAttendantId?: string | null; status: string };
 
-type Estrategia = {
-  buildFiltro: (userId: string, pedidos: string[] | null) => Record<string, unknown>;
-  isVisivel: (sessao: SessaoNaLista, userId: string) => boolean;
-};
-
-const isStatusAberto = (status: string) => !OCULTOS_DE_QUEM_NAO_ADMINISTRA.includes(status);
-
-const ESTRATEGIAS: Record<EscopoDaLista, Estrategia> = {
-  [ESCOPO_DA_LISTA.TODAS]: {
-    buildFiltro: (_userId, pedidos) => (pedidos ? { status: { in: pedidos } } : {}),
-    isVisivel: () => true,
-  },
-  [ESCOPO_DA_LISTA.MINHAS]: {
-    buildFiltro: (userId, pedidos) => ({
-      assignedAttendantId: userId,
-      status: pedidos ? { in: pedidos.filter(isStatusAberto) } : { notIn: OCULTOS_DE_QUEM_NAO_ADMINISTRA },
-    }),
-    isVisivel: (sessao, userId) => sessao.assignedAttendantId === userId && isStatusAberto(sessao.status),
-  },
-};
-
-export const readEscopoDaLista = (podeAdministrar: boolean): EscopoDaLista =>
-  podeAdministrar ? ESCOPO_DA_LISTA.TODAS : ESCOPO_DA_LISTA.MINHAS;
+const isDaFila = (status: string) => FILA.includes(status);
 
 /** O pedaço do `where` que depende de quem pede; `pedidos` é o `?status=` da URL. */
-export const buildFiltroDaVisibilidade = (escopo: EscopoDaLista, userId: string, pedidos: string[] | null) =>
-  ESTRATEGIAS[escopo].buildFiltro(userId, pedidos);
+export function buildFiltroDaVisibilidade(acesso: AcessoDaLista, pedidos: string[] | null) {
+  const atribuidas = {
+    status: pedidos ? { in: pedidos.filter((s) => !isDaFila(s)) } : { notIn: FILA },
+    ...(acesso.verTodas ? {} : { assignedAttendantId: acesso.userId }),
+  };
+  const daFila = { status: { in: pedidos ? pedidos.filter(isDaFila) : FILA } };
+  return { OR: acesso.verFila ? [atribuidas, daFila] : [atribuidas] };
+}
 
-export const isSessaoVisivel = (escopo: EscopoDaLista, sessao: SessaoNaLista, userId: string): boolean =>
-  ESTRATEGIAS[escopo].isVisivel(sessao, userId);
+export const isSessaoVisivel = (acesso: AcessoDaLista, sessao: SessaoNaLista): boolean =>
+  isDaFila(sessao.status) ? acesso.verFila : acesso.verTodas || sessao.assignedAttendantId === acesso.userId;

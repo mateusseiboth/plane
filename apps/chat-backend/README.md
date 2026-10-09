@@ -122,8 +122,9 @@ Detalhes, decisões e o mapa do legado em `.claude/chat-ciclo-de-vida.md`. Resum
 - **Falha de envio**: a mensagem fica `status = "failed"` com `send_error`, o
   atendente recebe `message.status` e reenvia por
   `POST /workspaces/:slug/messages/:id/resend/`.
-- **Rotas** (`chat.atender`): `POST .../sessions/:id/close|pause|resume|chamado/`,
-  `GET .../close-reasons/`. **Relatórios** (`chat.gerenciar`):
+- **Rotas**: `POST .../sessions/:id/close/` (`chat.encerrar`), `pause|resume/`
+  (`chat.pausar`), `chamado/` (`chat.abrir_chamado`), `GET .../close-reasons/`
+  (`chat.atender`). **Relatórios** (`chat.relatorios`):
   `GET .../reports/atendimentos/` e `GET .../registros/` (filtros `from`, `to`,
   `entity_id`, `project_id`, `motivo`, `attendant_id`).
 
@@ -134,37 +135,48 @@ a conversa entra na fila e a distribuição por peso decide. Escolher deixava a
 conversa parada na caixa de quem estava ocupado (ou fora do horário) com o resto
 da equipe livre.
 
-**Quem aparece como atendente** sai de `src/permissoes.ts` (matriz de ações,
-`chat.atender` / `chat.gerenciar` / `chat.administrar`). Antes eram três perguntas
-diferentes que usavam o número do papel:
+**Permissões: uma ação da matriz por botão.** O módulo do chat registra as
+próprias ações no catálogo do Plane (`apps/api-ts/src/utils/acoes-do-chat.ts`), e o
+admin escolhe em _Configurações > Funções e permissões_ quais funções fazem cada
+uma (e exceções por pessoa). `src/permissoes.ts` repete as chaves (o container não
+leva o api-ts; `tests/permissoes-do-chat.test.ts` confere que as listas batem) e
+lê função + exceções do banco compartilhado. Falta a ação: 403 com `detail` em
+português.
 
-| Pergunta        | Papel mínimo    | Onde vale                                                   |
-| --------------- | --------------- | ----------------------------------------------------------- |
-| `ehAtendente`   | Atendimento (6) | listas de atendentes, alvo de transferência, membro de fila |
-| `podeGerenciar` | Membro (15)     | transferir atendimento, relatórios                          |
-| `ehAdmin`       | Admin (20)      | fila e robô na lista, avaliação do cliente                  |
+| Ação                    | Padrão                    | Onde vale                                                                                      |
+| ----------------------- | ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `chat.atender`          | Atendimento para cima     | ticket do WS, listas de atendentes, assumir, responder, reenviar, frases do compositor e as próprias (`/frases/`) |
+| `chat.pausar`           | Atendimento para cima     | `pause/`, `resume/`, `sla-alert/pause|resume/`                                                 |
+| `chat.encerrar`         | Atendimento para cima     | `close/` e o `agent.close` do WS                                                               |
+| `chat.abrir_chamado`    | Atendimento para cima     | `chamado/` aqui e `inbox-issues/from-chat/` no api-ts                                          |
+| `chat.transferir`       | Membro, Gestor            | `transfer/`                                                                                    |
+| `chat.ver_todas`        | Membro, Gestor            | conversas dos outros na lista (inclusive encerradas), gerenciador, ligações dos outros         |
+| `chat.ver_fila`         | só admin                  | `bot` e `queued` na lista (abas "Na fila" e "Bot")                                             |
+| `chat.relatorios`       | Membro, Gestor            | `dashboard/`, `monitor/`, `reports/ratings|sla|atendimentos|ligacoes/`, `registros/`           |
+| `chat.disparo`          | Gestor                    | `/disparo/*`                                                                                   |
+| `chat.configurar`       | só admin                  | `/config/*` (robô, fila, horários, feriados, atendentes, telefonia) e a avaliação do cliente  |
+| `chat.frases_do_espaco` | só admin                  | `/config/frases/*`                                                                             |
 
-Os valores espelham `EUserPermissions` (`packages/constants/src/user.ts`) — este
-fork tem papéis ABAIXO de membro (TI 12, Qualidade 8, Atendimento 6), e o papel
-_Atendimento_ é justamente quem atende. Com o corte antigo ele não aparecia em
-lista nenhuma, mesmo conectado.
+O admin do espaço recebe todas. `chat.gerenciar` e `chat.administrar` (as ações
+grossas de antes) saíram: a migração `20261009120000_acoes_finas_do_chat` do api-ts
+converteu funções e exceções gravadas (atender ganhou pausar, encerrar e abrir
+chamado; gerenciar virou transferir, relatórios e ver todas; administrar, todas).
 
-**Quem vê qual conversa na lista** (`src/visibilidade.ts`) é decidido pela ação
-`chat.administrar`: quem administra vê TODAS as conversas do espaço (robô, fila,
-as dos colegas e as que acabou de transferir); os demais, gestor incluído, veem
-só as atribuídas a si, nunca robô nem fila. Por isso o administrador que
-transfere um atendimento continua vendo a conversa, e isso é esperado.
+**Quem vê qual conversa na lista** (`src/visibilidade.ts`) é decidido pela matriz:
+as atribuídas a si, sempre; as dos colegas (inclusive as que acabou de transferir)
+com `chat.ver_todas`; robô e fila só com `chat.ver_fila`. Por isso quem vê as dos
+outros e transfere um atendimento continua vendo a conversa, e isso é esperado.
 
-**Na transferência** (`POST /sessions/:id/transfer/`, `chat.gerenciar`) só o dono
+**Na transferência** (`POST /sessions/:id/transfer/`, `chat.transferir`) só o dono
 da conversa muda: entidade, sistema e responsável continuam na mesma linha e
 chegam a quem recebe. Os avisos saem de `src/transferencia.ts`: quem recebe ganha
 `session.transferred`; quem atendia e quem transferiu ganham
-`session.transferred_out`, e a tela de quem não administra tira a conversa da
+`session.transferred_out`, e a tela de quem não vê as dos outros tira a conversa da
 lista na hora.
 
-**A avaliação é leitura de gestão.** Nota e comentário do cliente só vão para o
-administrador do espaço: o servidor não os envia a quem não é admin (lista de
-conversas, histórico e transcrição), e a tela do atendente também não os mostra.
+**A avaliação é leitura de gestão.** Nota e comentário do cliente só vão para quem
+tem `chat.configurar`: o servidor não os envia aos outros (lista de conversas,
+histórico e transcrição), e a tela do atendente também não os mostra.
 
 **Pesquisa só quando houve atendimento.** Conversa encerrada sem ninguém ter
 assumido não abre pesquisa de satisfação — não há atendimento a avaliar. Quem
@@ -192,9 +204,9 @@ na **mesma caixa** do atendimento. Contrato completo e exemplo de dialplan em
   `POST .../concluir/` (sistema + descrição, e o contato quando o telefone não
   identificou), `POST .../chamado/` (o front cria a solicitação no api-ts e informa
   qual foi).
-- **Configuração** (`chat.administrar`): `/config/telefonia/` (token: só o hash e os
+- **Configuração** (`chat.configurar`): `/config/telefonia/` (token: só o hash e os
   4 últimos caracteres ficam gravados; ramais).
-- **Relatório** (`chat.gerenciar`): `GET /reports/ligacoes/?days=N`, por atendente,
+- **Relatório** (`chat.relatorios`): `GET /reports/ligacoes/?days=N`, por atendente,
   entidade e sistema.
 - Histórico do cliente (conversas + ligações): `GET /sessions/:id/historico-do-cliente/`.
   Lista filtrável por tipo: `GET /sessions/?channel=phone` ou `?channel=whatsapp,native`.
@@ -216,13 +228,13 @@ finas em `rotas.ts`) e migração `prisma/sql/0014_atendente.sql`.
   próprias, cada uma com `escopo` (`espaco` | `pessoal`); o compositor separa em
   "Minhas frases" e "Do espaço". Quem atende cadastra as próprias em
   `POST /frases/` e altera/apaga em `PATCH|DELETE /frases/:id/`. As do espaço
-  ficam em `/config/frases/` e `POST /config/frases/padrao/` (`chat.administrar`).
+  ficam em `/config/frases/` e `POST /config/frases/padrao/` (`chat.frases_do_espaco`).
   Frase de outro dono responde 404 nas duas rotas.
 - **Chave de acesso remoto**: `POST /sessions/:id/chave/` grava mensagem do tipo
   `chave` (negrito no WhatsApp, botão de copiar no widget).
 - **Sem o nome do atendente**: `without_sender_name: true` no `agent.message` do WS
   ou na chave. Desligado por padrão; a equipe continua vendo quem enviou.
-- **Alerta de cliente sem resposta**: `POST /sessions/:id/sla-alert/pause|resume/`.
+- **Alerta de cliente sem resposta**: `POST /sessions/:id/sla-alert/pause|resume/` (`chat.pausar`).
   A pausa vence em 40 minutos; o `alert.sla` vai só ao atendente.
 - **Cadastro durante o atendimento**: `GET|PATCH /sessions/:id/cadastro/`
   (entidade, sistema e responsável; erros voltam em `errors[].path`).
@@ -234,10 +246,10 @@ finas em `rotas.ts`) e migração `prisma/sql/0014_atendente.sql`.
 - **Foto de perfil**: o webhook copia a foto do WhatsApp para o storage
   (`responsaveis/<id>.jpg`) e grava o endereço em `entity_contacts.photo`, a cada
   30 dias. A base do endereço é `CHAT_PUBLIC_URL` (padrão `/chat-api`).
-- **Feriados**: `GET|PUT /config/feriados/`; no feriado `isWithinBusinessHours` é falso.
-- **Gerenciador** (`chat.gerenciar`): `GET /gerenciador/` com `attendant_id`,
+- **Feriados**: `GET|PUT /config/feriados/` (gravar: `chat.configurar`); no feriado `isWithinBusinessHours` é falso.
+- **Gerenciador** (`chat.ver_todas`): `GET /gerenciador/` com `attendant_id`,
   `entity_id`, `project_id`, `from`, `to`, `q`, `channel`, `status`, `page`, `per_page`.
-- **Monitor ao vivo** (`chat.gerenciar`): `GET /monitor/`.
+- **Monitor ao vivo** (`chat.relatorios`): `GET /monitor/`.
 
 ## Disparo em massa
 

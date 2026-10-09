@@ -1,7 +1,7 @@
 /**
  * Catálogo dos destinos do passo "ação", para a tela de fluxos do robô montar
  * o passo (destino, parâmetros e as perguntas de cada campo). Quem configura
- * o robô é `chat.administrar`.
+ * o robô é `chat.configurar`.
  */
 import { Elysia } from "elysia";
 import { authorizeChat, isNegado } from "@/acesso";
@@ -19,7 +19,7 @@ export const serializeDestino = (d: Destino) => ({
 export const destinosModule = new Elysia().get(
   "/workspaces/:slug/config/bot/destinos/",
   async ({ params: { slug }, headers, set }) => {
-    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.ADMINISTRAR);
+    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.CONFIGURAR);
     if (isNegado(acesso)) {
       set.status = acesso.status;
       return acesso.body;

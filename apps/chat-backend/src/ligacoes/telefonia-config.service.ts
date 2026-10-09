@@ -1,6 +1,6 @@
 /**
  * Configuração de telefonia do espaço: o token de serviço do PBX e o mapa de
- * ramal para atendente. Quem chega aqui já passou por `chat.administrar`.
+ * ramal para atendente. Quem chega aqui já passou por `chat.configurar`.
  */
 
 import * as dao from "@/ligacoes/ligacoes.dao";

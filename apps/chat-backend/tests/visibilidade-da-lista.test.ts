@@ -2,57 +2,87 @@
  * Quem vê qual conversa na lista do atendente, e quem é avisado quando uma
  * conversa troca de dono. Puro: sem banco e sem servidor.
  *
- * O caso que motivou: o dono transferiu um atendimento e continuou vendo a
- * conversa. Ele tem `chat.administrar`, e quem administra vê todas. Quem não
- * administra vê só as próprias, então a transferida sai da lista dele na hora.
+ * A regra é pela matriz de ações:
+ *  - sem `chat.ver_todas`, só as conversas atribuídas a si;
+ *  - com `chat.ver_todas`, as dos outros também (inclusive encerradas e as que
+ *    a pessoa acabou de transferir);
+ *  - a fila e o robô (`bot`, `queued`) só com `chat.ver_fila`.
+ *
+ * O caso que motivou a regra da transferência: o dono transferiu um atendimento
+ * e continuou vendo a conversa. Ele vê as dos outros; quem não vê deixa de ver
+ * na hora.
  */
 import { describe, expect, it } from "bun:test";
 import { buildAvisosDaTransferencia } from "@/transferencia";
-import { ESCOPO_DA_LISTA, buildFiltroDaVisibilidade, isSessaoVisivel, readEscopoDaLista } from "@/visibilidade";
+import { buildFiltroDaVisibilidade, isSessaoVisivel } from "@/visibilidade";
+
+const EU = "eu";
+const FILA = ["bot", "queued"];
+const ADMIN = { verTodas: true, verFila: true };
+const SO_AS_PROPRIAS = { verTodas: false, verFila: false };
 
 const transferida = { assignedAttendantId: "recebeu", status: "active" };
 
-describe("escopo da lista pela ação", () => {
-  it("quem administra vê todas; os demais, as próprias", () => {
-    expect(readEscopoDaLista(true)).toBe(ESCOPO_DA_LISTA.TODAS);
-    expect(readEscopoDaLista(false)).toBe(ESCOPO_DA_LISTA.MINHAS);
-  });
-});
-
 describe("conversa transferida", () => {
-  it("quem administra continua vendo depois de transferir", () => {
-    expect(isSessaoVisivel(ESCOPO_DA_LISTA.TODAS, transferida, "transferiu")).toBe(true);
+  it("quem vê as dos outros continua vendo depois de transferir", () => {
+    expect(isSessaoVisivel({ userId: "transferiu", ...ADMIN }, transferida)).toBe(true);
+    expect(isSessaoVisivel({ userId: "transferiu", verTodas: true, verFila: false }, transferida)).toBe(true);
   });
 
-  it("quem não administra deixa de ver", () => {
-    expect(isSessaoVisivel(ESCOPO_DA_LISTA.MINHAS, transferida, "transferiu")).toBe(false);
+  it("quem só vê as próprias deixa de ver", () => {
+    expect(isSessaoVisivel({ userId: "transferiu", ...SO_AS_PROPRIAS }, transferida)).toBe(false);
   });
 
   it("quem recebeu passa a ver", () => {
-    expect(isSessaoVisivel(ESCOPO_DA_LISTA.MINHAS, transferida, "recebeu")).toBe(true);
+    expect(isSessaoVisivel({ userId: "recebeu", ...SO_AS_PROPRIAS }, transferida)).toBe(true);
+  });
+});
+
+describe("fila e robô", () => {
+  it("sem chat.ver_fila nunca aparecem, mesmo atribuídas à pessoa ou com chat.ver_todas", () => {
+    const acesso = { userId: "u", verTodas: true, verFila: false };
+    expect(isSessaoVisivel(acesso, { assignedAttendantId: "u", status: "queued" })).toBe(false);
+    expect(isSessaoVisivel(acesso, { assignedAttendantId: "u", status: "bot" })).toBe(false);
   });
 
-  it("robô e fila nunca aparecem para quem não administra, mesmo atribuídas a ele", () => {
-    expect(isSessaoVisivel(ESCOPO_DA_LISTA.MINHAS, { assignedAttendantId: "u", status: "queued" }, "u")).toBe(false);
-    expect(isSessaoVisivel(ESCOPO_DA_LISTA.MINHAS, { assignedAttendantId: "u", status: "bot" }, "u")).toBe(false);
-    expect(isSessaoVisivel(ESCOPO_DA_LISTA.TODAS, { assignedAttendantId: null, status: "queued" }, "u")).toBe(true);
+  it("com chat.ver_fila aparecem, mesmo sem dono", () => {
+    const acesso = { userId: "u", verTodas: false, verFila: true };
+    expect(isSessaoVisivel(acesso, { assignedAttendantId: null, status: "queued" })).toBe(true);
+    expect(isSessaoVisivel(acesso, { assignedAttendantId: "outro", status: "active" })).toBe(false);
   });
 });
 
 describe("filtro da consulta", () => {
-  it("quem administra: só o status pedido", () => {
-    expect(buildFiltroDaVisibilidade(ESCOPO_DA_LISTA.TODAS, "u", null)).toEqual({});
-    expect(buildFiltroDaVisibilidade(ESCOPO_DA_LISTA.TODAS, "u", ["queued"])).toEqual({ status: { in: ["queued"] } });
+  it("só as próprias: atribuídas a si, fora da fila", () => {
+    expect(buildFiltroDaVisibilidade({ userId: EU, ...SO_AS_PROPRIAS }, null)).toEqual({
+      OR: [{ status: { notIn: FILA }, assignedAttendantId: EU }],
+    });
+    expect(buildFiltroDaVisibilidade({ userId: EU, ...SO_AS_PROPRIAS }, ["queued", "active"])).toEqual({
+      OR: [{ status: { in: ["active"] }, assignedAttendantId: EU }],
+    });
   });
 
-  it("quem não administra: as próprias, sem robô e sem fila", () => {
-    expect(buildFiltroDaVisibilidade(ESCOPO_DA_LISTA.MINHAS, "u", null)).toEqual({
-      assignedAttendantId: "u",
-      status: { notIn: ["bot", "queued"] },
+  it("com ver todas: as de qualquer atendente, ainda fora da fila", () => {
+    expect(buildFiltroDaVisibilidade({ userId: EU, verTodas: true, verFila: false }, null)).toEqual({
+      OR: [{ status: { notIn: FILA } }],
     });
-    expect(buildFiltroDaVisibilidade(ESCOPO_DA_LISTA.MINHAS, "u", ["queued", "active"])).toEqual({
-      assignedAttendantId: "u",
-      status: { in: ["active"] },
+  });
+
+  it("com ver a fila: as próprias e as que esperam atendente ou estão com o robô", () => {
+    expect(buildFiltroDaVisibilidade({ userId: EU, verTodas: false, verFila: true }, null)).toEqual({
+      OR: [{ status: { notIn: FILA }, assignedAttendantId: EU }, { status: { in: FILA } }],
+    });
+  });
+
+  it("com as duas e uma aba pedida: cada lado fica com os status que lhe cabem", () => {
+    expect(buildFiltroDaVisibilidade({ userId: EU, ...ADMIN }, ["queued", "closed"])).toEqual({
+      OR: [{ status: { in: ["closed"] } }, { status: { in: ["queued"] } }],
+    });
+  });
+
+  it("pedir a aba da fila sem a ação não traz nada", () => {
+    expect(buildFiltroDaVisibilidade({ userId: EU, verTodas: true, verFila: false }, ["queued", "bot"])).toEqual({
+      OR: [{ status: { in: [] } }],
     });
   });
 });

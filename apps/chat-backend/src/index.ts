@@ -23,11 +23,11 @@ import { startTimers } from "@/timers";
 import { submitRating, randomDog } from "@/rating";
 import { attendantName } from "@/users";
 import { nomeDoCliente } from "@/aviso-do-atendente";
-import { ratingsReport, slaReport } from "@/reports";
 import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
 import { withoutAvaliacao, serializeSession } from "@/sessoes";
+import { authorizeChat, isNegado } from "@/acesso";
 import { buildAvisosDaTransferencia } from "@/transferencia";
-import { buildFiltroDaVisibilidade, readEscopoDaLista } from "@/visibilidade";
+import { buildFiltroDaVisibilidade } from "@/visibilidade";
 import {
   register,
   unregister,
@@ -78,11 +78,6 @@ async function resolveProject(
   }
 }
 
-/** Transfere atendimento e lê relatórios. `slug` é o slug do workspace do Plane. */
-async function isWorkspaceManager(slug: string, userId: string): Promise<boolean> {
-  return hasChatAction(slug, userId, CHAT_ACTION.GERENCIAR);
-}
-
 /**
  * Depois de gravar a mensagem do cliente do site: em atendimento, pode ser a
  * resposta à pergunta de inatividade; em pausa, retoma. Nos demais, é o robô.
@@ -91,6 +86,8 @@ const SEGUIMENTO_DO_CLIENTE: Record<string, (sessionId: string, texto: string) =
   active: handleRespostaDeInatividade,
   paused: (sessionId) => resumeAtendimento(sessionId),
 };
+
+const SEM_PERMISSAO_PARA_ENCERRAR = "Você não tem permissão para encerrar atendimentos. Peça ao administrador.";
 
 // ── WebSocket dispatch ──────────────────────────────────────────────────────────
 async function onWsMessage(
@@ -203,7 +200,9 @@ async function onWsMessage(
     return;
   }
   if (type === "agent.close" && sessionId) {
-    // Mesmo caminho do `POST .../close/`: sem entidade, não encerra e o atendente é avisado.
+    // Mesma ação do `POST .../close/` (`chat.encerrar`); sem entidade, não encerra e o atendente é avisado.
+    if (!(await hasChatAction(ctx.workspaceId, ctx.userId, CHAT_ACTION.ENCERRAR)))
+      return reply({ type: "error", action: "session.close", session_id: sessionId, detail: SEM_PERMISSAO_PARA_ENCERRAR });
     return void closeWithEncerramento(sessionId, msg, ctx.userId).catch((e) =>
       reply({ type: "error", action: "session.close", session_id: sessionId, detail: e instanceof EncerramentoError ? e.message : "Não foi possível encerrar." })
     );
@@ -358,11 +357,11 @@ const app = new Elysia()
     const session = await prisma.chatSession.findUnique({ where: { id }, include: { contact: true } });
     if (!session) return { session: null, results: messages.map((m) => serializeMessage(m, { full })) };
     // O cliente vê a própria avaliação (é ela que diz se o formulário já foi
-    // respondido); do lado da equipe, só o administrador.
-    const podeVerAvaliacao = role === "client" || (await ehAdminDaConversa(session, headers));
+    // respondido); do lado da equipe, quem configura o chat (`chat.configurar`).
+    const canVerAvaliacao = role === "client" || (await canVerAvaliacaoDaConversa(session, headers));
     const serializada = serializeSession(session);
     return {
-      session: podeVerAvaliacao ? serializada : withoutAvaliacao(serializada),
+      session: canVerAvaliacao ? serializada : withoutAvaliacao(serializada),
       results: messages.map((m) => serializeMessage(m, { full })),
     };
   })
@@ -384,9 +383,9 @@ const app = new Elysia()
     });
     // Staff transcript (shared via copy-link): show deleted originals + history.
     const serializada = serializeSession(session);
-    const podeVerAvaliacao = viewer ? await hasChatAction(session.workspaceId, viewer.id, CHAT_ACTION.ADMINISTRAR) : false;
+    const canVerAvaliacao = viewer ? await hasChatAction(session.workspaceId, viewer.id, CHAT_ACTION.CONFIGURAR) : false;
     return {
-      session: podeVerAvaliacao ? serializada : withoutAvaliacao(serializada),
+      session: canVerAvaliacao ? serializada : withoutAvaliacao(serializada),
       results: messages.map((m) => serializeMessage(m, { full: true })),
     };
   })
@@ -400,10 +399,15 @@ const app = new Elysia()
     }
     const status = (query as any).status as string | undefined;
 
-    // Visibilidade pela ação (src/visibilidade.ts): quem administra vê todas,
-    // inclusive robô, fila e as que já transferiu; os demais (gestor incluído)
-    // veem só as próprias, nunca robô nem fila, e sem a avaliação do cliente.
-    const isAdmin = await hasChatAction(slug, user.id, CHAT_ACTION.ADMINISTRAR);
+    // Visibilidade pela matriz (src/visibilidade.ts): as próprias sempre, as dos
+    // outros com `chat.ver_todas` (inclusive as que a pessoa já transferiu), a
+    // fila e o robô com `chat.ver_fila`. A avaliação do cliente, só com
+    // `chat.configurar`.
+    const [verTodas, verFila, canVerAvaliacao] = await Promise.all([
+      hasChatAction(slug, user.id, CHAT_ACTION.VER_TODAS),
+      hasChatAction(slug, user.id, CHAT_ACTION.VER_FILA),
+      hasChatAction(slug, user.id, CHAT_ACTION.CONFIGURAR),
+    ]);
 
     const requested = status ? status.split(",") : null;
     // A aba de encerrados mostra só o DIA CORRENTE: com o histórico do SAC são
@@ -431,12 +435,10 @@ const app = new Elysia()
       : {};
     // `?channel=phone` (ligações) ou `?channel=whatsapp,native` (conversas).
     const filtroDeCanal = parseChannelFilter((query as any).channel);
+    // Cada recorte pode trazer o próprio `OR`: juntos por `AND`, um não apaga o outro.
     const whereFilter = {
       workspaceId: slug,
-      ...buildFiltroDaVisibilidade(readEscopoDaLista(isAdmin), user.id, requested),
-      ...recorteDeHoje,
-      ...recorteDaBusca,
-      ...filtroDeCanal,
+      AND: [buildFiltroDaVisibilidade({ userId: user.id, verTodas, verFila }, requested), recorteDeHoje, recorteDaBusca, filtroDeCanal],
     };
 
     const sessions = await prisma.chatSession.findMany({
@@ -466,79 +468,11 @@ const app = new Elysia()
           prisma.chatMessage.findFirst({ where: { sessionId: s.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { text: true, type: true, sender: true, createdAt: true } }),
         ]);
         const preview = last ? (last.text || (last.type === "image" ? "📷 Imagem" : last.type === "audio" ? "🎤 Áudio" : last.type === "video" ? "🎬 Vídeo" : last.type === "file" ? "📎 Arquivo" : "")) : "";
-        const serializada = isAdmin ? serializeSession(s) : withoutAvaliacao(serializeSession(s));
+        const serializada = canVerAvaliacao ? serializeSession(s) : withoutAvaliacao(serializeSession(s));
         return { ...serializada, unread, last_message: preview, last_message_at: last?.createdAt ?? s.lastClientMessageAt ?? s.createdAt };
       })
     );
     return { results };
-  })
-
-  // ── Admin dashboard: attendant activity + totals ──
-  .get("/workspaces/:slug/dashboard/", async ({ params: { slug }, headers, set }) => {
-    const user = await resolveAttendant(headers);
-    if (!user) {
-      set.status = 401;
-      return { detail: "Não autenticado." };
-    }
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const [active, queued, bot, closedToday, activeByAttendant, todayByAttendant] = await Promise.all([
-      prisma.chatSession.count({ where: { workspaceId: slug, status: "active" } }),
-      prisma.chatSession.count({ where: { workspaceId: slug, status: "queued" } }),
-      prisma.chatSession.count({ where: { workspaceId: slug, status: "bot" } }),
-      prisma.chatSession.count({ where: { workspaceId: slug, status: "closed", closedAt: { gte: startOfToday } } }),
-      prisma.chatSession.groupBy({ by: ["assignedAttendantId"], where: { workspaceId: slug, status: "active", assignedAttendantId: { not: null } }, _count: { _all: true } }),
-      prisma.chatSession.groupBy({ by: ["assignedAttendantId"], where: { workspaceId: slug, assignedAttendantId: { not: null }, createdAt: { gte: startOfToday } }, _count: { _all: true } }),
-    ]);
-
-    let invisibleRows: Array<{ userId: string }> = [];
-    try { invisibleRows = await (prisma as any).attendantStatus.findMany({ where: { workspaceId: slug, isInvisible: true }, select: { userId: true } }); } catch { }
-
-    const online = Array.from(connectedUserIds(slug));
-    const invisible = new Set(invisibleRows.map((r: any) => r.userId));
-    const activeMap = new Map(activeByAttendant.map((g) => [g.assignedAttendantId as string, g._count._all]));
-    const todayMap = new Map(todayByAttendant.map((g) => [g.assignedAttendantId as string, g._count._all]));
-    const userIds = new Set<string>([...online, ...activeMap.keys(), ...todayMap.keys(), ...invisible]);
-
-    const attendants = Array.from(userIds).map((userId) => ({
-      user_id: userId,
-      online: online.includes(userId),
-      invisible: invisible.has(userId),
-      active_chats: activeMap.get(userId) ?? 0,
-      today_chats: todayMap.get(userId) ?? 0,
-    }));
-
-    return { totals: { active, queued, bot, closed_today: closedToday }, online, attendants };
-  })
-
-  // ── Reports: attendant ratings + ranking (admin/manager only) ──
-  .get("/workspaces/:slug/reports/ratings/", async ({ params: { slug }, headers, set }) => {
-    const user = await resolveAttendant(headers);
-    if (!user) {
-      set.status = 401;
-      return { detail: "Não autenticado." };
-    }
-    if (!(await isWorkspaceManager(slug, user.id))) {
-      set.status = 403;
-      return { detail: "Apenas administradores ou gestores." };
-    }
-    return ratingsReport(slug);
-  })
-
-  // ── Reports: SLA (first-response / resolution times) ──
-  .get("/workspaces/:slug/reports/sla/", async ({ params: { slug }, query, headers, set }) => {
-    const user = await resolveAttendant(headers);
-    if (!user) {
-      set.status = 401;
-      return { detail: "Não autenticado." };
-    }
-    if (!(await isWorkspaceManager(slug, user.id))) {
-      set.status = 403;
-      return { detail: "Apenas administradores ou gestores." };
-    }
-    const days = Math.min(365, Math.max(1, Number((query as any)?.days) || 30));
-    return slaReport(slug, days);
   })
 
   // ── Attendant: start a new WhatsApp chat from a contact ──
@@ -590,17 +524,12 @@ const app = new Elysia()
     };
   })
 
-  // ── Transfer a session to another attendant (admin/manager only) ──
+  // ── Transfer a session to another attendant (chat.transferir) ──
   .post("/workspaces/:slug/sessions/:id/transfer/", async ({ params: { slug, id }, body, headers, set }) => {
-    const user = await resolveAttendant(headers);
-    if (!user) {
-      set.status = 401;
-      return { detail: "Não autenticado." };
-    }
-    // Só gestor transfere atendimento.
-    if (!(await isWorkspaceManager(slug, user.id))) {
-      set.status = 403;
-      return { detail: "Apenas administradores ou gestores podem transferir atendimentos." };
+    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.TRANSFERIR);
+    if (isNegado(acesso)) {
+      set.status = acesso.status;
+      return acesso.body;
     }
 
     const toUserId = String((body as any)?.to_user_id ?? "");
@@ -636,7 +565,7 @@ const app = new Elysia()
       sessionId: id,
       clientName: nomeDoCliente(updated),
       anteriorUserId: session.assignedAttendantId,
-      porUserId: user.id,
+      porUserId: acesso.userId,
       paraUserId: toUserId,
     }).forEach(({ userId, payload }) => sendToUser(userId, payload));
     sendToWorkspace(slug, { type: "session.activity", session_id: id });
@@ -824,10 +753,10 @@ startTimers();
 startDisparoWorker();
 console.log(`💬 chat-backend listening on :${PORT}`);
 
-/** A avaliação do cliente é leitura de gestão: só o administrador do espaço. */
-async function ehAdminDaConversa(session: { workspaceId: string }, headers: any): Promise<boolean> {
+/** A avaliação do cliente na conversa é de quem configura o chat (`chat.configurar`). */
+async function canVerAvaliacaoDaConversa(session: { workspaceId: string }, headers: any): Promise<boolean> {
   const user = await resolveAttendant(headers);
-  return user ? hasChatAction(session.workspaceId, user.id, CHAT_ACTION.ADMINISTRAR) : false;
+  return user ? hasChatAction(session.workspaceId, user.id, CHAT_ACTION.CONFIGURAR) : false;
 }
 
 // ── auth helper for history endpoint ──

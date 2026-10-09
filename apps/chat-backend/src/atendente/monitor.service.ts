@@ -1,5 +1,5 @@
 /**
- * Monitor ao vivo (`chat.gerenciar`), no dashboard do chat: quem está na fila e
+ * Monitor ao vivo (`chat.relatorios`), no dashboard do chat: quem está na fila e
  * há quanto tempo, as conversas em atendimento com o tempo parado, os abandonos
  * do dia e os tempos de fila, atendimento e resposta. Ligação (canal `phone`)
  * fica de fora: não há cliente digitando. Legado: `intranet/chatger/`.
