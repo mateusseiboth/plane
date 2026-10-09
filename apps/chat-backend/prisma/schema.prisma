@@ -311,16 +311,19 @@ model ProviderConfig {
   @@map("chat_provider_config")
 }
 
-// Frases prontas do atendente, por espaço (src/atendente/frases.ts).
+// Frases prontas do atendente (src/atendente/frases.ts): do espaço (sem dono,
+// compartilhadas) ou pessoais (owner_user_id = quem cadastrou).
 model ChatFrasePronta {
   id          String   @id @default(uuid()) @db.Uuid
   workspaceId String   @map("workspace_id")
+  ownerUserId String?  @map("owner_user_id")
   texto       String
   ordem       Int      @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([workspaceId, ordem])
+  @@index([workspaceId, ownerUserId, ordem])
   @@map("chat_frases_prontas")
 }
 

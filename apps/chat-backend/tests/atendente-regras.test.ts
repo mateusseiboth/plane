@@ -12,7 +12,14 @@ import { parseCadastro } from "@/atendente/cadastro-regras";
 import { isFeriado, parseFeriados } from "@/atendente/feriados";
 import { readDataLocal, readInicioDoDia } from "@/atendente/fuso";
 import { buildUrlDaFoto, isFotoVencida } from "@/atendente/foto";
-import { FRASES_PADRAO, parseFrase } from "@/atendente/frases";
+import {
+  ESCOPO_DA_FRASE,
+  FRASES_PADRAO,
+  buildDonoDaFrase,
+  buildFiltroDasFrasesVisiveis,
+  parseFrase,
+  readEscopoDaFrase,
+} from "@/atendente/frases";
 import { buildFiltroDoGerenciador, readPaginacao } from "@/atendente/gerenciador-regras";
 import { computeTempos, summarize } from "@/atendente/monitor-regras";
 import { formatTextoDoWhatsapp } from "@/atendente/whatsapp-texto";
@@ -46,6 +53,25 @@ describe("frases prontas", () => {
   it("as frases padrão vêm do SAC, sem as perguntas da pesquisa antiga", () => {
     expect(FRASES_PADRAO).toContain("Aguarde um momento, por favor.");
     expect(FRASES_PADRAO.some((f) => f.includes("R: 1 - Regular"))).toBe(false);
+  });
+});
+
+describe("dono da frase", () => {
+  it("frase do espaço não tem dono; a pessoal é de quem cadastrou", () => {
+    expect(buildDonoDaFrase(ESCOPO_DA_FRASE.ESPACO, "u1")).toBeNull();
+    expect(buildDonoDaFrase(ESCOPO_DA_FRASE.PESSOAL, "u1")).toBe("u1");
+  });
+
+  it("o escopo sai do dono gravado", () => {
+    expect(readEscopoDaFrase({ ownerUserId: null })).toBe(ESCOPO_DA_FRASE.ESPACO);
+    expect(readEscopoDaFrase({ ownerUserId: "u1" })).toBe(ESCOPO_DA_FRASE.PESSOAL);
+  });
+
+  it("quem atende vê as do espaço e as próprias, nunca as de outro atendente", () => {
+    expect(buildFiltroDasFrasesVisiveis("ws", "u1")).toEqual({
+      workspaceId: "ws",
+      OR: [{ ownerUserId: null }, { ownerUserId: "u1" }],
+    });
   });
 });
 
