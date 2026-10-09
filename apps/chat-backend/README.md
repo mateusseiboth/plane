@@ -168,6 +168,32 @@ as atribuídas a si, sempre; as dos colegas (inclusive as que acabou de transfer
 com `chat.ver_todas`; robô e fila só com `chat.ver_fila`. Por isso quem vê as dos
 outros e transfere um atendimento continua vendo a conversa, e isso é esperado.
 
+**A mesma regra vale fora da lista** (`src/acesso-a-sessao.ts`, W43). As rotas que
+não levam o espaço na URL decidem pela conversa pedida:
+
+| Rota | Quem entra |
+| --- | --- |
+| `GET /sessions/:id/messages/` (histórico) | o cliente com `?token=` da conversa, ou a equipe |
+| `POST /sessions/:id/upload/` (anexo) | o cliente com `?token=` da conversa, ou a equipe |
+| `GET /sessions/by-protocol/:protocol/` (transcrição, `chat-view/[protocol]` do web) | só a equipe, com `chat.atender` no espaço da conversa (sem a regra da lista) |
+| `POST /sessions/:id/rate/` (avaliação do formulário nativo) | só o cliente, com `?token=` da conversa |
+| `POST /workspaces/:slug/sessions/whatsapp/` (iniciar conversa) | `chat.atender` no espaço |
+
+"A equipe" é quem tem `chat.atender` no espaço DA CONVERSA e a enxerga por
+`isSessaoVisivel` (as próprias; as dos outros com `chat.ver_todas`; fila e robô com
+`chat.ver_fila`). Sem login: 401; sem `chat.atender` ali (inclusive conta de outro
+espaço): 403; conversa que a pessoa não enxerga: 404 "Atendimento não encontrado.".
+A transcrição pelo protocolo é a exceção: pede só `chat.atender` no espaço da
+conversa, sem `isSessaoVisivel`, porque o protocolo chega pelo link "Ver conversa"
+gravado no chamado e quem atende o chamado (TI, Qualidade) lê a conversa de outra
+pessoa. A nota continua cortada por `chat.ver_avaliacao`, e o token do cliente não abre.
+A avaliação recusa a equipe com 403 "Só o cliente avalia o atendimento.": antes o
+atendente gravava ou sobrescrevia a nota da própria conversa. No WhatsApp a nota
+chega pela resposta à pesquisa (`handleRatingReply`, `src/rating.ts`), sem passar
+por essa rota. A mídia (`GET /media/*`) continua sem login: a chave é aleatória e
+quem busca o arquivo é também a Z-API, o api-ts (anexo do chamado) e o `<img>` da página.
+Testes: `tests/acesso-a-sessao.e2e.test.ts`.
+
 **Na transferência** (`POST /sessions/:id/transfer/`, `chat.transferir`) só o dono
 da conversa muda: entidade, sistema e responsável continuam na mesma linha e
 chegam a quem recebe. Os avisos saem de `src/transferencia.ts`: quem recebe ganha

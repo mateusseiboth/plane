@@ -12,9 +12,10 @@ import { ChatTranscriptPrintDocument, PrintButton } from "@/components/print";
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { ChatMessage, ChatSession } from "@/services/chat.service";
 
-// Read-only full view of a chat by protocol. Anyone with the link can open it.
-// Talks to the chat backend through the proxy (/chat-api) — the by-protocol
-// endpoint is public read-only.
+// Read-only full view of a chat by protocol, through the proxy (/chat-api) with
+// the Plane cookie. The chat backend opens it for staff with `chat.atender` in the
+// chat's workspace, whoever handled the chat (the link comes from the work item);
+// anyone else gets 401/403 and lands on the "not found" message.
 export function ChatReadOnlyView({ protocol, workspaceSlug }: { protocol: string; workspaceSlug: string }) {
   const { can } = useMyWorkspaceActions(workspaceSlug);
   const { canVerAvaliacao } = buildPermissoesDoAtendimento(can);
