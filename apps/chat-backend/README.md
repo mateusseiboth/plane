@@ -153,8 +153,9 @@ português.
 | `chat.ver_todas`        | Membro, Gestor            | conversas dos outros na lista (inclusive encerradas), gerenciador, ligações dos outros         |
 | `chat.ver_fila`         | só admin                  | `bot` e `queued` na lista (abas "Na fila" e "Bot")                                             |
 | `chat.relatorios`       | Membro, Gestor            | `dashboard/`, `monitor/`, `reports/ratings|sla|atendimentos|ligacoes/`, `registros/`           |
+| `chat.ver_avaliacao`    | só admin                  | nota e comentário do cliente na lista, no histórico, na transcrição e na resposta de `transfer/` |
 | `chat.disparo`          | Gestor                    | `/disparo/*`                                                                                   |
-| `chat.configurar`       | só admin                  | `/config/*` (robô, fila, horários, feriados, atendentes, telefonia) e a avaliação do cliente  |
+| `chat.configurar`       | só admin                  | `/config/*` (robô, fila, horários, feriados, atendentes, telefonia)                            |
 | `chat.frases_do_espaco` | só admin                  | `/config/frases/*`                                                                             |
 
 O admin do espaço recebe todas. `chat.gerenciar` e `chat.administrar` (as ações
@@ -175,8 +176,23 @@ chegam a quem recebe. Os avisos saem de `src/transferencia.ts`: quem recebe ganh
 lista na hora.
 
 **A avaliação é leitura de gestão.** Nota e comentário do cliente só vão para quem
-tem `chat.configurar`: o servidor não os envia aos outros (lista de conversas,
-histórico e transcrição), e a tela do atendente também não os mostra.
+tem `chat.ver_avaliacao` (padrão: só o admin), para o atendente não ver a nota que
+recebeu e descontar no cliente depois. O servidor não os envia aos outros (lista
+de conversas, histórico, transcrição e resposta da transferência; `applyVisaoDaAvaliacao`
+em `src/sessoes.ts`), e a tela do atendente e a impressão da transcrição também não os
+mostram. No WhatsApp, a resposta à pesquisa (a nota e o comentário) não vira mensagem
+da conversa (`isRespostaDaAvaliacao` em `src/rating.ts`): gravada como mensagem, chegava
+ao atendente pelo histórico, pelo `message.new` e pelo aviso de mensagem nova. Os eventos
+do socket não levam a nota (`session.activity` só traz o id).
+
+O relatório de avaliações por atendente (`reports/ratings/`, aba do painel) continua em
+`chat.relatorios`: é leitura de gestão, e pedir as duas ações tiraria o relatório de
+Membro e Gestor, que o têm por padrão. Para esconder a nota de alguém por completo,
+tire as duas ações da função.
+
+Antes da W42 a nota era de `chat.configurar`; a migração `20261009140000_ver_avaliacao_do_chat`
+do api-ts deu `chat.ver_avaliacao` a quem tinha `chat.configurar` (função, concessão e negação
+por pessoa), então ninguém ganhou nem perdeu a nota no deploy.
 
 **Pesquisa só quando houve atendimento.** Conversa encerrada sem ninguém ter
 assumido não abre pesquisa de satisfação — não há atendimento a avaliar. Quem

@@ -7,10 +7,12 @@
  *    satisfação. Quem só abriu o chat e desistiu era convidado a dar nota a um
  *    atendimento que não houve.
  *  - A nota e o comentário apareciam para o próprio atendente avaliado. A
- *    pesquisa é instrumento de gestão: quem lê é o administrador.
+ *    pesquisa é instrumento de gestão: quem lê é quem tem `chat.ver_avaliacao`
+ *    (por padrão, só o administrador).
  */
 import { describe, expect, it } from "bun:test";
-import { hasAtendimento, withoutAvaliacao, serializeSession } from "@/sessoes";
+import { isRespostaDaAvaliacao } from "@/rating";
+import { applyVisaoDaAvaliacao, hasAtendimento, withoutAvaliacao, serializeSession } from "@/sessoes";
 
 type ConversaDoBanco = {
   id: string;
@@ -70,5 +72,42 @@ describe("serializeSession", () => {
     const completa = serializeSession(conversa({ assignedAttendantId: "u-1" }));
     expect(completa.rating_score).toBe(5);
     expect(completa.rating_comment).toBe("Atendimento excelente");
+  });
+});
+
+describe("applyVisaoDaAvaliacao", () => {
+  it("com chat.ver_avaliacao, a conversa sai com a nota e o comentário", () => {
+    const vista = applyVisaoDaAvaliacao(serializeSession(conversa()), true);
+    expect(vista).toMatchObject({ rating_score: 5, rating_comment: "Atendimento excelente" });
+  });
+
+  it("sem a ação, sai sem os dois", () => {
+    const vista = applyVisaoDaAvaliacao(serializeSession(conversa()), false);
+    expect(vista).toMatchObject({ rating_score: null, rating_comment: null });
+  });
+});
+
+const encerrada = (ratingState: string | null) => ({ status: "closed", ratingState });
+
+describe("isRespostaDaAvaliacao (WhatsApp)", () => {
+  // A resposta à pesquisa vai para a nota, que só sai com `chat.ver_avaliacao`.
+  // Gravada como mensagem do cliente, aparecia para o atendente avaliado.
+
+  it("a nota de 1 a 5 enquanto a pesquisa espera a nota", () => {
+    expect(isRespostaDaAvaliacao(encerrada("awaiting_score"), "5, adorei")).toBe(true);
+  });
+
+  it("qualquer texto enquanto a pesquisa espera o comentário", () => {
+    expect(isRespostaDaAvaliacao(encerrada("awaiting_comment"), "Demorou demais")).toBe(true);
+  });
+
+  it("texto sem nota não é resposta: continua na conversa", () => {
+    expect(isRespostaDaAvaliacao(encerrada("awaiting_score"), "obrigado")).toBe(false);
+  });
+
+  it("fora da pesquisa nada é resposta", () => {
+    expect(isRespostaDaAvaliacao(encerrada("done"), "5")).toBe(false);
+    expect(isRespostaDaAvaliacao(encerrada(null), "5")).toBe(false);
+    expect(isRespostaDaAvaliacao({ status: "active", ratingState: "awaiting_score" }, "5")).toBe(false);
   });
 });

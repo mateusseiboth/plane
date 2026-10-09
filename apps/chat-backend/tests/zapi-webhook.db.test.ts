@@ -1,7 +1,8 @@
 /**
  * Rota do webhook da Z-API no próprio processo (`module.handle`), contra o
  * banco: token do webhook, descarte de mensagem velha, reação, chamada perdida,
- * resposta à pergunta de inatividade e retomada da conversa pausada.
+ * resposta à pergunta de inatividade, retomada da conversa pausada e a resposta
+ * à pesquisa de satisfação.
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import prisma from "@db";
@@ -151,5 +152,46 @@ describe("mensagens", () => {
       status: "active",
       pausedAt: null,
     });
+  });
+});
+
+describe("resposta à pesquisa de satisfação", () => {
+  // A nota e o comentário só saem para quem tem `chat.ver_avaliacao`. Gravados
+  // como mensagem do cliente, apareciam no histórico, no `message.new` e no
+  // aviso ao atendente que acabou de ser avaliado.
+  const createEncerrada = (fone: string, ratingState: string, dados: Record<string, unknown> = {}) =>
+    createAtiva(fone, { status: "closed", closedAt: new Date(), ratingState, ...dados });
+
+  const textosDoCliente = async (sessionId: string) =>
+    (await mensagens(sessionId)).filter((m) => m.sender === "client").map((m) => m.text);
+
+  it("a nota vai para a avaliação e não vira mensagem da conversa", async () => {
+    const fone = phone();
+    const s = await createEncerrada(fone, "awaiting_score");
+    await post(texto(fone, "5, adorei"));
+    expect(await prisma.chatSession.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
+      ratingScore: 5,
+      ratingState: "awaiting_comment",
+    });
+    expect(await textosDoCliente(s.id)).toEqual([]);
+  });
+
+  it("o comentário vai para a avaliação e não vira mensagem da conversa", async () => {
+    const fone = phone();
+    const s = await createEncerrada(fone, "awaiting_comment", { ratingScore: 2 });
+    await post(texto(fone, "Demorou demais"));
+    expect(await prisma.chatSession.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
+      ratingComment: "Demorou demais",
+      ratingState: "done",
+    });
+    expect(await textosDoCliente(s.id)).toEqual([]);
+  });
+
+  it("o que não é nota continua na conversa, e a pesquisa pede a nota de novo", async () => {
+    const fone = phone();
+    const s = await createEncerrada(fone, "awaiting_score");
+    await post(texto(fone, "obrigado"));
+    expect(await textosDoCliente(s.id)).toEqual(["obrigado"]);
+    expect((await prisma.chatSession.findUniqueOrThrow({ where: { id: s.id } })).ratingState).toBe("awaiting_score");
   });
 });

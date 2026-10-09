@@ -285,8 +285,9 @@ módulo do chat, e o admin escolhe por função quem faz cada coisa (ex.: quem t
 | `chat.ver_todas`        | Ver conversas de outros atendentes  | Membro, Gestor                               | conversas dos outros na lista (inclusive encerradas), gerenciador, ligações dos outros, original de mensagem apagada e versões editadas |
 | `chat.ver_fila`         | Ver a fila e o robô                 | nenhuma                                      | conversas `bot` e `queued` na lista (abas "Na fila" e "Bot")                                   |
 | `chat.relatorios`       | Ver relatórios do chat              | Membro, Gestor                               | painel, monitor ao vivo, avaliações por atendente, prazos, atendimentos, registros, ligações   |
+| `chat.ver_avaliacao`    | Ver a avaliação do cliente          | nenhuma                                      | nota e comentário do cliente na lista, no histórico, na transcrição (e impressão) e na resposta da transferência; bloco "Avaliação" da conversa (W42) |
 | `chat.disparo`          | Disparar mensagens em massa         | Gestor                                       | `/disparo/*`                                                                                   |
-| `chat.configurar`       | Configurar o chat                   | nenhuma                                      | robô, menu, filas, fluxos, horários, feriados, encerramento, atendentes, WhatsApp, telefonia, a avaliação do cliente na conversa, link de integrações em Links úteis, `PATCH /chat-config/` |
+| `chat.configurar`       | Configurar o chat                   | nenhuma                                      | robô, menu, filas, fluxos, horários, feriados, encerramento, atendentes, WhatsApp, telefonia, link de integrações em Links úteis, `PATCH /chat-config/` |
 | `chat.frases_do_espaco` | Editar as frases prontas do espaço  | nenhuma                                      | `/config/frases/*` e a aba Frases                                                              |
 
 Os padrões reproduzem o corte de antes (`chat.atender` = OPERAM; `chat.gerenciar` = Membro e
@@ -310,6 +311,20 @@ Chat: `tests/permissoes-do-chat-rotas.db.test.ts` (cada rota recusa sem a ação
 `tests/visibilidade-da-lista.test.ts`. Web: `permissoes-do-atendimento.test.ts` e `cabecalho-da-lista.test.ts`
 (menu "Mais ações": gerenciador por `chat.ver_todas`, dashboard por `chat.relatorios`, configurações
 por `chat.configurar` ou `chat.frases_do_espaco`).
+
+**Ver a avaliação do cliente (W42).** Pedido do dono: "às vezes não queremos que o atendente veja
+a avaliação que recebeu para não gerar vingança em atendimentos posteriores". A nota saía com
+`chat.configurar`; agora tem ação própria, `chat.ver_avaliacao` (padrão: só o admin). A migração
+`apps/api-ts/prisma/migrations/20261009140000_ver_avaliacao_do_chat` (idempotente) a deu a toda
+função com `chat.configurar` e repetiu nas exceções por pessoa a concessão e a negação de
+`chat.configurar`: ninguém ganhou nem perdeu a nota no deploy. `known_actions` não muda: o boot
+(`mergeNewActions`) soma a ação à função de sistema do admin. O relatório de avaliações por
+atendente continua em `chat.relatorios` (pedir as duas tiraria o relatório de Membro e Gestor, que
+o têm por padrão). No WhatsApp a resposta à pesquisa deixou de virar mensagem da conversa. Contrato:
+`tests/contract/conversao-da-avaliacao-do-chat.test.ts`; chat: `tests/permissoes-do-chat.e2e.test.ts`
+(lista, histórico, transcrição, transferência, admin), `tests/zapi-webhook.db.test.ts` e
+`tests/avaliacao-do-cliente.test.ts`; web: `permissoes-do-atendimento.test.ts` e
+`core/components/print/documents/campos-da-avaliacao.test.ts`.
 
 **Diferença de comportamento** (de propósito): `GET /dashboard/` do chat não conferia nada além de
 login; agora pede `chat.relatorios`. Quem tem `chat.ver_todas` (Membro e Gestor por padrão) passa

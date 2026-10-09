@@ -39,7 +39,7 @@ describe("buildPermissoesDoAtendimento", () => {
       [ACAO_DO_CHAT.VER_TODAS, "canVerTodas"],
       [ACAO_DO_CHAT.VER_FILA, "canVerFila"],
       [ACAO_DO_CHAT.RELATORIOS, "canVerRelatorios"],
-      [ACAO_DO_CHAT.CONFIGURAR, "canVerAvaliacao"],
+      [ACAO_DO_CHAT.VER_AVALIACAO, "canVerAvaliacao"],
     ];
     for (const [acao, botao] of casos) {
       const permissoes = buildPermissoesDoAtendimento(withAcoes(acao));
@@ -49,6 +49,11 @@ describe("buildPermissoesDoAtendimento", () => {
         .map(([nome]) => nome);
       expect(ligados.filter((nome) => nome !== "hasConfiguracao")).toEqual([botao]);
     }
+  });
+
+  it("configurar o chat não mostra a avaliação do cliente: ela tem ação própria", () => {
+    expect(buildPermissoesDoAtendimento(withAcoes(ACAO_DO_CHAT.CONFIGURAR)).canVerAvaliacao).toBe(false);
+    expect(ACAO_DO_CHAT.VER_AVALIACAO).toBe("chat.ver_avaliacao");
   });
 
   it("a engrenagem aparece para quem configura ou para quem edita as frases do espaço", () => {

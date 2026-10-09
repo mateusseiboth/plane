@@ -17,7 +17,7 @@ import { applyProviderMutation } from "@/message-actions";
 import { persistAndBroadcast } from "@/messages";
 import { nextProtocol } from "@/protocol";
 import { getProvider, type InboundMessage, type WhatsAppProvider } from "@/providers/provider";
-import { handleRatingReply } from "@/rating";
+import { handleRatingReply, isRespostaDaAvaliacao } from "@/rating";
 import { isMensagemAntiga, isWebhookAutorizado } from "@/webhook/regras";
 
 const OK = { ok: true } as const;
@@ -105,6 +105,12 @@ const followBot = (sessao: Sessao, texto: string, isNova: boolean) =>
 
 async function handleMensagem(slug: string, inbound: InboundMessage) {
   const { sessao, contact, isNova } = await findOrCreateSessao(slug, inbound);
+  // A nota e o comentário da pesquisa não viram mensagem da conversa: só saem
+  // para quem tem `chat.ver_avaliacao` (src/rating.ts).
+  if (isRespostaDaAvaliacao(sessao, inbound.text ?? "")) {
+    await handleRatingReply(sessao, inbound.text ?? "");
+    return;
+  }
   await persistAndBroadcast({
     sessionId: sessao.id,
     sender: "client",

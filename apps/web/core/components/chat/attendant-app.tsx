@@ -1554,10 +1554,10 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
           </div>
 
-          {/* Avaliação do cliente — leitura de gestão, só para quem tem chat.configurar.
+          {/* Avaliação do cliente — leitura de gestão, só para quem tem chat.ver_avaliacao.
               Mostrar a nota ao atendente que acabou de ser avaliado muda a
               conversa seguinte, e não é para isso que se pergunta ao cliente.
-              O servidor também não a envia para quem não configura o chat. */}
+              O servidor também não a envia para quem não tem a ação. */}
           {permissoes.canVerAvaliacao && activeSession.rating_score != null && (
             <div className="border-b border-subtle p-4">
               <div className="mb-2 text-11 font-semibold uppercase tracking-wider text-tertiary">Avaliação</div>

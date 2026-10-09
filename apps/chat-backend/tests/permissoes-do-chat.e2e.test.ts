@@ -1,9 +1,10 @@
 /**
  * As rotas do `src/index.ts` pela matriz de ações, contra o servidor de pé
  * (CHAT_URL): transferir (`chat.transferir`), a lista de atendimentos
- * (`chat.ver_todas`, `chat.ver_fila`), a avaliação do cliente
- * (`chat.configurar`) e encerrar pelo socket (`chat.encerrar`). A mesma pessoa
- * troca de ações entre os casos (`setAcoesDaFuncao`).
+ * (`chat.ver_todas`, `chat.ver_fila`), a avaliação do cliente em toda saída
+ * (`chat.ver_avaliacao`: lista, histórico, transcrição e resposta da
+ * transferência) e encerrar pelo socket (`chat.encerrar`). A mesma pessoa troca
+ * de ações entre os casos (`setAcoesDaFuncao`).
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import prisma from "@db";
@@ -17,14 +18,16 @@ import {
   limparWorkspacePlane,
   resolveTestAttendant,
   setAcoesDaFuncao,
+  signPlaneToken,
   uniqueWorkspace,
   type PessoaDeTeste,
 } from "@tests/helpers/harness";
 
 const slug = uniqueWorkspace("wsacoese2e");
-const { ATENDER, ENCERRAR, TRANSFERIR, VER_TODAS, VER_FILA, CONFIGURAR } = CHAT_ACTION;
+const { ATENDER, ENCERRAR, TRANSFERIR, VER_TODAS, VER_FILA, CONFIGURAR, VER_AVALIACAO } = CHAT_ACTION;
 let pessoa: PessoaDeTeste;
 let colega: string;
+let tokenDoAdmin: string;
 const sessao: Record<string, string> = {};
 
 const createSessao = async (status: string, assignedAttendantId: string | null, dados: Record<string, unknown> = {}) =>
@@ -51,6 +54,19 @@ const request = async (metodo: string, caminho: string, corpo?: unknown) => {
   return { status: res.status, body: (await res.json().catch(() => null)) as any };
 };
 
+/** Rotas fora do prefixo do espaço (histórico, transcrição), com o token de quem pede. */
+const requestNaRaiz = async (caminho: string, token = pessoa.token) => {
+  const res = await fetch(`${CHAT_URL}${caminho}`, { headers: { Authorization: `Bearer ${token}` } });
+  return { status: res.status, body: (await res.json().catch(() => null)) as any };
+};
+
+const readAvaliacaoDaLista = async (sessionId: string) => {
+  const res = await request("GET", "/sessions/?status=active,closed");
+  expect(res.status).toBe(200);
+  const s = res.body.results.find((r: any) => r.id === sessionId);
+  return { score: s.rating_score ?? null, comment: s.rating_comment ?? null };
+};
+
 const listIds = async (status?: string) => {
   const res = await request("GET", `/sessions/${status ? `?status=${status}` : ""}`);
   expect(res.status).toBe(200);
@@ -60,9 +76,11 @@ const listIds = async (status?: string) => {
 beforeAll(async () => {
   const quemAtende = await resolveTestAttendant();
   colega = quemAtende.id;
+  tokenDoAdmin = await signPlaneToken(colega, quemAtende.email);
   await ensureAtendenteNoEspaco(slug, colega);
   pessoa = await createPessoaComAcoes(slug, [ATENDER]);
-  sessao.minha = await createSessao("active", pessoa.id, { ratingScore: 5 });
+  sessao.minha = await createSessao("active", pessoa.id, { ratingScore: 5, ratingComment: "Muito atencioso" });
+  sessao.avaliadaDoColega = await createSessao("closed", colega, { ratingScore: 2, ratingComment: "Demorou" });
   sessao.doColega = await createSessao("active", colega);
   sessao.naFila = await createSessao("queued", null);
   sessao.noRobo = await createSessao("bot", null);
@@ -90,14 +108,47 @@ describe("lista de atendimentos", () => {
     await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER, VER_FILA]);
     expect(await listIds()).toEqual([sessao.minha!, sessao.naFila!, sessao.noRobo!].sort());
   });
+});
 
-  it("a avaliação do cliente só com chat.configurar", async () => {
-    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER]);
-    const sem = (await request("GET", "/sessions/")).body.results.find((s: any) => s.id === sessao.minha);
-    expect(sem.rating_score ?? null).toBeNull();
+describe("avaliação do cliente (chat.ver_avaliacao)", () => {
+  const SEM_NOTA = { score: null, comment: null };
+  const COM_NOTA = { score: 5, comment: "Muito atencioso" };
+
+  it("na lista: sem a ação o atendente não vê a nota que recebeu, nem configurando o chat", async () => {
     await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER, CONFIGURAR]);
-    const com = (await request("GET", "/sessions/")).body.results.find((s: any) => s.id === sessao.minha);
-    expect(com.rating_score).toBe(5);
+    expect(await readAvaliacaoDaLista(sessao.minha!)).toEqual(SEM_NOTA);
+    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER, VER_AVALIACAO]);
+    expect(await readAvaliacaoDaLista(sessao.minha!)).toEqual(COM_NOTA);
+  });
+
+  it("no histórico da conversa", async () => {
+    const readHistorico = async () => (await requestNaRaiz(`/sessions/${sessao.minha}/messages/`)).body.session;
+    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER]);
+    expect(await readHistorico()).toMatchObject({ rating_score: null, rating_comment: null });
+    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER, VER_AVALIACAO]);
+    expect(await readHistorico()).toMatchObject({ rating_score: 5, rating_comment: "Muito atencioso" });
+  });
+
+  it("na transcrição pelo protocolo", async () => {
+    const { protocol } = await prisma.chatSession.findUniqueOrThrow({ where: { id: sessao.minha! } });
+    const readTranscricao = async () => (await requestNaRaiz(`/sessions/by-protocol/${protocol}/`)).body.session;
+    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER]);
+    expect(await readTranscricao()).toMatchObject({ rating_score: null, rating_comment: null });
+    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER, VER_AVALIACAO]);
+    expect(await readTranscricao()).toMatchObject({ rating_score: 5, rating_comment: "Muito atencioso" });
+  });
+
+  it("na resposta da transferência", async () => {
+    const transfer = () => request("POST", `/sessions/${sessao.avaliadaDoColega}/transfer/`, { to_user_id: colega });
+    await setAcoesDaFuncao(pessoa.funcaoId, [TRANSFERIR]);
+    expect((await transfer()).body).toMatchObject({ rating_score: null, rating_comment: null });
+    await setAcoesDaFuncao(pessoa.funcaoId, [TRANSFERIR, VER_AVALIACAO]);
+    expect((await transfer()).body).toMatchObject({ rating_score: 2, rating_comment: "Demorou" });
+  });
+
+  it("o admin continua vendo", async () => {
+    const historico = await requestNaRaiz(`/sessions/${sessao.minha}/messages/`, tokenDoAdmin);
+    expect(historico.body.session).toMatchObject({ rating_score: 5, rating_comment: "Muito atencioso" });
   });
 });
 

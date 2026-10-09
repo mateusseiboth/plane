@@ -62,6 +62,23 @@ function parseScore(text: string): number | null {
   return m ? Number(m[0]) : null;
 }
 
+/** O que a pesquisa aceita como resposta em cada passo. */
+const RESPOSTA_DO_PASSO: Record<string, (text: string) => boolean> = {
+  awaiting_score: (text) => parseScore(text) != null,
+  awaiting_comment: () => true,
+};
+
+/**
+ * A mensagem do WhatsApp é resposta à pesquisa (a nota, ou o comentário)? Se é,
+ * ela vai só para `ratingScore`/`ratingComment`, que saem apenas para quem tem
+ * `chat.ver_avaliacao`: gravada como mensagem do cliente, aparecia no histórico,
+ * no `message.new` e no aviso ao atendente que acabou de ser avaliado.
+ */
+export function isRespostaDaAvaliacao(session: { status: string; ratingState: string | null }, text: string): boolean {
+  if (session.status !== "closed") return false;
+  return RESPOSTA_DO_PASSO[session.ratingState ?? ""]?.(text) ?? false;
+}
+
 /** Handle a WhatsApp client reply while a survey is in progress. */
 export async function handleRatingReply(session: any, text: string): Promise<boolean> {
   if (session.ratingState === "awaiting_score") {

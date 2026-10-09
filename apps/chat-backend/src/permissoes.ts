@@ -13,9 +13,10 @@
  *  - `chat.transferir`       passa a conversa para outro atendente.
  *  - `chat.ver_todas`        vê as conversas dos outros (lista, gerenciador, ligações).
  *  - `chat.ver_fila`         vê a fila e o robô na lista.
- *  - `chat.relatorios`       painel, monitor, avaliações, prazos e ligações.
+ *  - `chat.relatorios`       painel, monitor, avaliações por atendente, prazos e ligações.
+ *  - `chat.ver_avaliacao`    nota e comentário do cliente na conversa (lista, histórico, transcrição).
  *  - `chat.disparo`          dispara mensagens em massa (src/disparo/).
- *  - `chat.configurar`       fila, robô, horários, atendentes, telefonia e a avaliação do cliente.
+ *  - `chat.configurar`       fila, robô, horários, atendentes e telefonia.
  *  - `chat.frases_do_espaco` edita as frases prontas compartilhadas.
  *
  * O container do chat não leva o código do api-ts, então as chaves e a
@@ -35,6 +36,7 @@ export const CHAT_ACTION = {
   VER_TODAS: "chat.ver_todas",
   VER_FILA: "chat.ver_fila",
   RELATORIOS: "chat.relatorios",
+  VER_AVALIACAO: "chat.ver_avaliacao",
   DISPARO: "chat.disparo",
   CONFIGURAR: "chat.configurar",
   FRASES_DO_ESPACO: "chat.frases_do_espaco",

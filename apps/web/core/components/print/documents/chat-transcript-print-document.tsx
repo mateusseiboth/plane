@@ -9,10 +9,13 @@ import type { ChatMessage, ChatSession } from "@/services/chat.service";
 // local imports
 import { PrintDocument } from "../print-document";
 import { PrintFields, PrintSection } from "../print-section";
+import { buildCamposDaAvaliacao } from "./campos-da-avaliacao";
 
 type Props = {
   session: ChatSession;
   messages: ChatMessage[];
+  /** `chat.ver_avaliacao`: sem ela, a nota do cliente fica fora da impressão. */
+  canVerAvaliacao: boolean;
 };
 
 const SENDER_LABELS: Record<ChatMessage["sender"], string> = {
@@ -39,7 +42,7 @@ const messageBody = (message: ChatMessage) => {
 
 /** Transcrição completa de um atendimento, pronta para impressão. */
 export const ChatTranscriptPrintDocument = function ChatTranscriptPrintDocument(props: Props) {
-  const { session, messages } = props;
+  const { session, messages, canVerAvaliacao } = props;
 
   const clientName = session.client_name || session.client_phone || "Atendimento";
 
@@ -70,8 +73,7 @@ export const ChatTranscriptPrintDocument = function ChatTranscriptPrintDocument(
             { label: "Funcionalidade", value: session.close_module_name ?? "—" },
             { label: "Abandono", value: session.abandon_label ?? "—" },
             { label: "Observação", value: session.close_note ?? "—" },
-            { label: "Avaliação", value: session.rating_score != null ? String(session.rating_score) : "—" },
-            { label: "Comentário da avaliação", value: session.rating_comment ?? "—" },
+            ...buildCamposDaAvaliacao(session, canVerAvaliacao),
           ]}
         />
       </PrintSection>

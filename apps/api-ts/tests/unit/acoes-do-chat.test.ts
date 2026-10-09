@@ -31,6 +31,7 @@ describe("ações do chat", () => {
         "chat.disparo",
         "chat.configurar",
         "chat.frases_do_espaco",
+        "chat.ver_avaliacao",
       ].sort()
     );
   });
@@ -72,6 +73,10 @@ describe("padrões por função (reproduzem o corte de antes)", () => {
   it("fila e robô, configuração e frases do espaço: só o admin (era chat.administrar)", () => {
     for (const acao of ["chat.ver_fila", "chat.configurar", "chat.frases_do_espaco"])
       expect(donosDe(acao)).toEqual(["admin"]);
+  });
+
+  it("ver a avaliação do cliente: só o admin (o atendente avaliado não vê a nota)", () => {
+    expect(donosDe("chat.ver_avaliacao")).toEqual(["admin"]);
   });
 
   it("disparo em massa: Gestor e admin", () => {
