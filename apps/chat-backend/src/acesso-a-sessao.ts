@@ -7,6 +7,11 @@
  *    enxergá-la pela mesma regra da lista (`isSessaoVisivel`): as próprias
  *    sempre, as dos outros com `chat.ver_todas`, fila e robô com `chat.ver_fila`.
  *    Conversa que a pessoa não enxerga responde 404, como se não existisse.
+ *  - A transcrição pelo protocolo é só da equipe e pede apenas `chat.atender`
+ *    no espaço da conversa, sem a regra da lista: o protocolo chega pelo link
+ *    "Ver conversa" gravado no chamado, e quem atende o chamado (TI, Qualidade)
+ *    precisa ler a conversa de outra pessoa. A nota continua cortada por
+ *    `chat.ver_avaliacao` na rota.
  *
  * Antes bastava estar logado no Plane: qualquer conta lia o histórico de
  * qualquer espaço e o atendente gravava a nota do cliente na própria conversa.
@@ -74,13 +79,13 @@ export async function authorizeSessaoPorId(
   return isNegado(acesso) ? acesso : { sessao, acesso };
 }
 
-/** Transcrição pelo protocolo: leitura da equipe, o token do cliente não abre. */
+/** Transcrição pelo protocolo: quem atende no espaço da conversa; o token do cliente não abre. */
 export async function authorizeTranscricao(
   protocol: string,
   headers: unknown
 ): Promise<SessaoAutorizada<AcessoDaEquipe> | Negado> {
   const sessao = await findSessao({ protocol });
   if (!sessao) return NAO_ENCONTRADO;
-  const acesso = await authorizeEquipeNaSessao(sessao, headers);
-  return isNegado(acesso) ? acesso : { sessao, acesso };
+  const acesso = await authorizeChat(sessao.workspaceId, headers, CHAT_ACTION.ATENDER);
+  return isNegado(acesso) ? acesso : { sessao, acesso: { papel: "attendant", userId: acesso.userId } };
 }

@@ -370,7 +370,7 @@ const app = new Elysia()
   })
 
   // ── Read-only transcript of a chat (web `chat-view/[protocol]`) ──
-  // Só a equipe que enxerga a conversa, pela mesma regra do histórico.
+  // Só a equipe com `chat.atender` no espaço da conversa, sem a regra da lista: o link vem do chamado.
   .get("/sessions/by-protocol/:protocol/", async ({ params: { protocol }, headers, set }) => {
     const autorizada = await authorizeTranscricao(protocol, headers);
     if (isNegado(autorizada)) {

@@ -7,7 +7,9 @@
  * O cliente entra com o token da própria conversa. A equipe precisa atender no
  * espaço da conversa (`chat.atender`) e enxergá-la pela regra da lista
  * (`isSessaoVisivel`): as próprias sempre, as dos outros com `chat.ver_todas`,
- * fila e robô com `chat.ver_fila`. A avaliação é só do cliente.
+ * fila e robô com `chat.ver_fila`. A transcrição pelo protocolo é exceção: abre
+ * para quem atende no espaço da conversa, sem a regra da lista, porque chega
+ * pelo link do chamado. A avaliação é só do cliente.
  *
  * Contra o servidor de pé (CHAT_URL); a mesma pessoa troca de ações entre os
  * casos (`setAcoesDaFuncao`).
@@ -204,16 +206,34 @@ describe("transcrição pelo protocolo", () => {
     expect(res.status).toBe(401);
   });
 
-  it("a conversa de outro atendente: 404 sem chat.ver_todas, abre com ela", async () => {
+  // O protocolo chega pelo link "Ver conversa" do chamado: quem atende o chamado
+  // (TI, Qualidade) abre a conversa de outra pessoa sem precisar de chat.ver_todas.
+  it("a conversa de outro atendente, sem chat.ver_todas: abre", async () => {
     await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER]);
-    expect((await readTranscricao(sessao.doColega!.protocol, pessoa.token)).status).toBe(404);
-    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER, VER_TODAS]);
-    expect((await readTranscricao(sessao.doColega!.protocol, pessoa.token)).status).toBe(200);
+    const res = await readTranscricao(sessao.doColega!.protocol, pessoa.token);
+    expect(res.status).toBe(200);
+    expect(res.body.session.id).toBe(sessao.doColega!.id);
   });
 
-  it("quem é de outro espaço não abre", async () => {
-    const res = await readTranscricao(sessao.minha!.protocol, deOutroEspaco.token);
-    expect([403, 404]).toContain(res.status);
+  it("a conversa na fila, sem chat.ver_fila: abre", async () => {
+    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER]);
+    expect((await readTranscricao(sessao.naFila!.protocol, pessoa.token)).status).toBe(200);
+  });
+
+  it("sem chat.atender no espaço: 403", async () => {
+    await setAcoesDaFuncao(pessoa.funcaoId, [VER_TODAS, VER_FILA]);
+    const res = await readTranscricao(sessao.minha!.protocol, pessoa.token);
+    expect(res.status).toBe(403);
+    expect(res.body.detail).toMatch(/permissão/);
+  });
+
+  it("quem é de outro espaço: 403, nem tendo todas as ações no dele", async () => {
+    expect((await readTranscricao(sessao.minha!.protocol, deOutroEspaco.token)).status).toBe(403);
+  });
+
+  it("protocolo que não existe: 404", async () => {
+    await setAcoesDaFuncao(pessoa.funcaoId, [ATENDER]);
+    expect((await readTranscricao("NAO-EXISTE-0000", pessoa.token)).status).toBe(404);
   });
 });
 
