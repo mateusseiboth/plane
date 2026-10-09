@@ -9,10 +9,12 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { GripVertical, X } from "lucide-react";
 // plane imports
-import { WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Checkbox, EModalPosition, EModalWidth, ModalCore, Sortable } from "@plane/ui";
 import { cn } from "@plane/utils";
+// components
+import { ITENS_DO_ESPACO_NA_BARRA, isItemFixadoNaBarra } from "@/components/workspace/sidebar/fixacao-na-barra";
 // hooks
 import { useUserPermissions } from "@/hooks/store/user";
 import {
@@ -79,7 +81,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
 
   // Filter workspace items by permissions and feature flags, then get pinned/unpinned items
   const workspaceItems = useMemo(() => {
-    const items = WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.filter((item) => {
+    const items = ITENS_DO_ESPACO_NA_BARRA.filter((item) => {
       // Permission check
       const hasPermission = allowPermissions(
         item.access,
@@ -90,7 +92,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
     }).map((item) => {
       // Get pinned status and sort order from localStorage
       const preference = workspacePreferences.items[item.key];
-      const isPinned = preference?.is_pinned ?? false;
+      const isPinned = isItemFixadoNaBarra(item.key, workspacePreferences.items);
       const sortOrder = preference?.sort_order ?? 0;
 
       return {
@@ -244,7 +246,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
                     <div className="group flex items-center gap-2 rounded-md px-2 py-1.5 transition-all duration-200 hover:bg-surface-2">
                       <GripVertical className="size-4 cursor-grab text-placeholder transition-colors active:cursor-grabbing" />
                       <Checkbox
-                        checked={!!workspacePreferences.items[item.key]?.is_pinned}
+                        checked={item.isPinned}
                         onChange={(e) => handleWorkspaceItemToggle(item.key, e.target.checked)}
                       />
                       <div className="flex flex-1 items-center gap-2">

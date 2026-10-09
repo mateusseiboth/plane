@@ -21,10 +21,12 @@ import { DragHandle, DropIndicator } from "@plane/ui";
 import { cn } from "@plane/utils";
 // components
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
+import { isItemFixadoNaBarra } from "@/components/workspace/sidebar/fixacao-na-barra";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { UpgradeBadge } from "../upgrade-badge";
 import { getSidebarNavigationItemIcon } from "./helper";
@@ -59,9 +61,10 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
   const { data } = useUser();
   const { allowPermissions } = useUserPermissions();
   const { preferences: workspacePreferences, toggleWorkspaceItem } = useWorkspaceNavigationPreferences();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
   // derived values
-  const isPinned = workspacePreferences.items[item.key]?.is_pinned ?? false;
+  const isPinned = isItemFixadoNaBarra(item.key, workspacePreferences.items);
 
   const handleLinkClick = () => toggleExtendedSidebar(true);
 
@@ -153,6 +156,8 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
   if (!allowPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) {
     return null;
   }
+  // Mesmo recorte da barra: item preso a uma ação da matriz só aparece para quem a tem.
+  if (item.action && ![item.action].flat().some(can)) return null;
 
   return (
     <div

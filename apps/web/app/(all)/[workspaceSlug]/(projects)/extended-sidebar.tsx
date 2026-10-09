@@ -8,8 +8,10 @@ import { useCallback, useMemo, useRef } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS, EUserPermissionsLevel } from "@plane/constants";
+import { EUserPermissionsLevel } from "@plane/constants";
 import type { EUserWorkspaceRoles } from "@plane/types";
+// components
+import { ITENS_DO_MENU_MAIS, buildItensDoMenuMais } from "@/components/workspace/sidebar/fixacao-na-barra";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUserPermissions } from "@/hooks/store/user";
@@ -34,28 +36,11 @@ export const ExtendedAppSidebar = observer(function ExtendedAppSidebar() {
   const sortedNavigationItems = useMemo(() => {
     const slug = workspaceSlug.toString();
 
-    return WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.filter((item) => {
-      // Permission check
-      const hasPermission = allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug);
+    const permitidos = ITENS_DO_MENU_MAIS.filter((item) =>
+      allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)
+    );
 
-      return hasPermission;
-    })
-      .map((item) => {
-        const preference = currentWorkspaceNavigationPreferences?.[item.key];
-        return {
-          ...item,
-          sort_order: preference?.sort_order ?? 0,
-          is_pinned: preference?.is_pinned ?? false,
-        };
-      })
-      .sort((a, b) => {
-        // First sort by pinned status (pinned items first)
-        if (a.is_pinned !== b.is_pinned) {
-          return b.is_pinned ? 1 : -1;
-        }
-        // Then sort by sort_order within each group
-        return a.sort_order - b.sort_order;
-      });
+    return buildItensDoMenuMais(permitidos, currentWorkspaceNavigationPreferences);
   }, [workspaceSlug, currentWorkspaceNavigationPreferences, allowPermissions]);
 
   const sortedNavigationItemsKeys = sortedNavigationItems.map((item) => item.key);
