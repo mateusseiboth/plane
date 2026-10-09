@@ -11,21 +11,17 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
-  BarChart2,
   CheckCheck,
   Loader2,
   Mail,
   MessageSquare,
   History,
-  ListFilter,
-  Mic,
   Paperclip,
   Pencil,
   Phone,
   Plus,
   Search,
   SendHorizontal,
-  Settings2,
   Star,
   Trash2,
   Users,
@@ -43,6 +39,7 @@ import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-butt
 // services
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
+import { MenuDoGestor } from "@/components/chat/menu-do-gestor";
 import { BotaoDoDisparo } from "@/components/chat/disparo/botao-do-disparo";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
 import {ModalDeEncerramento, type DadosDoEncerramento} from "@/components/chat/modal-de-encerramento";
@@ -470,7 +467,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [slaSessions, setSlaSessions] = useState<Set<string>>(new Set());
-  const [recording, setRecording] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -478,7 +474,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
   const conexaoRef = useRef<ConexaoDoAtendente | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const recRef = useRef<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const api = useMemo(() => (config?.api_url ? chatApi(config.api_url) : null), [config?.api_url]);
@@ -918,29 +913,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     send({ type: "agent.message", session_id: activeId, media_key: r.media_key, media_mime: r.media_mime, media_name: r.media_name, media_type: t });
   };
 
-  const toggleRecord = async () => {
-    if (recRef.current && recRef.current.state === "recording") {
-      recRef.current.stop();
-      setRecording(false);
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const chunks: BlobPart[] = [];
-      const rec = new MediaRecorder(stream);
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = () => {
-        uploadFile(new File([new Blob(chunks, { type: "audio/webm" })], "audio.webm", { type: "audio/webm" }));
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      recRef.current = rec;
-      rec.start();
-      setRecording(true);
-    } catch {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: "Não foi possível acessar o microfone." });
-    }
-  };
-
   const filteredSessions = useMemo(() => {
     // Exactly the selected tab's status (closed chats live only under "Encerrados").
     const base = sessions.filter((s) => (STATUS_DA_ABA[listFilter] ?? [listFilter]).includes(s.status));
@@ -1030,17 +1002,17 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
       {/* ── Sidebar ────────────────────────────────────────────────────── */}
       <aside className="flex w-72 shrink-0 flex-col border-r border-subtle bg-surface-1">
         {/* Sidebar header */}
-        <div className="flex items-center justify-between border-b border-subtle px-4 py-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 border-b border-subtle px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
             {sidebarCollapsed && (
               <div className="shrink-0">
                 <AppSidebarToggleButton />
               </div>
             )}
-            <MessageSquare className="h-4.5 w-4.5 text-primary" />
-            <span className="text-sm font-semibold text-primary">Atendimentos</span>
+            <MessageSquare className="h-4.5 w-4.5 shrink-0 text-primary" />
+            <span className="truncate text-sm font-semibold text-primary">Atendimentos</span>
           </div>
-          <div className="flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <button
               onClick={() => setShowNewChat(true)}
               className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
@@ -1049,33 +1021,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               <Plus className="h-4 w-4" />
             </button>
             <BotaoDoDisparo slug={slug} />
-            {isManager && (
-              <button
-                onClick={() => setShowGerenciador(true)}
-                className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
-                title="Gerenciador de conversas"
-              >
-                <ListFilter className="h-4 w-4" />
-              </button>
-            )}
-            {isManager && (
-              <button
-                onClick={() => setShowDashboard(true)}
-                className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
-                title="Dashboard de atendimento"
-              >
-                <BarChart2 className="h-4 w-4" />
-              </button>
-            )}
-            {isManager && (
-              <button
-                onClick={() => setShowConfig(true)}
-                className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
-                title="Configurações do chat"
-              >
-                <Settings2 className="h-4 w-4" />
-              </button>
-            )}
+            <MenuDoGestor
+              isManager={isManager}
+              onAcao={{
+                gerenciador: () => setShowGerenciador(true),
+                dashboard: () => setShowDashboard(true),
+                configuracoes: () => setShowConfig(true),
+              }}
+            />
           </div>
         </div>
 
@@ -1606,13 +1559,6 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                   title="Anexar arquivo"
                 >
                   <Paperclip className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={toggleRecord}
-                  className={`rounded-lg p-2 transition-colors ${recording ? "text-danger-primary hover:bg-danger-subtle" : "text-secondary hover:bg-layer-2 hover:text-primary"}`}
-                  title={recording ? "Parar gravação" : "Gravar áudio"}
-                >
-                  <Mic className="h-5 w-5" />
                 </button>
                 <FerramentasDoCompositor
                   slug={slug}

@@ -258,7 +258,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     // Atribuído por outra pessoa: o responsável ainda não viu.
     await markChamadoNaoLido({issueId: issue.id, actorId: user.id});
 
-    publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, actor: user.id});
+    publishRealtime(ws.id, {entity: "issue", action: "create", project_id, id: issue.id, priority: issue.priority, actor: user.id});
 
     // LGPD: abertura de chamado é tratamento de dado pessoal do solicitante.
     recordAudit({
@@ -533,7 +533,14 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       }
     }
 
-    publishRealtime(ws.id, {entity: "issue", action: "update", project_id, id: issue_id, actor: user.id});
+    publishRealtime(ws.id, {
+      entity: "issue",
+      action: "update",
+      project_id,
+      id: issue_id,
+      priority: b.priority ?? before?.priority ?? null,
+      actor: user.id,
+    });
 
     // LGPD: mudança de estado para concluído/cancelado é "encerrou o chamado";
     // as demais alterações entram como update com o diff dos campos tocados.
@@ -560,7 +567,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     const ws = await getWorkspaceOrFail(slug);
     const target = await prisma.issue.findFirst({
       where: {id: issue_id, projectId: project_id, workspaceId: ws.id, deletedAt: null},
-      select: {createdById: true},
+      select: {createdById: true, priority: true},
     });
     if (!target) {
       set.status = 404;
@@ -580,7 +587,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
       where: {issueId: issue_id, deletedAt: null},
       data: {deletedAt: new Date()},
     });
-    publishRealtime(ws.id, {entity: "issue", action: "delete", project_id, id: issue_id, actor: user.id});
+    publishRealtime(ws.id, {entity: "issue", action: "delete", project_id, id: issue_id, priority: target.priority, actor: user.id});
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.ISSUE,
