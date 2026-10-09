@@ -1,8 +1,11 @@
 import { unzipSync, strFromU8 } from "fflate";
 import { normalizeZipEntries } from "@utils/zip-entries";
 
-const MAX_ZIP_BYTES = Number(process.env.WIDGET_MAX_ZIP_SIZE ?? 10 * 1024 * 1024);   // 10 MB
-const MAX_BUNDLE_BYTES = Number(process.env.WIDGET_MAX_BUNDLE_SIZE ?? 5 * 1024 * 1024); // 5 MB
+/** Padrões do envio de pacote; a referência do SDK (WIDGET_LIMITS) documenta estes valores. */
+export const LIMITES_DO_PACOTE = { zipMaxBytes: 10 * 1024 * 1024, bundleMaxBytes: 5 * 1024 * 1024 } as const;
+
+const MAX_ZIP_BYTES = Number(process.env.WIDGET_MAX_ZIP_SIZE ?? LIMITES_DO_PACOTE.zipMaxBytes);
+const MAX_BUNDLE_BYTES = Number(process.env.WIDGET_MAX_BUNDLE_SIZE ?? LIMITES_DO_PACOTE.bundleMaxBytes);
 
 export interface ExtractedWidget {
   manifest: Record<string, unknown>;
@@ -12,7 +15,9 @@ export interface ExtractedWidget {
 
 export function extractWidgetZip(zipBuffer: Buffer): ExtractedWidget {
   if (zipBuffer.byteLength > MAX_ZIP_BYTES) {
-    throw Object.assign(new Error(`O ZIP excede o tamanho máximo de ${MAX_ZIP_BYTES / 1024 / 1024} MB.`), { status: 400 });
+    throw Object.assign(new Error(`O ZIP excede o tamanho máximo de ${MAX_ZIP_BYTES / 1024 / 1024} MB.`), {
+      status: 400,
+    });
   }
 
   let files: ReturnType<typeof unzipSync>;
@@ -44,10 +49,9 @@ export function extractWidgetZip(zipBuffer: Buffer): ExtractedWidget {
 
   const entryBuffer = Buffer.from(normalized[entryFilename]);
   if (entryBuffer.byteLength > MAX_BUNDLE_BYTES) {
-    throw Object.assign(
-      new Error(`O bundle excede o tamanho máximo de ${MAX_BUNDLE_BYTES / 1024 / 1024} MB.`),
-      { status: 400 }
-    );
+    throw Object.assign(new Error(`O bundle excede o tamanho máximo de ${MAX_BUNDLE_BYTES / 1024 / 1024} MB.`), {
+      status: 400,
+    });
   }
 
   return { manifest, entryBuffer, entryFilename };

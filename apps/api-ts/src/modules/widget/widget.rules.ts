@@ -7,6 +7,9 @@
 export const EscopoDaListagem = { HOME: "home", GLOBAL: "global", USERS: "users", MINE: "mine" } as const;
 export type EscopoDaListagem = (typeof EscopoDaListagem)[keyof typeof EscopoDaListagem];
 
+/** Envios de pacote por minuto por pessoa, global e "meu" somados. */
+export const ENVIOS_POR_MINUTO = 5;
+
 type TWhereDoDono = Record<string, unknown>;
 
 const WHERE_DO_ESCOPO: Record<EscopoDaListagem, (userId: string) => TWhereDoDono> = {

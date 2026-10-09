@@ -1,0 +1,2390 @@
+{
+  "pacote": {
+    "nome": "@mateusseiboth/widgets-aviao",
+    "versao": "1.0.0",
+    "descricao": "SDK oficial dos widgets da página inicial do Avião: hooks React, APIs de dados e o contrato com a plataforma."
+  },
+  "exports": [
+    "Action",
+    "ActionFilters",
+    "ActionStats",
+    "ConfirmConfig",
+    "DrawerConfig",
+    "Entity",
+    "EntityFilters",
+    "EntityStats",
+    "GATEWAY_ERRORS",
+    "Intake",
+    "IntakeFilters",
+    "IntakeStats",
+    "ModalConfig",
+    "PaginatedResponse",
+    "PeriodFilters",
+    "PeriodStats",
+    "SDKInitOptions",
+    "StatsOverview",
+    "User",
+    "UserFilters",
+    "WIDGET_EVENTS",
+    "WIDGET_LIFECYCLE",
+    "WIDGET_LIMITS",
+    "WIDGET_PERMISSIONS",
+    "WidgetHomeProps",
+    "WidgetManifest",
+    "WidgetPermission",
+    "WidgetQueryResult",
+    "WidgetSDKInstance",
+    "WidgetSize",
+    "WorkerItem",
+    "WorkerItemFilters",
+    "WorkerItemState",
+    "WorkerItemStats",
+    "actionsApi",
+    "entitiesApi",
+    "initializeSDK",
+    "intakesApi",
+    "notificationsApi",
+    "statsApi",
+    "storageApi",
+    "uiApi",
+    "useAction",
+    "useActions",
+    "useCurrentUser",
+    "useEntities",
+    "useEntity",
+    "useIntake",
+    "useIntakes",
+    "useStats",
+    "useUsers",
+    "useWorkerItem",
+    "useWorkerItems",
+    "usersApi",
+    "workerItemsApi"
+  ],
+  "funcoes": [
+    {
+      "nome": "initializeSDK",
+      "descricao": "Configura o SDK: origem da plataforma, id do widget (cabeçalho X-Widget-Id) e espaço aberto (`workspace_slug` de toda chamada). Na home a plataforma chama por você antes de montar o widget; chame só em desenvolvimento e em testes, ou fora da home.",
+      "assinatura": "initializeSDK(options: SDKInitOptions): WidgetSDKInstance",
+      "parametros": [
+        {
+          "nome": "options",
+          "tipo": "SDKInitOptions",
+          "opcional": false,
+          "descricao": "Origem, id do widget e espaço."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetSDKInstance",
+        "descricao": "O SDK inicializado, também gravado em `window.WidgetSDK`."
+      },
+      "exemplo": "initializeSDK({ baseUrl: window.location.origin, widgetId: \"dev\", workspaceSlug: \"quality\" });",
+      "permissao": ""
+    }
+  ],
+  "hooks": [
+    {
+      "nome": "useWorkerItems",
+      "descricao": "Lista chamados e refaz a consulta quando os filtros mudam.",
+      "assinatura": "useWorkerItems(filters?: WorkerItemFilters): WidgetQueryResult<PaginatedResponse<WorkerItem>>",
+      "parametros": [
+        {
+          "nome": "filters",
+          "tipo": "WorkerItemFilters",
+          "opcional": true,
+          "descricao": "Filtros e paginação de `workerItemsApi.find`."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<PaginatedResponse<WorkerItem>>",
+        "descricao": "`{ data, loading, error, refetch }` com uma página de chamados."
+      },
+      "exemplo": "const { data, loading } = useWorkerItems({ status: \"started\", limit: 5 });\nif (loading) return <p>Carregando...</p>;\nreturn <ul>{data?.data.map((c) => <li key={c.id}>{c.name}</li>)}</ul>;",
+      "permissao": "worker-items.read"
+    },
+    {
+      "nome": "useWorkerItem",
+      "descricao": "Lê um chamado pelo id.",
+      "assinatura": "useWorkerItem(id: string): WidgetQueryResult<WorkerItem>",
+      "parametros": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "opcional": false,
+          "descricao": "Id do chamado."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<WorkerItem>",
+        "descricao": "`{ data, loading, error, refetch }` com o chamado."
+      },
+      "exemplo": "const { data: chamado } = useWorkerItem(id);",
+      "permissao": "worker-items.read"
+    },
+    {
+      "nome": "useIntakes",
+      "descricao": "Lista solicitações da triagem.",
+      "assinatura": "useIntakes(filters?: IntakeFilters): WidgetQueryResult<PaginatedResponse<Intake>>",
+      "parametros": [
+        {
+          "nome": "filters",
+          "tipo": "IntakeFilters",
+          "opcional": true,
+          "descricao": "Filtros e paginação de `intakesApi.find`."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<PaginatedResponse<Intake>>",
+        "descricao": "`{ data, loading, error, refetch }` com uma página de solicitações."
+      },
+      "exemplo": "const { data } = useIntakes({ limit: 10 });",
+      "permissao": "intakes.read"
+    },
+    {
+      "nome": "useIntake",
+      "descricao": "Lê uma solicitação pelo id.",
+      "assinatura": "useIntake(id: string): WidgetQueryResult<Intake>",
+      "parametros": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "opcional": false,
+          "descricao": "Id da solicitação."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<Intake>",
+        "descricao": "`{ data, loading, error, refetch }` com a solicitação."
+      },
+      "exemplo": "const { data: solicitacao } = useIntake(id);",
+      "permissao": "intakes.read"
+    },
+    {
+      "nome": "useActions",
+      "descricao": "Lista ações (chamados na visão resumida).",
+      "assinatura": "useActions(filters?: ActionFilters): WidgetQueryResult<PaginatedResponse<Action>>",
+      "parametros": [
+        {
+          "nome": "filters",
+          "tipo": "ActionFilters",
+          "opcional": true,
+          "descricao": "Filtros e paginação de `actionsApi.find`."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<PaginatedResponse<Action>>",
+        "descricao": "`{ data, loading, error, refetch }` com uma página de ações."
+      },
+      "exemplo": "const { data } = useActions({ entity_id: entidadeId });",
+      "permissao": "actions.read"
+    },
+    {
+      "nome": "useAction",
+      "descricao": "Lê uma ação pelo id.",
+      "assinatura": "useAction(id: string): WidgetQueryResult<Action>",
+      "parametros": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "opcional": false,
+          "descricao": "Id do chamado."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<Action>",
+        "descricao": "`{ data, loading, error, refetch }` com a ação."
+      },
+      "exemplo": "const { data: acao } = useAction(id);",
+      "permissao": "actions.read"
+    },
+    {
+      "nome": "useStats",
+      "descricao": "Visão geral do espaço: chamados abertos e fechados, solicitações e ações.",
+      "assinatura": "useStats(filters?: { workspace_slug?: string }): WidgetQueryResult<StatsOverview>",
+      "parametros": [
+        {
+          "nome": "filters",
+          "tipo": "{ workspace_slug?: string }",
+          "opcional": true,
+          "descricao": "Espaço da consulta. Sem ele, vale o espaço aberto."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<StatsOverview>",
+        "descricao": "`{ data, loading, error, refetch }` com os totais."
+      },
+      "exemplo": "const { data } = useStats();\nreturn <strong>{data?.worker_items_open ?? 0} abertos</strong>;",
+      "permissao": "stats.read"
+    },
+    {
+      "nome": "useEntities",
+      "descricao": "Lista entidades (clientes).",
+      "assinatura": "useEntities(filters?: EntityFilters): WidgetQueryResult<PaginatedResponse<Entity>>",
+      "parametros": [
+        {
+          "nome": "filters",
+          "tipo": "EntityFilters",
+          "opcional": true,
+          "descricao": "Busca, paginação e inclusão das inativas."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<PaginatedResponse<Entity>>",
+        "descricao": "`{ data, loading, error, refetch }` com uma página de entidades."
+      },
+      "exemplo": "const { data } = useEntities({ search: busca });",
+      "permissao": "entities.read"
+    },
+    {
+      "nome": "useEntity",
+      "descricao": "Lê uma entidade pelo id.",
+      "assinatura": "useEntity(id: string): WidgetQueryResult<Entity>",
+      "parametros": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "opcional": false,
+          "descricao": "Id da entidade."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<Entity>",
+        "descricao": "`{ data, loading, error, refetch }` com a entidade."
+      },
+      "exemplo": "const { data: entidade } = useEntity(id);",
+      "permissao": "entities.read"
+    },
+    {
+      "nome": "useUsers",
+      "descricao": "Lista os membros do espaço.",
+      "assinatura": "useUsers(filters?: UserFilters): WidgetQueryResult<PaginatedResponse<User>>",
+      "parametros": [
+        {
+          "nome": "filters",
+          "tipo": "UserFilters",
+          "opcional": true,
+          "descricao": "Busca e paginação."
+        }
+      ],
+      "retorno": {
+        "tipo": "WidgetQueryResult<PaginatedResponse<User>>",
+        "descricao": "`{ data, loading, error, refetch }` com uma página de pessoas."
+      },
+      "exemplo": "const { data } = useUsers({ search: \"ana\" });",
+      "permissao": "users.read"
+    },
+    {
+      "nome": "useCurrentUser",
+      "descricao": "Lê a pessoa logada.",
+      "assinatura": "useCurrentUser(): WidgetQueryResult<User>",
+      "parametros": [],
+      "retorno": {
+        "tipo": "WidgetQueryResult<User>",
+        "descricao": "`{ data, loading, error, refetch }` com a pessoa."
+      },
+      "exemplo": "const { data: eu } = useCurrentUser();\nreturn <p>Olá, {eu?.display_name}</p>;",
+      "permissao": "users.read"
+    }
+  ],
+  "apis": [
+    {
+      "nome": "workerItemsApi",
+      "descricao": "Chamados do espaço, só dos sistemas que a pessoa enxerga.",
+      "permissao": "worker-items.read",
+      "metodos": [
+        {
+          "nome": "workerItemsApi.find",
+          "descricao": "Lista chamados, do mais recente para o mais antigo (pela última alteração).",
+          "assinatura": "workerItemsApi.find(filters?: WorkerItemFilters): Promise<PaginatedResponse<WorkerItem>>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "WorkerItemFilters",
+              "opcional": true,
+              "descricao": "Filtros e paginação. Sem `workspace_slug`, vale o espaço aberto."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<PaginatedResponse<WorkerItem>>",
+            "descricao": "Uma página de chamados."
+          },
+          "exemplo": "const pagina = await workerItemsApi.find({ status: \"started\", limit: 10 });\nconsole.log(pagina.total, pagina.data[0]?.name);",
+          "permissao": "worker-items.read"
+        },
+        {
+          "nome": "workerItemsApi.findById",
+          "descricao": "Lê um chamado pelo id.",
+          "assinatura": "workerItemsApi.findById(id: string): Promise<WorkerItem>",
+          "parametros": [
+            {
+              "nome": "id",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Id do chamado."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<WorkerItem>",
+            "descricao": "O chamado. Rejeita com 404 se não existe ou a pessoa não o enxerga."
+          },
+          "exemplo": "const chamado = await workerItemsApi.findById(\"0190f7c2-...\");",
+          "permissao": "worker-items.read"
+        },
+        {
+          "nome": "workerItemsApi.stats",
+          "descricao": "Totais de chamados: abertos, fechados e por prioridade.",
+          "assinatura": "workerItemsApi.stats(filters?: Pick<WorkerItemFilters, \"workspace_slug\" | \"entity_id\">): Promise<WorkerItemStats>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "Pick<WorkerItemFilters, \"workspace_slug\" | \"entity_id\">",
+              "opcional": true,
+              "descricao": "Espaço e, opcionalmente, uma entidade."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<WorkerItemStats>",
+            "descricao": "Os totais."
+          },
+          "exemplo": "const { open, by_priority } = await workerItemsApi.stats({ entity_id: entidadeId });",
+          "permissao": "worker-items.read"
+        }
+      ]
+    },
+    {
+      "nome": "intakesApi",
+      "descricao": "Solicitações da triagem, só dos sistemas que a pessoa enxerga.",
+      "permissao": "intakes.read",
+      "metodos": [
+        {
+          "nome": "intakesApi.find",
+          "descricao": "Lista solicitações, das mais novas para as mais antigas.",
+          "assinatura": "intakesApi.find(filters?: IntakeFilters): Promise<PaginatedResponse<Intake>>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "IntakeFilters",
+              "opcional": true,
+              "descricao": "Filtros e paginação. Sem `workspace_slug`, vale o espaço aberto."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<PaginatedResponse<Intake>>",
+            "descricao": "Uma página de solicitações."
+          },
+          "exemplo": "const { data } = await intakesApi.find({ project_id: sistemaId });",
+          "permissao": "intakes.read"
+        },
+        {
+          "nome": "intakesApi.findById",
+          "descricao": "Lê uma solicitação pelo id.",
+          "assinatura": "intakesApi.findById(id: string): Promise<Intake>",
+          "parametros": [
+            {
+              "nome": "id",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Id da solicitação."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<Intake>",
+            "descricao": "A solicitação. Rejeita com 404 se não existe ou a pessoa não a enxerga."
+          },
+          "exemplo": "const solicitacao = await intakesApi.findById(id);",
+          "permissao": "intakes.read"
+        },
+        {
+          "nome": "intakesApi.stats",
+          "descricao": "Total de solicitações visíveis.",
+          "assinatura": "intakesApi.stats(filters?: Pick<IntakeFilters, \"workspace_slug\">): Promise<IntakeStats>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "Pick<IntakeFilters, \"workspace_slug\">",
+              "opcional": true,
+              "descricao": "Espaço da consulta."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<IntakeStats>",
+            "descricao": "O total."
+          },
+          "exemplo": "const { total } = await intakesApi.stats();",
+          "permissao": "intakes.read"
+        }
+      ]
+    },
+    {
+      "nome": "actionsApi",
+      "descricao": "Chamados na visão resumida de ações (sem responsáveis nem etiquetas).",
+      "permissao": "actions.read",
+      "metodos": [
+        {
+          "nome": "actionsApi.find",
+          "descricao": "Lista ações, da última alteração para a mais antiga.",
+          "assinatura": "actionsApi.find(filters?: ActionFilters): Promise<PaginatedResponse<Action>>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "ActionFilters",
+              "opcional": true,
+              "descricao": "Filtros e paginação. Sem `workspace_slug`, vale o espaço aberto."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<PaginatedResponse<Action>>",
+            "descricao": "Uma página de ações."
+          },
+          "exemplo": "const { data } = await actionsApi.find({ assignee_id: pessoaId, limit: 5 });",
+          "permissao": "actions.read"
+        },
+        {
+          "nome": "actionsApi.findById",
+          "descricao": "Lê uma ação pelo id.",
+          "assinatura": "actionsApi.findById(id: string): Promise<Action>",
+          "parametros": [
+            {
+              "nome": "id",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Id do chamado."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<Action>",
+            "descricao": "A ação. Rejeita com 404 se não existe ou a pessoa não a enxerga."
+          },
+          "exemplo": "const acao = await actionsApi.findById(id);",
+          "permissao": "actions.read"
+        },
+        {
+          "nome": "actionsApi.stats",
+          "descricao": "Totais de ações abertas e fechadas.",
+          "assinatura": "actionsApi.stats(filters?: Pick<ActionFilters, \"workspace_slug\">): Promise<ActionStats>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "Pick<ActionFilters, \"workspace_slug\">",
+              "opcional": true,
+              "descricao": "Espaço da consulta."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<ActionStats>",
+            "descricao": "Os totais."
+          },
+          "exemplo": "const { open, closed } = await actionsApi.stats();",
+          "permissao": "actions.read"
+        }
+      ]
+    },
+    {
+      "nome": "statsApi",
+      "descricao": "Totais e estatísticas do espaço.",
+      "permissao": "stats.read",
+      "metodos": [
+        {
+          "nome": "statsApi.overview",
+          "descricao": "Visão geral: chamados abertos e fechados, solicitações e ações.",
+          "assinatura": "statsApi.overview(filters?: { workspace_slug?: string }): Promise<StatsOverview>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "{ workspace_slug?: string }",
+              "opcional": true,
+              "descricao": "Espaço da consulta."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<StatsOverview>",
+            "descricao": "Os totais do espaço."
+          },
+          "exemplo": "const { worker_items_open } = await statsApi.overview();",
+          "permissao": "stats.read"
+        },
+        {
+          "nome": "statsApi.byEntity",
+          "descricao": "Totais de chamados de uma entidade.",
+          "assinatura": "statsApi.byEntity(entityId: string): Promise<EntityStats>",
+          "parametros": [
+            {
+              "nome": "entityId",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Id da entidade."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<EntityStats>",
+            "descricao": "Os totais da entidade."
+          },
+          "exemplo": "const { open } = await statsApi.byEntity(entidadeId);",
+          "permissao": "stats.read"
+        },
+        {
+          "nome": "statsApi.period",
+          "descricao": "Chamados criados e concluídos num período. `start_date` e `end_date` são obrigatórios.",
+          "assinatura": "statsApi.period(params: PeriodFilters): Promise<PeriodStats>",
+          "parametros": [
+            {
+              "nome": "params",
+              "tipo": "PeriodFilters",
+              "opcional": false,
+              "descricao": "Período (AAAA-MM-DD) e, opcionalmente, o espaço."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<PeriodStats>",
+            "descricao": "O movimento do período."
+          },
+          "exemplo": "const mes = await statsApi.period({ start_date: \"2026-10-01\", end_date: \"2026-10-31\" });",
+          "permissao": "stats.read"
+        }
+      ]
+    },
+    {
+      "nome": "usersApi",
+      "descricao": "A pessoa logada e os membros do espaço.",
+      "permissao": "users.read",
+      "metodos": [
+        {
+          "nome": "usersApi.current",
+          "descricao": "Lê a pessoa logada. Não depende do espaço.",
+          "assinatura": "usersApi.current(): Promise<User>",
+          "parametros": [],
+          "retorno": {
+            "tipo": "Promise<User>",
+            "descricao": "A pessoa logada."
+          },
+          "exemplo": "const eu = await usersApi.current();",
+          "permissao": "users.read"
+        },
+        {
+          "nome": "usersApi.find",
+          "descricao": "Lista os membros do espaço, em ordem de nome.",
+          "assinatura": "usersApi.find(filters?: UserFilters): Promise<PaginatedResponse<User>>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "UserFilters",
+              "opcional": true,
+              "descricao": "Busca e paginação."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<PaginatedResponse<User>>",
+            "descricao": "Uma página de pessoas."
+          },
+          "exemplo": "const { data } = await usersApi.find({ search: \"ana\" });",
+          "permissao": "users.read"
+        },
+        {
+          "nome": "usersApi.findById",
+          "descricao": "Lê um membro do espaço pelo id.",
+          "assinatura": "usersApi.findById(id: string): Promise<User>",
+          "parametros": [
+            {
+              "nome": "id",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Id da pessoa."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<User>",
+            "descricao": "A pessoa. Rejeita com 404 se ela não participa do espaço."
+          },
+          "exemplo": "const pessoa = await usersApi.findById(id);",
+          "permissao": "users.read"
+        }
+      ]
+    },
+    {
+      "nome": "entitiesApi",
+      "descricao": "Entidades: os clientes atendidos no espaço.",
+      "permissao": "entities.read",
+      "metodos": [
+        {
+          "nome": "entitiesApi.find",
+          "descricao": "Lista entidades em ordem de nome. Inativas e congeladas ficam de fora, a não ser com `include_inactive`.",
+          "assinatura": "entitiesApi.find(filters?: EntityFilters): Promise<PaginatedResponse<Entity>>",
+          "parametros": [
+            {
+              "nome": "filters",
+              "tipo": "EntityFilters",
+              "opcional": true,
+              "descricao": "Busca, paginação e inclusão das inativas."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<PaginatedResponse<Entity>>",
+            "descricao": "Uma página de entidades."
+          },
+          "exemplo": "const { data } = await entitiesApi.find({ search: \"prefeitura\" });",
+          "permissao": "entities.read"
+        },
+        {
+          "nome": "entitiesApi.findById",
+          "descricao": "Lê uma entidade pelo id.",
+          "assinatura": "entitiesApi.findById(id: string): Promise<Entity>",
+          "parametros": [
+            {
+              "nome": "id",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Id da entidade."
+            }
+          ],
+          "retorno": {
+            "tipo": "Promise<Entity>",
+            "descricao": "A entidade. Rejeita com 404 se não existe no espaço."
+          },
+          "exemplo": "const entidade = await entitiesApi.findById(id);",
+          "permissao": "entities.read"
+        }
+      ]
+    },
+    {
+      "nome": "storageApi",
+      "descricao": "Armazenamento local do widget no navegador (localStorage), separado por widget: chaves de um widget não colidem com as de outro. Fica só neste navegador; não é sincronizado entre aparelhos. Não precisa de permissão.",
+      "permissao": "",
+      "metodos": [
+        {
+          "nome": "storageApi.set",
+          "descricao": "Grava um valor (serializado em JSON). Cota cheia é ignorada em silêncio.",
+          "assinatura": "storageApi.set(k: string, value: unknown): void",
+          "parametros": [
+            {
+              "nome": "k",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Chave, sem prefixo."
+            },
+            {
+              "nome": "value",
+              "tipo": "unknown",
+              "opcional": false,
+              "descricao": "Qualquer valor serializável em JSON."
+            }
+          ],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "storageApi.set(\"filtro\", { status: \"started\" });",
+          "permissao": ""
+        },
+        {
+          "nome": "storageApi.get",
+          "descricao": "Lê um valor gravado.",
+          "assinatura": "storageApi.get<T = unknown>(k: string): T | null",
+          "parametros": [
+            {
+              "nome": "k",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Chave, sem prefixo."
+            }
+          ],
+          "retorno": {
+            "tipo": "T | null",
+            "descricao": "O valor, ou null se não existe ou não é JSON válido."
+          },
+          "exemplo": "const filtro = storageApi.get<{ status: string }>(\"filtro\");",
+          "permissao": ""
+        },
+        {
+          "nome": "storageApi.remove",
+          "descricao": "Apaga uma chave.",
+          "assinatura": "storageApi.remove(k: string): void",
+          "parametros": [
+            {
+              "nome": "k",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Chave, sem prefixo."
+            }
+          ],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "storageApi.remove(\"filtro\");",
+          "permissao": ""
+        },
+        {
+          "nome": "storageApi.clear",
+          "descricao": "Apaga todas as chaves deste widget, sem tocar nas de outros.",
+          "assinatura": "storageApi.clear(): void",
+          "parametros": [],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "storageApi.clear();",
+          "permissao": ""
+        }
+      ]
+    },
+    {
+      "nome": "notificationsApi",
+      "descricao": "Avisos (toasts) mostrados pela plataforma. Dispara o evento `widget:notification`. Não precisa de permissão.",
+      "permissao": "",
+      "metodos": [
+        {
+          "nome": "notificationsApi.success",
+          "descricao": "Aviso de sucesso.",
+          "assinatura": "notificationsApi.success(message: string): void",
+          "parametros": [
+            {
+              "nome": "message",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Texto curto para a pessoa."
+            }
+          ],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "notificationsApi.success(\"Filtro salvo.\");",
+          "permissao": ""
+        },
+        {
+          "nome": "notificationsApi.error",
+          "descricao": "Aviso de erro.",
+          "assinatura": "notificationsApi.error(message: string): void",
+          "parametros": [
+            {
+              "nome": "message",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "O que aconteceu e o que fazer."
+            }
+          ],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "notificationsApi.error(\"Não foi possível carregar os chamados. Tente de novo.\");",
+          "permissao": ""
+        },
+        {
+          "nome": "notificationsApi.warning",
+          "descricao": "Aviso de atenção.",
+          "assinatura": "notificationsApi.warning(message: string): void",
+          "parametros": [
+            {
+              "nome": "message",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Texto curto para a pessoa."
+            }
+          ],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "notificationsApi.warning(\"Há chamados sem responsável.\");",
+          "permissao": ""
+        },
+        {
+          "nome": "notificationsApi.info",
+          "descricao": "Aviso informativo.",
+          "assinatura": "notificationsApi.info(message: string): void",
+          "parametros": [
+            {
+              "nome": "message",
+              "tipo": "string",
+              "opcional": false,
+              "descricao": "Texto curto para a pessoa."
+            }
+          ],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "notificationsApi.info(\"Lista atualizada.\");",
+          "permissao": ""
+        }
+      ]
+    },
+    {
+      "nome": "uiApi",
+      "descricao": "Pedidos de interface à plataforma: modal, gaveta e confirmação. Dispara o evento `widget:ui`. Não precisa de permissão.",
+      "permissao": "",
+      "metodos": [
+        {
+          "nome": "uiApi.modal",
+          "descricao": "Abre um modal.",
+          "assinatura": "uiApi.modal(config: ModalConfig): { close: () => void; }",
+          "parametros": [
+            {
+              "nome": "config",
+              "tipo": "ModalConfig",
+              "opcional": false,
+              "descricao": "Título, conteúdo e tamanho."
+            }
+          ],
+          "retorno": {
+            "tipo": "{ close: () => void; }",
+            "descricao": "`{ close }` para fechar o modal pelo widget."
+          },
+          "exemplo": "const modal = uiApi.modal({ title: \"Detalhes\", content: \"Chamado SUP-42\" });\nmodal.close();",
+          "permissao": ""
+        },
+        {
+          "nome": "uiApi.drawer",
+          "descricao": "Abre uma gaveta lateral.",
+          "assinatura": "uiApi.drawer(config: DrawerConfig): { close: () => void; }",
+          "parametros": [
+            {
+              "nome": "config",
+              "tipo": "DrawerConfig",
+              "opcional": false,
+              "descricao": "Título, conteúdo e lado."
+            }
+          ],
+          "retorno": {
+            "tipo": "{ close: () => void; }",
+            "descricao": "`{ close }` para fechar a gaveta pelo widget."
+          },
+          "exemplo": "uiApi.drawer({ title: \"Filtros\", content: \"...\", position: \"right\" });",
+          "permissao": ""
+        },
+        {
+          "nome": "uiApi.confirm",
+          "descricao": "Pede uma confirmação à pessoa.",
+          "assinatura": "uiApi.confirm(config: ConfirmConfig): void",
+          "parametros": [
+            {
+              "nome": "config",
+              "tipo": "ConfirmConfig",
+              "opcional": false,
+              "descricao": "Pergunta, rótulos e o que fazer em cada resposta."
+            }
+          ],
+          "retorno": {
+            "tipo": "void",
+            "descricao": ""
+          },
+          "exemplo": "uiApi.confirm({ title: \"Limpar filtros?\", message: \"Os filtros salvos serão apagados.\", onConfirm: () => storageApi.clear() });",
+          "permissao": ""
+        }
+      ]
+    }
+  ],
+  "tipos": [
+    {
+      "nome": "WidgetSDKInstance",
+      "descricao": "O SDK inicializado, também disponível em `window.WidgetSDK`.",
+      "definicao": "interface WidgetSDKInstance",
+      "campos": [
+        {
+          "nome": "__widgetId",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id do widget com que o SDK foi inicializado."
+        },
+        {
+          "nome": "workerItems",
+          "tipo": "typeof workerItemsApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `workerItemsApi`."
+        },
+        {
+          "nome": "intakes",
+          "tipo": "typeof intakesApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `intakesApi`."
+        },
+        {
+          "nome": "actions",
+          "tipo": "typeof actionsApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `actionsApi`."
+        },
+        {
+          "nome": "stats",
+          "tipo": "typeof statsApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `statsApi`."
+        },
+        {
+          "nome": "users",
+          "tipo": "typeof usersApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `usersApi`."
+        },
+        {
+          "nome": "entities",
+          "tipo": "typeof entitiesApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `entitiesApi`."
+        },
+        {
+          "nome": "storage",
+          "tipo": "typeof storageApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `storageApi`."
+        },
+        {
+          "nome": "notifications",
+          "tipo": "typeof notificationsApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `notificationsApi`."
+        },
+        {
+          "nome": "ui",
+          "tipo": "typeof uiApi",
+          "obrigatorio": true,
+          "descricao": "O mesmo que `uiApi`."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WidgetPermission",
+      "descricao": "Uma das chaves de `WIDGET_PERMISSIONS`.",
+      "definicao": "type WidgetPermission = keyof typeof WIDGET_PERMISSIONS",
+      "campos": [],
+      "valores": [
+        "worker-items.read",
+        "intakes.read",
+        "actions.read",
+        "stats.read",
+        "users.read",
+        "entities.read"
+      ]
+    },
+    {
+      "nome": "PaginatedResponse",
+      "descricao": "Página de uma listagem do gateway. A numeração começa em 0.",
+      "definicao": "interface PaginatedResponse<T>",
+      "campos": [
+        {
+          "nome": "data",
+          "tipo": "T[]",
+          "obrigatorio": true,
+          "descricao": "Itens da página."
+        },
+        {
+          "nome": "page",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Número da página devolvida, a partir de 0."
+        },
+        {
+          "nome": "total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Total de itens em todas as páginas."
+        },
+        {
+          "nome": "total_pages",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Quantidade de páginas com o `limit` usado."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WorkerItem",
+      "descricao": "Chamado, como o gateway devolve.",
+      "definicao": "interface WorkerItem",
+      "campos": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id do chamado."
+        },
+        {
+          "nome": "sequence_id",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Número sequencial do chamado dentro do sistema (o 42 de SUP-42)."
+        },
+        {
+          "nome": "name",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Título do chamado."
+        },
+        {
+          "nome": "description_html",
+          "tipo": "string | null",
+          "obrigatorio": false,
+          "descricao": "Descrição em HTML, quando o gateway a inclui."
+        },
+        {
+          "nome": "priority",
+          "tipo": "\"urgent\" | \"high\" | \"medium\" | \"low\" | \"none\"",
+          "obrigatorio": true,
+          "descricao": "Prioridade do chamado."
+        },
+        {
+          "nome": "state",
+          "tipo": "WorkerItemState | null",
+          "obrigatorio": true,
+          "descricao": "Etapa atual, ou null quando não há etapa."
+        },
+        {
+          "nome": "assignees",
+          "tipo": "Array<{ id: string; display_name: string; email?: string }>",
+          "obrigatorio": true,
+          "descricao": "Responsáveis pelo chamado."
+        },
+        {
+          "nome": "labels",
+          "tipo": "Array<{ id: string; name: string; color: string }>",
+          "obrigatorio": true,
+          "descricao": "Etiquetas do chamado."
+        },
+        {
+          "nome": "entity_id",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "Entidade (cliente) do chamado, ou null."
+        },
+        {
+          "nome": "project_id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Sistema (projeto) do chamado."
+        },
+        {
+          "nome": "workspace_id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Espaço do chamado."
+        },
+        {
+          "nome": "created_at",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Criação, em ISO 8601."
+        },
+        {
+          "nome": "updated_at",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Última alteração, em ISO 8601."
+        },
+        {
+          "nome": "completed_at",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "Conclusão, em ISO 8601, ou null se está aberto."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WorkerItemState",
+      "descricao": "Etapa (estado) de um chamado.",
+      "definicao": "interface WorkerItemState",
+      "campos": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id da etapa."
+        },
+        {
+          "nome": "name",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Nome exibido da etapa, por exemplo \"Em atendimento\"."
+        },
+        {
+          "nome": "group",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Grupo da etapa: backlog, unstarted, started, completed ou cancelled."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WorkerItemFilters",
+      "descricao": "Filtros da listagem de chamados. Todos opcionais.",
+      "definicao": "interface WorkerItemFilters",
+      "campos": [
+        {
+          "nome": "workspace_slug",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Espaço da consulta. Sem ele, vale o espaço em que o widget está aberto."
+        },
+        {
+          "nome": "entity_id",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Só os chamados desta entidade (cliente)."
+        },
+        {
+          "nome": "status",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Só os chamados com etapa deste grupo: backlog, unstarted, started, completed ou cancelled."
+        },
+        {
+          "nome": "assignee_id",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Só os chamados deste responsável."
+        },
+        {
+          "nome": "search",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Busca no título e no número do chamado."
+        },
+        {
+          "nome": "page",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Página, a partir de 0. Padrão: 0."
+        },
+        {
+          "nome": "limit",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Itens por página. Padrão: 20; máximo: 100."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WorkerItemStats",
+      "descricao": "Totais de chamados.",
+      "definicao": "interface WorkerItemStats",
+      "campos": [
+        {
+          "nome": "total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Todos os chamados visíveis."
+        },
+        {
+          "nome": "open",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados abertos."
+        },
+        {
+          "nome": "closed",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados concluídos ou cancelados."
+        },
+        {
+          "nome": "by_priority",
+          "tipo": "Record<string, number>",
+          "obrigatorio": true,
+          "descricao": "Quantidade por prioridade (urgent, high, medium, low, none)."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "Intake",
+      "descricao": "Solicitação da triagem (intake).",
+      "definicao": "interface Intake",
+      "campos": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id da solicitação."
+        },
+        {
+          "nome": "name",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Título da solicitação."
+        },
+        {
+          "nome": "description",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "Descrição em texto, ou null."
+        },
+        {
+          "nome": "project_id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Sistema (projeto) da triagem."
+        },
+        {
+          "nome": "workspace_id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Espaço da solicitação."
+        },
+        {
+          "nome": "created_at",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Criação, em ISO 8601."
+        },
+        {
+          "nome": "updated_at",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Última alteração, em ISO 8601."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "IntakeFilters",
+      "descricao": "Filtros da listagem de solicitações. Todos opcionais.",
+      "definicao": "interface IntakeFilters",
+      "campos": [
+        {
+          "nome": "workspace_slug",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Espaço da consulta. Sem ele, vale o espaço em que o widget está aberto."
+        },
+        {
+          "nome": "project_id",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Só as solicitações deste sistema (projeto)."
+        },
+        {
+          "nome": "status",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Reservado: o gateway ainda não filtra por situação."
+        },
+        {
+          "nome": "page",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Página, a partir de 0. Padrão: 0."
+        },
+        {
+          "nome": "limit",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Itens por página. Padrão: 20; máximo: 100."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "IntakeStats",
+      "descricao": "Totais de solicitações.",
+      "definicao": "interface IntakeStats",
+      "campos": [
+        {
+          "nome": "total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Todas as solicitações visíveis."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "Action",
+      "descricao": "Chamado na visão resumida de ações.",
+      "definicao": "interface Action",
+      "campos": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id do chamado."
+        },
+        {
+          "nome": "name",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Título do chamado."
+        },
+        {
+          "nome": "priority",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Prioridade do chamado."
+        },
+        {
+          "nome": "state",
+          "tipo": "WorkerItemState | null",
+          "obrigatorio": true,
+          "descricao": "Etapa atual, ou null."
+        },
+        {
+          "nome": "entity_id",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "Entidade (cliente) do chamado, ou null."
+        },
+        {
+          "nome": "created_at",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Criação, em ISO 8601."
+        },
+        {
+          "nome": "updated_at",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Última alteração, em ISO 8601."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "ActionFilters",
+      "descricao": "Filtros da listagem de ações. Todos opcionais.",
+      "definicao": "interface ActionFilters",
+      "campos": [
+        {
+          "nome": "workspace_slug",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Espaço da consulta. Sem ele, vale o espaço em que o widget está aberto."
+        },
+        {
+          "nome": "entity_id",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Só as ações desta entidade (cliente)."
+        },
+        {
+          "nome": "assignee_id",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Só as ações deste responsável."
+        },
+        {
+          "nome": "page",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Página, a partir de 0. Padrão: 0."
+        },
+        {
+          "nome": "limit",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Itens por página. Padrão: 20; máximo: 100."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "ActionStats",
+      "descricao": "Totais de ações.",
+      "definicao": "interface ActionStats",
+      "campos": [
+        {
+          "nome": "total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Todas as ações visíveis."
+        },
+        {
+          "nome": "open",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Ações abertas."
+        },
+        {
+          "nome": "closed",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Ações concluídas ou canceladas."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "StatsOverview",
+      "descricao": "Visão geral do espaço.",
+      "definicao": "interface StatsOverview",
+      "campos": [
+        {
+          "nome": "worker_items_total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Todos os chamados visíveis."
+        },
+        {
+          "nome": "worker_items_open",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados abertos."
+        },
+        {
+          "nome": "worker_items_closed",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados concluídos ou cancelados."
+        },
+        {
+          "nome": "intakes_total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Solicitações da triagem."
+        },
+        {
+          "nome": "actions_total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Ações (chamados na visão resumida)."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "EntityStats",
+      "descricao": "Totais de chamados de uma entidade.",
+      "definicao": "interface EntityStats",
+      "campos": [
+        {
+          "nome": "entity_id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Entidade consultada."
+        },
+        {
+          "nome": "total",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Todos os chamados da entidade."
+        },
+        {
+          "nome": "open",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados abertos."
+        },
+        {
+          "nome": "closed",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados concluídos ou cancelados."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "PeriodFilters",
+      "descricao": "Parâmetros de `statsApi.period`.",
+      "definicao": "interface PeriodFilters",
+      "campos": [
+        {
+          "nome": "start_date",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Início do período (AAAA-MM-DD)."
+        },
+        {
+          "nome": "end_date",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Fim do período (AAAA-MM-DD)."
+        },
+        {
+          "nome": "workspace_slug",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Espaço da consulta. Sem ele, vale o espaço em que o widget está aberto."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "PeriodStats",
+      "descricao": "Movimento de chamados num período.",
+      "definicao": "interface PeriodStats",
+      "campos": [
+        {
+          "nome": "start_date",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Início do período, como foi pedido."
+        },
+        {
+          "nome": "end_date",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Fim do período, como foi pedido."
+        },
+        {
+          "nome": "worker_items_created",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados criados no período."
+        },
+        {
+          "nome": "worker_items_completed",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Chamados concluídos no período."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "User",
+      "descricao": "Pessoa (membro do espaço ou a pessoa logada).",
+      "definicao": "interface User",
+      "campos": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id da pessoa."
+        },
+        {
+          "nome": "email",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "E-mail."
+        },
+        {
+          "nome": "display_name",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Nome de exibição."
+        },
+        {
+          "nome": "first_name",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Primeiro nome."
+        },
+        {
+          "nome": "last_name",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Sobrenome."
+        },
+        {
+          "nome": "avatar_url",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "Endereço da foto, ou null."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "UserFilters",
+      "descricao": "Filtros da listagem de pessoas. Todos opcionais.",
+      "definicao": "interface UserFilters",
+      "campos": [
+        {
+          "nome": "search",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Busca no e-mail e no nome de exibição."
+        },
+        {
+          "nome": "page",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Página, a partir de 0. Padrão: 0."
+        },
+        {
+          "nome": "limit",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Itens por página. Padrão: 20; máximo: 100."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "Entity",
+      "descricao": "Entidade (cliente atendido).",
+      "definicao": "interface Entity",
+      "campos": [
+        {
+          "nome": "id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id da entidade."
+        },
+        {
+          "nome": "name",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Nome da entidade."
+        },
+        {
+          "nome": "entity_type",
+          "tipo": "number | null",
+          "obrigatorio": true,
+          "descricao": "Código do tipo da entidade, ou null."
+        },
+        {
+          "nome": "city",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "Cidade, ou null."
+        },
+        {
+          "nome": "state",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "UF, ou null."
+        },
+        {
+          "nome": "workspace_id",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Espaço da entidade."
+        },
+        {
+          "nome": "created_at",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Criação, em ISO 8601."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "EntityFilters",
+      "descricao": "Filtros da listagem de entidades. Todos opcionais.",
+      "definicao": "interface EntityFilters",
+      "campos": [
+        {
+          "nome": "workspace_slug",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Espaço da consulta. Sem ele, vale o espaço em que o widget está aberto."
+        },
+        {
+          "nome": "search",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Busca no nome."
+        },
+        {
+          "nome": "include_inactive",
+          "tipo": "boolean",
+          "obrigatorio": false,
+          "descricao": "Inclui entidades inativas e congeladas. Padrão: só as ativas."
+        },
+        {
+          "nome": "page",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Página, a partir de 0. Padrão: 0."
+        },
+        {
+          "nome": "limit",
+          "tipo": "number",
+          "obrigatorio": false,
+          "descricao": "Itens por página. Padrão: 20; máximo: 100."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "ModalConfig",
+      "descricao": "Configuração de `uiApi.modal`.",
+      "definicao": "interface ModalConfig",
+      "campos": [
+        {
+          "nome": "title",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Título do modal."
+        },
+        {
+          "nome": "content",
+          "tipo": "React.ReactNode | string",
+          "obrigatorio": true,
+          "descricao": "Conteúdo: texto ou elemento React."
+        },
+        {
+          "nome": "onClose",
+          "tipo": "() => void",
+          "obrigatorio": false,
+          "descricao": "Chamado quando o modal fecha."
+        },
+        {
+          "nome": "size",
+          "tipo": "\"sm\" | \"md\" | \"lg\"",
+          "obrigatorio": false,
+          "descricao": "Largura do modal. Padrão: md."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "DrawerConfig",
+      "descricao": "Configuração de `uiApi.drawer`.",
+      "definicao": "interface DrawerConfig",
+      "campos": [
+        {
+          "nome": "title",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Título da gaveta."
+        },
+        {
+          "nome": "content",
+          "tipo": "React.ReactNode | string",
+          "obrigatorio": true,
+          "descricao": "Conteúdo: texto ou elemento React."
+        },
+        {
+          "nome": "onClose",
+          "tipo": "() => void",
+          "obrigatorio": false,
+          "descricao": "Chamado quando a gaveta fecha."
+        },
+        {
+          "nome": "position",
+          "tipo": "\"left\" | \"right\"",
+          "obrigatorio": false,
+          "descricao": "Lado em que a gaveta abre. Padrão: right."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "ConfirmConfig",
+      "descricao": "Configuração de `uiApi.confirm`.",
+      "definicao": "interface ConfirmConfig",
+      "campos": [
+        {
+          "nome": "title",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Título da confirmação."
+        },
+        {
+          "nome": "message",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Pergunta mostrada à pessoa."
+        },
+        {
+          "nome": "confirmLabel",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Texto do botão de confirmar. Padrão: Confirmar."
+        },
+        {
+          "nome": "cancelLabel",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Texto do botão de cancelar. Padrão: Cancelar."
+        },
+        {
+          "nome": "onConfirm",
+          "tipo": "() => void",
+          "obrigatorio": true,
+          "descricao": "Chamado quando a pessoa confirma."
+        },
+        {
+          "nome": "onCancel",
+          "tipo": "() => void",
+          "obrigatorio": false,
+          "descricao": "Chamado quando a pessoa cancela."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "SDKInitOptions",
+      "descricao": "Opções de `initializeSDK`. A home já chama por você; use só em desenvolvimento e testes.",
+      "definicao": "interface SDKInitOptions",
+      "campos": [
+        {
+          "nome": "baseUrl",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Origem da plataforma, por exemplo `https://chamados.empresa.com.br`."
+        },
+        {
+          "nome": "widgetId",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Id do widget, enviado no cabeçalho X-Widget-Id."
+        },
+        {
+          "nome": "workspaceSlug",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Workspace em que o widget está aberto; vai como `workspace_slug` em toda chamada."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WidgetSize",
+      "descricao": "Tamanho de um widget na grade da página inicial, em fração da largura: 1/3, 1/2, 2/3 ou 1/1.",
+      "definicao": "type WidgetSize = \"1/3\" | \"1/2\" | \"2/3\" | \"1/1\"",
+      "campos": [],
+      "valores": [
+        "1/3",
+        "1/2",
+        "2/3",
+        "1/1"
+      ]
+    },
+    {
+      "nome": "WidgetManifest",
+      "descricao": "Conteúdo do `manifest.json` do pacote. Campos de plugin (`slug`, `contributions`, `configSchema`) não valem para widget: o envio os ignora.",
+      "definicao": "interface WidgetManifest",
+      "campos": [
+        {
+          "nome": "name",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Nome do widget. Junto com `version`, identifica o pacote: o mesmo par não entra duas vezes. Até 255 caracteres."
+        },
+        {
+          "nome": "version",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Versão semver `major.minor.patch`, só números (1.0.0). Outro formato recusa o pacote."
+        },
+        {
+          "nome": "author",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Quem fez o widget. Aparece no cartão e na administração. Até 255 caracteres."
+        },
+        {
+          "nome": "entry",
+          "tipo": "string",
+          "obrigatorio": true,
+          "descricao": "Caminho, dentro do zip, do módulo ES com o componente React no export default. Ex.: widget.js."
+        },
+        {
+          "nome": "description",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Uma frase sobre o widget, mostrada em Gerenciar widgets."
+        },
+        {
+          "nome": "permissions",
+          "tipo": "WidgetPermission[]",
+          "obrigatorio": false,
+          "descricao": "Permissões pedidas ao gateway, entre as de WIDGET_PERMISSIONS. Permissão desconhecida recusa o pacote."
+        },
+        {
+          "nome": "title",
+          "tipo": "string",
+          "obrigatorio": false,
+          "descricao": "Título do cartão na home. Sem ele, vale o `name`. Até 80 caracteres."
+        },
+        {
+          "nome": "defaultSize",
+          "tipo": "WidgetSize",
+          "obrigatorio": false,
+          "descricao": "Tamanho com que o widget entra na grade: 1/3, 1/2, 2/3 ou 1/1. Sem ele, 1/2. Outro valor recusa o pacote."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WidgetHomeProps",
+      "descricao": "Props que a home entrega ao componente do widget.",
+      "definicao": "interface WidgetHomeProps",
+      "campos": [
+        {
+          "nome": "size",
+          "tipo": "WidgetSize",
+          "obrigatorio": true,
+          "descricao": "Tamanho atual do cartão na grade, para o widget adaptar o conteúdo."
+        }
+      ],
+      "valores": []
+    },
+    {
+      "nome": "WidgetQueryResult",
+      "descricao": "Retorno de todo hook de dados do SDK.",
+      "definicao": "interface WidgetQueryResult<T>",
+      "campos": [
+        {
+          "nome": "data",
+          "tipo": "T | null",
+          "obrigatorio": true,
+          "descricao": "O dado carregado, ou null enquanto carrega e quando falha."
+        },
+        {
+          "nome": "loading",
+          "tipo": "boolean",
+          "obrigatorio": true,
+          "descricao": "true enquanto a consulta está em andamento."
+        },
+        {
+          "nome": "error",
+          "tipo": "string | null",
+          "obrigatorio": true,
+          "descricao": "Mensagem do erro da última consulta, ou null."
+        },
+        {
+          "nome": "refetch",
+          "tipo": "() => void",
+          "obrigatorio": true,
+          "descricao": "Refaz a consulta com os mesmos parâmetros."
+        }
+      ],
+      "valores": []
+    }
+  ],
+  "constantes": [
+    {
+      "nome": "WIDGET_PERMISSIONS",
+      "descricao": "Permissões que um widget pode pedir no `manifest.json`, com o que cada uma libera. Pedido fora desta lista recusa o pacote no envio. O gateway responde 403 para a chamada de uma API cuja permissão o manifesto não declarou.",
+      "campos": [
+        {
+          "nome": "worker-items.read",
+          "tipo": "\"Listar e ler chamados (workerItemsApi, useWorkerItems, useWorkerItem).\"",
+          "obrigatorio": true,
+          "descricao": ""
+        },
+        {
+          "nome": "intakes.read",
+          "tipo": "\"Listar e ler solicitações da triagem (intakesApi, useIntakes, useIntake).\"",
+          "obrigatorio": true,
+          "descricao": ""
+        },
+        {
+          "nome": "actions.read",
+          "tipo": "\"Listar chamados na visão resumida de ações (actionsApi, useActions, useAction).\"",
+          "obrigatorio": true,
+          "descricao": ""
+        },
+        {
+          "nome": "stats.read",
+          "tipo": "\"Ler totais e estatísticas por período e por entidade (statsApi, useStats).\"",
+          "obrigatorio": true,
+          "descricao": ""
+        },
+        {
+          "nome": "users.read",
+          "tipo": "\"Ler a pessoa logada e os membros do espaço (usersApi, useUsers, useCurrentUser).\"",
+          "obrigatorio": true,
+          "descricao": ""
+        },
+        {
+          "nome": "entities.read",
+          "tipo": "\"Listar e ler entidades, os clientes atendidos (entitiesApi, useEntities, useEntity).\"",
+          "obrigatorio": true,
+          "descricao": ""
+        }
+      ],
+      "valor": {
+        "worker-items.read": "Listar e ler chamados (workerItemsApi, useWorkerItems, useWorkerItem).",
+        "intakes.read": "Listar e ler solicitações da triagem (intakesApi, useIntakes, useIntake).",
+        "actions.read": "Listar chamados na visão resumida de ações (actionsApi, useActions, useAction).",
+        "stats.read": "Ler totais e estatísticas por período e por entidade (statsApi, useStats).",
+        "users.read": "Ler a pessoa logada e os membros do espaço (usersApi, useUsers, useCurrentUser).",
+        "entities.read": "Listar e ler entidades, os clientes atendidos (entitiesApi, useEntities, useEntity)."
+      }
+    },
+    {
+      "nome": "WIDGET_LIMITS",
+      "descricao": "Limites do envio de um pacote. Os tamanhos são os padrões do servidor e podem ser trocados pela instância (variáveis `WIDGET_MAX_ZIP_SIZE` e `WIDGET_MAX_BUNDLE_SIZE`).",
+      "campos": [
+        {
+          "nome": "zipMaxBytes",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Tamanho máximo do `.zip` enviado, em bytes (10 MB)."
+        },
+        {
+          "nome": "bundleMaxBytes",
+          "tipo": "number",
+          "obrigatorio": true,
+          "descricao": "Tamanho máximo do arquivo de entrada (`entry`) dentro do zip, em bytes (5 MB)."
+        },
+        {
+          "nome": "versionPattern",
+          "tipo": "\"^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$\"",
+          "obrigatorio": true,
+          "descricao": "Formato aceito para `version`: semver `major.minor.patch`, só números."
+        },
+        {
+          "nome": "titleMaxLength",
+          "tipo": "80",
+          "obrigatorio": true,
+          "descricao": "Tamanho máximo de `title`, em caracteres. O excedente é cortado."
+        },
+        {
+          "nome": "nameMaxLength",
+          "tipo": "255",
+          "obrigatorio": true,
+          "descricao": "Tamanho máximo de `name` e `author`, em caracteres. O excedente é cortado."
+        },
+        {
+          "nome": "uploadsPerMinute",
+          "tipo": "5",
+          "obrigatorio": true,
+          "descricao": "Envios por minuto por pessoa (global e \"meu widget\" somados). Acima disso: 429."
+        },
+        {
+          "nome": "pageSizeDefault",
+          "tipo": "20",
+          "obrigatorio": true,
+          "descricao": "Itens por página nas listagens do gateway: padrão."
+        },
+        {
+          "nome": "pageSizeMax",
+          "tipo": "100",
+          "obrigatorio": true,
+          "descricao": "Itens por página nas listagens do gateway: máximo aceito em `limit`."
+        }
+      ],
+      "valor": {
+        "zipMaxBytes": 10485760,
+        "bundleMaxBytes": 5242880,
+        "versionPattern": "^\\d+\\.\\d+\\.\\d+$",
+        "titleMaxLength": 80,
+        "nameMaxLength": 255,
+        "uploadsPerMinute": 5,
+        "pageSizeDefault": 20,
+        "pageSizeMax": 100
+      }
+    },
+    {
+      "nome": "WIDGET_LIFECYCLE",
+      "descricao": "Etapas da vida de um widget na home, na ordem em que acontecem.",
+      "campos": [],
+      "valor": [
+        {
+          "stage": "envio",
+          "description": "O zip passa pela validação do manifesto e dos limites. O widget entra ativo: global (enviado na administração) ou meu (enviado pela própria pessoa, só na home dela)."
+        },
+        {
+          "stage": "carregar",
+          "description": "A home busca o widget, chama initializeSDK com o id dele e o espaço aberto, e importa o arquivo de entrada como módulo ES. react, react-dom, react/jsx-runtime e @mateusseiboth/widgets-aviao são entregues pela própria plataforma."
+        },
+        {
+          "stage": "montar",
+          "description": "O export default do módulo é renderizado dentro do cartão, com as props de WidgetHomeProps (size). Falha ao carregar ou erro na renderização mostra um aviso no lugar do widget, sem derrubar a home."
+        },
+        {
+          "stage": "atualizar",
+          "description": "Quando a pessoa muda o tamanho do cartão, o componente recebe o novo size. Trocar a ordem dos cartões não recarrega o pacote."
+        },
+        {
+          "stage": "desmontar",
+          "description": "Ocultar o widget em Gerenciar widgets ou sair da home desmonta o componente. Limpe timers e assinaturas no retorno do useEffect."
+        }
+      ]
+    },
+    {
+      "nome": "WIDGET_EVENTS",
+      "descricao": "Eventos que o SDK dispara para a plataforma (em `window` e por `postMessage` para a janela pai).",
+      "campos": [],
+      "valor": [
+        {
+          "name": "widget:notification",
+          "origin": "notificationsApi",
+          "payload": "{ type: 'success' | 'error' | 'warning' | 'info', message: string }",
+          "description": "Pede um aviso (toast) à plataforma."
+        },
+        {
+          "name": "widget:ui",
+          "origin": "uiApi",
+          "payload": "{ source: 'widget-sdk', event: 'modal:open' | 'modal:close' | 'drawer:open' | 'drawer:close' | 'confirm:open', config?: ModalConfig | DrawerConfig | ConfirmConfig }",
+          "description": "Pede à plataforma para abrir ou fechar um modal, uma gaveta ou uma confirmação."
+        }
+      ]
+    },
+    {
+      "nome": "GATEWAY_ERRORS",
+      "descricao": "Respostas de erro do gateway (`/api/v1/widget-sdk/*`) e do envio de pacote. O corpo é `{ detail }`.",
+      "campos": [],
+      "valor": [
+        {
+          "status": 400,
+          "when": "Faltou o cabeçalho X-Widget-Id (o SDK manda sozinho depois do initializeSDK)."
+        },
+        {
+          "status": 400,
+          "when": "Faltou o workspace_slug numa rota de dados (o SDK manda o espaço aberto)."
+        },
+        {
+          "status": 400,
+          "when": "stats.period sem start_date ou end_date."
+        },
+        {
+          "status": 400,
+          "when": "Envio: zip inválido, manifesto inválido, arquivo de entrada ausente ou acima do limite."
+        },
+        {
+          "status": 401,
+          "when": "Sessão expirada ou ausente."
+        },
+        {
+          "status": 403,
+          "when": "Widget inexistente, inativo ou privado de outra pessoa."
+        },
+        {
+          "status": 403,
+          "when": "O manifesto não declarou a permissão da API chamada."
+        },
+        {
+          "status": 403,
+          "when": "A pessoa não participa do espaço informado."
+        },
+        {
+          "status": 404,
+          "when": "Registro não encontrado ou fora dos sistemas que a pessoa enxerga."
+        },
+        {
+          "status": 409,
+          "when": "Envio: o mesmo nome e versão já existem no mesmo escopo."
+        },
+        {
+          "status": 429,
+          "when": "Envio: mais de 5 pacotes por minuto."
+        }
+      ]
+    }
+  ],
+  "manifesto": {
+    "descricao": "Conteúdo do `manifest.json` do pacote. Campos de plugin (`slug`, `contributions`, `configSchema`) não valem para widget: o envio os ignora.",
+    "campos": [
+      {
+        "nome": "name",
+        "tipo": "string",
+        "obrigatorio": true,
+        "descricao": "Nome do widget. Junto com `version`, identifica o pacote: o mesmo par não entra duas vezes. Até 255 caracteres."
+      },
+      {
+        "nome": "version",
+        "tipo": "string",
+        "obrigatorio": true,
+        "descricao": "Versão semver `major.minor.patch`, só números (1.0.0). Outro formato recusa o pacote."
+      },
+      {
+        "nome": "author",
+        "tipo": "string",
+        "obrigatorio": true,
+        "descricao": "Quem fez o widget. Aparece no cartão e na administração. Até 255 caracteres."
+      },
+      {
+        "nome": "entry",
+        "tipo": "string",
+        "obrigatorio": true,
+        "descricao": "Caminho, dentro do zip, do módulo ES com o componente React no export default. Ex.: widget.js."
+      },
+      {
+        "nome": "description",
+        "tipo": "string",
+        "obrigatorio": false,
+        "descricao": "Uma frase sobre o widget, mostrada em Gerenciar widgets."
+      },
+      {
+        "nome": "permissions",
+        "tipo": "WidgetPermission[]",
+        "obrigatorio": false,
+        "descricao": "Permissões pedidas ao gateway, entre as de WIDGET_PERMISSIONS. Permissão desconhecida recusa o pacote."
+      },
+      {
+        "nome": "title",
+        "tipo": "string",
+        "obrigatorio": false,
+        "descricao": "Título do cartão na home. Sem ele, vale o `name`. Até 80 caracteres."
+      },
+      {
+        "nome": "defaultSize",
+        "tipo": "WidgetSize",
+        "obrigatorio": false,
+        "descricao": "Tamanho com que o widget entra na grade: 1/3, 1/2, 2/3 ou 1/1. Sem ele, 1/2. Outro valor recusa o pacote."
+      }
+    ],
+    "exemplo": "{\n  \"name\": \"Fila do suporte\",\n  \"version\": \"1.0.0\",\n  \"author\": \"Equipe de TI\",\n  \"entry\": \"widget.js\",\n  \"description\": \"Chamados em atendimento, do mais recente para o mais antigo.\",\n  \"permissions\": [\"worker-items.read\", \"stats.read\"],\n  \"title\": \"Fila do suporte\",\n  \"defaultSize\": \"1/2\"\n}"
+  },
+  "permissoes": [
+    {
+      "chave": "worker-items.read",
+      "libera": "Listar e ler chamados (workerItemsApi, useWorkerItems, useWorkerItem).",
+      "usadaPor": [
+        "useWorkerItems",
+        "useWorkerItem",
+        "workerItemsApi"
+      ]
+    },
+    {
+      "chave": "intakes.read",
+      "libera": "Listar e ler solicitações da triagem (intakesApi, useIntakes, useIntake).",
+      "usadaPor": [
+        "useIntakes",
+        "useIntake",
+        "intakesApi"
+      ]
+    },
+    {
+      "chave": "actions.read",
+      "libera": "Listar chamados na visão resumida de ações (actionsApi, useActions, useAction).",
+      "usadaPor": [
+        "useActions",
+        "useAction",
+        "actionsApi"
+      ]
+    },
+    {
+      "chave": "stats.read",
+      "libera": "Ler totais e estatísticas por período e por entidade (statsApi, useStats).",
+      "usadaPor": [
+        "useStats",
+        "statsApi"
+      ]
+    },
+    {
+      "chave": "users.read",
+      "libera": "Ler a pessoa logada e os membros do espaço (usersApi, useUsers, useCurrentUser).",
+      "usadaPor": [
+        "useUsers",
+        "useCurrentUser",
+        "usersApi"
+      ]
+    },
+    {
+      "chave": "entities.read",
+      "libera": "Listar e ler entidades, os clientes atendidos (entitiesApi, useEntities, useEntity).",
+      "usadaPor": [
+        "useEntities",
+        "useEntity",
+        "entitiesApi"
+      ]
+    }
+  ],
+  "cicloDeVida": [
+    {
+      "etapa": "envio",
+      "descricao": "O zip passa pela validação do manifesto e dos limites. O widget entra ativo: global (enviado na administração) ou meu (enviado pela própria pessoa, só na home dela)."
+    },
+    {
+      "etapa": "carregar",
+      "descricao": "A home busca o widget, chama initializeSDK com o id dele e o espaço aberto, e importa o arquivo de entrada como módulo ES. react, react-dom, react/jsx-runtime e @mateusseiboth/widgets-aviao são entregues pela própria plataforma."
+    },
+    {
+      "etapa": "montar",
+      "descricao": "O export default do módulo é renderizado dentro do cartão, com as props de WidgetHomeProps (size). Falha ao carregar ou erro na renderização mostra um aviso no lugar do widget, sem derrubar a home."
+    },
+    {
+      "etapa": "atualizar",
+      "descricao": "Quando a pessoa muda o tamanho do cartão, o componente recebe o novo size. Trocar a ordem dos cartões não recarrega o pacote."
+    },
+    {
+      "etapa": "desmontar",
+      "descricao": "Ocultar o widget em Gerenciar widgets ou sair da home desmonta o componente. Limpe timers e assinaturas no retorno do useEffect."
+    }
+  ],
+  "eventos": [
+    {
+      "nome": "widget:notification",
+      "origem": "notificationsApi",
+      "payload": "{ type: 'success' | 'error' | 'warning' | 'info', message: string }",
+      "descricao": "Pede um aviso (toast) à plataforma."
+    },
+    {
+      "nome": "widget:ui",
+      "origem": "uiApi",
+      "payload": "{ source: 'widget-sdk', event: 'modal:open' | 'modal:close' | 'drawer:open' | 'drawer:close' | 'confirm:open', config?: ModalConfig | DrawerConfig | ConfirmConfig }",
+      "descricao": "Pede à plataforma para abrir ou fechar um modal, uma gaveta ou uma confirmação."
+    }
+  ],
+  "erros": [
+    {
+      "status": 400,
+      "quando": "Faltou o cabeçalho X-Widget-Id (o SDK manda sozinho depois do initializeSDK)."
+    },
+    {
+      "status": 400,
+      "quando": "Faltou o workspace_slug numa rota de dados (o SDK manda o espaço aberto)."
+    },
+    {
+      "status": 400,
+      "quando": "stats.period sem start_date ou end_date."
+    },
+    {
+      "status": 400,
+      "quando": "Envio: zip inválido, manifesto inválido, arquivo de entrada ausente ou acima do limite."
+    },
+    {
+      "status": 401,
+      "quando": "Sessão expirada ou ausente."
+    },
+    {
+      "status": 403,
+      "quando": "Widget inexistente, inativo ou privado de outra pessoa."
+    },
+    {
+      "status": 403,
+      "quando": "O manifesto não declarou a permissão da API chamada."
+    },
+    {
+      "status": 403,
+      "quando": "A pessoa não participa do espaço informado."
+    },
+    {
+      "status": 404,
+      "quando": "Registro não encontrado ou fora dos sistemas que a pessoa enxerga."
+    },
+    {
+      "status": 409,
+      "quando": "Envio: o mesmo nome e versão já existem no mesmo escopo."
+    },
+    {
+      "status": 429,
+      "quando": "Envio: mais de 5 pacotes por minuto."
+    }
+  ],
+  "limites": [
+    {
+      "nome": "zipMaxBytes",
+      "valor": 10485760,
+      "descricao": "Tamanho máximo do `.zip` enviado, em bytes (10 MB)."
+    },
+    {
+      "nome": "bundleMaxBytes",
+      "valor": 5242880,
+      "descricao": "Tamanho máximo do arquivo de entrada (`entry`) dentro do zip, em bytes (5 MB)."
+    },
+    {
+      "nome": "versionPattern",
+      "valor": "^\\d+\\.\\d+\\.\\d+$",
+      "descricao": "Formato aceito para `version`: semver `major.minor.patch`, só números."
+    },
+    {
+      "nome": "titleMaxLength",
+      "valor": 80,
+      "descricao": "Tamanho máximo de `title`, em caracteres. O excedente é cortado."
+    },
+    {
+      "nome": "nameMaxLength",
+      "valor": 255,
+      "descricao": "Tamanho máximo de `name` e `author`, em caracteres. O excedente é cortado."
+    },
+    {
+      "nome": "uploadsPerMinute",
+      "valor": 5,
+      "descricao": "Envios por minuto por pessoa (global e \"meu widget\" somados). Acima disso: 429."
+    },
+    {
+      "nome": "pageSizeDefault",
+      "valor": 20,
+      "descricao": "Itens por página nas listagens do gateway: padrão."
+    },
+    {
+      "nome": "pageSizeMax",
+      "valor": 100,
+      "descricao": "Itens por página nas listagens do gateway: máximo aceito em `limit`."
+    }
+  ]
+}

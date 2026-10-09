@@ -1,7 +1,7 @@
 import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import { widgetDao } from "@modules/widget/widget.dao";
-import { serializeWidget } from "@modules/widget/widget.rules";
+import { ENVIOS_POR_MINUTO, serializeWidget } from "@modules/widget/widget.rules";
 import { createWidgetService } from "@modules/widget/widget.service";
 import { widgetStorage } from "@utils/widget-storage";
 import { checkRateLimit } from "@utils/rate-limiter";
@@ -29,9 +29,13 @@ function requireInstanceAdmin(user: { isInstanceAdmin: boolean; isSuperuser: boo
   }
 }
 
-/** 5 envios por minuto por pessoa, valendo para o global e para o "meu". */
+/** Limite de envios por minuto por pessoa, valendo para o global e para o "meu". */
 const isEnvioLiberado = (userId: string, request: Request) =>
-  checkRateLimit(`widget-upload:${userId}:${request.headers.get("x-forwarded-for") ?? userId}`, 5, 60_000);
+  checkRateLimit(
+    `widget-upload:${userId}:${request.headers.get("x-forwarded-for") ?? userId}`,
+    ENVIOS_POR_MINUTO,
+    60_000
+  );
 
 /** O `.zip` do campo multipart `file`, ou null quando não veio. */
 async function readZipDoCorpo(body: unknown): Promise<Buffer | null> {

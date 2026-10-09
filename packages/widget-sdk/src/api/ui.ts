@@ -13,18 +13,43 @@ function emit(payload: UiEventPayload) {
   window.parent.postMessage({ source: "widget-sdk", ...payload }, "*");
 }
 
+/**
+ * Pedidos de interface à plataforma: modal, gaveta e confirmação. Dispara o
+ * evento `widget:ui`. Não precisa de permissão.
+ */
 export const uiApi = {
-  modal(config: ModalConfig) {
+  /**
+   * Abre um modal.
+   * @param config Título, conteúdo e tamanho.
+   * @returns `{ close }` para fechar o modal pelo widget.
+   * @example
+   * const modal = uiApi.modal({ title: "Detalhes", content: "Chamado SUP-42" });
+   * modal.close();
+   */
+  modal(config: ModalConfig): { close: () => void } {
     emit({ event: "modal:open", config });
     return { close: () => emit({ event: "modal:close" }) };
   },
 
-  drawer(config: DrawerConfig) {
+  /**
+   * Abre uma gaveta lateral.
+   * @param config Título, conteúdo e lado.
+   * @returns `{ close }` para fechar a gaveta pelo widget.
+   * @example
+   * uiApi.drawer({ title: "Filtros", content: "...", position: "right" });
+   */
+  drawer(config: DrawerConfig): { close: () => void } {
     emit({ event: "drawer:open", config });
     return { close: () => emit({ event: "drawer:close" }) };
   },
 
-  confirm(config: ConfirmConfig) {
+  /**
+   * Pede uma confirmação à pessoa.
+   * @param config Pergunta, rótulos e o que fazer em cada resposta.
+   * @example
+   * uiApi.confirm({ title: "Limpar filtros?", message: "Os filtros salvos serão apagados.", onConfirm: () => storageApi.clear() });
+   */
+  confirm(config: ConfirmConfig): void {
     emit({ event: "confirm:open", config });
   },
 };
