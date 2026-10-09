@@ -53,7 +53,12 @@ import { isLigacao } from "@/components/chat/ligacoes/ligacao-helpers";
 import { PainelDaLigacao } from "@/components/chat/ligacoes/painel-da-ligacao";
 // Ferramentas do atendente e gestão (W05): ver .claude/chat-atendente.md.
 import { AlertaSemResposta, MensagemDaChave } from "@/components/chat/atendente/alerta-sem-resposta";
-import { insertFrase, readSessaoDaUrl } from "@/components/chat/atendente/atendente-helpers";
+import {
+  applyTransferenciaNaLista,
+  insertFrase,
+  readSessaoDaUrl,
+  withSistemaDaConversa,
+} from "@/components/chat/atendente/atendente-helpers";
 import { FerramentasDoCompositor } from "@/components/chat/atendente/ferramentas-do-compositor";
 import { GerenciadorDeConversas } from "@/components/chat/atendente/gerenciador-de-conversas";
 import { PainelDoCadastro } from "@/components/chat/atendente/painel-do-cadastro";
@@ -529,9 +534,13 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const refreshSessionsRef = useRef<typeof refreshSessions>();
   const openSessionRef = useRef<typeof openSession>();
   const sessionsRef = useRef<ChatSession[]>([]);
+  const isAdminRef = useRef(isAdmin);
   useEffect(() => {
     activeRef.current = activeId;
   }, [activeId]);
+  useEffect(() => {
+    isAdminRef.current = isAdmin;
+  }, [isAdmin]);
   useEffect(() => {
     refreshSessionsRef.current = refreshSessions;
   }, [refreshSessions]);
@@ -727,6 +736,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             return;
           }
 
+          // A conversa foi transferida e saiu de mim. Quem administra vê todas e
+          // continua vendo (com o novo dono); os demais deixam de ver na hora.
+          if (msg.type === "session.transferred_out") {
+            setSessions((prev) => applyTransferenciaNaLista(prev, msg, isAdminRef.current));
+            if (!isAdminRef.current && msg.session_id === activeRef.current) setActiveId(null);
+            return;
+          }
+
           if (
             msg.type === "session.activity" ||
             msg.type === "session.queued" ||
@@ -871,7 +888,12 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
     setEncerrando(true);
   };
 
-  const projetos = (joinedProjectIds ?? []).map((pid) => ({ value: pid, label: getProjectById(pid)?.name ?? pid }));
+  // O sistema da conversa aberta entra mesmo quando a pessoa não participa dele
+  // (conversa transferida): senão o seletor mostrava "Selecione".
+  const projetos = withSistemaDaConversa(
+    (joinedProjectIds ?? []).map((pid) => ({ value: pid, label: getProjectById(pid)?.name ?? pid })),
+    activeSession
+  );
 
   const chatUrl = activeSession
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/${slug}/chat-view/${activeSession.protocol}`

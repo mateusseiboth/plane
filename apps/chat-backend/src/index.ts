@@ -26,6 +26,8 @@ import { nomeDoCliente } from "@/aviso-do-atendente";
 import { ratingsReport, slaReport } from "@/reports";
 import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
 import { withoutAvaliacao, serializeSession } from "@/sessoes";
+import { buildAvisosDaTransferencia } from "@/transferencia";
+import { buildFiltroDaVisibilidade, readEscopoDaLista } from "@/visibilidade";
 import {
   register,
   unregister,
@@ -398,10 +400,9 @@ const app = new Elysia()
     }
     const status = (query as any).status as string | undefined;
 
-    // Role-based visibility:
-    //   ONLY workspace admins see the bot + queue and unassigned chats.
-    //   Everyone else (managers included) sees ONLY chats assigned to them and never
-    //   anything still in "bot" or "queued" — e sem a avaliação que o cliente deu.
+    // Visibilidade pela ação (src/visibilidade.ts): quem administra vê todas,
+    // inclusive robô, fila e as que já transferiu; os demais (gestor incluído)
+    // veem só as próprias, nunca robô nem fila, e sem a avaliação do cliente.
     const isAdmin = await hasChatAction(slug, user.id, CHAT_ACTION.ADMINISTRAR);
 
     const requested = status ? status.split(",") : null;
@@ -430,21 +431,13 @@ const app = new Elysia()
       : {};
     // `?channel=phone` (ligações) ou `?channel=whatsapp,native` (conversas).
     const filtroDeCanal = parseChannelFilter((query as any).channel);
-    let whereFilter: any;
-    if (isAdmin) {
-      whereFilter = { workspaceId: slug, ...(requested ? { status: { in: requested } } : {}), ...recorteDeHoje, ...recorteDaBusca, ...filtroDeCanal };
-    } else {
-      // Own chats only; bot/queued are never visible to non-admins.
-      const allowed = (requested ?? []).filter((s) => s !== "bot" && s !== "queued");
-      whereFilter = {
-        workspaceId: slug,
-        assignedAttendantId: user.id,
-        status: requested ? { in: allowed } : { notIn: ["bot", "queued"] },
-        ...recorteDeHoje,
-        ...recorteDaBusca,
-        ...filtroDeCanal,
-      };
-    }
+    const whereFilter = {
+      workspaceId: slug,
+      ...buildFiltroDaVisibilidade(readEscopoDaLista(isAdmin), user.id, requested),
+      ...recorteDeHoje,
+      ...recorteDaBusca,
+      ...filtroDeCanal,
+    };
 
     const sessions = await prisma.chatSession.findMany({
       where: whereFilter,
@@ -635,13 +628,17 @@ const app = new Elysia()
       text: `Você foi transferido(a) para o atendente ${toName}, que dará continuidade ao seu atendimento.`,
     });
 
-    // Let the target attendant (and the whole workspace) know live.
-    sendToUser(toUserId, {
-      type: "session.transferred",
-      session_id: id,
-      to_user_id: toUserId,
-      client_name: nomeDoCliente(updated),
-    });
+    // Ao vivo: quem recebe ganha a conversa; quem atendia e quem transferiu a
+    // tiram da lista (src/transferencia.ts). O espaço inteiro recarrega a lista.
+    // A conversa leva entidade, sistema e responsável: o `update` acima só troca
+    // o dono, o cadastro continua na mesma linha.
+    buildAvisosDaTransferencia({
+      sessionId: id,
+      clientName: nomeDoCliente(updated),
+      anteriorUserId: session.assignedAttendantId,
+      porUserId: user.id,
+      paraUserId: toUserId,
+    }).forEach(({ userId, payload }) => sendToUser(userId, payload));
     sendToWorkspace(slug, { type: "session.activity", session_id: id });
     sendToSession(id, { type: "session.assigned", session_id: id, attendant_id: toUserId });
 
