@@ -41,27 +41,20 @@ All fields are required unless noted:
   "author": "Your Name",
   "description": "What this widget does (optional)",
   "entry": "widget.js",
-  "permissions": [
-    "worker-items.read",
-    "intakes.read",
-    "stats.read",
-    "users.read",
-    "entities.read",
-    "actions.read"
-  ]
+  "permissions": ["worker-items.read", "intakes.read", "stats.read", "users.read", "entities.read", "actions.read"]
 }
 ```
 
 ### Permission Reference
 
-| Permission | Description |
-|---|---|
-| `worker-items.read` | Read work items (issues) |
-| `intakes.read` | Read intake records |
-| `actions.read` | Read actions |
-| `stats.read` | Read aggregated statistics |
-| `users.read` | Read user profiles |
-| `entities.read` | Read entity (company/client) records |
+| Permission          | Description                          |
+| ------------------- | ------------------------------------ |
+| `worker-items.read` | Read work items (issues)             |
+| `intakes.read`      | Read intake records                  |
+| `actions.read`      | Read actions                         |
+| `stats.read`        | Read aggregated statistics           |
+| `users.read`        | Read user profiles                   |
+| `entities.read`     | Read entity (company/client) records |
 
 ---
 
@@ -123,11 +116,15 @@ export default function MyWidget({ entityId }: Props) {
 
 The host platform injects `window.WidgetSDK` before your bundle executes.
 
-If you are using the npm package:
+The package is not on npm: each instance serves it. Install from your instance
+(the developers page at `/<workspace>/developers/widgets` shows the exact URL):
 
 ```bash
-npm install @mateusseiboth/widgets-aviao
+npm install https://<your-instance>/sdk/widgets-aviao.tgz
 ```
+
+The same page offers the example project (`/sdk/widget-exemplo.zip`), which
+already builds an installable widget.
 
 Then use React hooks:
 
@@ -166,7 +163,13 @@ export default function MyWidget() {
     });
   }, []);
 
-  return <ul>{items.map((i: any) => <li key={i.id}>{i.name}</li>)}</ul>;
+  return (
+    <ul>
+      {items.map((i: any) => (
+        <li key={i.id}>{i.name}</li>
+      ))}
+    </ul>
+  );
 }
 ```
 
@@ -224,19 +227,19 @@ WidgetSDK.entities.findById(id)
 ### Storage (per-widget namespace)
 
 ```ts
-WidgetSDK.storage.set("key", value)
-WidgetSDK.storage.get("key")      // returns T | null
-WidgetSDK.storage.remove("key")
-WidgetSDK.storage.clear()         // removes all keys for this widget
+WidgetSDK.storage.set("key", value);
+WidgetSDK.storage.get("key"); // returns T | null
+WidgetSDK.storage.remove("key");
+WidgetSDK.storage.clear(); // removes all keys for this widget
 ```
 
 ### Notifications
 
 ```ts
-WidgetSDK.notifications.success("Saved!")
-WidgetSDK.notifications.error("Something went wrong")
-WidgetSDK.notifications.warning("Quota is low")
-WidgetSDK.notifications.info("Background sync running")
+WidgetSDK.notifications.success("Saved!");
+WidgetSDK.notifications.error("Something went wrong");
+WidgetSDK.notifications.warning("Quota is low");
+WidgetSDK.notifications.info("Background sync running");
 ```
 
 ### UI
@@ -297,10 +300,7 @@ Use the `<DynamicWidget>` component anywhere in the platform's React tree:
 ```tsx
 import { DynamicWidget } from "@/components/widgets/dynamic-widget";
 
-<DynamicWidget
-  widgetId="550e8400-e29b-41d4-a716-446655440000"
-  props={{ entityId: "my-entity-id" }}
-/>
+<DynamicWidget widgetId="550e8400-e29b-41d4-a716-446655440000" props={{ entityId: "my-entity-id" }} />;
 ```
 
 ---

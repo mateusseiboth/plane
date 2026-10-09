@@ -69,6 +69,54 @@ O componente do pacote recebe a prop `size` com o tamanho atual do cartão
 (`WidgetHomeProps` no `@mateusseiboth/widgets-aviao`), para adaptar o conteúdo.
 Os tipos `WidgetManifest` e `WidgetSize` também estão no SDK.
 
+O `DynamicWidget` carrega o pacote por `loadPluginModule`
+(`core/lib/plugin-module-runtime.ts`): `react`, `react/jsx-runtime`, `react-dom` e
+`@mateusseiboth/widgets-aviao` do bundle viram o módulo do host (o SDK chega já
+inicializado com o id do widget e o espaço). O bundle do widget precisa deixá-los
+como `external`. O shim do SDK reexporta `Object.keys` do módulo: export novo no SDK
+chega ao widget sem lista à mão.
+
+Limitação conhecida: a configuração do SDK (`X-Widget-Id`, espaço) é global ao
+módulo. Com dois widgets instalados na mesma home, o último `initializeSDK` vale
+para os dois; um widget sem a permissão do outro toma 403 no gateway.
+
+## Widgets por usuário ("meu widget")
+
+`widgets.owner_user_id` nulo = global; preenchido = widget da pessoa (migração
+`20261009130000_widgets_do_usuario`, `ON DELETE CASCADE`: apagar a pessoa não pode
+publicar o pacote para todos).
+
+| Rota                                    | Quem                                       | O quê                                          |
+| --------------------------------------- | ------------------------------------------ | ---------------------------------------------- |
+| `POST /api/v1/widgets/mine/`            | membro ativo de algum espaço               | envia o próprio (mesma validação e limites)    |
+| `GET /api/v1/widgets/mine/`             | qualquer pessoa logada                     | os que ela enviou e ainda são privados         |
+| `DELETE /api/v1/widgets/mine/:id/`      | dono                                       | remove (o de outra pessoa responde 404)        |
+| `GET /api/v1/widgets/`                  | qualquer pessoa logada                     | home: globais + os meus                        |
+| `GET /api/v1/widgets/?scope=global`     | qualquer pessoa logada                     | aba Globais                                    |
+| `GET /api/v1/widgets/?scope=users`      | `requireUploader` (admin ou TI)            | aba De usuários, com `owner`                   |
+| `POST /api/v1/widgets/:id/make-global/` | `requireUploader`                          | vira global; 409 se nome+versão já são globais |
+| `DELETE /api/v1/widgets/:id`            | admin da instância; uploader no de usuário | remoção pela administração                     |
+
+- O privado de outra pessoa responde 404 no `GET /:id` e no pacote
+  (`/:id/assets/*`, com `Cache-Control: private`), e 403 no gateway do SDK.
+- Conflito de nome+versão é por escopo: duas pessoas podem ter o mesmo par. O
+  bundle do privado fica em `usuarios/<id>/...` no storage.
+- Código: `apps/api-ts/src/modules/widget/{index,widget.service,widget.dao,widget.rules}.ts`.
+  Testes: `tests/contract/widgets-do-usuario.test.ts`, `tests/unit/widget-escopo.test.ts`.
+- Tela: "Gerenciar widgets" tem **Enviar meu widget**, selo **Meu** e lixeira no
+  próprio (`hooks/use-meus-widgets.ts`); `/settings/widgets` tem as abas Globais e
+  De usuários (`components/widgets/widget-list-de-usuarios.tsx`).
+
+## SDK servido pela instância e referência gerada
+
+O pacote não está no npm. O build do SDK gera `dist/publico/` (tarball versionado,
+`widgets-aviao.tgz` e `widget-exemplo.zip`) e o build do web copia para `/sdk/`
+(plugin `copySdkDosWidgets` no `apps/web/vite.config.ts`; `public/sdk/` é ignorado
+no git). A página `/<espaço>/developers/widgets` lê `packages/widget-sdk/referencia.json`
+(gerado pelo compilador TypeScript a partir do JSDoc e de `src/contrato.ts`) e
+monta os comandos pela origem (`components/developers/widgets/comandos-do-sdk.ts`).
+Detalhes e regras para mexer no SDK: `packages/widget-sdk/README.md`.
+
 ## Preferências (API)
 
 `GET /api/workspaces/:slug/home-preferences/` e `PUT` do mesmo caminho, com
