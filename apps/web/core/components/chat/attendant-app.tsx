@@ -11,13 +11,11 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
-  BarChart2,
   CheckCheck,
   Loader2,
   Mail,
   MessageSquare,
   History,
-  ListFilter,
   Mic,
   Paperclip,
   Pencil,
@@ -25,7 +23,6 @@ import {
   Plus,
   Search,
   SendHorizontal,
-  Settings2,
   Star,
   Trash2,
   Users,
@@ -43,6 +40,7 @@ import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-butt
 // services
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
+import { MenuDoGestor } from "@/components/chat/menu-do-gestor";
 import { BotaoDoDisparo } from "@/components/chat/disparo/botao-do-disparo";
 import { ChatService, chatApi, type ChatAttendant, type ChatMessage, type ChatSession } from "@/services/chat.service";
 import {ModalDeEncerramento, type DadosDoEncerramento} from "@/components/chat/modal-de-encerramento";
@@ -1008,17 +1006,17 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
       {/* ── Sidebar ────────────────────────────────────────────────────── */}
       <aside className="flex w-72 shrink-0 flex-col border-r border-subtle bg-surface-1">
         {/* Sidebar header */}
-        <div className="flex items-center justify-between border-b border-subtle px-4 py-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 border-b border-subtle px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
             {sidebarCollapsed && (
               <div className="shrink-0">
                 <AppSidebarToggleButton />
               </div>
             )}
-            <MessageSquare className="h-4.5 w-4.5 text-primary" />
-            <span className="text-sm font-semibold text-primary">Atendimentos</span>
+            <MessageSquare className="h-4.5 w-4.5 shrink-0 text-primary" />
+            <span className="truncate text-sm font-semibold text-primary">Atendimentos</span>
           </div>
-          <div className="flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <button
               onClick={() => setShowNewChat(true)}
               className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
@@ -1027,33 +1025,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               <Plus className="h-4 w-4" />
             </button>
             <BotaoDoDisparo slug={slug} />
-            {isManager && (
-              <button
-                onClick={() => setShowGerenciador(true)}
-                className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
-                title="Gerenciador de conversas"
-              >
-                <ListFilter className="h-4 w-4" />
-              </button>
-            )}
-            {isManager && (
-              <button
-                onClick={() => setShowDashboard(true)}
-                className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
-                title="Dashboard de atendimento"
-              >
-                <BarChart2 className="h-4 w-4" />
-              </button>
-            )}
-            {isManager && (
-              <button
-                onClick={() => setShowConfig(true)}
-                className="rounded-md p-1.5 text-secondary hover:bg-layer-2 hover:text-primary transition-colors"
-                title="Configurações do chat"
-              >
-                <Settings2 className="h-4 w-4" />
-              </button>
-            )}
+            <MenuDoGestor
+              isManager={isManager}
+              onAcao={{
+                gerenciador: () => setShowGerenciador(true),
+                dashboard: () => setShowDashboard(true),
+                configuracoes: () => setShowConfig(true),
+              }}
+            />
           </div>
         </div>
 
