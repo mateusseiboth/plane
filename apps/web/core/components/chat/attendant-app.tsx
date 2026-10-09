@@ -1563,11 +1563,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 <FerramentasDoCompositor
                   slug={slug}
                   apiUrl={config.api_url}
-                  sessionId={activeSession.id}
                   semNome={semNome}
                   onSemNomeChange={setSemNome}
                   onFrase={(frase) => setDraft((atual) => insertFrase(atual, frase))}
-                  onChaveEnviada={() => setSemNome(false)}
                 />
                 <textarea
                   value={draft}
