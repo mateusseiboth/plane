@@ -26,6 +26,7 @@ import { nomeDoCliente } from "@/aviso-do-atendente";
 import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
 import { applyVisaoDaAvaliacao, serializeSession } from "@/sessoes";
 import { authorizeChat, isNegado } from "@/acesso";
+import { SO_O_CLIENTE_AVALIA, authorizeSessaoPorId, authorizeTranscricao, isClienteDaSessao } from "@/acesso-a-sessao";
 import { buildAvisosDaTransferencia } from "@/transferencia";
 import { buildFiltroDaVisibilidade } from "@/visibilidade";
 import {
@@ -349,39 +350,46 @@ const app = new Elysia()
   })
 
   // ── History (no-reload load); client (token) or attendant (cookie) ──
-  .get("/sessions/:id/messages/", async ({ params: { id }, query, headers }) => {
-    const role = await authorizeSessionAccess(id, query, headers as any);
-    if (!role) return new Response(JSON.stringify({ detail: "Acesso negado." }), { status: 403 });
-    const full = role === "attendant"; // staff see deleted originals + edit history
+  // A equipe precisa atender no espaço da conversa e enxergá-la (src/acesso-a-sessao.ts).
+  .get("/sessions/:id/messages/", async ({ params: { id }, query, headers, set }) => {
+    const autorizada = await authorizeSessaoPorId(id, (query as any)?.token, headers);
+    if (isNegado(autorizada)) {
+      set.status = autorizada.status;
+      return autorizada.body;
+    }
+    const { sessao: session, acesso } = autorizada;
+    const full = acesso.papel === "attendant"; // staff see deleted originals + edit history
     const messages = await prisma.chatMessage.findMany({ where: { sessionId: id }, orderBy: { createdAt: "asc" } });
-    const session = await prisma.chatSession.findUnique({ where: { id }, include: { contact: true } });
-    if (!session) return { session: null, results: messages.map((m) => serializeMessage(m, { full })) };
     // O cliente vê a própria avaliação (é ela que diz se o formulário já foi
     // respondido); do lado da equipe, quem tem `chat.ver_avaliacao`.
-    const canVerAvaliacao = role === "client" || (await canVerAvaliacaoDaConversa(session, headers));
+    const canVerAvaliacao = acesso.papel === "client" || (await hasVerAvaliacao(session.workspaceId, acesso.userId));
     return {
       session: applyVisaoDaAvaliacao(serializeSession(session), canVerAvaliacao),
       results: messages.map((m) => serializeMessage(m, { full })),
     };
   })
 
-  // ── Read-only public view of a chat (for the editor chat-embed link) ──
-  .get("/sessions/by-protocol/:protocol/", async ({ params: { protocol }, headers }) => {
-    const session = await prisma.chatSession.findUnique({ where: { protocol }, include: { contact: true } });
-    if (!session) return new Response(JSON.stringify({ detail: "Não encontrado." }), { status: 404 });
+  // ── Read-only transcript of a chat (web `chat-view/[protocol]`) ──
+  // Só a equipe que enxerga a conversa, pela mesma regra do histórico.
+  .get("/sessions/by-protocol/:protocol/", async ({ params: { protocol }, headers, set }) => {
+    const autorizada = await authorizeTranscricao(protocol, headers);
+    if (isNegado(autorizada)) {
+      set.status = autorizada.status;
+      return autorizada.body;
+    }
+    const { sessao: session, acesso: viewer } = autorizada;
     const messages = await prisma.chatMessage.findMany({ where: { sessionId: session.id }, orderBy: { createdAt: "asc" } });
     // LGPD: abrir a transcrição é acesso ao conteúdo da conversa do cliente.
-    const viewer = await resolveAttendant(headers);
     recordChatAudit({
       workspaceSlug: session.workspaceId,
       sessionId: session.id,
       action: CHAT_AUDIT_ACTIONS.VIEW,
-      userId: viewer?.id ?? null,
+      userId: viewer.userId,
       headers,
       metadata: { protocolo: session.protocol, canal: session.channel, mensagens: messages.length },
     });
     // Staff transcript (shared via copy-link): show deleted originals + history.
-    const canVerAvaliacao = viewer ? await hasVerAvaliacao(session.workspaceId, viewer.id) : false;
+    const canVerAvaliacao = await hasVerAvaliacao(session.workspaceId, viewer.userId);
     return {
       session: applyVisaoDaAvaliacao(serializeSession(session), canVerAvaliacao),
       results: messages.map((m) => serializeMessage(m, { full: true })),
@@ -475,10 +483,11 @@ const app = new Elysia()
 
   // ── Attendant: start a new WhatsApp chat from a contact ──
   .post("/workspaces/:slug/sessions/whatsapp/", async ({ params: { slug }, body, headers, set }) => {
-    const user = await resolveAttendant(headers as any);
-    if (!user) {
-      set.status = 401;
-      return { detail: "Não autenticado." };
+    // Iniciar conversa é atender neste espaço: antes qualquer conta do Plane falava pelo número de outro espaço.
+    const acesso = await authorizeChat(slug, headers, CHAT_ACTION.ATENDER);
+    if (isNegado(acesso)) {
+      set.status = acesso.status;
+      return acesso.body;
     }
     const b = (body as any) ?? {};
     const contact = await prisma.contact.findFirst({ where: { workspaceId: slug, id: b.contact_id } });
@@ -496,12 +505,12 @@ const app = new Elysia()
         clientPhone: contact.phone,
         protocol,
         status: "active",
-        assignedAttendantId: user.id,
+        assignedAttendantId: acesso.userId,
         botState: "done",
       },
     });
     if (b.message) {
-      await deliverOutbound(session as any, { sender: "attendant", type: "text", text: b.message, senderUserId: user.id });
+      await deliverOutbound(session as any, { sender: "attendant", type: "text", text: b.message, senderUserId: acesso.userId });
     }
     return serializeSession(session);
   })
@@ -573,7 +582,13 @@ const app = new Elysia()
   })
 
   // ── Media upload / serve ──
-  .post("/sessions/:id/upload/", async ({ params: { id }, request, set }) => {
+  .post("/sessions/:id/upload/", async ({ params: { id }, query, headers, request, set }) => {
+    // Mesma regra do histórico: o cliente da conversa ou a equipe que a enxerga.
+    const autorizada = await authorizeSessaoPorId(id, (query as any)?.token, headers);
+    if (isNegado(autorizada)) {
+      set.status = autorizada.status;
+      return autorizada.body;
+    }
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof Blob)) {
@@ -591,11 +606,12 @@ const app = new Elysia()
   })
 
   // ── Rating: native client form submits its score + comment here ──
-  .post("/sessions/:id/rate/", async ({ params: { id }, query, headers, body, set }) => {
-    const authed = await authorizeSessionAccess(id, query, headers as any);
-    if (!authed) {
-      set.status = 403;
-      return { detail: "Acesso negado." };
+  // Só o cliente, pelo token da conversa: a equipe não grava nem sobrescreve a nota
+  // (o atendente nem a vê sem `chat.ver_avaliacao`). O WhatsApp grava pela resposta (src/rating.ts).
+  .post("/sessions/:id/rate/", async ({ params: { id }, query, body, set }) => {
+    if (!(await isClienteDaSessao(id, (query as any)?.token))) {
+      set.status = SO_O_CLIENTE_AVALIA.status;
+      return SO_O_CLIENTE_AVALIA.body;
     }
     const b = (body as any) ?? {};
     const score = Number(b.score);
@@ -754,25 +770,6 @@ console.log(`💬 chat-backend listening on :${PORT}`);
 /** A nota e o comentário do cliente saem só para quem tem `chat.ver_avaliacao`. */
 function hasVerAvaliacao(slug: string, userId: string): Promise<boolean> {
   return hasChatAction(slug, userId, CHAT_ACTION.VER_AVALIACAO);
-}
-
-async function canVerAvaliacaoDaConversa(session: { workspaceId: string }, headers: any): Promise<boolean> {
-  const user = await resolveAttendant(headers);
-  return user ? hasVerAvaliacao(session.workspaceId, user.id) : false;
-}
-
-// ── auth helper for history endpoint ──
-async function authorizeSessionAccess(
-  sessionId: string,
-  query: any,
-  headers: Record<string, string | undefined>
-): Promise<"client" | "attendant" | null> {
-  if (query?.token) {
-    const claims = await verifyClientToken(query.token);
-    if (claims?.sessionId === sessionId) return "client";
-  }
-  const user = await resolveAttendant(headers);
-  return user ? "attendant" : null;
 }
 
 export type App = typeof app;

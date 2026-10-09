@@ -31,6 +31,7 @@ const phone = `5567${Math.floor(100000000 + Math.random() * 899999999)}`;
 let zapi: FakeZapi;
 let attendant: AttendantSocket;
 let attendantId: string;
+let attendantToken: string;
 let sessionId: string;
 let entidadeId: string;
 
@@ -61,7 +62,8 @@ beforeAll(async () => {
   await configureWorkspace(workspace, zapi.baseUrl);
   const user = await resolveTestAttendant();
   attendantId = user.id;
-  attendant = await connectAttendant(workspace, await signPlaneToken(user.id, user.email));
+  attendantToken = await signPlaneToken(user.id, user.email);
+  attendant = await connectAttendant(workspace, attendantToken);
 
   await sendWhatsAppText(workspace, phone, "oi");
   const session = await waitUntil(() =>
@@ -98,13 +100,16 @@ describe("trilha de auditoria do chat", () => {
 
   test("abrir a transcrição pelo protocolo registra o acesso ao conteúdo", async () => {
     const session = await prisma.chatSession.findUnique({ where: { id: sessionId } });
+    // A transcrição é da equipe: quem abre é o atendente, e é ele que fica na trilha.
     const res = await fetch(
-      `${process.env.CHAT_URL ?? "http://localhost:8002"}/sessions/by-protocol/${session!.protocol}/`
+      `${process.env.CHAT_URL ?? "http://localhost:8002"}/sessions/by-protocol/${session!.protocol}/`,
+      { headers: { Authorization: `Bearer ${attendantToken}` } }
     );
     expect(res.ok).toBe(true);
 
     const log = await findAudit("view", sessionId);
     expect(log).not.toBeNull();
+    expect(log!.actor_id).toBe(attendantId);
     expect(log!.metadata.protocolo).toBe(session!.protocol);
     expect(typeof log!.metadata.mensagens).toBe("number");
   }, 25000);

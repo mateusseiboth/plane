@@ -108,6 +108,16 @@ Sessão serializada ganhou `sla_alert_paused_until` e `client_info`.
   (`applyVisaoDaAvaliacao`, `src/sessoes.ts`); a tela usa `permissoes.canVerAvaliacao`. No WhatsApp
   a resposta à pesquisa não vira mensagem da conversa (`isRespostaDaAvaliacao`, `src/rating.ts`).
   O relatório de avaliações por atendente segue em `chat.relatorios`.
+- **Só o cliente avalia** (W43): `POST /sessions/:id/rate/` aceita apenas o token do cliente da
+  conversa; a equipe recebe 403 "Só o cliente avalia o atendimento." (antes o atendente logado
+  gravava ou sobrescrevia a nota). O WhatsApp grava pela resposta à pesquisa (`handleRatingReply`).
+- **Histórico, transcrição e anexo pela regra da lista** (W43, `src/acesso-a-sessao.ts`):
+  `GET /sessions/:id/messages/`, `GET /sessions/by-protocol/:protocol/` (a tela `chat-view`) e
+  `POST /sessions/:id/upload/` exigem, da equipe, `chat.atender` no espaço da conversa e
+  `isSessaoVisivel` (próprias; dos outros com `chat.ver_todas`; fila e robô com `chat.ver_fila`).
+  Sem login 401, sem a ação ali 403, conversa que não enxerga 404. Antes bastava estar logado no
+  Plane, em qualquer espaço. O cliente segue com o `?token=` da conversa (a transcrição não aceita).
+  Iniciar WhatsApp (`POST .../sessions/whatsapp/`) passou a pedir `chat.atender` no espaço.
 - **Frases**: não há semente automática; a aba oferece "Usar as frases padrão" (7 do SAC). As três
   últimas do SAC eram a pesquisa de satisfação digitada à mão e ficaram de fora (o chat já faz a
   pesquisa). Inserir a frase coloca o texto no fim do rascunho; o atendente ainda revisa e envia.
