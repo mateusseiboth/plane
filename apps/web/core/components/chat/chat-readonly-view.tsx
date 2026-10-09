@@ -7,13 +7,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { buildPermissoesDoAtendimento } from "@/components/chat/permissoes-do-atendimento";
 import { ChatTranscriptPrintDocument, PrintButton } from "@/components/print";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { ChatMessage, ChatSession } from "@/services/chat.service";
 
 // Read-only full view of a chat by protocol. Anyone with the link can open it.
 // Talks to the chat backend through the proxy (/chat-api) — the by-protocol
 // endpoint is public read-only.
-export function ChatReadOnlyView({ protocol }: { protocol: string }) {
+export function ChatReadOnlyView({ protocol, workspaceSlug }: { protocol: string; workspaceSlug: string }) {
+  const { can } = useMyWorkspaceActions(workspaceSlug);
+  const { canVerAvaliacao } = buildPermissoesDoAtendimento(can);
   const [session, setSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +45,7 @@ export function ChatReadOnlyView({ protocol }: { protocol: string }) {
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col">
       {/* LGPD: a transcrição contém dados do cliente — a impressão vai para a trilha. */}
-      <ChatTranscriptPrintDocument session={session} messages={messages} />
+      <ChatTranscriptPrintDocument session={session} messages={messages} canVerAvaliacao={canVerAvaliacao} />
       <header className="flex items-start justify-between gap-3 border-b border-subtle p-4">
         <div>
           <h1 className="text-base font-semibold">{session.client_name || session.client_phone || "Atendimento"}</h1>

@@ -12,12 +12,12 @@ import { ChatReadOnlyView } from "@/components/chat/chat-readonly-view";
 import { PageHead } from "@/components/core/page-title";
 
 export default function ChatViewPage() {
-  const { protocol } = useParams();
+  const { protocol, workspaceSlug } = useParams();
   return (
     <>
       <PageHead title={`Chat #${protocol}`} />
       <div className="relative h-full w-full overflow-hidden">
-        <ChatReadOnlyView protocol={protocol?.toString() ?? ""} />
+        <ChatReadOnlyView protocol={protocol?.toString() ?? ""} workspaceSlug={workspaceSlug?.toString() ?? ""} />
       </div>
     </>
   );

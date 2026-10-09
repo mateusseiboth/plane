@@ -15,6 +15,7 @@ export const ACAO_DO_CHAT = {
   VER_TODAS: "chat.ver_todas",
   VER_FILA: "chat.ver_fila",
   RELATORIOS: "chat.relatorios",
+  VER_AVALIACAO: "chat.ver_avaliacao",
   DISPARO: "chat.disparo",
   CONFIGURAR: "chat.configurar",
   FRASES_DO_ESPACO: "chat.frases_do_espaco",
@@ -34,8 +35,9 @@ export function buildPermissoesDoAtendimento(can: Can) {
     canVerFila: can(ACAO_DO_CHAT.VER_FILA),
     // Painel do atendimento (relatórios, monitor, avaliações, prazos, ligações).
     canVerRelatorios: can(ACAO_DO_CHAT.RELATORIOS),
-    // A nota que o cliente deu fica com quem configura o chat.
-    canVerAvaliacao: can(ACAO_DO_CHAT.CONFIGURAR),
+    // Bloco "Avaliação" da conversa. Ação própria: às vezes o atendente não deve
+    // ver a nota que recebeu, para não descontar no cliente depois.
+    canVerAvaliacao: can(ACAO_DO_CHAT.VER_AVALIACAO),
     hasConfiguracao: can(ACAO_DO_CHAT.CONFIGURAR) || can(ACAO_DO_CHAT.FRASES_DO_ESPACO),
   };
 }

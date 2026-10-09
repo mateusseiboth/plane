@@ -99,8 +99,15 @@ Sessão serializada ganhou `sla_alert_paused_until` e `client_info`.
 
 - **Ações da matriz** (finas desde a W38, ver `.claude/permissoes-v2.md` §9): atender =
   `chat.atender`; pausar o alerta = `chat.pausar`; frases do espaço = `chat.frases_do_espaco`;
-  feriados = `chat.configurar`; gerenciador = `chat.ver_todas`; monitor = `chat.relatorios`.
-  Antes eram `chat.administrar` e `chat.gerenciar`.
+  feriados = `chat.configurar`; gerenciador = `chat.ver_todas`; monitor = `chat.relatorios`;
+  nota e comentário do cliente (bloco "Avaliação", lista, histórico, transcrição e impressão) =
+  `chat.ver_avaliacao` (W42; antes saíam com `chat.configurar`, padrão só admin). Antes eram
+  `chat.administrar` e `chat.gerenciar`.
+- **Avaliação do cliente** (W42): o atendente pode não ver a nota que recebeu, para não descontar no
+  cliente. O servidor apaga `rating_score`/`rating_comment` para quem não tem `chat.ver_avaliacao`
+  (`applyVisaoDaAvaliacao`, `src/sessoes.ts`); a tela usa `permissoes.canVerAvaliacao`. No WhatsApp
+  a resposta à pesquisa não vira mensagem da conversa (`isRespostaDaAvaliacao`, `src/rating.ts`).
+  O relatório de avaliações por atendente segue em `chat.relatorios`.
 - **Frases**: não há semente automática; a aba oferece "Usar as frases padrão" (7 do SAC). As três
   últimas do SAC eram a pesquisa de satisfação digitada à mão e ficaram de fora (o chat já faz a
   pesquisa). Inserir a frase coloca o texto no fim do rascunho; o atendente ainda revisa e envia.
