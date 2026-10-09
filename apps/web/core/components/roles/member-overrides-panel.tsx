@@ -152,6 +152,7 @@ export function MemberOverridesPanel(props: { slug: string; catalog: TRoleAction
                     ))}
                   </div>
                 </div>
+                {acao.description && <p className="mt-0.5 text-11 text-tertiary">{acao.description}</p>}
                 {erros[acao.key] && <p className="text-red-500 mt-1 text-11">{erros[acao.key]}</p>}
               </div>
             ))}

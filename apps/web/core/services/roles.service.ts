@@ -31,6 +31,8 @@ export type TWorkflowRole = {
 export type TRoleAction = {
   key: string;
   label: string;
+  /** Explicação curta mostrada abaixo do rótulo; nula na maioria das ações. */
+  description?: string | null;
   group: string;
   scope: "project" | "workspace";
 };

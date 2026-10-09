@@ -261,6 +261,24 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(donosDe("visit.manage.all")).toEqual(["admin", "gestor_projeto"]);
   });
 
+  it("comentar antes de mudar a etapa vem marcado para todas as funções", () => {
+    expect(donosDe("issue.require_comment_to_move")).toEqual([
+      "admin",
+      "atendimento",
+      "gestor_projeto",
+      "guest",
+      "member",
+      "qualidade",
+      "ti",
+    ]);
+    expect(ACTION_CATALOG.ISSUE_REQUIRE_COMMENT_TO_MOVE).toMatchObject({
+      label: "Precisa comentar antes de mudar a etapa",
+      group: "Chamados",
+      scope: ACTION_CATALOG.STATE_MOVE_UNRESTRICTED.scope,
+    });
+    expect(ACTION_CATALOG.ISSUE_REQUIRE_COMMENT_TO_MOVE.description).not.toContain("—");
+  });
+
   it("pós-atendimento: Atendimento registra, Qualidade verifica; Gestor e admin fazem os dois", () => {
     expect(donosDe("posatendimento.record")).toEqual(["admin", "atendimento", "gestor_projeto", "qualidade"]);
     expect(donosDe("posatendimento.verify")).toEqual(["admin", "gestor_projeto", "qualidade"]);

@@ -6,7 +6,7 @@ import Elysia from "elysia";
 import {authPlugin} from "@middleware/auth";
 import prisma from "@db";
 import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
-import {ACTION_CATALOG, ALL_ACTIONS, applyMemberOverrides} from "@utils/permissions";
+import {ACTION_CATALOG, ALL_ACTIONS, applyMemberOverrides, type ActionDef} from "@utils/permissions";
 import {EProjectAction, listMemberActions, requireWorkspaceAction, resolveRole} from "@utils/permission-checks";
 import {findActionErrors} from "@modules/roles/validar-acoes";
 
@@ -34,7 +34,13 @@ function roleDto(r: any) {
   };
 }
 
-const ACTIONS_DTO = Object.values(ACTION_CATALOG).map(({key, label, group, scope}) => ({key, label, group, scope}));
+const ACTIONS_DTO = Object.values(ACTION_CATALOG).map((acao: ActionDef) => ({
+  key: acao.key,
+  label: acao.label,
+  description: acao.description ?? null,
+  group: acao.group,
+  scope: acao.scope,
+}));
 
 /** Guarda das escritas: exige `role.manage` e devolve o que quem edita pode conceder. */
 async function requireRoleManager(workspaceId: string, userId: string): Promise<string[]> {

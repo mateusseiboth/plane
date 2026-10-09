@@ -7,8 +7,13 @@
  * etapa (ou depois da criação, quando ele nunca mudou). Quem só cria o chamado
  * e as movimentações do sistema (aceite na triagem, chat, scripts com chave de
  * API) não passam por aqui.
+ *
+ * A obrigação é uma ação da matriz de permissões
+ * (`issue.require_comment_to_move`): MARCADA na função efetiva da pessoa (com as
+ * exceções por pessoa) = precisa comentar; desmarcada = move direto.
  */
 import type { Credencial } from "@middleware/auth";
+import { EProjectAction, roleCan, type EffectiveRole } from "@utils/permissions";
 
 export const MENSAGEM_COMENTE_ANTES_DE_MOVER = "Comente no chamado antes de mudar a etapa.";
 
@@ -31,4 +36,7 @@ const EXIGE_COMENTARIO: Record<Credencial, boolean> = {
   "chave-de-api": false,
 };
 
-export const isComentarioExigido = (credencial: Credencial): boolean => EXIGE_COMENTARIO[credencial] ?? false;
+export type QuemMove = { credencial: Credencial; role: EffectiveRole };
+
+export const isComentarioExigido = ({ credencial, role }: QuemMove): boolean =>
+  (EXIGE_COMENTARIO[credencial] ?? false) && roleCan(role, EProjectAction.ISSUE_REQUIRE_COMMENT_TO_MOVE);

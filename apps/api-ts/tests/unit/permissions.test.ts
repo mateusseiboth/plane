@@ -41,8 +41,11 @@ describe("DEFAULT_ROLES", () => {
   });
 
   it("Visualizador só lê", () => {
+    // `issue.require_comment_to_move` é obrigação, não poder: vem marcada para
+    // todas as funções e só pesa se o Visualizador ganhar como mover.
     expect(role("guest").permissions).toEqual([
       EProjectAction.ISSUE_VIEW,
+      EProjectAction.ISSUE_REQUIRE_COMMENT_TO_MOVE,
       EProjectAction.COMMENT_READ,
       EProjectAction.ATTACHMENT_VIEW,
       EProjectAction.WIKI_VIEW,
