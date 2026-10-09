@@ -11,7 +11,13 @@
 
 import { buildQuery, chatRequest, type ChatMessage, type ChatSession } from "@/services/chat.service";
 
-export type FrasePronta = { id: string; texto: string; ordem: number };
+/** Rota de cada grupo de frases: as do espaço (configuração do chat) e as pessoais. */
+const CAMINHO_DAS_FRASES = { espaco: "config/frases", pessoal: "frases" } as const;
+/** `espaco`: compartilhada, de quem administra. `pessoal`: só de quem cadastrou. */
+export type EscopoDaFrase = keyof typeof CAMINHO_DAS_FRASES;
+
+export type FrasePronta = { id: string; texto: string; ordem: number; escopo: EscopoDaFrase };
+export type DadosDaFrase = { texto?: string; ordem?: number };
 
 export type Feriado = { date: string; label: string; recorrente: boolean };
 
@@ -124,12 +130,16 @@ const json = (method: string, data?: unknown): RequestInit => ({
 export function atendenteApi(apiUrl: string) {
   const req = chatRequest(apiUrl);
   return {
+    /** As que aparecem no compositor: as do espaço e as próprias. */
     frases: (slug: string): Promise<{ results: FrasePronta[] }> => req(`/workspaces/${slug}/frases/`),
-    createFrase: (slug: string, data: { texto: string; ordem?: number }): Promise<FrasePronta> =>
-      req(`/workspaces/${slug}/config/frases/`, json("POST", data)),
-    updateFrase: (slug: string, id: string, data: { texto?: string; ordem?: number }): Promise<FrasePronta> =>
-      req(`/workspaces/${slug}/config/frases/${id}/`, json("PATCH", data)),
-    deleteFrase: (slug: string, id: string) => req(`/workspaces/${slug}/config/frases/${id}/`, { method: "DELETE" }),
+    /** Só as do espaço (configuração do chat). */
+    frasesDoEspaco: (slug: string): Promise<{ results: FrasePronta[] }> => req(`/workspaces/${slug}/config/frases/`),
+    createFrase: (slug: string, escopo: EscopoDaFrase, data: DadosDaFrase): Promise<FrasePronta> =>
+      req(`/workspaces/${slug}/${CAMINHO_DAS_FRASES[escopo]}/`, json("POST", data)),
+    updateFrase: (slug: string, escopo: EscopoDaFrase, id: string, data: DadosDaFrase): Promise<FrasePronta> =>
+      req(`/workspaces/${slug}/${CAMINHO_DAS_FRASES[escopo]}/${id}/`, json("PATCH", data)),
+    deleteFrase: (slug: string, escopo: EscopoDaFrase, id: string) =>
+      req(`/workspaces/${slug}/${CAMINHO_DAS_FRASES[escopo]}/${id}/`, { method: "DELETE" }),
     seedFrasesPadrao: (slug: string): Promise<{ results: FrasePronta[] }> =>
       req(`/workspaces/${slug}/config/frases/padrao/`, { method: "POST" }),
 

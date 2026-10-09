@@ -1,6 +1,7 @@
 /**
- * Frases prontas do atendente: configuráveis por espaço e inseridas no
- * compositor. O SAC tinha dez frases fixas no `popChatAtendimento.php`; as sete
+ * Frases prontas do atendente, inseridas no compositor: as do espaço
+ * (compartilhadas, configuradas por quem administra) e as pessoais de cada
+ * atendente. O SAC tinha dez frases fixas no `popChatAtendimento.php`; as sete
  * primeiras viram o padrão oferecido na configuração. As três últimas eram a
  * pesquisa de satisfação digitada à mão, que o chat já faz sozinho
  * (`src/rating.ts`), e ficaram de fora.
@@ -28,6 +29,31 @@ const readOrdem = (valor: unknown): number => {
   const numero = Number(valor);
   return Number.isInteger(numero) && numero >= 0 ? numero : 0;
 };
+
+/**
+ * Frase do espaço: compartilhada, cadastrada por quem administra o chat.
+ * Frase pessoal: só quem a cadastrou vê, edita e apaga.
+ */
+export const ESCOPO_DA_FRASE = { ESPACO: "espaco", PESSOAL: "pessoal" } as const;
+export type EscopoDaFrase = (typeof ESCOPO_DA_FRASE)[keyof typeof ESCOPO_DA_FRASE];
+
+const DONO_POR_ESCOPO: Record<EscopoDaFrase, (userId: string) => string | null> = {
+  [ESCOPO_DA_FRASE.ESPACO]: () => null,
+  [ESCOPO_DA_FRASE.PESSOAL]: (userId) => userId,
+};
+
+/** O `owner_user_id` gravado: nulo é do espaço. */
+export const buildDonoDaFrase = (escopo: EscopoDaFrase, userId: string): string | null =>
+  DONO_POR_ESCOPO[escopo](userId);
+
+export const readEscopoDaFrase = (frase: { ownerUserId: string | null }): EscopoDaFrase =>
+  frase.ownerUserId ? ESCOPO_DA_FRASE.PESSOAL : ESCOPO_DA_FRASE.ESPACO;
+
+/** O que aparece no compositor de quem atende: as do espaço e as próprias. */
+export const buildFiltroDasFrasesVisiveis = (slug: string, userId: string) => ({
+  workspaceId: slug,
+  OR: [{ ownerUserId: null }, { ownerUserId: userId }],
+});
 
 export function parseFrase(body: unknown): Resultado<DadosDaFrase> {
   const corpo = asCorpo(body);

@@ -27,6 +27,17 @@ export function useFrasesProntas(apiUrl: string, slug: string) {
   return { frases: data?.results ?? [], data, error, isLoading, isFetching: isValidating, refetch: mutate, api };
 }
 
+/** Só as frases do espaço, para a aba Frases da configuração. */
+export function useFrasesDoEspaco(apiUrl: string, slug: string) {
+  const api = useAtendenteApi(apiUrl);
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    ["CHAT_FRASES_DO_ESPACO", apiUrl, slug],
+    () => api.frasesDoEspaco(slug),
+    SWR_OPTIONS
+  );
+  return { frases: data?.results ?? [], data, error, isLoading, isFetching: isValidating, refetch: mutate, api };
+}
+
 /** `versao` muda a cada atividade da conversa: o painel recarrega sozinho. */
 export function useCadastroDaConversa(apiUrl: string, slug: string, sessionId: string, versao: string) {
   const api = useAtendenteApi(apiUrl);

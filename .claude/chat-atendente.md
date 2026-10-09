@@ -54,7 +54,8 @@ o monitor é de gestão.
 
 ## 2. Colunas novas (0014)
 
-- `chat_frases_prontas` (id, workspace_id = slug, texto, ordem).
+- `chat_frases_prontas` (id, workspace_id = slug, texto, ordem). Desde a `0017`, `owner_user_id`:
+  nulo = frase do espaço, preenchido = frase pessoal de quem cadastrou (W37).
 - `chat_sessions.sla_alert_paused_at`, `chat_sessions.client_info` (JSONB), índice
   `(workspace_id, created_at)` para o gerenciador.
 - `chat_messages.without_sender_name`.
@@ -67,10 +68,12 @@ Erros: `{ detail, errors?: [{ path, message }] }`, `path` no nome do campo do fo
 
 | Rota | Ação | Corpo / query | Resposta |
 | --- | --- | --- | --- |
-| `GET /workspaces/:slug/frases/` | atender | | `{ results: [{ id, texto, ordem }] }` |
-| `GET/POST /workspaces/:slug/config/frases/` | administrar | `{ texto, ordem? }` | lista / 201 frase |
-| `PATCH/DELETE .../config/frases/:id/` | administrar | `{ texto?, ordem? }` | frase / `{ ok }` |
-| `POST .../config/frases/padrao/` | administrar | | inclui as 7 frases só se o espaço não tem nenhuma |
+| `GET /workspaces/:slug/frases/` | atender | | `{ results: [{ id, texto, ordem, escopo }] }`: as do espaço e as próprias |
+| `POST /workspaces/:slug/frases/` | atender | `{ texto, ordem? }` | 201 frase pessoal (`escopo: "pessoal"`) |
+| `PATCH/DELETE .../frases/:id/` | atender | `{ texto?, ordem? }` | frase / `{ ok }`; só a própria, senão 404 |
+| `GET/POST /workspaces/:slug/config/frases/` | administrar | `{ texto, ordem? }` | só as do espaço / 201 frase |
+| `PATCH/DELETE .../config/frases/:id/` | administrar | `{ texto?, ordem? }` | frase / `{ ok }`; só as do espaço, senão 404 |
+| `POST .../config/frases/padrao/` | administrar | | inclui as 7 frases só se o espaço não tem nenhuma frase do espaço |
 | `POST .../sessions/:id/chave/` | atender | `{ chave, without_sender_name? }` | 201 mensagem (`type: "chave"`); 409 se encerrada |
 | `POST .../sessions/:id/sla-alert/pause/` e `/resume/` | atender | | sessão com `sla_alert_paused_until` |
 | `GET/PATCH .../sessions/:id/cadastro/` | atender | `{ entity_id?, project_id?, entity_contact_id? }` | `{ session, entity, project, responsavel }` |
@@ -138,13 +141,13 @@ alias quando os dois estiverem no preview. `tests/helpers/harness.ts` (`criarEnt
 
 ## 6. Testes
 
-- chat-backend, puros: `tests/atendente-regras.test.ts` (40).
-- chat-backend, no processo contra o banco: `tests/atendente.db.test.ts` (27): permissões, frases,
+- chat-backend, puros: `tests/atendente-regras.test.ts` (43).
+- chat-backend, no processo contra o banco: `tests/atendente.db.test.ts` (33): permissões, frases (do espaço e pessoais),
   chave, alerta (o `checkSla` não fala com o cliente e respeita a pausa), cadastro, WhatsApp do
   responsável, feriados, gerenciador, monitor e foto (download injetado).
 - chat-backend, e2e contra servidor: `tests/atendente.e2e.test.ts` (2): "sem o nome" pelo WS e
   `client_info` no `POST /sessions/`.
-- web: `core/components/chat/atendente/atendente-helpers.test.ts` (6), `bun test`.
+- web: `core/components/chat/atendente/atendente-helpers.test.ts` (12), `bun test`.
 
 ## 7. Pendências
 
@@ -157,3 +160,26 @@ alias quando os dois estiverem no preview. `tests/helpers/harness.ts` (`criarEnt
 - Relatório impresso do gerenciador imprime a página atual; para listas maiores que 500, filtrar.
 - `attendant-app.tsx`, `chat-config-panel.tsx`, `chat-dashboard.tsx` e `chat.service.ts` já não
   estavam formatados pelo oxfmt antes deste trabalho; não foram reformatados para não misturar diff.
+
+## 8. Frases por atendente, sistema na transferência e quem vê a conversa (W37, 2026-10-09)
+
+- **Frases pessoais**: cada atendente (`chat.atender`) cadastra, edita e apaga as próprias frases em
+  `/frases/` (migração `0017`, `owner_user_id`). As do espaço continuam em `/config/frases/`
+  (`chat.administrar`). Frase de outro dono responde 404. Regras em `src/atendente/frases.ts`
+  (`ESCOPO_DA_FRASE`, `buildDonoDaFrase`, `buildFiltroDasFrasesVisiveis`). Na tela, o menu do
+  compositor mostra "Minhas frases" e "Do espaço" (`groupFrases`) e tem "Editar minhas frases",
+  que abre o mesmo `EditorDeFrases` da aba Frases com `escopo="pessoal"`.
+- **"Sistema: Selecione" depois de transferir**: o servidor sempre manteve o sistema (a transferência
+  só troca `assigned_attendant_id`; `GET /cadastro/` devolve o `project`). A causa era a tela: as
+  opções do seletor vinham de `joinedProjectIds`, os projetos de que a PESSOA participa. Quem recebe
+  a conversa e não participa do sistema dela não tinha a opção, e o `SelectPesquisavel` caía no
+  placeholder "Selecione". `withSistemaDaConversa` põe o sistema da conversa aberta nas opções (vale
+  para o painel do cadastro, o encerramento e as ações da conversa).
+- **Quem transferiu continua vendo**: é a regra, não defeito, quando a pessoa tem
+  `chat.administrar`: quem administra vê todas as conversas (`src/visibilidade.ts`). Quem não
+  administra vê só as próprias; a transferência agora manda `session.transferred_out` a quem atendia
+  e a quem transferiu (`src/transferencia.ts`), e a tela tira a conversa da lista na hora
+  (`applyTransferenciaNaLista`), fechando-a se estava aberta.
+- Testes: `tests/visibilidade-da-lista.test.ts` (10, puro), `tests/atendente-regras.test.ts`
+  (+3, dono da frase), `tests/atendente.db.test.ts` (+6, frases pessoais),
+  `atendente-helpers.test.ts` no web (+6).

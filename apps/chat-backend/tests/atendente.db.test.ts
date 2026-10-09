@@ -170,6 +170,71 @@ describe("frases prontas", () => {
   });
 });
 
+describe("frases do próprio atendente", () => {
+  const minhas = `/workspaces/${slug}/frases/`;
+
+  it("quem só atende cadastra, edita e apaga as próprias frases", async () => {
+    const criada = await call("POST", minhas, { texto: "Já verifico para você.", ordem: 0 }, atendente.token);
+    expect(criada.status).toBe(201);
+    expect(criada.body).toMatchObject({ texto: "Já verifico para você.", escopo: "pessoal" });
+
+    const editada = await call("PATCH", `${minhas}${criada.body.id}/`, { texto: "Já confiro." }, atendente.token);
+    expect(editada.body).toMatchObject({ id: criada.body.id, texto: "Já confiro.", escopo: "pessoal" });
+
+    expect((await call("DELETE", `${minhas}${criada.body.id}/`, undefined, atendente.token)).status).toBe(200);
+    expect(await prisma.chatFrasePronta.count({ where: { workspaceId: slug } })).toBe(0);
+  });
+
+  it("no compositor aparecem as do espaço e as próprias; as de outro atendente, não", async () => {
+    await call("POST", `/workspaces/${slug}/config/frases/`, { texto: "Do espaço.", ordem: 0 });
+    await call("POST", minhas, { texto: "Minha.", ordem: 0 }, atendente.token);
+    await call("POST", minhas, { texto: "Do administrador.", ordem: 0 });
+
+    const vistas = (await call("GET", minhas, undefined, atendente.token)).body.results;
+    expect(vistas.map((f: { texto: string; escopo: string }) => [f.texto, f.escopo]).toSorted()).toEqual([
+      ["Do espaço.", "espaco"],
+      ["Minha.", "pessoal"],
+    ]);
+    await prisma.chatFrasePronta.deleteMany({ where: { workspaceId: slug } });
+  });
+
+  it("a configuração lista e altera só as frases do espaço", async () => {
+    const pessoal = await call("POST", minhas, { texto: "Pessoal do administrador." });
+    await call("POST", `/workspaces/${slug}/config/frases/`, { texto: "Do espaço." });
+
+    const config = (await call("GET", `/workspaces/${slug}/config/frases/`)).body.results;
+    expect(config.map((f: { texto: string }) => f.texto)).toEqual(["Do espaço."]);
+    expect((await call("PATCH", `/workspaces/${slug}/config/frases/${pessoal.body.id}/`, { texto: "x" })).status).toBe(
+      404
+    );
+    await prisma.chatFrasePronta.deleteMany({ where: { workspaceId: slug } });
+  });
+
+  it("ninguém altera frase de outra pessoa nem a do espaço pela rota pessoal", async () => {
+    const doEspaco = await call("POST", `/workspaces/${slug}/config/frases/`, { texto: "Do espaço." });
+    const doAdmin = await call("POST", minhas, { texto: "Do administrador." });
+
+    expect((await call("PATCH", `${minhas}${doEspaco.body.id}/`, { texto: "x" }, atendente.token)).status).toBe(404);
+    expect((await call("DELETE", `${minhas}${doAdmin.body.id}/`, undefined, atendente.token)).status).toBe(404);
+    expect(await prisma.chatFrasePronta.count({ where: { workspaceId: slug } })).toBe(2);
+    await prisma.chatFrasePronta.deleteMany({ where: { workspaceId: slug } });
+  });
+
+  it("texto vazio volta no campo; quem não é do espaço não cadastra", async () => {
+    const vazia = await call("POST", minhas, { texto: " " }, atendente.token);
+    expect(vazia.status).toBe(400);
+    expect(vazia.body.errors).toEqual([{ path: "texto", message: "Informe o texto da frase." }]);
+    expect((await call("POST", minhas, { texto: "x" }, estranho.token)).status).toBe(403);
+  });
+
+  it("as frases padrão do espaço entram mesmo com frases pessoais cadastradas", async () => {
+    await call("POST", minhas, { texto: "Minha." }, atendente.token);
+    const padrao = await call("POST", `/workspaces/${slug}/config/frases/padrao/`);
+    expect(padrao.body.results).toHaveLength(7);
+    await prisma.chatFrasePronta.deleteMany({ where: { workspaceId: slug } });
+  });
+});
+
 describe("chave de acesso remoto", () => {
   it("sem chave: 400 no campo", async () => {
     const s = await createSessao();

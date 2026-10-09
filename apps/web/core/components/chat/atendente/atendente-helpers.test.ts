@@ -5,12 +5,15 @@
  */
 import { describe, expect, it } from "bun:test";
 import {
+  applyTransferenciaNaLista,
   formatSegundos,
+  groupFrases,
   insertFrase,
   listClientInfo,
   readErroDoCampo,
   readSessaoDaUrl,
   rotuloDoAlertaPausado,
+  withSistemaDaConversa,
 } from "./atendente-helpers";
 
 describe("formatSegundos", () => {
@@ -54,6 +57,63 @@ describe("rotuloDoAlertaPausado", () => {
     expect(rotuloDoAlertaPausado("2026-09-22T15:30:00Z", agora)).toMatch(/^Alerta pausado até \d{2}:\d{2}$/);
     expect(rotuloDoAlertaPausado("2026-09-22T14:00:00Z", agora)).toBeNull();
     expect(rotuloDoAlertaPausado(null, agora)).toBeNull();
+  });
+});
+
+describe("groupFrases", () => {
+  it("separa as frases da pessoa das do espaço, mantendo a ordem", () => {
+    const frases = [
+      { id: "1", texto: "Do espaço A", ordem: 0, escopo: "espaco" as const },
+      { id: "2", texto: "Minha", ordem: 0, escopo: "pessoal" as const },
+      { id: "3", texto: "Do espaço B", ordem: 1, escopo: "espaco" as const },
+    ];
+    expect(groupFrases(frases)).toEqual({
+      minhas: [frases[1]],
+      doEspaco: [frases[0], frases[2]],
+    });
+    expect(groupFrases([])).toEqual({ minhas: [], doEspaco: [] });
+  });
+});
+
+describe("withSistemaDaConversa", () => {
+  const projetos = [{ value: "p1", label: "SIART" }];
+
+  it("conversa transferida com sistema fora dos projetos de quem recebe: o sistema entra na lista", () => {
+    const sessao = { project_id: "p9", project_name: "Notas de Falecimento", project_identifier: "NF" };
+    expect(withSistemaDaConversa(projetos, sessao)).toEqual([
+      { value: "p9", label: "Notas de Falecimento" },
+      { value: "p1", label: "SIART" },
+    ]);
+  });
+
+  it("sem nome, usa o identificador", () => {
+    const sessao = { project_id: "p9", project_name: null, project_identifier: "NF" };
+    expect(withSistemaDaConversa(projetos, sessao)[0]).toEqual({ value: "p9", label: "NF" });
+  });
+
+  it("sistema já na lista ou conversa sem sistema: lista igual", () => {
+    expect(withSistemaDaConversa(projetos, { project_id: "p1", project_name: "SIART" })).toEqual(projetos);
+    expect(withSistemaDaConversa(projetos, { project_id: null })).toEqual(projetos);
+    expect(withSistemaDaConversa(projetos, null)).toEqual(projetos);
+  });
+});
+
+describe("applyTransferenciaNaLista", () => {
+  const sessoes = [
+    { id: "s1", assigned_attendant_id: "eu" },
+    { id: "s2", assigned_attendant_id: "eu" },
+  ];
+  const aviso = { session_id: "s1", to_user_id: "outro" };
+
+  it("quem não administra: a conversa transferida sai da lista na hora", () => {
+    expect(applyTransferenciaNaLista(sessoes, aviso, false)).toEqual([{ id: "s2", assigned_attendant_id: "eu" }]);
+  });
+
+  it("quem administra: a conversa fica, com o novo dono", () => {
+    expect(applyTransferenciaNaLista(sessoes, aviso, true)).toEqual([
+      { id: "s1", assigned_attendant_id: "outro" },
+      { id: "s2", assigned_attendant_id: "eu" },
+    ]);
   });
 });
 

@@ -3,8 +3,8 @@
  * autenticam, conferem a ação da matriz, chamam o service e traduzem
  * `AtendenteError` por `instanceof` (status, `detail` e `errors` por campo).
  *
- *   chat.atender      frases (leitura), chave, alerta, cadastro, WhatsApp do responsável
- *   chat.administrar  cadastro de frases e feriados
+ *   chat.atender      frases (leitura e as próprias), chave, alerta, cadastro, WhatsApp do responsável
+ *   chat.administrar  cadastro das frases do espaço e feriados
  *   chat.gerenciar    gerenciador de conversas e monitor ao vivo
  *
  * Caminhos completos (sem prefixo com :slug) pelo bug do Elysia 1.4 descrito em
@@ -15,7 +15,16 @@ import { Elysia } from "elysia";
 import { resolveAttendant } from "@/auth";
 import { AtendenteError, NaoAutenticadoError, SemPermissaoError } from "@/atendente/errors";
 import { readFeriados, saveFeriados } from "@/atendente/feriados.service";
-import { createFrase, deleteFrase, listFrases, seedFrasesPadrao, updateFrase } from "@/atendente/frases.service";
+import { ESCOPO_DA_FRASE } from "@/atendente/frases";
+import {
+  createFrase,
+  deleteFrase,
+  listFrasesDoDono,
+  listFrasesVisiveis,
+  seedFrasesPadrao,
+  updateFrase,
+  type DonoDaFrase,
+} from "@/atendente/frases.service";
 import { listGerenciador } from "@/atendente/gerenciador.service";
 import { readMonitor } from "@/atendente/monitor.service";
 import { changeAlerta, readCadastro, sendChave, updateCadastro } from "@/atendente/sessao.service";
@@ -54,31 +63,47 @@ const guarded =
 
 const { ATENDER, ADMINISTRAR, GERENCIAR } = CHAT_ACTION;
 
+const pessoal = (slug: string, userId: string): DonoDaFrase => ({ slug, escopo: ESCOPO_DA_FRASE.PESSOAL, userId });
+const doEspaco = (slug: string, userId: string): DonoDaFrase => ({ slug, escopo: ESCOPO_DA_FRASE.ESPACO, userId });
+
 export const atendenteModule = new Elysia()
-  // ── Frases prontas ──
+  // ── Frases prontas: no compositor (as do espaço e as próprias) e as pessoais ──
   .get(
     "/workspaces/:slug/frases/",
-    guarded(ATENDER, ({ params }) => listFrases(params.slug!))
+    guarded(ATENDER, ({ params }, userId) => listFrasesVisiveis(params.slug!, userId))
   )
+  .post(
+    "/workspaces/:slug/frases/",
+    guarded(ATENDER, ({ params, body }, userId) => createFrase(pessoal(params.slug!, userId), body), 201)
+  )
+  .patch(
+    "/workspaces/:slug/frases/:id/",
+    guarded(ATENDER, ({ params, body }, userId) => updateFrase(pessoal(params.slug!, userId), params.id!, body))
+  )
+  .delete(
+    "/workspaces/:slug/frases/:id/",
+    guarded(ATENDER, ({ params }, userId) => deleteFrase(pessoal(params.slug!, userId), params.id!))
+  )
+  // ── Frases do espaço (configuração) ──
   .get(
     "/workspaces/:slug/config/frases/",
-    guarded(ADMINISTRAR, ({ params }) => listFrases(params.slug!))
+    guarded(ADMINISTRAR, ({ params }, userId) => listFrasesDoDono(doEspaco(params.slug!, userId)))
   )
   .post(
     "/workspaces/:slug/config/frases/",
-    guarded(ADMINISTRAR, ({ params, body }) => createFrase(params.slug!, body), 201)
+    guarded(ADMINISTRAR, ({ params, body }, userId) => createFrase(doEspaco(params.slug!, userId), body), 201)
   )
   .post(
     "/workspaces/:slug/config/frases/padrao/",
-    guarded(ADMINISTRAR, ({ params }) => seedFrasesPadrao(params.slug!))
+    guarded(ADMINISTRAR, ({ params }, userId) => seedFrasesPadrao(params.slug!, userId))
   )
   .patch(
     "/workspaces/:slug/config/frases/:id/",
-    guarded(ADMINISTRAR, ({ params, body }) => updateFrase(params.slug!, params.id!, body))
+    guarded(ADMINISTRAR, ({ params, body }, userId) => updateFrase(doEspaco(params.slug!, userId), params.id!, body))
   )
   .delete(
     "/workspaces/:slug/config/frases/:id/",
-    guarded(ADMINISTRAR, ({ params }) => deleteFrase(params.slug!, params.id!))
+    guarded(ADMINISTRAR, ({ params }, userId) => deleteFrase(doEspaco(params.slug!, userId), params.id!))
   )
 
   // ── Feriados (aba Horários) ──

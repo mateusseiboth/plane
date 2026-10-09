@@ -149,6 +149,19 @@ fork tem papéis ABAIXO de membro (TI 12, Qualidade 8, Atendimento 6), e o papel
 _Atendimento_ é justamente quem atende. Com o corte antigo ele não aparecia em
 lista nenhuma, mesmo conectado.
 
+**Quem vê qual conversa na lista** (`src/visibilidade.ts`) é decidido pela ação
+`chat.administrar`: quem administra vê TODAS as conversas do espaço (robô, fila,
+as dos colegas e as que acabou de transferir); os demais, gestor incluído, veem
+só as atribuídas a si, nunca robô nem fila. Por isso o administrador que
+transfere um atendimento continua vendo a conversa, e isso é esperado.
+
+**Na transferência** (`POST /sessions/:id/transfer/`, `chat.gerenciar`) só o dono
+da conversa muda: entidade, sistema e responsável continuam na mesma linha e
+chegam a quem recebe. Os avisos saem de `src/transferencia.ts`: quem recebe ganha
+`session.transferred`; quem atendia e quem transferiu ganham
+`session.transferred_out`, e a tela de quem não administra tira a conversa da
+lista na hora.
+
 **A avaliação é leitura de gestão.** Nota e comentário do cliente só vão para o
 administrador do espaço: o servidor não os envia a quem não é admin (lista de
 conversas, histórico e transcrição), e a tela do atendente também não os mostra.
@@ -197,8 +210,14 @@ Contrato, regras e decisões em `.claude/chat-atendente.md`. Código em
 `src/atendente/` (regras puras em `*-regras.ts`/arquivos sem `.service`, rotas
 finas em `rotas.ts`) e migração `prisma/sql/0014_atendente.sql`.
 
-- **Frases prontas** por espaço: `GET /workspaces/:slug/frases/` (`chat.atender`);
-  cadastro em `/config/frases/` e `POST /config/frases/padrao/` (`chat.administrar`).
+- **Frases prontas** do espaço e de cada atendente (`owner_user_id` nulo = do
+  espaço, preenchido = pessoal; migração `0017_frases_do_atendente.sql`).
+  `GET /workspaces/:slug/frases/` (`chat.atender`) devolve as do espaço e as
+  próprias, cada uma com `escopo` (`espaco` | `pessoal`); o compositor separa em
+  "Minhas frases" e "Do espaço". Quem atende cadastra as próprias em
+  `POST /frases/` e altera/apaga em `PATCH|DELETE /frases/:id/`. As do espaço
+  ficam em `/config/frases/` e `POST /config/frases/padrao/` (`chat.administrar`).
+  Frase de outro dono responde 404 nas duas rotas.
 - **Chave de acesso remoto**: `POST /sessions/:id/chave/` grava mensagem do tipo
   `chave` (negrito no WhatsApp, botão de copiar no widget).
 - **Sem o nome do atendente**: `without_sender_name: true` no `agent.message` do WS
