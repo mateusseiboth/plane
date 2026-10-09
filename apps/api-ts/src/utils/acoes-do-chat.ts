@@ -11,6 +11,11 @@
 // quem atendia ganhou pausar, encerrar e abrir chamado; quem gerenciava,
 // transferir, relatórios e ver todas; quem administrava, todas.
 //
+// `chat.ver_avaliacao` (W42) separou a nota do cliente de `chat.configurar`:
+// às vezes o atendente não deve ver a avaliação que recebeu, para não descontar
+// no cliente no próximo atendimento. A migração
+// `20261009140000_ver_avaliacao_do_chat` a deu a quem tinha `chat.configurar`.
+//
 // Os padrões reproduzem o corte de antes, para nada mudar em silêncio.
 // Só importa TIPO: o catálogo importa este arquivo, e o chat-backend importa o
 // catálogo nos testes (alias `@utils` de lá aponta para cá).
@@ -92,6 +97,14 @@ export const ACOES_DO_CHAT = {
     scope: "workspace",
     roles: MEMBRO_E_GESTOR,
   },
+  CHAT_VER_AVALIACAO: {
+    key: "chat.ver_avaliacao",
+    label: "Ver a avaliação do cliente",
+    description: "Nota e comentário que o cliente deu ao atendimento, na conversa e no histórico.",
+    group: G,
+    scope: "workspace",
+    roles: SO_ADMIN,
+  },
   CHAT_DISPARO: {
     key: "chat.disparo",
     label: "Disparar mensagens em massa",
@@ -103,7 +116,7 @@ export const ACOES_DO_CHAT = {
   CHAT_CONFIGURAR: {
     key: "chat.configurar",
     label: "Configurar o chat",
-    description: "Fila, robô, horários, atendentes, WhatsApp, telefonia e a avaliação do cliente.",
+    description: "Fila, robô, horários, atendentes, WhatsApp e telefonia.",
     group: G,
     scope: "workspace",
     roles: SO_ADMIN,

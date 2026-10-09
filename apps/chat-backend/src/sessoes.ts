@@ -63,12 +63,18 @@ export type SessaoSerializada = ReturnType<typeof serializeSession>;
 /**
  * A mesma conversa, sem a avaliação do cliente.
  *
- * A pesquisa de satisfação é instrumento de gestão: quem lê é o administrador.
- * Mostrar a nota e o comentário ao atendente que acabou de ser avaliado muda a
- * conversa seguinte — e não é para isso que se pergunta ao cliente.
+ * A pesquisa de satisfação é instrumento de gestão: quem lê é quem tem
+ * `chat.ver_avaliacao` (por padrão, só o administrador). Mostrar a nota e o
+ * comentário ao atendente que acabou de ser avaliado muda a conversa seguinte:
+ * ele pode descontar no cliente, e não é para isso que se pergunta.
  */
 export function withoutAvaliacao<T extends SessaoSerializada>(sessao: T): T {
   return { ...sessao, rating_score: null, rating_comment: null };
+}
+
+/** A conversa como sai para a equipe: com a avaliação só para quem tem `chat.ver_avaliacao`. */
+export function applyVisaoDaAvaliacao<T extends SessaoSerializada>(sessao: T, canVerAvaliacao: boolean): T {
+  return canVerAvaliacao ? sessao : withoutAvaliacao(sessao);
 }
 
 /**

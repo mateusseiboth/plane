@@ -62,6 +62,13 @@ describe("fonte única com o api-ts", () => {
     expect(resolveChatActions({ permissions: ["chat.disparo"], granted: [], revoked: [] })).toEqual(["chat.disparo"]);
   });
 
+  it("ver a avaliação do cliente é uma ação do chat, separada de configurar", () => {
+    expect(CHAT_ACTION.VER_AVALIACAO).toBe("chat.ver_avaliacao");
+    expect(resolveChatActions({ permissions: ["chat.configurar"], granted: [], revoked: [] })).not.toContain(
+      "chat.ver_avaliacao"
+    );
+  });
+
   it("a regra de exceção por pessoa é a mesma", () => {
     const casos = [
       { base: ["chat.atender"], granted: ["chat.transferir"], revoked: [] },

@@ -24,7 +24,7 @@ import { submitRating, randomDog } from "@/rating";
 import { attendantName } from "@/users";
 import { nomeDoCliente } from "@/aviso-do-atendente";
 import { CHAT_ACTION, hasChatAction, listAtendentes } from "@/permissoes";
-import { withoutAvaliacao, serializeSession } from "@/sessoes";
+import { applyVisaoDaAvaliacao, serializeSession } from "@/sessoes";
 import { authorizeChat, isNegado } from "@/acesso";
 import { buildAvisosDaTransferencia } from "@/transferencia";
 import { buildFiltroDaVisibilidade } from "@/visibilidade";
@@ -357,11 +357,10 @@ const app = new Elysia()
     const session = await prisma.chatSession.findUnique({ where: { id }, include: { contact: true } });
     if (!session) return { session: null, results: messages.map((m) => serializeMessage(m, { full })) };
     // O cliente vê a própria avaliação (é ela que diz se o formulário já foi
-    // respondido); do lado da equipe, quem configura o chat (`chat.configurar`).
+    // respondido); do lado da equipe, quem tem `chat.ver_avaliacao`.
     const canVerAvaliacao = role === "client" || (await canVerAvaliacaoDaConversa(session, headers));
-    const serializada = serializeSession(session);
     return {
-      session: canVerAvaliacao ? serializada : withoutAvaliacao(serializada),
+      session: applyVisaoDaAvaliacao(serializeSession(session), canVerAvaliacao),
       results: messages.map((m) => serializeMessage(m, { full })),
     };
   })
@@ -382,10 +381,9 @@ const app = new Elysia()
       metadata: { protocolo: session.protocol, canal: session.channel, mensagens: messages.length },
     });
     // Staff transcript (shared via copy-link): show deleted originals + history.
-    const serializada = serializeSession(session);
-    const canVerAvaliacao = viewer ? await hasChatAction(session.workspaceId, viewer.id, CHAT_ACTION.CONFIGURAR) : false;
+    const canVerAvaliacao = viewer ? await hasVerAvaliacao(session.workspaceId, viewer.id) : false;
     return {
-      session: canVerAvaliacao ? serializada : withoutAvaliacao(serializada),
+      session: applyVisaoDaAvaliacao(serializeSession(session), canVerAvaliacao),
       results: messages.map((m) => serializeMessage(m, { full: true })),
     };
   })
@@ -402,11 +400,11 @@ const app = new Elysia()
     // Visibilidade pela matriz (src/visibilidade.ts): as próprias sempre, as dos
     // outros com `chat.ver_todas` (inclusive as que a pessoa já transferiu), a
     // fila e o robô com `chat.ver_fila`. A avaliação do cliente, só com
-    // `chat.configurar`.
+    // `chat.ver_avaliacao`.
     const [verTodas, verFila, canVerAvaliacao] = await Promise.all([
       hasChatAction(slug, user.id, CHAT_ACTION.VER_TODAS),
       hasChatAction(slug, user.id, CHAT_ACTION.VER_FILA),
-      hasChatAction(slug, user.id, CHAT_ACTION.CONFIGURAR),
+      hasVerAvaliacao(slug, user.id),
     ]);
 
     const requested = status ? status.split(",") : null;
@@ -468,7 +466,7 @@ const app = new Elysia()
           prisma.chatMessage.findFirst({ where: { sessionId: s.id, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { text: true, type: true, sender: true, createdAt: true } }),
         ]);
         const preview = last ? (last.text || (last.type === "image" ? "📷 Imagem" : last.type === "audio" ? "🎤 Áudio" : last.type === "video" ? "🎬 Vídeo" : last.type === "file" ? "📎 Arquivo" : "")) : "";
-        const serializada = canVerAvaliacao ? serializeSession(s) : withoutAvaliacao(serializeSession(s));
+        const serializada = applyVisaoDaAvaliacao(serializeSession(s), canVerAvaliacao);
         return { ...serializada, unread, last_message: preview, last_message_at: last?.createdAt ?? s.lastClientMessageAt ?? s.createdAt };
       })
     );
@@ -571,7 +569,7 @@ const app = new Elysia()
     sendToWorkspace(slug, { type: "session.activity", session_id: id });
     sendToSession(id, { type: "session.assigned", session_id: id, attendant_id: toUserId });
 
-    return serializeSession(updated);
+    return applyVisaoDaAvaliacao(serializeSession(updated), await hasVerAvaliacao(slug, acesso.userId));
   })
 
   // ── Media upload / serve ──
@@ -753,10 +751,14 @@ startTimers();
 startDisparoWorker();
 console.log(`💬 chat-backend listening on :${PORT}`);
 
-/** A avaliação do cliente na conversa é de quem configura o chat (`chat.configurar`). */
+/** A nota e o comentário do cliente saem só para quem tem `chat.ver_avaliacao`. */
+function hasVerAvaliacao(slug: string, userId: string): Promise<boolean> {
+  return hasChatAction(slug, userId, CHAT_ACTION.VER_AVALIACAO);
+}
+
 async function canVerAvaliacaoDaConversa(session: { workspaceId: string }, headers: any): Promise<boolean> {
   const user = await resolveAttendant(headers);
-  return user ? hasChatAction(session.workspaceId, user.id, CHAT_ACTION.CONFIGURAR) : false;
+  return user ? hasVerAvaliacao(session.workspaceId, user.id) : false;
 }
 
 // ── auth helper for history endpoint ──
