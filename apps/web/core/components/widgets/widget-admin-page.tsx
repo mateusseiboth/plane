@@ -47,7 +47,7 @@ export const WidgetAdminPage: React.FC = observer(() => {
 
   if (!canManage) {
     return (
-      <div className="text-sm text-neutral-500 dark:text-neutral-400 mx-auto max-w-6xl px-4 py-16 text-center">
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-13 text-tertiary">
         Somente quem administra a instância ou é do TI gerencia widgets.
       </div>
     );
@@ -57,30 +57,22 @@ export const WidgetAdminPage: React.FC = observer(() => {
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl text-neutral-900 font-bold dark:text-white">Loja de widgets</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          <h1 className="text-20 font-bold text-primary">Loja de widgets</h1>
+          <p className="mt-1 text-13 text-tertiary">
             Os globais aparecem na página inicial de todos. Os de usuários, só para quem enviou.
           </p>
         </div>
         <button
           onClick={() => setUploadOpen(true)}
-          className="bg-blue-600 text-sm hover:bg-blue-700 rounded-lg px-4 py-2 font-medium text-white"
+          className="rounded-lg bg-accent-primary px-4 py-2 text-13 font-medium text-on-color hover:opacity-90"
         >
           + Enviar widget
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400 mb-4 rounded-lg p-3">
-          {error}
-        </div>
-      )}
+      {error && <div className="mb-4 rounded-lg bg-danger-subtle p-3 text-13 text-danger-primary">{error}</div>}
 
-      <div
-        role="tablist"
-        aria-label="Widgets"
-        className="border-neutral-200 dark:border-neutral-700 mb-4 flex gap-1 border-b"
-      >
+      <div role="tablist" aria-label="Widgets" className="mb-4 flex gap-1 border-b border-subtle">
         {ABAS.map((aba) => (
           <button
             key={aba.escopo}
@@ -88,10 +80,10 @@ export const WidgetAdminPage: React.FC = observer(() => {
             role="tab"
             aria-selected={escopo === aba.escopo}
             onClick={() => setEscopo(aba.escopo)}
-            className={`text-sm -mb-px border-b-2 px-3 py-2 font-medium ${
+            className={`-mb-px border-b-2 px-3 py-2 text-13 font-medium ${
               escopo === aba.escopo
-                ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
-                : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 border-transparent"
+                ? "border-accent-strong text-accent-primary"
+                : "border-transparent text-tertiary hover:text-primary"
             }`}
           >
             {aba.rotulo}
@@ -105,7 +97,7 @@ export const WidgetAdminPage: React.FC = observer(() => {
           placeholder="Buscar por nome…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border-neutral-200 text-sm focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-800 rounded-lg border px-3 py-2 outline-none focus:ring-2 dark:text-white"
+          className="rounded-lg border border-subtle px-3 py-2 text-13 outline-none focus:ring-2 focus:ring-accent-strong"
         />
         <SelectPesquisavel
           value={statusFilter}
@@ -121,13 +113,13 @@ export const WidgetAdminPage: React.FC = observer(() => {
         />
         <button
           onClick={refetch}
-          className="border-neutral-200 text-sm text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 rounded-lg border px-3 py-2"
+          className="rounded-lg border border-subtle px-3 py-2 text-13 text-secondary hover:bg-layer-1"
         >
           Atualizar
         </button>
       </div>
 
-      <div className="border-neutral-200 dark:border-neutral-700 dark:bg-neutral-900 rounded-xl border bg-white p-4">
+      <div className="rounded-xl border border-subtle bg-surface-1 p-4">
         {escopo === "users" ? (
           <WidgetListDeUsuarios
             widgets={filtered}

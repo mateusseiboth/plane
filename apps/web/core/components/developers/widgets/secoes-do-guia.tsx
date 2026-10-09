@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import type { TReferencia } from "@mateusseiboth/widgets-aviao/referencia-tipos";
 import type { TComandosDoSdk } from "@/components/developers/widgets/comandos-do-sdk";
-import { BlocoDeCodigo, Pilula, Secao, Tabela } from "@/components/developers/widgets/blocos";
+import { BlocoDeCodigo, Pilula, Secao, Tabela, TextoComCodigo } from "@/components/developers/widgets/blocos";
 import { TabelaDeCampos } from "@/components/developers/widgets/secoes-da-api";
 
 const BOTAO_DE_DOWNLOAD =
@@ -127,7 +127,9 @@ export function SecaoTutorial({ comandos, workspaceSlug }: { comandos: TComandos
 export function SecaoManifesto({ manifesto }: { manifesto: TReferencia["manifesto"] }) {
   return (
     <Secao id="manifesto" titulo="Manifesto">
-      <p className="whitespace-pre-line">{manifesto.descricao}</p>
+      <p className="whitespace-pre-line">
+        <TextoComCodigo texto={manifesto.descricao} />
+      </p>
       <TabelaDeCampos campos={manifesto.campos} />
       <BlocoDeCodigo rotulo="manifest.json" codigo={manifesto.exemplo} />
     </Secao>
@@ -145,7 +147,7 @@ export function SecaoPermissoes({ permissoes }: { permissoes: TReferencia["permi
         cabecalhos={["Permissão", "O que libera", "Usada por"]}
         linhas={permissoes.map((permissao) => [
           <Pilula key="chave">{permissao.chave}</Pilula>,
-          permissao.libera,
+          <TextoComCodigo key="libera" texto={permissao.libera} />,
           <span key="uso" className="flex flex-wrap gap-1">
             {permissao.usadaPor.map((nome) => (
               <Pilula key={nome}>{nome}</Pilula>
@@ -163,7 +165,9 @@ export function SecaoCicloDeVida({ etapas }: { etapas: TReferencia["cicloDeVida"
       <ol className="flex flex-col gap-3">
         {etapas.map((etapa, indice) => (
           <Passo key={etapa.etapa} numero={indice + 1} titulo={etapa.etapa}>
-            <p>{etapa.descricao}</p>
+            <p>
+              <TextoComCodigo texto={etapa.descricao} />
+            </p>
           </Passo>
         ))}
       </ol>
@@ -184,7 +188,7 @@ export function SecaoEventos({ eventos }: { eventos: TReferencia["eventos"] }) {
           <Pilula key="nome">{evento.nome}</Pilula>,
           <Pilula key="origem">{evento.origem}</Pilula>,
           <Pilula key="payload">{evento.payload}</Pilula>,
-          evento.descricao,
+          <TextoComCodigo key="descricao" texto={evento.descricao} />,
         ])}
       />
     </Secao>
@@ -200,7 +204,10 @@ export function SecaoErros({ erros }: { erros: TReferencia["erros"] }) {
       </p>
       <Tabela
         cabecalhos={["Código", "Quando"]}
-        linhas={erros.map((erro) => [<Pilula key="status">{String(erro.status)}</Pilula>, erro.quando])}
+        linhas={erros.map((erro) => [
+          <Pilula key="status">{String(erro.status)}</Pilula>,
+          <TextoComCodigo key="quando" texto={erro.quando} />,
+        ])}
       />
     </Secao>
   );
@@ -217,7 +224,7 @@ export function SecaoLimites({ limites }: { limites: TReferencia["limites"] }) {
         linhas={limites.map((limite) => [
           <Pilula key="nome">{limite.nome}</Pilula>,
           <Pilula key="valor">{formatValorDoLimite(limite.nome, limite.valor)}</Pilula>,
-          limite.descricao,
+          <TextoComCodigo key="descricao" texto={limite.descricao} />,
         ])}
       />
     </Secao>

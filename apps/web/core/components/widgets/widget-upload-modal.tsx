@@ -57,16 +57,14 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="shadow-xl dark:bg-neutral-900 w-full max-w-md rounded-xl bg-white p-6">
-        <h2 className="text-lg text-neutral-900 font-semibold dark:text-white">{titulo}</h2>
-        {aviso && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{aviso}</p>}
+      <div className="shadow-xl w-full max-w-md rounded-xl bg-surface-1 p-6">
+        <h2 className="text-16 font-semibold text-primary">{titulo}</h2>
+        {aviso && <p className="mt-1 text-13 text-tertiary">{aviso}</p>}
         <div className="mb-4" />
 
         <div
           className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
-            dragging
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-              : "border-neutral-300 hover:border-blue-400 dark:border-neutral-600"
+            dragging ? "border-accent-strong bg-accent-subtle" : "border-subtle hover:border-accent-strong"
           }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -86,13 +84,13 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
               if (f) handleFile(f);
             }}
           />
-          <div className="text-3xl text-neutral-400">📦</div>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+          <div className="text-24 text-tertiary">📦</div>
+          <p className="mt-2 text-13 text-tertiary">
             {selectedFile ? selectedFile.name : "Arraste e solte widget.zip ou clique para procurar"}
           </p>
         </div>
 
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+        {error && <p className="mt-2 text-13 text-danger-primary">{error}</p>}
 
         <div className="mt-6 flex justify-end gap-3">
           <button
@@ -101,7 +99,7 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
               setError(null);
               onClose();
             }}
-            className="text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800 rounded-lg px-4 py-2"
+            className="rounded-lg px-4 py-2 text-13 text-secondary hover:bg-layer-1"
             disabled={isUploading}
           >
             Cancelar
@@ -109,7 +107,7 @@ export const WidgetUploadModal: React.FC<WidgetUploadModalProps> = ({
           <button
             onClick={handleSubmit}
             disabled={!selectedFile || isUploading}
-            className="bg-blue-600 text-sm hover:bg-blue-700 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-13 font-medium text-on-color hover:opacity-90 disabled:opacity-50"
           >
             {isUploading ? "Enviando…" : "Enviar"}
           </button>

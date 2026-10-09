@@ -12,13 +12,17 @@ import type {
   TReferencia,
   TTipoDaReferencia,
 } from "@mateusseiboth/widgets-aviao/referencia-tipos";
-import { BlocoDeCodigo, Pilula, Secao, Tabela } from "@/components/developers/widgets/blocos";
+import { BlocoDeCodigo, Pilula, Secao, Tabela, TextoComCodigo } from "@/components/developers/widgets/blocos";
 
 type TVisivel = (id: string) => boolean;
 
 function Descricao({ texto }: { texto: string }) {
   if (!texto) return null;
-  return <p className="whitespace-pre-line">{texto}</p>;
+  return (
+    <p className="whitespace-pre-line">
+      <TextoComCodigo texto={texto} />
+    </p>
+  );
 }
 
 function TabelaDeCampos({ campos }: { campos: TCampoDaReferencia[] }) {
@@ -30,7 +34,7 @@ function TabelaDeCampos({ campos }: { campos: TCampoDaReferencia[] }) {
         <Pilula key="nome">{campo.nome}</Pilula>,
         <Pilula key="tipo">{campo.tipo}</Pilula>,
         campo.obrigatorio ? "Sim" : "Não",
-        campo.descricao,
+        <TextoComCodigo key="descricao" texto={campo.descricao} />,
       ])}
     />
   );
@@ -52,13 +56,18 @@ function CartaoDeFuncao({ funcao, ancora }: { funcao: TFuncaoDaReferencia; ancor
           linhas={funcao.parametros.map((parametro) => [
             <Pilula key="nome">{`${parametro.nome}${parametro.opcional ? "?" : ""}`}</Pilula>,
             <Pilula key="tipo">{parametro.tipo}</Pilula>,
-            parametro.descricao,
+            <TextoComCodigo key="descricao" texto={parametro.descricao} />,
           ])}
         />
       )}
       <p>
         <span className="font-medium text-primary">Retorno:</span> <Pilula>{funcao.retorno.tipo}</Pilula>
-        {funcao.retorno.descricao && ` ${funcao.retorno.descricao}`}
+        {funcao.retorno.descricao && (
+          <>
+            {" "}
+            <TextoComCodigo texto={funcao.retorno.descricao} />
+          </>
+        )}
       </p>
       {funcao.exemplo && <BlocoDeCodigo rotulo="Exemplo" codigo={funcao.exemplo} />}
     </article>

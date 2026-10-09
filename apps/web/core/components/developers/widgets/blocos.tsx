@@ -43,7 +43,22 @@ export function BlocoDeCodigo({ codigo, rotulo }: { codigo: string; rotulo?: str
 
 export function Pilula({ children }: { children: ReactNode }) {
   return (
-    <code className="inline-block rounded-sm bg-layer-2 px-1.5 py-0.5 text-12 break-all text-primary">{children}</code>
+    <code className="inline-block rounded-sm bg-layer-2 px-1.5 py-0.5 text-12 break-words text-primary">
+      {children}
+    </code>
+  );
+}
+
+/** Texto do JSDoc: o que está entre crases vira código. */
+export function TextoComCodigo({ texto }: { texto: string }) {
+  return (
+    <>
+      {texto.split(/`([^`]+)`/).map((parte, indice) =>
+        // Ímpar = o que estava entre crases. A posição é a identidade do pedaço.
+        // oxlint-disable-next-line react/no-array-index-key
+        indice % 2 === 1 ? <Pilula key={indice}>{parte}</Pilula> : parte
+      )}
+    </>
   );
 }
 
