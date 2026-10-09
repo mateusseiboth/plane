@@ -39,7 +39,7 @@ const Tempo = ({ resumo }: { resumo: ResumoDeTempo }) => (
 );
 
 /**
- * Monitor ao vivo do atendimento (`chat.gerenciar`), atualizado a cada 10
+ * Monitor ao vivo do atendimento (`chat.relatorios`), atualizado a cada 10
  * segundos: fila com o tempo de espera, conversas com o tempo parado,
  * abandonos do dia e os tempos mínimo, médio e máximo. Legado: `intranet/chatger/`.
  */

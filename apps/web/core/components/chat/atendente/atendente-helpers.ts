@@ -75,8 +75,9 @@ type AvisoDeTransferencia = { session_id: string; to_user_id: string };
 type SessaoComDono = { id: string; assigned_attendant_id?: string | null };
 
 /**
- * `session.transferred_out`: a conversa saiu de quem atendia. Quem administra vê
- * todas, então ela fica com o novo dono; os demais deixam de vê-la na hora.
+ * `session.transferred_out`: a conversa saiu de quem atendia. Quem tem
+ * `chat.ver_todas` vê as dos outros, então ela fica com o novo dono; os demais
+ * deixam de vê-la na hora.
  */
 const TRANSFERENCIA_NA_LISTA = {
   todas: <S extends SessaoComDono>(sessoes: S[], aviso: AvisoDeTransferencia) =>

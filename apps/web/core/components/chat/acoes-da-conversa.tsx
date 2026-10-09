@@ -13,6 +13,9 @@ import { AlertCircle, Pause, Play, Ticket } from "lucide-react";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
 import { ModalDeChamado, type PedidoDeChamado } from "@/components/chat/modal-de-chamado";
+import { buildPermissoesDoAtendimento } from "@/components/chat/permissoes-do-atendimento";
+// hooks
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { ChatService, chatApi, type ChatMessage, type ChatSession } from "@/services/chat.service";
 
@@ -38,13 +41,16 @@ const PODE_PAUSAR: Record<string, "pause" | "resume"> = { active: "pause", pause
 
 /**
  * Ações do ciclo de vida no cabeçalho da conversa: abrir o chamado (ou ir até
- * ele, quando já existe) e pausar/retomar o atendimento.
+ * ele, quando já existe) e pausar/retomar o atendimento. Cada botão só aparece
+ * com a sua ação do chat (`chat.abrir_chamado`, `chat.pausar`).
  */
 export function AcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, onAtualizada }: Props) {
   const [abrindoChamado, setAbrindoChamado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const api = chatApi(apiUrl);
-  const pausa = sessao.channel === "phone" ? undefined : PODE_PAUSAR[sessao.status];
+  const { can } = useMyWorkspaceActions(slug);
+  const { canAbrirChamado, canPausar } = buildPermissoesDoAtendimento(can);
+  const pausa = sessao.channel === "phone" || !canPausar ? undefined : PODE_PAUSAR[sessao.status];
 
   const createChamado = async ({ projectId, dados }: PedidoDeChamado) => {
     setEnviando(true);
@@ -87,10 +93,12 @@ export function AcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, onAtu
           {sessao.issue_label}
         </Link>
       ) : (
-        <button onClick={() => setAbrindoChamado(true)} className={BOTAO} title="Abrir chamado com esta conversa">
-          <Ticket className="h-3.5 w-3.5" />
-          Chamado
-        </button>
+        canAbrirChamado && (
+          <button onClick={() => setAbrindoChamado(true)} className={BOTAO} title="Abrir chamado com esta conversa">
+            <Ticket className="h-3.5 w-3.5" />
+            Chamado
+          </button>
+        )
       )}
       {pausa && (
         <button onClick={changePausa} className={BOTAO} title={pausa === "pause" ? "Pausar atendimento" : "Retomar"}>

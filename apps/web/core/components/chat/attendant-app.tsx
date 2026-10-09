@@ -38,6 +38,7 @@ import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import { AppSidebarToggleButton } from "@/components/sidebar/sidebar-toggle-button";
 // services
 import { ChatConfigPanel } from "@/components/chat/chat-config-panel";
+import { buildPermissoesDoAtendimento } from "@/components/chat/permissoes-do-atendimento";
 import { ChatDashboard } from "@/components/chat/chat-dashboard";
 import { MenuDoGestor } from "@/components/chat/menu-do-gestor";
 import { BotaoDoDisparo } from "@/components/chat/disparo/botao-do-disparo";
@@ -431,11 +432,10 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const { joinedProjectIds, getProjectById } = useProject();
   const { sidebarCollapsed } = useAppTheme();
 
-  // Mesma matriz de ações que o chat-backend consulta: transferir e relatórios
-  // (`chat.gerenciar`); fila, robô, avaliação e configuração (`chat.administrar`).
+  // Mesma matriz de ações que o chat-backend consulta, uma por botão
+  // (components/chat/permissoes-do-atendimento.ts).
   const { can } = useMyWorkspaceActions(slug);
-  const isManager = can("chat.gerenciar");
-  const isAdmin = can("chat.administrar");
+  const permissoes = buildPermissoesDoAtendimento(can);
 
   const [showConfig, setShowConfig] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -529,13 +529,13 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
   const refreshSessionsRef = useRef<typeof refreshSessions>();
   const openSessionRef = useRef<typeof openSession>();
   const sessionsRef = useRef<ChatSession[]>([]);
-  const isAdminRef = useRef(isAdmin);
+  const canVerTodasRef = useRef(permissoes.canVerTodas);
   useEffect(() => {
     activeRef.current = activeId;
   }, [activeId]);
   useEffect(() => {
-    isAdminRef.current = isAdmin;
-  }, [isAdmin]);
+    canVerTodasRef.current = permissoes.canVerTodas;
+  }, [permissoes.canVerTodas]);
   useEffect(() => {
     refreshSessionsRef.current = refreshSessions;
   }, [refreshSessions]);
@@ -731,11 +731,11 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             return;
           }
 
-          // A conversa foi transferida e saiu de mim. Quem administra vê todas e
+          // A conversa foi transferida e saiu de mim. Quem tem chat.ver_todas
           // continua vendo (com o novo dono); os demais deixam de ver na hora.
           if (msg.type === "session.transferred_out") {
-            setSessions((prev) => applyTransferenciaNaLista(prev, msg, isAdminRef.current));
-            if (!isAdminRef.current && msg.session_id === activeRef.current) setActiveId(null);
+            setSessions((prev) => applyTransferenciaNaLista(prev, msg, canVerTodasRef.current));
+            if (!canVerTodasRef.current && msg.session_id === activeRef.current) setActiveId(null);
             return;
           }
 
@@ -990,7 +990,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
           {isDash ? (
             <ChatDashboard slug={slug} apiUrl={config.api_url} />
           ) : (
-            <ChatConfigPanel slug={slug} apiUrl={config.api_url} isAdmin={isAdmin} />
+            <ChatConfigPanel slug={slug} apiUrl={config.api_url} />
           )}
         </div>
       </div>
@@ -1022,7 +1022,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </button>
             <BotaoDoDisparo slug={slug} />
             <MenuDoGestor
-              isManager={isManager}
+              permissoes={permissoes}
               onAcao={{
                 gerenciador: () => setShowGerenciador(true),
                 dashboard: () => setShowDashboard(true),
@@ -1061,8 +1061,8 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
         <div className="flex border-b border-subtle">
           {[
             { label: "Ativas", count: sessions.filter((s) => STATUS_DA_ABA.active!.includes(s.status)).length, status: "active" },
-            // "Na fila" and "Bot" are admin-only — regular attendants never see them.
-            ...(isAdmin
+            // "Na fila" e "Bot" só para quem tem chat.ver_fila.
+            ...(permissoes.canVerFila
               ? [
                   { label: "Na fila", count: sessions.filter((s) => s.status === "queued").length, status: "queued" },
                   { label: "Bot", count: sessions.filter((s) => s.status === "bot").length, status: "bot" },
@@ -1260,7 +1260,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                     setSlaSessions((prev) => new Set([...prev].filter((id) => id !== atualizada.id)));
                   }}
                 />
-                {isManager && activeSession.status !== "closed" && activeSession.status !== "bot" && (
+                {permissoes.canTransferir && activeSession.status !== "closed" && activeSession.status !== "bot" && (
                   <button
                     onClick={() => setShowTransfer(true)}
                     className="flex items-center gap-1 rounded-md border border-subtle px-2.5 py-1.5 text-12 text-secondary hover:bg-layer-1 transition-colors"
@@ -1270,7 +1270,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                     Transferir
                   </button>
                 )}
-                {(activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
+                {permissoes.canEncerrar && (activeSession.status === "active" || activeSession.status === "paused") && !isLigacao(activeSession) && (
                   <button
                     onClick={closeChat}
                     className="flex items-center gap-1 rounded-md border border-red-300 px-2.5 py-1.5 text-12 text-red-600 hover:bg-red-50 transition-colors dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
@@ -1366,7 +1366,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 // Deleted: clients see "mensagem apagada"; managers keep the original
                 // (struck-through) for audit, regular attendants see the placeholder.
                 if (m.deleted_at) {
-                  const showOriginal = isManager && m.text;
+                  const showOriginal = permissoes.canVerTodas && m.text;
                   return (
                     <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} items-end gap-2`}>
                       {!mine && <SessionAvatar name={m.sender_name ?? null} phone={null} size="sm" />}
@@ -1499,7 +1499,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                         {mine && (
                           <FalhaDeEnvio mensagem={m} slug={slug} apiUrl={config.api_url} onReenviada={replaceMessage} />
                         )}
-                        {isManager && (m.edit_history?.length ?? 0) > 0 && (
+                        {permissoes.canVerTodas && (m.edit_history?.length ?? 0) > 0 && (
                           <button
                             onClick={() => setHistoryFor(historyFor === m.id ? null : m.id)}
                             className="flex items-center gap-0.5 underline hover:text-secondary"
@@ -1676,11 +1676,11 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
           </div>
 
-          {/* Avaliação do cliente — leitura de gestão, só para o administrador.
+          {/* Avaliação do cliente — leitura de gestão, só para quem tem chat.configurar.
               Mostrar a nota ao atendente que acabou de ser avaliado muda a
               conversa seguinte, e não é para isso que se pergunta ao cliente.
-              O servidor também não a envia para quem não é admin. */}
-          {isAdmin && activeSession.rating_score != null && (
+              O servidor também não a envia para quem não configura o chat. */}
+          {permissoes.canVerAvaliacao && activeSession.rating_score != null && (
             <div className="border-b border-subtle p-4">
               <div className="mb-2 text-11 font-semibold uppercase tracking-wider text-tertiary">Avaliação</div>
               <div className="flex items-center gap-1">

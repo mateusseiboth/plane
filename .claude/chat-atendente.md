@@ -49,7 +49,7 @@ apps/web/core/
 
 `attendant-app.tsx` mudou o mínimo: ferramentas no compositor, botão do alerta no cabeçalho,
 render da mensagem `chave`, painel do cadastro no lado direito, botão "Gerenciador" e abertura de
-`?sessao=<id>`. O dashboard passou a aparecer para `chat.gerenciar` (antes só administrador), porque
+`?sessao=<id>`. O dashboard passou a aparecer para `chat.gerenciar` (hoje `chat.relatorios`; antes só administrador), porque
 o monitor é de gestão.
 
 ## 2. Colunas novas (0014)
@@ -71,17 +71,17 @@ Erros: `{ detail, errors?: [{ path, message }] }`, `path` no nome do campo do fo
 | `GET /workspaces/:slug/frases/` | atender | | `{ results: [{ id, texto, ordem, escopo }] }`: as do espaço e as próprias |
 | `POST /workspaces/:slug/frases/` | atender | `{ texto, ordem? }` | 201 frase pessoal (`escopo: "pessoal"`) |
 | `PATCH/DELETE .../frases/:id/` | atender | `{ texto?, ordem? }` | frase / `{ ok }`; só a própria, senão 404 |
-| `GET/POST /workspaces/:slug/config/frases/` | administrar | `{ texto, ordem? }` | só as do espaço / 201 frase |
-| `PATCH/DELETE .../config/frases/:id/` | administrar | `{ texto?, ordem? }` | frase / `{ ok }`; só as do espaço, senão 404 |
-| `POST .../config/frases/padrao/` | administrar | | inclui as 7 frases só se o espaço não tem nenhuma frase do espaço |
+| `GET/POST /workspaces/:slug/config/frases/` | frases_do_espaco | `{ texto, ordem? }` | só as do espaço / 201 frase |
+| `PATCH/DELETE .../config/frases/:id/` | frases_do_espaco | `{ texto?, ordem? }` | frase / `{ ok }`; só as do espaço, senão 404 |
+| `POST .../config/frases/padrao/` | frases_do_espaco | | inclui as 7 frases só se o espaço não tem nenhuma frase do espaço |
 | `POST .../sessions/:id/chave/` | atender | `{ chave, without_sender_name? }` | 201 mensagem (`type: "chave"`); 409 se encerrada |
-| `POST .../sessions/:id/sla-alert/pause/` e `/resume/` | atender | | sessão com `sla_alert_paused_until` |
+| `POST .../sessions/:id/sla-alert/pause/` e `/resume/` | pausar | | sessão com `sla_alert_paused_until` |
 | `GET/PATCH .../sessions/:id/cadastro/` | atender | `{ entity_id?, project_id?, entity_contact_id? }` | `{ session, entity, project, responsavel }` |
 | `POST .../sessions/whatsapp/responsavel/` | atender | `{ entity_contact_id, project_id?, message? }` | 201 sessão; 409 `{ detail, session_id }` |
 | `GET .../config/feriados/` | atender | | `{ results }` |
-| `PUT .../config/feriados/` | administrar | `{ feriados: [...] }` (SUBSTITUI a lista) | `{ results }` |
-| `GET .../gerenciador/` | gerenciar | `attendant_id, entity_id, project_id, from, to, q, channel, status, page, per_page` (≤ 500) | `{ count, page, per_page, total_pages, results }` |
-| `GET .../monitor/` | gerenciar | | `{ gerado_em, fila, ativos, hoje, tempos }` |
+| `PUT .../config/feriados/` | configurar | `{ feriados: [...] }` (SUBSTITUI a lista) | `{ results }` |
+| `GET .../gerenciador/` | ver_todas | `attendant_id, entity_id, project_id, from, to, q, channel, status, page, per_page` (≤ 500) | `{ count, page, per_page, total_pages, results }` |
+| `GET .../monitor/` | relatorios | | `{ gerado_em, fila, ativos, hoje, tempos }` |
 
 WS: `agent.message` aceita `without_sender_name: true`. `message.new` agora vai COMPLETO ao
 atendente (com `without_sender_name`, `send_error`) e reduzido ao cliente.
@@ -93,9 +93,10 @@ Sessão serializada ganhou `sla_alert_paused_until` e `client_info`.
 
 ## 4. Regras e decisões
 
-- **Sem ação nova na matriz.** Atender = `chat.atender`; configurar frases e feriados =
-  `chat.administrar` (configurar o chat, como o resto da configuração); gerenciador e monitor =
-  `chat.gerenciar` (mesma dos relatórios).
+- **Ações da matriz** (finas desde a W38, ver `.claude/permissoes-v2.md` §9): atender =
+  `chat.atender`; pausar o alerta = `chat.pausar`; frases do espaço = `chat.frases_do_espaco`;
+  feriados = `chat.configurar`; gerenciador = `chat.ver_todas`; monitor = `chat.relatorios`.
+  Antes eram `chat.administrar` e `chat.gerenciar`.
 - **Frases**: não há semente automática; a aba oferece "Usar as frases padrão" (7 do SAC). As três
   últimas do SAC eram a pesquisa de satisfação digitada à mão e ficaram de fora (o chat já faz a
   pesquisa). Inserir a frase coloca o texto no fim do rascunho; o atendente ainda revisa e envia.
@@ -165,7 +166,7 @@ alias quando os dois estiverem no preview. `tests/helpers/harness.ts` (`criarEnt
 
 - **Frases pessoais**: cada atendente (`chat.atender`) cadastra, edita e apaga as próprias frases em
   `/frases/` (migração `0017`, `owner_user_id`). As do espaço continuam em `/config/frases/`
-  (`chat.administrar`). Frase de outro dono responde 404. Regras em `src/atendente/frases.ts`
+  (`chat.frases_do_espaco`). Frase de outro dono responde 404. Regras em `src/atendente/frases.ts`
   (`ESCOPO_DA_FRASE`, `buildDonoDaFrase`, `buildFiltroDasFrasesVisiveis`). Na tela, o menu do
   compositor mostra "Minhas frases" e "Do espaço" (`groupFrases`) e tem "Editar minhas frases",
   que abre o mesmo `EditorDeFrases` da aba Frases com `escopo="pessoal"`.
@@ -176,8 +177,8 @@ alias quando os dois estiverem no preview. `tests/helpers/harness.ts` (`criarEnt
   placeholder "Selecione". `withSistemaDaConversa` põe o sistema da conversa aberta nas opções (vale
   para o painel do cadastro, o encerramento e as ações da conversa).
 - **Quem transferiu continua vendo**: é a regra, não defeito, quando a pessoa tem
-  `chat.administrar`: quem administra vê todas as conversas (`src/visibilidade.ts`). Quem não
-  administra vê só as próprias; a transferência agora manda `session.transferred_out` a quem atendia
+  `chat.ver_todas`: ela vê as conversas dos outros (`src/visibilidade.ts`; fila e robô pedem
+  `chat.ver_fila`). Quem não tem vê só as próprias; a transferência agora manda `session.transferred_out` a quem atendia
   e a quem transferiu (`src/transferencia.ts`), e a tela tira a conversa da lista na hora
   (`applyTransferenciaNaLista`), fechando-a se estava aberta.
 - Testes: `tests/visibilidade-da-lista.test.ts` (10, puro), `tests/atendente-regras.test.ts`

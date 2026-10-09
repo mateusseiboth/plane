@@ -99,7 +99,7 @@ export function EditorDeFrases({ slug, apiUrl, escopo, frases, isLoading, onMudo
 }
 
 /**
- * Aba "Frases" da configuração do chat (`chat.administrar`): as frases do
+ * Aba "Frases" da configuração do chat (`chat.frases_do_espaco`): as frases do
  * espaço, que todo atendente vê no compositor.
  */
 export function AbaDeFrases({ slug, apiUrl }: { slug: string; apiUrl: string }) {
