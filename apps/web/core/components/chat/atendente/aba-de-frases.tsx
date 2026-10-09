@@ -16,7 +16,7 @@ import { useAtendenteApi, useFrasesDoEspaco, useFrasesProntas } from "@/componen
 import type { ErroDoChat, EscopoDaFrase, FrasePronta } from "@/services/atendente.service";
 
 const CAIXA = "w-full rounded-md border bg-surface-1 px-2 py-1.5 text-sm text-primary outline-none";
-const BOTAO = "rounded-md bg-primary px-3 py-1.5 text-13 text-on-color disabled:opacity-50";
+const BOTAO = "rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color disabled:opacity-50";
 const BOTAO_LEVE = "rounded-md border border-subtle px-3 py-1.5 text-13";
 
 const mensagemDoErro = (e: unknown) => (e as ErroDoChat | null)?.detail ?? "Tente de novo.";
@@ -87,7 +87,7 @@ export function EditorDeFrases({ slug, apiUrl, escopo, frases, isLoading, onMudo
           rows={2}
           value={nova}
           onChange={(e) => setNova(e.target.value)}
-          className={`${CAIXA} ${erroDoTexto ? "border-danger-primary" : "border-subtle"}`}
+          className={`${CAIXA} ${erroDoTexto ? "border-danger-strong" : "border-subtle"}`}
         />
         {erroDoTexto && <span className="text-11 text-danger-primary">{erroDoTexto}</span>}
         <button type="button" className={`${BOTAO} self-start`} onClick={() => void create()}>

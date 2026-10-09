@@ -26,7 +26,7 @@ type Props = {
 };
 
 const CAIXA =
-  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-primary";
+  "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-13 text-primary outline-none focus:border-accent-strong";
 
 /**
  * Abre o chamado a partir da conversa. A transcrição e os arquivos vão juntos

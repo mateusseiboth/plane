@@ -86,7 +86,7 @@ export function IniciarPeloResponsavel({
           type="button"
           onClick={() => void start()}
           disabled={enviando}
-          className="bg-primary text-sm flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium text-on-color disabled:opacity-50"
+          className="text-sm flex items-center justify-center gap-2 rounded-xl bg-accent-primary px-4 py-2.5 font-medium text-on-color disabled:opacity-50"
         >
           {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
           Iniciar conversa com {contato.name}
@@ -127,7 +127,7 @@ export function BotaoDeWhatsapp({ slug, contato }: { slug: string; contato: TEnt
       onClick={() => void start()}
       disabled={enviando}
       title="Conversar no WhatsApp"
-      className="text-secondary-text hover:bg-surface-3 rounded p-1 transition-colors hover:text-primary disabled:opacity-50"
+      className="rounded p-1 text-secondary transition-colors hover:bg-layer-2 hover:text-primary disabled:opacity-50"
     >
       {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
     </button>

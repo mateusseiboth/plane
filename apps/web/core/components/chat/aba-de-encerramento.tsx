@@ -132,7 +132,7 @@ export function AbaDeEncerramento({ slug, apiUrl }: { slug: string; apiUrl: stri
 
       <button
         onClick={() => void save()}
-        className="bg-primary self-start rounded-md px-3 py-1.5 text-13 text-on-color"
+        className="self-start rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color"
       >
         Salvar
       </button>

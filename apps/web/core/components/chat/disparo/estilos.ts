@@ -10,7 +10,7 @@ import type { ErroDoDisparo } from "@/services/disparo.service";
 // Classes das abas do disparo, no mesmo visual da configuração do chat.
 export const CAIXA =
   "w-full rounded-md border border-subtle bg-surface-1 px-2 py-1.5 text-sm text-primary outline-none";
-export const BOTAO = "rounded-md bg-primary px-3 py-1.5 text-13 text-on-color disabled:opacity-50";
+export const BOTAO = "rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color disabled:opacity-50";
 export const BOTAO_SECUNDARIO =
   "rounded-md border border-subtle px-3 py-1.5 text-13 text-secondary hover:bg-layer-1 disabled:opacity-50";
 export const ROTULO = "mb-1 block text-12 text-secondary";

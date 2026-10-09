@@ -118,7 +118,7 @@ export const DisparoApp = observer(function DisparoApp({ slug }: { slug: string 
             className={cn(
               "border-b-2 px-3 py-2 text-13",
               aba === a.key
-                ? "border-accent-primary text-primary"
+                ? "border-accent-strong text-primary"
                 : "border-transparent text-secondary hover:text-primary"
             )}
           >

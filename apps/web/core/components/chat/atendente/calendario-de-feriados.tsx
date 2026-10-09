@@ -16,7 +16,7 @@ import { useFeriados } from "@/components/chat/atendente/use-atendente";
 import type { ErroDoChat, Feriado } from "@/services/atendente.service";
 
 const CAIXA = "rounded-md border bg-surface-1 px-2 py-1.5 text-sm text-primary outline-none";
-const borda = (erro?: string) => (erro ? "border-danger-primary" : "border-subtle");
+const borda = (erro?: string) => (erro ? "border-danger-strong" : "border-subtle");
 
 /**
  * Calendário de feriados, dentro da aba Horários: no feriado o atendimento está
@@ -122,7 +122,7 @@ function ListaDeFeriados({
       })}
       <button
         type="button"
-        className="bg-primary self-start rounded-md px-3 py-1.5 text-13 text-on-color"
+        className="self-start rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color"
         onClick={() => void save()}
       >
         Salvar feriados

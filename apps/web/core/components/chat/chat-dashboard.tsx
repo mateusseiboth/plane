@@ -15,6 +15,7 @@ import { RelatoriosDeAtendimento } from "@/components/chat/relatorios-de-atendim
 import { chatApi, type RatingsReport, type SlaReport } from "@/services/chat.service";
 import { RelatorioDeLigacoes } from "@/components/chat/ligacoes/relatorio-de-ligacoes";
 import { MonitorAoVivo } from "@/components/chat/atendente/monitor-ao-vivo";
+import { COR_DA_ESTRELA } from "@/components/chat/atendente/cores-do-atendimento";
 
 type Stats = Awaited<ReturnType<ReturnType<typeof chatApi>["dashboard"]>>;
 
@@ -31,7 +32,7 @@ function Stars({ score }: { score: number }) {
   return (
     <span className="inline-flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((n) => (
-        <Star key={n} className={`h-3.5 w-3.5 ${n <= Math.round(score) ? "fill-current text-amber-400" : "text-tertiary"}`} />
+        <Star key={n} className={`h-3.5 w-3.5 ${n <= Math.round(score) ? COR_DA_ESTRELA : "text-tertiary"}`} />
       ))}
     </span>
   );
