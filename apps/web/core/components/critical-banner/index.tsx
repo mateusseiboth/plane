@@ -1,5 +1,7 @@
 "use client";
 
+import {isEventoDaFaixaDeUrgentes} from "@/components/critical-banner/helpers";
+import {useRealtimeRefetch} from "@/hooks/use-realtime";
 import {APIService} from "@/services/api.service";
 import {API_BASE_URL} from "@plane/constants";
 import {cn, generateIssueDetailLink} from "@plane/utils";
@@ -33,7 +35,8 @@ const STATE_GROUP_COLOR: Record<string, string> = {
 /**
  * CriticalIssuesBanner — shown at the top of all workspace pages whenever
  * there are urgent issues not yet completed/cancelled.
- * Polls every 60 s. Collapses to save space.
+ * Revalidates on the realtime bus (priority/state change, create, delete) and
+ * still polls every 60 s as a fallback. Collapses to save space.
  */
 export function CriticalIssuesBanner() {
   const {workspaceSlug} = useParams();
@@ -54,6 +57,16 @@ export function CriticalIssuesBanner() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [workspaceSlug]);
+
+  // Prioridade trocada no quadro ou no detalhe reflete na faixa sem esperar o polling.
+  useRealtimeRefetch(
+    (event) =>
+      isEventoDaFaixaDeUrgentes(
+        event,
+        issues.map((issue) => issue.id)
+      ),
+    load
+  );
 
   if (dismissed || issues.length === 0) return null;
 

@@ -33,6 +33,9 @@ export type RealtimeEvent = {
   /** Só as notificações usam: o barramento é do espaço de trabalho inteiro, e
    *  sem isto o sino de todo mundo piscaria a cada aviso de qualquer pessoa. */
   receiver?: string | null;
+  /** Prioridade do chamado depois da mudança (eventos de chamado): a faixa de
+   *  urgentes decide por ela se precisa buscar de novo. */
+  priority?: string | null;
   actor?: string | null;
   ts?: number;
 };

@@ -35,6 +35,11 @@ export type RealtimeEvent = {
    * aviso de qualquer pessoa.
    */
   receiver?: string | null;
+  /**
+   * Prioridade do chamado depois da mudança (eventos de chamado). A faixa de
+   * urgentes do web decide por ela se busca a lista de novo na hora.
+   */
+  priority?: string | null;
   /** Related issue id, when the entity hangs off an issue (comments, reactions). */
   issue_id?: string | null;
   /** Actor that triggered the change, so clients can ignore their own echoes. */
