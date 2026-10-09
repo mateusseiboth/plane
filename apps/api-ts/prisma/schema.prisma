@@ -94,7 +94,8 @@ model User {
   timeLogs                 IssueTimeLog[]               @relation("TimeLogMember")
   workspaceUserProperties  WorkspaceUserProperties[]    @relation("WorkspaceUserPropsUser")
   projectUserProperties    ProjectUserProperty[]        @relation("ProjectUserPropsUser")
-  createdWidgets           Widget[]
+  createdWidgets           Widget[]                     @relation("WidgetsCriados")
+  widgetsDoUsuario         Widget[]                     @relation("WidgetsDoUsuario")
   createdPlugins           Plugin[]
   entityContacts           EntityContact[]              @relation("EntityContactUser")
   representedEntities      Entity[]                     @relation("EntityRepresentative")
@@ -1805,12 +1806,17 @@ model Widget {
   permissions String[]
   status      WidgetStatus    @default(PENDING_APPROVAL)
   storageKey  String          @map("storage_key") @db.VarChar(500)
-  createdBy   User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User?           @relation("WidgetsCriados", fields: [createdById], references: [id], onDelete: SetNull)
   createdById String?         @map("created_by_id") @db.Uuid
+  /// Nulo = widget global (aparece para todos). Preenchido = widget da pessoa,
+  /// só na home dela, até alguém que administra torná-lo global.
+  ownerUser   User?           @relation("WidgetsDoUsuario", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  ownerUserId String?         @map("owner_user_id") @db.Uuid
   versions    WidgetVersion[]
 
   @@index([status])
   @@index([createdById])
+  @@index([ownerUserId])
   @@map("widgets")
 }
 
