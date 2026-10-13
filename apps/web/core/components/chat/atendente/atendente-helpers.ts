@@ -92,5 +92,13 @@ export const applyTransferenciaNaLista = <S extends SessaoComDono>(
   podeVerTodas: boolean
 ): S[] => TRANSFERENCIA_NA_LISTA[podeVerTodas ? "todas" : "minhas"](sessoes, aviso);
 
+/**
+ * Quem vê a conversa de outro atendente só lê: o compositor some e o servidor
+ * recusa a mensagem (`src/atendente/escrita-regras.ts` do chat-backend). A que
+ * ainda não tem dono (fila, robô) continua aceitando resposta.
+ */
+export const isConversaDeOutroAtendente = (sessao: SessaoComDono | null, userId: string | undefined): boolean =>
+  Boolean(sessao?.assigned_attendant_id) && sessao?.assigned_attendant_id !== userId;
+
 /** `/chat/?sessao=<id>`: a tela de contatos abre a conversa que acabou de iniciar. */
 export const readSessaoDaUrl = (search: string): string | null => new URLSearchParams(search).get("sessao");

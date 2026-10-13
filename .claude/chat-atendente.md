@@ -116,6 +116,13 @@ Sessão serializada ganhou `sla_alert_paused_until` e `client_info`.
   no espaço da conversa e `isSessaoVisivel` (próprias; dos outros com `chat.ver_todas`; fila e robô
   com `chat.ver_fila`). Sem login 401, sem a ação ali 403, conversa que não enxerga 404. Antes
   bastava estar logado no Plane, em qualquer espaço. O cliente segue com o `?token=` da conversa.
+- **Só o dono escreve** (W44, `src/atendente/escrita-regras.ts`): `chat.ver_todas` abre a conversa
+  dos outros para LEITURA. `agent.message` numa conversa atribuída a outra pessoa volta
+  `{ type: "error", action: "message.send", session_id, detail }` e nada é gravado nem enviado;
+  `agent.typing` é ignorado. Conversa sem dono (fila, robô) continua aceitando resposta. Para
+  responder pela conversa de outro, o caminho é a transferência. Na tela, o compositor dá lugar ao
+  aviso "Conversa de outro atendente. Somente leitura." e editar/apagar só aparece nas próprias
+  mensagens (`isConversaDeOutroAtendente` em `atendente-helpers.ts`).
 - **Transcrição pelo protocolo** (`GET /sessions/by-protocol/:protocol/`, tela `chat-view`): só a
   equipe com `chat.atender` no espaço da conversa, SEM `isSessaoVisivel`. O protocolo chega pelo
   link "Ver conversa" do chamado, e quem atende o chamado (TI, Qualidade) lê a conversa de outra

@@ -5,11 +5,13 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import prisma from "@db";
+import { CHAT_ACTION } from "@/permissoes";
 import {
   CHAT_URL,
   cleanWorkspace,
   configureWorkspace,
   connectAttendant,
+  createPessoaComAcoes,
   limparWorkspacePlane,
   resolveTestAttendant,
   signPlaneToken,
@@ -66,6 +68,58 @@ describe("enviar sem o nome do atendente", () => {
       prisma.chatMessage.findFirst({ where: { sessionId: s.id, text: "Sem nome" } })
     );
     expect(gravada?.withoutSenderName).toBe(true);
+  });
+});
+
+describe("conversa de outro atendente", () => {
+  const createConversaDoColega = async () => {
+    const colega = await createPessoaComAcoes(slug, [CHAT_ACTION.ATENDER]);
+    const res = await fetch(`${CHAT_URL}/sessions/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspace_id: slug, browser_id: crypto.randomUUID(), name: "Cliente do colega" }),
+    });
+    const criada = (await res.json()) as { session: { id: string }; token: string };
+    await prisma.chatSession.update({
+      where: { id: criada.session.id },
+      data: { status: "active", assignedAttendantId: colega.id },
+    });
+    return { id: criada.session.id, token: criada.token };
+  };
+
+  const connectCliente = async (tokenDoCliente: string) => {
+    const ws = new WebSocket(`${CHAT_URL.replace(/^http/, "ws")}/ws?token=${encodeURIComponent(tokenDoCliente)}`);
+    const eventos: any[] = [];
+    ws.addEventListener("message", (ev) => eventos.push(JSON.parse(String(ev.data))));
+    await new Promise<void>((resolve) => ws.addEventListener("open", () => resolve()));
+    return { ws, eventos };
+  };
+
+  it("quem vê todas lê, mas a mensagem é recusada e não chega ao cliente", async () => {
+    const conversa = await createConversaDoColega();
+    atendente.send({ type: "agent.message", session_id: conversa.id, text: "no lugar do colega" });
+    const recusa = await atendente.waitFor((e) => e.type === "error" && e.session_id === conversa.id);
+    expect(recusa.action).toBe("message.send");
+    expect(recusa.detail).toBe("Esta conversa é de outro atendente. Você pode ler, mas não responder.");
+    expect(await prisma.chatMessage.count({ where: { sessionId: conversa.id, sender: "attendant" } })).toBe(0);
+
+    const historico = await fetch(`${CHAT_URL}/sessions/${conversa.id}/messages/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(historico.status).toBe(200);
+  });
+
+  it("o cliente não vê 'digitando' de quem não é o dono da conversa", async () => {
+    const conversa = await createConversaDoColega();
+    const cliente = await connectCliente(conversa.token);
+    atendente.send({ type: "agent.typing", session_id: conversa.id });
+    await Bun.sleep(600);
+    expect(cliente.eventos.some((e) => e.type === "typing")).toBe(false);
+
+    await prisma.chatSession.update({ where: { id: conversa.id }, data: { assignedAttendantId: userId } });
+    atendente.send({ type: "agent.typing", session_id: conversa.id });
+    expect(await waitUntil(() => cliente.eventos.find((e) => e.type === "typing") ?? null)).not.toBeNull();
+    cliente.ws.close();
   });
 });
 

@@ -9,6 +9,7 @@ import {
   formatSegundos,
   groupFrases,
   insertFrase,
+  isConversaDeOutroAtendente,
   listClientInfo,
   readErroDoCampo,
   readSessaoDaUrl,
@@ -22,6 +23,19 @@ describe("formatSegundos", () => {
     expect(formatSegundos(45)).toBe("45 s");
     expect(formatSegundos(180)).toBe("3 min");
     expect(formatSegundos(3900)).toBe("1 h 05 min");
+  });
+});
+
+describe("isConversaDeOutroAtendente", () => {
+  it("a conversa de outra pessoa é só leitura", () => {
+    expect(isConversaDeOutroAtendente({ assigned_attendant_id: "marcio" }, "mateus")).toBe(true);
+    expect(isConversaDeOutroAtendente({ assigned_attendant_id: "marcio" }, undefined)).toBe(true);
+  });
+
+  it("a própria e a que ainda não tem dono aceitam resposta", () => {
+    expect(isConversaDeOutroAtendente({ assigned_attendant_id: "mateus" }, "mateus")).toBe(false);
+    expect(isConversaDeOutroAtendente({ assigned_attendant_id: null }, "mateus")).toBe(false);
+    expect(isConversaDeOutroAtendente(null, "mateus")).toBe(false);
   });
 });
 

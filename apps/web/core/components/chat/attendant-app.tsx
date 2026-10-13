@@ -53,6 +53,7 @@ import { MensagemDaChave } from "@/components/chat/atendente/alerta-sem-resposta
 import {
   applyTransferenciaNaLista,
   insertFrase,
+  isConversaDeOutroAtendente,
   readSessaoDaUrl,
   withSistemaDaConversa,
 } from "@/components/chat/atendente/atendente-helpers";
@@ -655,6 +656,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             return;
           }
 
+          // O servidor recusou a mensagem (a conversa passou a ser de outro
+          // atendente): some o que foi mostrado antes da resposta.
+          if (msg.type === "error" && msg.action === "message.send") {
+            setToast({ type: TOAST_TYPE.ERROR, title: "Mensagem não enviada", message: msg.detail });
+            if (msg.session_id === activeRef.current) setMessages((prev) => prev.filter((m) => !m.id.startsWith("temp-")));
+            return void refreshSessionsRef.current?.();
+          }
+
           // Falha de envio ao WhatsApp (ou o reenvio que deu certo).
           if (msg.type === "message.status")
             return setMessages((prev) => prev.map((m) => (m.id === msg.message.id ? msg.message : m)));
@@ -752,6 +761,9 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
 
   const activeSession = sessions.find((s) => s.id === activeId) ?? null;
   const slaActive = activeId ? slaSessions.has(activeId) : false;
+  // Conversa de outro atendente: quem vê todas lê, mas não responde por ele.
+  const isSomenteLeitura = isConversaDeOutroAtendente(activeSession, currentUser?.id);
+  const isSemEscrita = activeSession?.status === "closed" || isSomenteLeitura;
   const send = (payload: any) => conexaoRef.current?.enviar(payload);
 
   const handleSend = () => {
@@ -1196,7 +1208,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             <div
               className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-4"
               onDragOver={(e) => {
-                if (activeSession.status === "closed") return;
+                if (isSemEscrita) return;
                 e.preventDefault();
                 setDragOver(true);
               }}
@@ -1208,7 +1220,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(false);
-                if (activeSession.status === "closed") return;
+                if (isSemEscrita) return;
                 const f = e.dataTransfer?.files?.[0];
                 if (f) uploadFile(f);
               }}
@@ -1275,7 +1287,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
                 }
 
                 const editing = editingId === m.id;
-                const canEdit = mine && !isTemp && m.type === "text";
+                const canEdit = mine && !isTemp && m.type === "text" && m.sender_user_id === currentUser?.id;
                 // Read by the client? (my message is older than the client's read mark)
                 const readByClient =
                   mine && !isTemp && !!clientReadAt && new Date(m.created_at).getTime() <= new Date(clientReadAt).getTime();
@@ -1423,7 +1435,7 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             </div>
 
             {/* Input */}
-            {activeSession.status !== "closed" && !isLigacao(activeSession) && (
+            {!isSemEscrita && !isLigacao(activeSession) && (
               <footer className="flex items-end gap-2 border-t border-subtle bg-surface-1 p-3">
                 <input
                   ref={fileRef}
@@ -1481,6 +1493,14 @@ export const AttendantChatApp = observer(function AttendantChatApp() {
             {activeSession.status === "closed" && (
               <div className="flex items-center justify-center border-t border-subtle bg-surface-1 p-3">
                 <span className="text-13 text-tertiary">Atendimento encerrado</span>
+              </div>
+            )}
+            {activeSession.status !== "closed" && isSomenteLeitura && (
+              <div className="flex items-center justify-center border-t border-subtle bg-surface-1 p-3">
+                <span className="text-13 text-tertiary">
+                  Conversa de outro atendente. Somente leitura.
+                  {permissoes.canTransferir && " Para responder, transfira a conversa para você."}
+                </span>
               </div>
             )}
           </>

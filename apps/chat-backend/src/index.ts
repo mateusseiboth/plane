@@ -52,6 +52,7 @@ import { parseChannelFilter } from "@/canais";
 import { atendenteModule } from "@/atendente/rotas";
 import { painelModule } from "@/painel/rotas";
 import { mergeClientInfo, parseClientInfo } from "@/atendente/client-info";
+import { SO_O_DONO_ESCREVE, isConversaDeOutroAtendente } from "@/atendente/escrita-regras";
 
 const PORT = Number(process.env.CHAT_PORT ?? 8002);
 
@@ -165,6 +166,9 @@ async function onWsMessage(
   if (type === "agent.message" && sessionId) {
     const session = await prisma.chatSession.findUnique({ where: { id: sessionId } });
     if (!session) return;
+    // Ver a conversa de outro atendente não é responder por ele (src/atendente/escrita-regras.ts).
+    if (isConversaDeOutroAtendente(session, ctx.userId))
+      return reply({ type: "error", action: "message.send", session_id: sessionId, detail: SO_O_DONO_ESCREVE });
     await deliverOutbound(session as any, {
       sender: "attendant",
       type: msg.media_key ? msg.media_type ?? "file" : "text",
@@ -180,6 +184,8 @@ async function onWsMessage(
     return;
   }
   if (type === "agent.typing" && sessionId) {
+    const dono = await prisma.chatSession.findUnique({ where: { id: sessionId }, select: { assignedAttendantId: true } });
+    if (!dono || isConversaDeOutroAtendente(dono, ctx.userId)) return;
     return sendToSession(sessionId, { type: "typing", who: "attendant", session_id: sessionId });
   }
   if (type === "agent.edit" && msg.message_id) {

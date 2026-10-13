@@ -9,6 +9,7 @@ import { PAUSA_DO_ALERTA_MS, readAlertaPausadoAte, shouldAlertSla } from "@/aten
 import { parseChave } from "@/atendente/chave";
 import { mergeClientInfo, parseClientInfo } from "@/atendente/client-info";
 import { parseCadastro } from "@/atendente/cadastro-regras";
+import { isConversaDeOutroAtendente } from "@/atendente/escrita-regras";
 import { isFeriado, parseFeriados } from "@/atendente/feriados";
 import { readDataLocal, readInicioDoDia } from "@/atendente/fuso";
 import { buildUrlDaFoto, isFotoVencida } from "@/atendente/foto";
@@ -29,6 +30,17 @@ import { ZapiProvider } from "@/providers/zapi";
 const MIN = 60_000;
 const agora = new Date("2026-09-22T15:00:00.000Z");
 const antes = (ms: number) => new Date(agora.getTime() - ms);
+
+describe("quem escreve na conversa", () => {
+  it("a conversa de outro atendente é só leitura, mesmo para quem vê todas", () => {
+    expect(isConversaDeOutroAtendente({ assignedAttendantId: "marcio" }, "mateus")).toBe(true);
+  });
+
+  it("a própria conversa e a que ainda não tem dono aceitam resposta", () => {
+    expect(isConversaDeOutroAtendente({ assignedAttendantId: "mateus" }, "mateus")).toBe(false);
+    expect(isConversaDeOutroAtendente({ assignedAttendantId: null }, "mateus")).toBe(false);
+  });
+});
 
 describe("frases prontas", () => {
   it("aceita o texto aparado e a ordem", () => {
