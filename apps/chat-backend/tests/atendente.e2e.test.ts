@@ -5,6 +5,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import prisma from "@db";
+import { signClientToken } from "@/auth";
 import { CHAT_ACTION } from "@/permissoes";
 import {
   CHAT_URL,
@@ -72,19 +73,24 @@ describe("enviar sem o nome do atendente", () => {
 });
 
 describe("conversa de outro atendente", () => {
+  // Direto no banco, já ativa e com dono: pelo POST /sessions/ a fila
+  // distribuiria a conversa para o atendente do teste quando ele está online
+  // (estado que outros arquivos deixam), desfazendo o dono do colega.
   const createConversaDoColega = async () => {
     const colega = await createPessoaComAcoes(slug, [CHAT_ACTION.ATENDER]);
-    const res = await fetch(`${CHAT_URL}/sessions/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspace_id: slug, browser_id: crypto.randomUUID(), name: "Cliente do colega" }),
+    const criada = await prisma.chatSession.create({
+      data: {
+        workspaceId: slug,
+        protocol: `AT-${crypto.randomUUID().slice(0, 12)}`,
+        channel: "native",
+        status: "active",
+        botState: "done",
+        assignedAttendantId: colega.id,
+        clientName: "Cliente do colega",
+        clientBrowserId: crypto.randomUUID(),
+      },
     });
-    const criada = (await res.json()) as { session: { id: string }; token: string };
-    await prisma.chatSession.update({
-      where: { id: criada.session.id },
-      data: { status: "active", assignedAttendantId: colega.id },
-    });
-    return { id: criada.session.id, token: criada.token };
+    return { id: criada.id, token: await signClientToken(criada.id, criada.clientBrowserId!) };
   };
 
   const connectCliente = async (tokenDoCliente: string) => {
