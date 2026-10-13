@@ -113,6 +113,20 @@ describe("guards de workspace", () => {
       expect(member.id).toBe(`ws-admin-${adminId}`);
     });
 
+    it("gestor de projeto acessa sistema do qual não é membro, com o nível e a função do espaço", async () => {
+      const gestor = await createUser();
+      const funcao = await prisma.workflowRole.create({
+        data: {workspaceId: ws.id, name: "Gestor de Projeto", key: "gestor_projeto", level: 18, permissions: []},
+      });
+      await prisma.workspaceMember.create({
+        data: {workspaceId: ws.id, memberId: gestor.id, role: 18, workflowRoleId: funcao.id, isActive: true},
+      });
+      const {member} = await getProjectOrFail(ws.id, otherProjectId, gestor.id);
+      expect(member.role).toBe(18);
+      expect(member.workflowRoleId).toBe(funcao.id);
+      expect(member.id).toBe(`ws-gestor-${gestor.id}`);
+    });
+
     it("eleva a associação de projeto do admin para 20 mesmo se gravada em nível menor", async () => {
       const downgraded = await createUser();
       await addMember(ws.id, downgraded.id, 20, projectId, 15);

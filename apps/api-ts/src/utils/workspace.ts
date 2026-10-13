@@ -36,6 +36,39 @@ export async function findMemberProjectIds(workspaceId: string, userId: string):
 // Não há guarda por nível aqui: "pode fazer X" é `requireWorkspaceAction` /
 // `requireProjectAction` (utils/permission-checks.ts), pela matriz de ações.
 
+/**
+ * Quem participa de todo sistema sem precisar de vínculo em `project_members`:
+ * admin (20) e Gestor de Projeto (18). A regra é UMA, usada pelo guard de
+ * projeto, pela lista de sistemas e por `members/me`. Quem virava gestor sem
+ * vínculo não conseguia aceitar nem recusar chamado em sistema nenhum.
+ */
+// permissao-estrutural: participação nos sistemas, não checagem de ação.
+export const NIVEL_QUE_PARTICIPA_DE_TODO_SISTEMA = 18;
+
+export const isParticipanteDeTodoSistema = (role: number): boolean => role >= NIVEL_QUE_PARTICIPA_DE_TODO_SISTEMA;
+
+const PREFIXO_DO_VINCULO_SINTETICO: Record<number, string> = {20: "ws-admin", 18: "ws-gestor"};
+
+/** Vínculo em memória, no nível e na função do espaço, para quem participa de todo sistema. */
+const buildVinculoSintetico = (
+  projectId: string,
+  workspaceId: string,
+  participante: {memberId: string; role: number; workflowRoleId: string | null},
+) =>
+  ({
+    id: `${PREFIXO_DO_VINCULO_SINTETICO[participante.role] ?? "ws-participante"}-${participante.memberId}`,
+    projectId,
+    workspaceId,
+    memberId: participante.memberId,
+    role: participante.role,
+    workflowRoleId: participante.workflowRoleId,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    sortOrder: null as any,
+  }) as any;
+
 export async function getProjectOrFail(workspaceId: string, projectId: string, userId: string, options?: {allowInstanceAdmin?: boolean}) {
   const project = await prisma.project.findFirst({
     where: {id: projectId, workspaceId, deletedAt: null},
@@ -46,35 +79,21 @@ export async function getProjectOrFail(workspaceId: string, projectId: string, u
     where: {projectId, memberId: userId, isActive: true, deletedAt: null},
   });
 
-  // Workspace admins have full access to every project. This must hold even when
-  // a lower-privilege project membership row exists (e.g. migrations that added
-  // the admin to projects at role 15) — otherwise admins get spurious 403s on
-  // role-gated actions like state transitions. Elevate the effective role to 20.
-  const wsAdmin = await prisma.workspaceMember.findFirst({
-    // permissao-estrutural: admin do espaço participa de todo sistema.
-    where: {workspaceId, memberId: userId, role: {gte: 20}, isActive: true, deletedAt: null},
+  // Admin e Gestor de Projeto participam de todo sistema, mesmo sem vínculo
+  // gravado. Vale também quando existe um vínculo de nível menor (migrações que
+  // puseram o admin nos sistemas como 15): sem elevar, a pessoa tomava 403 em
+  // ação de função, como a transição de etapa, no próprio sistema.
+  const participante = await prisma.workspaceMember.findFirst({
+    // permissao-estrutural: quem participa de todo sistema (isParticipanteDeTodoSistema).
+    where: {workspaceId, memberId: userId, role: {gte: NIVEL_QUE_PARTICIPA_DE_TODO_SISTEMA}, isActive: true, deletedAt: null},
   });
-  if (wsAdmin) {
-    if (member) {
-      // A função vem junto com o nível: manter o `workflowRoleId` da associação
-      // ao sistema fazia resolveRole devolver a função baixa gravada ali (ela tem
-      // prioridade sobre o nível), e o admin tomava 403 no próprio sistema.
-      member = {...member, role: Math.max(member.role, 20), workflowRoleId: wsAdmin.workflowRoleId ?? null} as any;
-    } else {
-      // Return a synthetic member record granting admin-level access
-      member = {
-        id: `ws-admin-${userId}`,
-        projectId,
-        workspaceId,
-        memberId: userId,
-        role: 20,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-        sortOrder: null as any,
-      } as any;
-    }
+  if (participante) {
+    member = member
+      ? // A função vem junto com o nível: manter o `workflowRoleId` da associação
+        // ao sistema fazia resolveRole devolver a função baixa gravada ali (ela tem
+        // prioridade sobre o nível), e o admin tomava 403 no próprio sistema.
+        ({...member, role: Math.max(member.role, participante.role), workflowRoleId: participante.workflowRoleId ?? null} as any)
+      : buildVinculoSintetico(projectId, workspaceId, participante);
   }
 
   if (!member && options?.allowInstanceAdmin) {

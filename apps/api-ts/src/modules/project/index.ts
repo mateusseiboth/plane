@@ -5,7 +5,7 @@ import { paginate } from "@utils/pagination";
 import { publishRealtime } from "@utils/realtime";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
-import { getWorkspaceOrFail, requireWorkspaceMember, getProjectOrFail } from "@utils/workspace";
+import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requireWorkspaceMember } from "@utils/workspace";
 import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 import { createSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
@@ -64,14 +64,13 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   .use(authPlugin)
 
   // ── List projects (plain array — frontend expects IPartialProject[]) ─────────
-  // Workspace admins (role >= 20) see ALL projects.
-  // Non-admins see only projects they are active members of.
+  // Admin e Gestor de Projeto veem TODOS os sistemas (isParticipanteDeTodoSistema).
+  // Os demais veem só os de que são membros ativos.
 
   .get("/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     const wsMember = await requireWorkspaceMember(ws.id, user.id);
-    // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
-    const isAdmin = wsMember.role >= 20;
+    const isAdmin = isParticipanteDeTodoSistema(wsMember.role);
 
     const where: any = { workspaceId: ws.id, deletedAt: null, archivedAt: null };
     if (!isAdmin) {
@@ -86,16 +85,15 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       }),
     ]);
     const roleMap = Object.fromEntries(myMemberships.map((m) => [m.projectId, m.role]));
-    // Admins get role 20 for all projects they aren't explicitly in
-    return projects.map((p) => formatProject(p, roleMap[p.id] ?? (isAdmin ? 20 : undefined)));
+    // Quem participa de todo sistema leva o nível do espaço onde não tem vínculo gravado.
+    return projects.map((p) => formatProject(p, roleMap[p.id] ?? (isAdmin ? wsMember.role : undefined)));
   })
 
   // Alias for /details/ — frontend calls this for full project list
   .get("/details/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     const wsMember = await requireWorkspaceMember(ws.id, user.id);
-    // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
-    const isAdmin = wsMember.role >= 20;
+    const isAdmin = isParticipanteDeTodoSistema(wsMember.role);
 
     const where: any = { workspaceId: ws.id, deletedAt: null };
     if (!isAdmin) {
@@ -110,7 +108,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       }),
     ]);
     const roleMap = Object.fromEntries(myMemberships.map((m) => [m.projectId, m.role]));
-    return projects.map((p) => formatProject(p, roleMap[p.id] ?? (isAdmin ? 20 : undefined)));
+    return projects.map((p) => formatProject(p, roleMap[p.id] ?? (isAdmin ? wsMember.role : undefined)));
   })
 
   .post("/", async ({ params: { slug }, body, user, set }) => {
@@ -375,38 +373,20 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
   })
 
   // ── Project member me (two aliases: /members/me/ and /project-members/me/) ──
-  // Workspace admins always get role 20 even if not explicitly in the project.
+  // Admin e Gestor de Projeto respondem com o nível do espaço mesmo sem vínculo.
 
-  .get("/:project_id/members/me/", async ({ params: { slug, project_id }, user, set }) => {
+  .get("/:project_id/members/me/", async ({ params: { slug, project_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id); // validates access
-    const m = await prisma.projectMember.findFirst({
-      where: { projectId: project_id, memberId: user.id, deletedAt: null },
-    });
-    if (m) return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
-    // Check if workspace admin
-    const wsAdmin = await prisma.workspaceMember.findFirst({
-      // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
-      where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
-    });
-    if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
-    set.status = 404; return { detail: "Você não é membro do projeto." };
+    // Sem vínculo gravado, `member` é o sintético de quem participa de todo sistema.
+    const { member: m } = await getProjectOrFail(ws.id, project_id, user.id);
+    return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
   })
 
-  .get("/:project_id/project-members/me/", async ({ params: { slug, project_id }, user, set }) => {
+  .get("/:project_id/project-members/me/", async ({ params: { slug, project_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id); // validates access
-    const m = await prisma.projectMember.findFirst({
-      where: { projectId: project_id, memberId: user.id, deletedAt: null },
-    });
-    if (m) return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
-    // Check if workspace admin
-    const wsAdmin = await prisma.workspaceMember.findFirst({
-      // permissao-estrutural: admin do espaço participa de todo sistema (getProjectOrFail).
-      where: { workspaceId: ws.id, memberId: user.id, role: { gte: 20 }, isActive: true, deletedAt: null },
-    });
-    if (wsAdmin) return { id: `ws-admin-${user.id}`, member: user.id, role: 20, original_role: 20, created_at: wsAdmin.createdAt.toISOString() };
-    set.status = 404; return { detail: "Você não é membro do projeto." };
+    // Sem vínculo gravado, `member` é o sintético de quem participa de todo sistema.
+    const { member: m } = await getProjectOrFail(ws.id, project_id, user.id);
+    return { id: m.id, member: m.memberId, role: m.role, original_role: m.role, created_at: m.createdAt.toISOString() };
   })
 
   // ── Project invitations ────────────────────────────────────────────────────

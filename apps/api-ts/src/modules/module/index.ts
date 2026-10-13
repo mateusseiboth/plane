@@ -1,7 +1,12 @@
 import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
-import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
+import { getWorkspaceOrFail, getProjectOrFail, requireWorkspaceMember } from "@utils/workspace";
+
+const requireProjetoDoEspaco = async (workspaceId: string, projectId: string) => {
+  const projeto = await prisma.project.findFirst({ where: { id: projectId, workspaceId, deletedAt: null }, select: { id: true } });
+  if (!projeto) throw { status: 404, message: "Projeto não encontrado." };
+};
 import { EProjectAction, requireProjectAction } from "@utils/permission-checks";
 import { serializeModule, serializeIssue, ISSUE_INCLUDE, isoDate } from "@utils/serialize";
 import { pontosDoValor } from "@utils/estimate";
@@ -68,9 +73,13 @@ export const moduleModule = new Elysia({ prefix: "/workspaces/:slug/projects/:pr
 
   // ── Modules list — returns IModule[] (plain array, frontend expects forEach) ──
 
+  // Leitura aberta a qualquer membro do espaço: o modal de abrir chamado pelo
+  // chat escolhe o módulo de QUALQUER sistema, inclusive os de que a pessoa não
+  // é membro. Escrever continua exigindo o vínculo (rotas abaixo).
   .get("/modules/", async ({ params: { slug, project_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await getProjectOrFail(ws.id, project_id, user.id);
+    await requireWorkspaceMember(ws.id, user.id);
+    await requireProjetoDoEspaco(ws.id, project_id);
     const where: any = { projectId: project_id, deletedAt: null };
     if (query.archived === "true") { delete where.deletedAt; where.archivedAt = { not: null }; }
     else where.archivedAt = null;

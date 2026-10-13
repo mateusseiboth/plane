@@ -3,11 +3,12 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { cleanDb } from "@tests/helpers/setup";
-import { createUser, createApiToken, createWorkspace, createProject, apiClient } from "@tests/helpers/factory";
+import { createUser, createApiToken, createWorkspace, createProject, createMemberWithToken, apiClient } from "@tests/helpers/factory";
 
 describe("TestModuleListCreateAPIEndpoint", () => {
   let client: ReturnType<typeof apiClient>;
   let wsSlug: string;
+  let wsId: string;
   let projectId: string;
 
   beforeAll(async () => {
@@ -16,6 +17,7 @@ describe("TestModuleListCreateAPIEndpoint", () => {
     const token = await createApiToken(user.id);
     const ws = await createWorkspace(user.id);
     wsSlug = ws.slug;
+    wsId = ws.id;
     const project = await createProject(ws.id, user.id);
     projectId = project.id;
     client = apiClient(token.token);
@@ -30,6 +32,13 @@ describe("TestModuleListCreateAPIEndpoint", () => {
     expect(res.status).toBe(201);
     const data = await res.json() as any;
     expect(data.name).toBe("Sprint 1");
+  });
+
+  it("atendente do espaço sem vínculo com o sistema lista os módulos: o modal de abrir chamado precisa deles", async () => {
+    const atendente = await createMemberWithToken(wsId, 6);
+    const res = await apiClient(atendente.token).get(url());
+    expect(res.status).toBe(200);
+    expect(Array.isArray(await res.json())).toBe(true);
   });
 
   it("list modules returns an array", async () => {

@@ -97,7 +97,8 @@ Permissão efetiva de uma pessoa =
   `role < 15`, `role >= 20`, `role === 8`, `role: {gte: ...}`, `requireWorkspaceWriter`,
   `requireWorkspaceAdmin`, `requireRoleAdmin` ou `NIVEL_ADMIN`.
 - Uso legítimo (não é checagem de acesso) leva o marcador `// permissao-estrutural: <motivo>` na
-  linha ou na linha de cima. Hoje: admin do espaço participa de todo sistema, dono exibido no
+  linha ou na linha de cima. Hoje: admin e Gestor de Projeto participam de todo sistema
+  (`isParticipanteDeTodoSistema`, nível 18 ou mais, em `utils/workspace.ts`), dono exibido no
   cabeçalho, contagens de painel, seleção de quem é avisado.
 - `apps/chat-backend/tests/arquitetura-permissoes.test.ts` faz o mesmo no chat.
 - Quem edita funções só CONCEDE o que ele mesmo tem (`findActionErrors`), e não edita as próprias
@@ -133,7 +134,7 @@ Permissão efetiva de uma pessoa =
 | `project` membros (rotas duplicadas do memberModule)                                       | `role < 15`                                       | `member.manage`                                                                                                        |
 | `project` POST (criar sistema)                                                             | **nenhuma** (qualquer membro)                     | `project.create` (Gestor, admin)                                                                                       |
 | `project` sync-members                                                                     | `role < 20`                                       | `workspace.members`                                                                                                    |
-| `project` lista, `members/me`                                                              | `role >= 20`                                      | estrutural: admin participa de todo sistema                                                                            |
+| `project` lista, `members/me`                                                              | `role >= 20`                                      | estrutural: admin e Gestor de Projeto (nível 18+) participam de todo sistema                                           |
 | `state` POST/PATCH/mark-default                                                            | `role < 15`                                       | `state.manage`                                                                                                         |
 | `state` DELETE                                                                             | `role < 20`                                       | `state.delete` (admin)                                                                                                 |
 | `label`                                                                                    | `role < 15`                                       | `label.manage`                                                                                                         |
