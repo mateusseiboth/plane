@@ -157,6 +157,13 @@ describe("POST .../inbox-issues/from-chat/", () => {
     expect(res.status).toBe(403);
   });
 
+  it("atendente sem vínculo com o sistema abre mesmo assim: a ação do chat no espaço basta", async () => {
+    const atendente = await createMemberWithToken(wsId, 6);
+    const res = await apiClient(atendente.token).post(url(), { session_id: await createConversa(wsSlug) });
+    expect(res.status).toBe(201);
+    expect((await res.json()).issue.project_id).toBe(projetoId);
+  });
+
   it("atendente com chat.abrir_chamado abre; negada a ação por pessoa, 403", async () => {
     const atendente = await createMemberWithToken(wsId, 6, projetoId, 6);
     const cliente = apiClient(atendente.token);

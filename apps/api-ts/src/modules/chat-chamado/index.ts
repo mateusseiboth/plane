@@ -19,7 +19,7 @@ import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
 import { createSolicitacao } from "@utils/intake";
-import { EProjectAction, requireProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
+import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail } from "@utils/workspace";
 import { copyAnexosDaConversa } from "@modules/chat-chamado/anexos";
 import {
@@ -90,10 +90,10 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
   .use(authPlugin)
   .post("/:project_id/inbox-issues/from-chat/", async ({ params: { slug, project_id }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    // Duas perguntas: abrir chamado pela conversa (ação do chat, no espaço) e
-    // abrir pedido no sistema escolhido.
+    // Uma pergunta só: abrir chamado pela conversa é ação do chat, no espaço.
+    // O atendimento abre solicitação para QUALQUER sistema, inclusive os de
+    // que não é membro: a triagem é de quem recebe o pedido, não de quem o abre.
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.CHAT_ABRIR_CHAMADO);
-    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.INTAKE_CREATE);
     const corpo = (body ?? {}) as Corpo;
     const sessionId = readTexto(corpo.session_id);
     const prioridade = readTexto(corpo.priority) || "none";
