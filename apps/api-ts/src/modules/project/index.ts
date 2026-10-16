@@ -7,7 +7,7 @@ import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
 import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requireWorkspaceMember } from "@utils/workspace";
 import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
-import { createSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
+import { createSolicitacao, findErrosDaSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
@@ -540,6 +540,12 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const ws = await getWorkspaceOrFail(slug);
     await requireProjectAction(ws.id, project_id, user.id, EProjectAction.INTAKE_CREATE);
     const b = (body as any).issue ?? body as any;
+    const referencias = {projectId: project_id, workspaceId: ws.id, moduleId: b.module_id || null, entityId: b.entity_id || null};
+    const erros = await findErrosDaSolicitacao(referencias);
+    if (erros.length) {
+      set.status = 422;
+      return {detail: erros[0]!.message, errors: erros};
+    }
     const issue = await createSolicitacao({
       workspaceId: ws.id,
       projectId: project_id,
@@ -547,7 +553,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       name: b.name ?? "Novo chamado",
       priority: b.priority ?? "none",
       ...(b.description_html !== undefined ? {descriptionHtml: String(b.description_html)} : {}),
-      entityId: b.entity_id ?? null,
+      entityId: referencias.entityId,
+      moduleId: referencias.moduleId,
       assigneeIds: b.assignee_ids ?? b.assignees ?? [],
       headers,
     });
