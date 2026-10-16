@@ -7,15 +7,12 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 // components
 import { PageHead } from "@/components/core/page-title";
 import { DownloadActivityButton } from "@/components/profile/activity/download-button";
 import { WorkspaceActivityListPage } from "@/components/profile/activity/workspace-activity-list";
-// hooks
-import { useUserPermissions } from "@/hooks/store/user";
 
 const PER_PAGE = 100;
 
@@ -24,8 +21,6 @@ function ProfileActivityPage() {
   const [pageCount, setPageCount] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [resultsCount, setResultsCount] = useState(0);
-  // router
-  const { allowPermissions } = useUserPermissions();
   //hooks
   const { t } = useTranslation();
 
@@ -47,18 +42,14 @@ function ProfileActivityPage() {
       />
     );
 
-  const canDownloadActivity = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
-
   return (
     <>
       <PageHead title="Perfil - Atividade" />
       <div className="flex h-full w-full flex-col overflow-hidden py-5">
         <div className="flex items-center justify-between gap-2 px-5 md:px-9">
           <h3 className="text-16 font-medium">{t("profile.stats.recent_activity.title")}</h3>
-          {canDownloadActivity && <DownloadActivityButton />}
+          {/* Baixar a própria atividade: todo membro do espaço. */}
+          <DownloadActivityButton />
         </div>
         <div className="vertical-scrollbar flex scrollbar-md h-full flex-col overflow-y-auto px-5 md:px-9">
           {activityPages}

@@ -9,7 +9,6 @@ import type {ReactNode} from "react";
 import {useEffect, useState} from "react";
 import useSWR from "swr";
 // plane imports
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
 import {GANTT_TIMELINE_TYPE} from "@plane/types";
 // components
 import {ProjectAccessRestriction} from "@/components/auth-screens/project/project-access-restriction";
@@ -37,6 +36,7 @@ import {useProjectState} from "@/hooks/store/use-project-state";
 import {useProjectView} from "@/hooks/store/use-project-view";
 import {useUser, useUserPermissions} from "@/hooks/store/user";
 import {useTimeLineChart} from "@/hooks/use-timeline-chart";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
 
 interface IProjectAuthWrapper {
   workspaceSlug: string;
@@ -50,7 +50,7 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
   // states
   const [isJoiningProject, setIsJoiningProject] = useState(false);
   // store hooks
-  const {fetchUserProjectInfo, allowPermissions, getProjectRoleByWorkspaceSlugAndProjectId} = useUserPermissions();
+  const {fetchUserProjectInfo, getProjectRoleByWorkspaceSlugAndProjectId} = useUserPermissions();
   const {fetchProjectDetails} = useProject();
   const {joinProject} = useUserPermissions();
   const {fetchAllCycles} = useCycle();
@@ -64,23 +64,14 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
   const {data: currentUserData} = useUser();
   const {fetchProjectLabels} = useLabel();
   const {getProjectEstimates} = useProjectEstimates();
+  const {can} = useMyWorkspaceActions(workspaceSlug);
   // derived values
-  const hasPermissionToCurrentProject = allowPermissions(
-    [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-      EUserPermissions.GUEST,
-    ],
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId,
-  );
   const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
-  const isWorkspaceAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE, workspaceSlug);
+  // Entrar no sistema exige participar dele (vínculo); o backend já devolve
+  // admin e Gestor de Projeto em todo sistema.
+  const hasPermissionToCurrentProject = currentProjectRole !== undefined;
+  // Quem gerencia membros de sistema pode se incluir num sistema privado.
+  const canJoinAnyProject = can("member.manage");
   // Initialize module timeline chart
   useEffect(() => {
     initGantt();
@@ -157,7 +148,7 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
     return (
       <ProjectAccessRestriction
         errorStatusCode={projectDetailsError?.status}
-        isWorkspaceAdmin={isWorkspaceAdmin}
+        isWorkspaceAdmin={canJoinAnyProject}
         handleJoinProject={handleJoinProject}
         isJoinButtonDisabled={isJoiningProject}
       />

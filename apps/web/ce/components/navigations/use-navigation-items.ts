@@ -7,23 +7,18 @@
 import {useCallback, useMemo} from "react";
 // plane imports
 import type {TNavigationItem} from "@/components/navigation/tab-navigation-root";
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
 import {CycleIcon, IntakeIcon, ModuleIcon, PageIcon, ViewsIcon, WorkItemsIcon} from "@plane/propel/icons";
-import type {EUserProjectRoles, IPartialProject} from "@plane/types";
+import type {IPartialProject} from "@plane/types";
 
 type UseNavigationItemsProps = {
   workspaceSlug: string;
   projectId: string;
   project?: IPartialProject;
-  allowPermissions: (
-    access: EUserPermissions[] | EUserProjectRoles[],
-    level: EUserPermissionsLevel,
-    workspaceSlug: string,
-    projectId: string,
-  ) => boolean;
 };
 
-export const useNavigationItems = ({workspaceSlug, projectId, project, allowPermissions}: UseNavigationItemsProps): TNavigationItem[] => {
+// Todas as abas do sistema são leitura: quem participa do sistema vê as que
+// estão ligadas nos recursos. Criar/editar dentro delas é decidido em cada tela.
+export const useNavigationItems = ({workspaceSlug, projectId, project}: UseNavigationItemsProps): TNavigationItem[] => {
   // Base navigation items
   const baseNavigation = useCallback(
     (workspaceSlug: string, projectId: string): TNavigationItem[] => [
@@ -33,15 +28,6 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
         name: "Chamados",
         href: `/${workspaceSlug}/projects/${projectId}/issues`,
         icon: WorkItemsIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: true,
         sortOrder: 1,
       },
@@ -51,14 +37,6 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
         name: "Cycles",
         href: `/${workspaceSlug}/projects/${projectId}/cycles`,
         icon: CycleIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-        ],
         shouldRender: !!project?.cycle_view,
         sortOrder: 2,
       },
@@ -68,14 +46,6 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
         name: "Modules",
         href: `/${workspaceSlug}/projects/${projectId}/modules`,
         icon: ModuleIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-        ],
         shouldRender: !!project?.module_view,
         sortOrder: 3,
       },
@@ -85,15 +55,6 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
         name: "Views",
         href: `/${workspaceSlug}/projects/${projectId}/views`,
         icon: ViewsIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: !!project?.issue_views_view,
         sortOrder: 4,
       },
@@ -103,15 +64,6 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
         name: "Pages",
         href: `/${workspaceSlug}/projects/${projectId}/pages`,
         icon: PageIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: !!project?.page_view,
         sortOrder: 5,
       },
@@ -121,15 +73,6 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
         name: "Solicitações",
         href: `/${workspaceSlug}/projects/${projectId}/intake`,
         icon: IntakeIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: !!project?.inbox_view,
         sortOrder: 6,
       },
@@ -141,16 +84,12 @@ export const useNavigationItems = ({workspaceSlug, projectId, project, allowPerm
   const navigationItems = useMemo(() => {
     const navItems = baseNavigation(workspaceSlug, projectId);
 
-    // Filter by permissions and shouldRender
-    const filteredItems = navItems.filter((item) => {
-      if (!item.shouldRender) return false;
-      const hasAccess = allowPermissions(item.access, EUserPermissionsLevel.PROJECT, workspaceSlug, project?.id ?? "");
-      return hasAccess;
-    });
+    // Filter by shouldRender
+    const filteredItems = navItems.filter((item) => item.shouldRender);
 
     // Sort by sortOrder
     return filteredItems.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [workspaceSlug, projectId, baseNavigation, allowPermissions, project?.id]);
+  }, [workspaceSlug, projectId, baseNavigation]);
 
   return navigationItems;
 };

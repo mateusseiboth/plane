@@ -4,10 +4,8 @@
  * See the LICENSE file for details.
  */
 
-import {EUserPermissions, EUserPermissionsLevel} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {CycleIcon, IntakeIcon, ModuleIcon, PageIcon, ViewsIcon, WorkItemsIcon} from "@plane/propel/icons";
-import type {EUserProjectRoles} from "@plane/types";
 import {observer} from "mobx-react";
 import Link from "next/link";
 import {useParams, usePathname} from "next/navigation";
@@ -19,13 +17,11 @@ import {SidebarNavItem} from "@/components/sidebar/sidebar-navigation";
 import {useAppTheme} from "@/hooks/store/use-app-theme";
 import {useIssueDetail} from "@/hooks/store/use-issue-detail";
 import {useProject} from "@/hooks/store/use-project";
-import {useUserPermissions} from "@/hooks/store/user";
 
 export type TNavigationItem = {
   name: string;
   href: string;
   icon: React.ElementType;
-  access: EUserPermissions[] | EUserProjectRoles[];
   shouldRender: boolean;
   sortOrder: number;
   i18n_key: string;
@@ -45,7 +41,6 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
   const {t} = useTranslation();
   const {isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar, toggleSidebar} = useAppTheme();
   const {getPartialProjectById} = useProject();
-  const {allowPermissions} = useUserPermissions();
   const {
     issue: {getIssueIdByIdentifier, getIssueById},
   } = useIssueDetail();
@@ -74,15 +69,6 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
         name: "Chamados",
         href: `/${workspaceSlug}/projects/${projectId}/issues`,
         icon: WorkItemsIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: true,
         sortOrder: 1,
       },
@@ -92,14 +78,6 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
         name: "Cycles",
         href: `/${workspaceSlug}/projects/${projectId}/cycles`,
         icon: CycleIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-        ],
         shouldRender: project?.cycle_view ?? false,
         sortOrder: 2,
       },
@@ -109,14 +87,6 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
         name: "Modules",
         href: `/${workspaceSlug}/projects/${projectId}/modules`,
         icon: ModuleIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-        ],
         shouldRender: project?.module_view ?? false,
         sortOrder: 3,
       },
@@ -126,15 +96,6 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
         name: "Views",
         href: `/${workspaceSlug}/projects/${projectId}/views`,
         icon: ViewsIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: project?.issue_views_view ?? false,
         sortOrder: 4,
       },
@@ -144,15 +105,6 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
         name: "Pages",
         href: `/${workspaceSlug}/projects/${projectId}/pages`,
         icon: PageIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: project?.page_view ?? false,
         sortOrder: 5,
       },
@@ -162,15 +114,6 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
         name: "Solicitações",
         href: `/${workspaceSlug}/projects/${projectId}/intake`,
         icon: IntakeIcon,
-        access: [
-          EUserPermissions.ADMIN,
-          EUserPermissions.GESTOR_PROJETO,
-          EUserPermissions.MEMBER,
-          EUserPermissions.TI,
-          EUserPermissions.QUALIDADE,
-          EUserPermissions.ATENDIMENTO,
-          EUserPermissions.GUEST,
-        ],
         shouldRender: project?.inbox_view ?? false,
         sortOrder: 6,
       },
@@ -218,10 +161,8 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
   return (
     <>
       {navigationItemsMemo.map((item) => {
+        // Abas de leitura: todo membro do sistema vê as que estão ligadas nos recursos.
         if (!item.shouldRender) return;
-
-        const hasAccess = allowPermissions(item.access, EUserPermissionsLevel.PROJECT, workspaceSlug, project.id);
-        if (!hasAccess) return null;
 
         const shouldShowCount = item.key === "intake" && (project.intake_count ?? 0) > 0;
 

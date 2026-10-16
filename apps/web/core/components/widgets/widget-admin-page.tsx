@@ -48,7 +48,7 @@ export const WidgetAdminPage: React.FC = observer(() => {
   if (!canManage) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-13 text-tertiary">
-        Somente quem administra a instância ou é do TI gerencia widgets.
+        Sua função não permite gerenciar widgets.
       </div>
     );
   }

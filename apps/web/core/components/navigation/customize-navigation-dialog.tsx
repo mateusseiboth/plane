@@ -9,7 +9,6 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { GripVertical, X } from "lucide-react";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Checkbox, EModalPosition, EModalWidth, ModalCore, Sortable } from "@plane/ui";
 import { cn } from "@plane/utils";
@@ -55,7 +54,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
   const { workspaceSlug } = useParams();
 
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canDo } = useUserPermissions();
   const {
     preferences: personalPreferences,
     togglePersonalItem,
@@ -81,15 +80,9 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
 
   // Filter workspace items by permissions and feature flags, then get pinned/unpinned items
   const workspaceItems = useMemo(() => {
-    const items = ITENS_DO_ESPACO_NA_BARRA.filter((item) => {
-      // Permission check
-      const hasPermission = allowPermissions(
-        item.access,
-        EUserPermissionsLevel.WORKSPACE,
-        workspaceSlug?.toString() || ""
-      );
-      return hasPermission;
-    }).map((item) => {
+    // Mesmo recorte da barra: a ação do item (sem ação, todo membro do espaço).
+    const permitidos = ITENS_DO_ESPACO_NA_BARRA.filter((item) => canDo(item.action, workspaceSlug?.toString()));
+    const items = permitidos.map((item) => {
       // Get pinned status and sort order from localStorage
       const preference = workspacePreferences.items[item.key];
       const isPinned = isItemFixadoNaBarra(item.key, workspacePreferences.items);
@@ -104,7 +97,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
     });
 
     return items.sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [workspaceSlug, allowPermissions, workspacePreferences]);
+  }, [workspaceSlug, canDo, workspacePreferences]);
 
   // Handle checkbox toggle
   const handleWorkspaceItemToggle = useCallback(

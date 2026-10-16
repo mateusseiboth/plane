@@ -18,18 +18,18 @@ type Props = {
   project: {
     id: string;
   };
-  isAdmin: boolean;
-  isAuthorized: boolean;
+  /** Publicar o sistema é configuração dele (`project.settings`). */
+  canPublish: boolean;
   onCopyText: () => void;
   onLeaveProject: () => void;
   onPublishModal: () => void;
 };
 
+// Arquivados (leitura) e sair do sistema valem para todo membro do sistema.
 export function ProjectActionsMenu({
   workspaceSlug,
   project,
-  isAdmin,
-  isAuthorized,
+  canPublish,
   onCopyText,
   onLeaveProject,
   onPublishModal,
@@ -63,7 +63,7 @@ export function ProjectActionsMenu({
       onMenuClose={() => setIsMenuActive(false)}
     >
       {/* Publish project settings */}
-      {isAdmin && (
+      {canPublish && (
         <CustomMenu.MenuItem onClick={onPublishModal}>
           <div className="relative flex flex-shrink-0 items-center justify-start gap-2">
             <div className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-sm text-secondary transition-all duration-300 hover:bg-layer-1">
@@ -79,18 +79,16 @@ export function ProjectActionsMenu({
           <span>{t("copy_link")}</span>
         </span>
       </CustomMenu.MenuItem>
-      {isAuthorized && (
-        <CustomMenu.MenuItem
-          onClick={() => {
-            navigate(`/${workspaceSlug}/projects/${project?.id}/archives/issues`);
-          }}
-        >
-          <div className="flex cursor-pointer items-center justify-start gap-2">
-            <ArchiveIcon className="h-3.5 w-3.5 stroke-[1.5]" />
-            <span>{t("archives")}</span>
-          </div>
-        </CustomMenu.MenuItem>
-      )}
+      <CustomMenu.MenuItem
+        onClick={() => {
+          navigate(`/${workspaceSlug}/projects/${project?.id}/archives/issues`);
+        }}
+      >
+        <div className="flex cursor-pointer items-center justify-start gap-2">
+          <ArchiveIcon className="h-3.5 w-3.5 stroke-[1.5]" />
+          <span>{t("archives")}</span>
+        </div>
+      </CustomMenu.MenuItem>
       <CustomMenu.MenuItem
         onClick={() => {
           navigate(`/${workspaceSlug}/settings/projects/${project?.id}`);
@@ -102,17 +100,15 @@ export function ProjectActionsMenu({
         </div>
       </CustomMenu.MenuItem>
       {/* Leave project */}
-      {!isAuthorized && (
-        <CustomMenu.MenuItem
-          onClick={onLeaveProject}
-          data-ph-element={MEMBER_TRACKER_ELEMENTS.SIDEBAR_PROJECT_QUICK_ACTIONS}
-        >
-          <div className="flex items-center justify-start gap-2">
-            <LogOut className="h-3.5 w-3.5 stroke-[1.5]" />
-            <span>{t("leave_project")}</span>
-          </div>
-        </CustomMenu.MenuItem>
-      )}
+      <CustomMenu.MenuItem
+        onClick={onLeaveProject}
+        data-ph-element={MEMBER_TRACKER_ELEMENTS.SIDEBAR_PROJECT_QUICK_ACTIONS}
+      >
+        <div className="flex items-center justify-start gap-2">
+          <LogOut className="h-3.5 w-3.5 stroke-[1.5]" />
+          <span>{t("leave_project")}</span>
+        </div>
+      </CustomMenu.MenuItem>
     </CustomMenu>
   );
 }

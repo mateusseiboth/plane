@@ -6,8 +6,6 @@
 
 import { isEmpty } from "lodash-es";
 import { observer } from "mobx-react";
-// plane helpers
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
 // components
 import { SidebarWrapper } from "@/components/sidebar/sidebar-wrapper";
 import { SidebarFavoritesMenu } from "@/components/workspace/sidebar/favorites/favorites-menu";
@@ -16,28 +14,21 @@ import { SidebarQuickActions } from "@/components/workspace/sidebar/quick-action
 import { SidebarMenuItems } from "@/components/workspace/sidebar/sidebar-menu-items";
 // hooks
 import { useFavorite } from "@/hooks/store/use-favorite";
-import { useUserPermissions } from "@/hooks/store/user";
 // plane web components
 import { SidebarTeamsList } from "@/plane-web/components/workspace/sidebar/teams-sidebar-list";
 
 export const AppSidebar = observer(function AppSidebar() {
   // store hooks
-  const { allowPermissions } = useUserPermissions();
   const { groupedFavorites } = useFavorite();
 
   // derived values
-  const canPerformWorkspaceMemberActions = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
-
   const isFavoriteEmpty = isEmpty(groupedFavorites);
 
   return (
     <SidebarWrapper title="Projetos" quickActions={<SidebarQuickActions />}>
       <SidebarMenuItems />
-      {/* Favorites Menu */}
-      {canPerformWorkspaceMemberActions && !isFavoriteEmpty && <SidebarFavoritesMenu />}
+      {/* Favorites Menu: todo membro do espaço tem favoritos */}
+      {!isFavoriteEmpty && <SidebarFavoritesMenu />}
       {/* Teams List */}
       <SidebarTeamsList />
       {/* Projects List */}

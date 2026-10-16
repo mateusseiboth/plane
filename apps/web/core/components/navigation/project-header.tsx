@@ -12,7 +12,6 @@ import type { ICustomSearchSelectOption } from "@plane/types";
 import { CustomSearchSelect } from "@plane/ui";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 // plane web imports
 import { useNavigationItems } from "@/plane-web/components/navigations";
@@ -33,7 +32,6 @@ export const ProjectHeader = observer(function ProjectHeader(props: TProjectHead
   const router = useAppRouter();
   // store hooks
   const { joinedProjectIds, getPartialProjectById } = useProject();
-  const { allowPermissions } = useUserPermissions();
 
   // Get current project details
   const currentProjectDetails = getPartialProjectById(projectId);
@@ -43,7 +41,6 @@ export const ProjectHeader = observer(function ProjectHeader(props: TProjectHead
     workspaceSlug: workspaceSlug,
     projectId,
     project: currentProjectDetails,
-    allowPermissions,
   });
 
   // Get preferences from hook

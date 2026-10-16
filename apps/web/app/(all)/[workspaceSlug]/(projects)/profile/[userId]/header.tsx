@@ -8,7 +8,7 @@
 import { observer } from "mobx-react";
 import { useParams, useRouter } from "next/navigation";
 import { PanelRight } from "lucide-react";
-import { PROFILE_VIEWER_TAB, PROFILE_ADMINS_TAB, EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
+import { PROFILE_VIEWER_TAB, PROFILE_ADMINS_TAB } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { YourWorkIcon, ChevronDownIcon } from "@plane/propel/icons";
 import type { IUserProfileProjectSegregation } from "@plane/types";
@@ -35,17 +35,13 @@ export const UserProfileHeader = observer(function UserProfileHeader(props: TUse
   // store hooks
   const { toggleProfileSidebar, profileSidebarCollapsed } = useAppTheme();
   const { data: currentUser } = useUser();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
   const { t } = useTranslation();
-  // derived values
-  const isAuthorized = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
 
   if (!workspaceUserInfo) return null;
 
-  const tabsList = isAuthorized ? [...PROFILE_VIEWER_TAB, ...PROFILE_ADMINS_TAB] : PROFILE_VIEWER_TAB;
+  // O perfil é leitura: todo membro do espaço vê todas as abas.
+  const tabsList = [...PROFILE_VIEWER_TAB, ...PROFILE_ADMINS_TAB];
 
   const userName = `${userProjectsData?.user_data?.first_name} ${userProjectsData?.user_data?.last_name}`;
 

@@ -6,7 +6,6 @@
 
 import { observer } from "mobx-react";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_CREATE_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { ContentWrapper } from "@plane/ui";
@@ -40,17 +39,14 @@ export const ProjectCardList = observer(function ProjectCardList(props: TProject
     getProjectById,
   } = useProject();
   const { currentWorkspaceDisplayFilters, currentWorkspaceFilters } = useProjectFilter();
-  const { allowPermissions } = useUserPermissions();
+  const { canDo } = useUserPermissions();
 
   // derived values
   const workspaceProjectIds = totalProjectIdsProps ?? storeWorkspaceProjectIds;
   const filteredProjectIds = filteredProjectIdsProps ?? storeFilteredProjectIds;
 
-  // permissions
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_CREATE_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // O estado vazio oferece criar sistema.
+  const canPerformEmptyStateActions = canDo("project.create");
 
   if (!filteredProjectIds || !workspaceProjectIds || loader === "init-loader" || fetchStatus !== "complete")
     return <ProjectsLoader />;

@@ -11,7 +11,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Hotel } from "lucide-react";
 // plane ui
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_CREATE_ROLES } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { useTranslation } from "@plane/i18n";
 import { MembersPropertyIcon, CheckIcon, ProjectIcon, CloseIcon } from "@plane/propel/icons";
@@ -20,14 +19,15 @@ import { cn, getFileURL } from "@plane/utils";
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web constants
 
 export const NoProjectsEmptyState = observer(function NoProjectsEmptyState() {
   // navigation
   const { workspaceSlug } = useParams();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { toggleCreateProjectModal } = useCommandPalette();
   const { data: currentUser } = useUser();
   const { joinedProjectIds } = useProject();
@@ -41,11 +41,10 @@ export const NoProjectsEmptyState = observer(function NoProjectsEmptyState() {
   });
   const { t } = useTranslation();
   // derived values
-  const canCreateProject = allowPermissions(
-    PROJECT_CREATE_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
-  const isWorkspaceAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canCreateProject = can("project.create");
+  // Os atalhos levam a convidar membros e às configurações do espaço.
+  const canInviteMembers = can("workspace.invite");
+  const canConfigureWorkspace = can("workspace.settings");
 
   const EMPTY_STATE_DATA = [
     {
@@ -74,7 +73,7 @@ export const NoProjectsEmptyState = observer(function NoProjectsEmptyState() {
       cta: {
         text: "home.empty.invite_team.cta",
         link: `/${workspaceSlug}/settings/members`,
-        disabled: !isWorkspaceAdmin,
+        disabled: !canInviteMembers,
       },
     },
     {
@@ -86,7 +85,7 @@ export const NoProjectsEmptyState = observer(function NoProjectsEmptyState() {
       cta: {
         text: "home.empty.configure_workspace.cta",
         link: "settings",
-        disabled: !isWorkspaceAdmin,
+        disabled: !canConfigureWorkspace,
       },
     },
     {

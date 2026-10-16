@@ -6,7 +6,6 @@
 
 import { BarChart2, Briefcase, FileText, Home, Inbox, Layers, PenSquare, Settings } from "lucide-react";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
 import { ArchiveIcon, UserActivityIcon, LayersIcon, ContrastIcon, DiceIcon, Intake } from "@plane/propel/icons";
 import type { ICycle, IModule, IPartialProject, IProjectView, IWorkspace } from "@plane/types";
 
@@ -54,23 +53,19 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
   // store hooks
   const {
     data: currentUser,
-    permission: { allowPermissions },
+    permission: { canDo, getProjectRoleByWorkspaceSlugAndProjectId },
   } = useUser();
   const { getPartialProjectById } = useProject();
   // derived values
-  const hasWorkspaceMemberLevelPermissions = (ctx: TPowerKContext) =>
-    allowPermissions(
-      PROJECT_VIEW_ROLES,
-      EUserPermissionsLevel.WORKSPACE,
-      ctx.params.workspaceSlug?.toString()
-    );
-  const hasProjectMemberLevelPermissions = (ctx: TPowerKContext) =>
-    allowPermissions(
-      PROJECT_VIEW_ROLES,
-      EUserPermissionsLevel.PROJECT,
-      ctx.params.workspaceSlug?.toString(),
+  // Tela de destino do espaço: a ação que ela exige; sem ação, todo membro do espaço.
+  const canOpenWorkspaceScreen = (ctx: TPowerKContext, action?: string) =>
+    canDo(action, ctx.params.workspaceSlug?.toString());
+  // Telas do sistema são leitura: basta participar dele (vínculo).
+  const isProjectMember = (ctx: TPowerKContext) =>
+    getProjectRoleByWorkspaceSlugAndProjectId(
+      ctx.params.workspaceSlug?.toString() ?? "",
       ctx.params.projectId?.toString()
-    );
+    ) !== undefined;
   const baseWorkspaceConditions = (ctx: TPowerKContext) => Boolean(ctx.params.workspaceSlug?.toString());
   const baseProjectConditions = (ctx: TPowerKContext) =>
     Boolean(ctx.params.workspaceSlug?.toString() && ctx.params.projectId?.toString());
@@ -125,8 +120,8 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
       icon: UserActivityIcon,
       keySequence: "gy",
       action: (ctx) => handlePowerKNavigate(ctx, [ctx.params.workspaceSlug?.toString(), "profile", currentUser?.id]),
-      isEnabled: (ctx) => baseWorkspaceConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
-      isVisible: (ctx) => baseWorkspaceConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
+      isEnabled: (ctx) => baseWorkspaceConditions(ctx) && canOpenWorkspaceScreen(ctx),
+      isVisible: (ctx) => baseWorkspaceConditions(ctx) && canOpenWorkspaceScreen(ctx),
       closeOnSelect: true,
     },
     nav_account_settings: {
@@ -222,8 +217,8 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
       icon: BarChart2,
       keySequence: "ga",
       action: (ctx) => handlePowerKNavigate(ctx, [ctx.params.workspaceSlug?.toString(), "analytics", "overview"]),
-      isEnabled: (ctx) => baseWorkspaceConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
-      isVisible: (ctx) => baseWorkspaceConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
+      isEnabled: (ctx) => baseWorkspaceConditions(ctx) && canOpenWorkspaceScreen(ctx, "report.view"),
+      isVisible: (ctx) => baseWorkspaceConditions(ctx) && canOpenWorkspaceScreen(ctx, "report.view"),
       closeOnSelect: true,
     },
     nav_workspace_drafts: {
@@ -234,8 +229,8 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
       icon: PenSquare,
       keySequence: "gj",
       action: (ctx) => handlePowerKNavigate(ctx, [ctx.params.workspaceSlug?.toString(), "drafts"]),
-      isEnabled: (ctx) => baseWorkspaceConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
-      isVisible: (ctx) => baseWorkspaceConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
+      isEnabled: (ctx) => baseWorkspaceConditions(ctx) && canOpenWorkspaceScreen(ctx, "issue.create"),
+      isVisible: (ctx) => baseWorkspaceConditions(ctx) && canOpenWorkspaceScreen(ctx, "issue.create"),
       closeOnSelect: true,
     },
     nav_workspace_archives: {
@@ -247,9 +242,9 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
       keySequence: "gr",
       action: (ctx) => handlePowerKNavigate(ctx, [ctx.params.workspaceSlug?.toString(), "projects", "archives"]),
       isEnabled: (ctx) =>
-        baseWorkspaceConditions(ctx) && !baseProjectConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
+        baseWorkspaceConditions(ctx) && !baseProjectConditions(ctx) && canOpenWorkspaceScreen(ctx),
       isVisible: (ctx) =>
-        baseWorkspaceConditions(ctx) && !baseProjectConditions(ctx) && hasWorkspaceMemberLevelPermissions(ctx),
+        baseWorkspaceConditions(ctx) && !baseProjectConditions(ctx) && canOpenWorkspaceScreen(ctx),
       closeOnSelect: true,
     },
     open_workspace_setting: {
@@ -317,9 +312,9 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
         ]);
       },
       isEnabled: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.cycle_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.cycle_view,
       isVisible: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.cycle_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.cycle_view,
       closeOnSelect: true,
     },
     nav_project_cycles: {
@@ -337,9 +332,9 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
           "cycles",
         ]),
       isEnabled: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.cycle_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.cycle_view,
       isVisible: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.cycle_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.cycle_view,
       closeOnSelect: true,
     },
     open_project_module: {
@@ -361,9 +356,9 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
         ]);
       },
       isEnabled: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.module_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.module_view,
       isVisible: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.module_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.module_view,
       closeOnSelect: true,
     },
     nav_project_modules: {
@@ -381,9 +376,9 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
           "modules",
         ]),
       isEnabled: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.module_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.module_view,
       isVisible: (ctx) =>
-        baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx) && !!getContextProject(ctx)?.module_view,
+        baseProjectConditions(ctx) && isProjectMember(ctx) && !!getContextProject(ctx)?.module_view,
       closeOnSelect: true,
     },
     open_project_view: {
@@ -477,8 +472,8 @@ export const usePowerKNavigationCommandsRecord = (): Record<TPowerKNavigationCom
           "archives",
           "issues",
         ]),
-      isEnabled: (ctx) => baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx),
-      isVisible: (ctx) => baseProjectConditions(ctx) && hasProjectMemberLevelPermissions(ctx),
+      isEnabled: (ctx) => baseProjectConditions(ctx) && isProjectMember(ctx),
+      isVisible: (ctx) => baseProjectConditions(ctx) && isProjectMember(ctx),
       closeOnSelect: true,
     },
     open_project_setting: {

@@ -10,7 +10,6 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 // plane imports
 import type { IWorkspaceSidebarNavigationItem } from "@plane/constants";
-import { EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { joinUrlPath } from "@plane/utils";
 // components
@@ -18,8 +17,9 @@ import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 import { SidebarBadge } from "@/components/workspace/sidebar/sidebar-badge";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isRequiredActionAllowed } from "@/lib/permissoes/acao-efetiva";
 // plane web imports
 import { getSidebarNavigationItemIcon } from "@/plane-web/components/workspace/sidebar/helper";
 
@@ -35,7 +35,6 @@ export const SidebarItemBase = observer(function SidebarItemBase({ item, additio
   const { t } = useTranslation();
   const pathname = usePathname();
   const { workspaceSlug } = useParams();
-  const { allowPermissions } = useUserPermissions();
   const { data } = useUser();
   const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
@@ -48,9 +47,9 @@ export const SidebarItemBase = observer(function SidebarItemBase({ item, additio
 
   const slug = workspaceSlug?.toString() || "";
 
-  if (!allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)) return null;
-  // Item ligado a ação(ões) da matriz (ex.: a wiki) só aparece para quem tem uma delas.
-  if (item.action && ![item.action].flat().some(can)) return null;
+  // Item ligado a ação(ões) da matriz (ex.: a wiki) só aparece para quem tem uma delas;
+  // sem ação, todo membro do espaço vê.
+  if (!isRequiredActionAllowed(item.action, can)) return null;
 
   const itemHref =
     item.key === "your_work" && data?.id ? joinUrlPath(slug, item.href, data?.id) : joinUrlPath(slug, item.href);

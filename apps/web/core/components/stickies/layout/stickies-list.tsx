@@ -16,10 +16,8 @@ import { useTheme } from "next-themes";
 import Masonry from "react-masonry-component";
 
 // plane imports
-import { EUserPermissionsLevel , PROJECT_VIEW_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { PlusIcon } from "@plane/propel/icons";
-import { EUserWorkspaceRoles } from "@plane/types";
 // assets
 import darkStickiesAsset from "@/app/assets/empty-state/stickies/stickies-dark.webp?url";
 import lightStickiesAsset from "@/app/assets/empty-state/stickies/stickies-light.webp?url";
@@ -30,7 +28,6 @@ import { DetailedEmptyState } from "@/components/empty-state/detailed-empty-stat
 import { SimpleEmptyState } from "@/components/empty-state/simple-empty-state-root";
 import { StickiesEmptyState } from "@/components/home/widgets/empty-states/stickies";
 // hooks
-import { useUserPermissions } from "@/hooks/store/user";
 import { useSticky } from "@/hooks/use-stickies";
 // local imports
 import { useStickyOperations } from "../sticky/use-operations";
@@ -57,7 +54,6 @@ export const StickiesList = observer(function StickiesList(props: TProps) {
   const { t } = useTranslation();
   // store hooks
   const { getWorkspaceStickyIds, toggleShowNewSticky, searchQuery, loader } = useSticky();
-  const { allowPermissions } = useUserPermissions();
   // sticky operations
   const { stickyOperations } = useStickyOperations({ workspaceSlug: workspaceSlug?.toString() });
   // derived values
@@ -65,10 +61,6 @@ export const StickiesList = observer(function StickiesList(props: TProps) {
   const itemWidth = `${100 / columnCount}%`;
   const totalRows = Math.ceil(workspaceStickyIds.length / columnCount);
   const isStickiesPage = pathname?.includes("stickies");
-  const hasGuestLevelPermissions = allowPermissions(
-    [...PROJECT_VIEW_ROLES, EUserWorkspaceRoles.GUEST],
-    EUserPermissionsLevel.WORKSPACE
-  );
   const stickiesResolvedPath = resolvedTheme === "light" ? lightStickiesAsset : darkStickiesAsset;
   const stickiesSearchResolvedPath = resolvedTheme === "light" ? lightStickiesSearchAsset : darkStickiesSearchAsset;
   const masonryRef = useRef<any>(null);
@@ -135,7 +127,6 @@ export const StickiesList = observer(function StickiesList(props: TProps) {
                     toggleShowNewSticky(true);
                     stickyOperations.create();
                   },
-                  disabled: !hasGuestLevelPermissions,
                 }}
               />
             )}

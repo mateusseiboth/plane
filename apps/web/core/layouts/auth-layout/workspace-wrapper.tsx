@@ -10,7 +10,6 @@ import {useParams} from "next/navigation";
 import type {ReactNode} from "react";
 import useSWR from "swr";
 // ui
-import {EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES} from "@plane/constants";
 import {Button, getButtonStyling} from "@plane/propel/button";
 import {PlaneLogo} from "@plane/propel/icons";
 import {TOAST_TYPE, setToast} from "@plane/propel/toast";
@@ -41,6 +40,7 @@ import {useWorkspace} from "@/hooks/store/use-workspace";
 import {useUser, useUserPermissions} from "@/hooks/store/user";
 import {usePlatformOS} from "@/hooks/use-platform-os";
 import {useRealtimeChannel} from "@/hooks/use-realtime";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
 import {useAvisoDeChamado} from "@/hooks/use-aviso-de-chamado";
 import {usePresencaDoAtendente} from "@/hooks/use-presenca-do-atendente";
 // components
@@ -71,13 +71,12 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
   } = useMember();
   const {workspaces, fetchSidebarNavigationPreferences, fetchProjectNavigationPreferences} = useWorkspace();
   const {isMobile} = usePlatformOS();
-  const {loader, workspaceInfoBySlug, fetchUserWorkspaceInfo, fetchUserProjectPermissions, allowPermissions} = useUserPermissions();
+  const {loader, workspaceInfoBySlug, fetchUserWorkspaceInfo, fetchUserProjectPermissions} = useUserPermissions();
   const {fetchWorkspaceStates} = useProjectState();
+  // Matriz de ações (permissões v2) carregada na entrada do espaço: menus e stores
+  // (`canDo`) leem dela.
+  useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
-  const canPerformWorkspaceMemberActions = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.WORKSPACE,
-  );
   const allWorkspaces = workspaces ? Object.values(workspaces) : undefined;
   const currentWorkspace = (allWorkspaces && allWorkspaces.find((workspace) => workspace?.slug === workspaceSlug)) || undefined;
   const currentWorkspaceInfo = workspaceSlug && workspaceInfoBySlug(workspaceSlug.toString());
@@ -106,10 +105,10 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
     workspaceSlug && currentWorkspace ? () => fetchWorkspaceMembers(workspaceSlug.toString()) : null,
     {revalidateIfStale: false, revalidateOnFocus: false},
   );
-  // fetch workspace favorite
+  // fetch workspace favorite (todo membro do espaço tem favoritos)
   useSWR(
-    workspaceSlug && currentWorkspace && canPerformWorkspaceMemberActions ? WORKSPACE_FAVORITE(workspaceSlug.toString()) : null,
-    workspaceSlug && currentWorkspace && canPerformWorkspaceMemberActions ? () => fetchFavorite(workspaceSlug.toString()) : null,
+    workspaceSlug && currentWorkspace ? WORKSPACE_FAVORITE(workspaceSlug.toString()) : null,
+    workspaceSlug && currentWorkspace ? () => fetchFavorite(workspaceSlug.toString()) : null,
     {revalidateIfStale: false, revalidateOnFocus: false},
   );
   // fetch workspace states

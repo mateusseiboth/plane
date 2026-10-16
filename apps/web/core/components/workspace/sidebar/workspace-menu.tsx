@@ -10,7 +10,6 @@ import { useParams } from "next/navigation";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
 import { AnalyticsIcon, CycleIcon, ProjectIcon, ViewsIcon } from "@plane/propel/icons";
-import { EUserWorkspaceRoles } from "@plane/types";
 // hooks
 import useLocalStorage from "@/hooks/use-local-storage";
 // local imports
@@ -25,56 +24,31 @@ export const SidebarWorkspaceMenu = observer(function SidebarWorkspaceMenu() {
   // derived values
   const isWorkspaceMenuOpen = !!storedValue;
 
+  // Sem `action`: todo membro do espaço vê (tela de leitura).
   const SIDEBAR_WORKSPACE_MENU_ITEMS = [
     {
       key: "projects",
       labelTranslationKey: "sidebar.projects",
       href: `/${workspaceSlug}/projects/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-        EUserWorkspaceRoles.GUEST,
-      ],
       Icon: ProjectIcon,
     },
     {
       key: "views",
       labelTranslationKey: "sidebar.views",
       href: `/${workspaceSlug}/workspace-views/all-issues/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-        EUserWorkspaceRoles.GUEST,
-      ],
       Icon: ViewsIcon,
     },
     {
       key: "active-cycles",
       labelTranslationKey: "sidebar.cycles",
       href: `/${workspaceSlug}/active-cycles/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-      ],
       Icon: CycleIcon,
     },
     {
       key: "analytics",
       labelTranslationKey: "sidebar.analytics",
       href: `/${workspaceSlug}/analytics/`,
-      access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+      action: "report.view",
       Icon: AnalyticsIcon,
     },
   ];

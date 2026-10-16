@@ -14,7 +14,6 @@ import { useParams, usePathname } from "next/navigation";
 import { Pin, PinOff } from "lucide-react";
 // plane imports
 import type { IWorkspaceSidebarNavigationItem } from "@plane/constants";
-import { EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Tooltip } from "@plane/propel/tooltip";
 import { DragHandle, DropIndicator } from "@plane/ui";
@@ -24,9 +23,10 @@ import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 import { isItemFixadoNaBarra } from "@/components/workspace/sidebar/fixacao-na-barra";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
 import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isRequiredActionAllowed } from "@/lib/permissoes/acao-efetiva";
 // local imports
 import { UpgradeBadge } from "../upgrade-badge";
 import { getSidebarNavigationItemIcon } from "./helper";
@@ -59,7 +59,6 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
   // store hooks
   const { toggleExtendedSidebar } = useAppTheme();
   const { data } = useUser();
-  const { allowPermissions } = useUserPermissions();
   const { preferences: workspacePreferences, toggleWorkspaceItem } = useWorkspaceNavigationPreferences();
   const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
@@ -153,11 +152,8 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
 
   const icon = getSidebarNavigationItemIcon(item.key);
 
-  if (!allowPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) {
-    return null;
-  }
   // Mesmo recorte da barra: item preso a uma ação da matriz só aparece para quem a tem.
-  if (item.action && ![item.action].flat().some(can)) return null;
+  if (!isRequiredActionAllowed(item.action, can)) return null;
 
   return (
     <div

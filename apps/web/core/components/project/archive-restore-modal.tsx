@@ -93,7 +93,7 @@ export function ArchiveRestoreProjectModal(props: Props) {
         </h3>
         <p className="mt-3 text-13 text-secondary">
           {archive
-            ? "Este projeto e seus chamados, ciclos, módulos e páginas serão arquivados. Os chamados não aparecerão na busca. Apenas administradores do projeto podem restaurá-lo."
+            ? "Este projeto e seus chamados, ciclos, módulos e páginas serão arquivados. Os chamados não aparecerão na busca. Quem pode alterar as configurações do sistema consegue restaurá-lo."
             : "Restaurar um projeto o reativa e o torna visível para todos os membros. Deseja continuar?"}
         </p>
         <div className="mt-3 flex justify-end gap-2">
