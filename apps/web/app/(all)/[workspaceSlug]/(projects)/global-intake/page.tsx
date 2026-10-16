@@ -20,28 +20,18 @@ import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL } from "@plane/constants";
-
-const INTAKE_STATUS_LABEL: Record<number, string> = {
-  [-2]: "Pendente",
-  [-1]: "Recusado",
-  0: "Adiado",
-  1: "Aceito",
-  2: "Duplicado",
-};
-
-const INTAKE_STATUS_COLOR: Record<number, string> = {
-  [-2]: "bg-yellow-100 text-yellow-800",
-  [-1]: "bg-red-100 text-red-800",
-  0: "bg-gray-100 text-gray-700",
-  1: "bg-green-100 text-green-800",
-  2: "bg-blue-100 text-blue-800",
-};
+import {
+  ABAS_DA_TRIAGEM_GLOBAL,
+  ABA_PADRAO_DA_TRIAGEM_GLOBAL,
+  readAba,
+  readAbaDaSolicitacao,
+} from "@/components/inbox/global/abas-da-triagem-global";
 
 class GlobalIntakeService extends APIService {
   constructor() { super(API_BASE_URL); }
-  list(slug: string, statusFilter: number[]) {
+  list(slug: string, aba: string) {
     return this.get(`/api/workspaces/${slug}/global-intake-issues/`, {
-      params: {status: statusFilter.join(","), per_page: 100, cursor: "100:0:0"},
+      params: {status: aba, per_page: 100, cursor: "100:0:0"},
     }).then((r) => r?.data?.results ?? []).catch(() => []);
   }
 }
@@ -75,14 +65,14 @@ function GlobalIntakePage() {
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Solicitações globais` : "Solicitações globais";
 
   // ── Global list state (when no project is selected) ──────────────────────
-  const [statusFilter, setStatusFilter] = useState<number>(-2); // -2=pending default
+  const [statusFilter, setStatusFilter] = useState<string>(ABA_PADRAO_DA_TRIAGEM_GLOBAL);
   const [allIntakes, setAllIntakes] = useState<any[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
 
   useEffect(() => {
     if (activeProject || !workspaceSlug) return;
     setLoadingAll(true);
-    globalIntakeService.list(workspaceSlug.toString(), [statusFilter])
+    globalIntakeService.list(workspaceSlug.toString(), statusFilter)
       .then(setAllIntakes)
       .finally(() => setLoadingAll(false));
   }, [workspaceSlug, activeProject, statusFilter]);
@@ -160,18 +150,18 @@ function GlobalIntakePage() {
           <div className="flex h-full flex-col overflow-hidden">
             {/* Status filter tabs */}
             <div className="flex items-center gap-1 border-b border-subtle px-6 py-3">
-              {[-2, -1, 0, 1, 2].map((s) => (
+              {ABAS_DA_TRIAGEM_GLOBAL.map((aba) => (
                 <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
+                  key={aba.chave}
+                  onClick={() => setStatusFilter(aba.chave)}
                   className={cn(
                     "rounded-full px-3 py-1 text-12 font-medium transition-colors",
-                    statusFilter === s
+                    statusFilter === aba.chave
                       ? "bg-accent-primary text-white"
                       : "bg-surface-2 text-secondary hover:text-primary"
                   )}
                 >
-                  {INTAKE_STATUS_LABEL[s]}
+                  {aba.rotulo}
                 </button>
               ))}
               <div className="ml-auto">
@@ -187,7 +177,7 @@ function GlobalIntakePage() {
             <IntakeListPrintDocument
               title="Solicitações"
               subtitle={currentWorkspace?.name}
-              statusLabel={INTAKE_STATUS_LABEL[statusFilter]}
+              statusLabel={readAba(statusFilter)?.rotulo}
               records={allIntakes}
             />
 
@@ -198,7 +188,7 @@ function GlobalIntakePage() {
               {!loadingAll && allIntakes.length === 0 && (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-secondary">
                   <AlertCircle className="h-10 w-10 opacity-40" />
-                  <p className="text-sm">Nenhuma solicitação com status "{INTAKE_STATUS_LABEL[statusFilter]}".</p>
+                  <p className="text-sm">Nenhuma solicitação com status "{readAba(statusFilter)?.rotulo}".</p>
                 </div>
               )}
               {!loadingAll && allIntakes.map((intake: any) => (
@@ -209,8 +199,8 @@ function GlobalIntakePage() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-10 font-medium", INTAKE_STATUS_COLOR[intake.status] ?? "bg-surface-2 text-secondary")}>
-                        {INTAKE_STATUS_LABEL[intake.status] ?? "?"}
+                      <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-10 font-medium", readAbaDaSolicitacao(intake)?.cor ?? "bg-surface-2 text-secondary")}>
+                        {readAbaDaSolicitacao(intake)?.rotulo ?? "?"}
                       </span>
                       {intake.project && (
                         <span className="text-11 text-tertiary shrink-0">{intake.project.identifier}</span>

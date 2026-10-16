@@ -31,6 +31,12 @@ export const INTAKE_STATUS_LABELS: Record<number, string> = {
   3: "Atendida",
 };
 
+/** Situação da listagem global que não é um status gravado (ver abas-da-triagem-global). */
+const SITUACAO_DA_LISTAGEM: Record<string, string> = { concluido: "Concluída" };
+
+const readSituacaoDoRegistro = (record: TIntakeListRecord) =>
+  SITUACAO_DA_LISTAGEM[record.situacao ?? ""] ?? INTAKE_STATUS_LABELS[record.status as number] ?? "—";
+
 const CELL = "border border-neutral-300 px-2 py-1 align-top";
 
 const formatDateTime = (value?: string | Date | null) => (value ? new Date(value).toLocaleString("pt-BR") : "—");
@@ -87,6 +93,7 @@ export const IntakePrintAction = observer(function IntakePrintAction(props: Sing
 export type TIntakeListRecord = {
   id: string;
   status: TInboxIssueStatus | number;
+  situacao?: string;
   created_at?: string;
   project?: { identifier?: string; name?: string } | null;
   issue?: { name?: string } | null;
@@ -129,7 +136,7 @@ export const IntakeListPrintDocument = observer(function IntakeListPrintDocument
               <tr key={record.id}>
                 <td className={CELL}>{record.project?.identifier ?? record.project?.name ?? "—"}</td>
                 <td className={CELL}>{record.issue?.name ?? "Sem título"}</td>
-                <td className={CELL}>{INTAKE_STATUS_LABELS[record.status as number] ?? "—"}</td>
+                <td className={CELL}>{readSituacaoDoRegistro(record)}</td>
                 <td className={CELL}>{formatDateTime(record.created_at)}</td>
               </tr>
             ))}

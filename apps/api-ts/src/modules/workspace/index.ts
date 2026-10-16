@@ -28,6 +28,7 @@ import {
 } from "@modules/workspace/preferencias-da-barra";
 import {ATIVIDADE_INCLUDE, serializeTrilha, withoutMarcadorInterno} from "@utils/trilha";
 import {dataLocal} from "@utils/prazo";
+import {buildFiltroDaSituacao, readSituacao} from "@utils/situacao-da-solicitacao";
 import {findMemberProjectIds, getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
@@ -2349,19 +2350,16 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // Gestor de Projeto, todos (isParticipanteDeTodoSistema).
     const userProjectIds = await findMemberProjectIds(ws.id, user.id);
 
-    const statusFilter: number[] | null = (query as any).status
-      ? String((query as any).status)
-          .split(",")
-          .map(Number)
-      : [-2]; // default to pending
+    // `status`: números de status e/ou `concluido`, separados por vírgula
+    // (ver @utils/situacao-da-solicitacao). Sem filtro, as pendentes.
+    const filtroDaSituacao = buildFiltroDaSituacao(String((query as any).status || "-2").split(","));
 
     const perPage = Number((query as any).per_page ?? 50);
     const cursor = (query as any).cursor ?? `${perPage}:0:0`;
     const page = Number(cursor.split(":")[1] ?? 0);
     const skip = page * perPage;
 
-    const where: any = {workspaceId: ws.id, projectId: {in: userProjectIds}, deletedAt: null};
-    if (statusFilter) where.status = {in: statusFilter};
+    const where = {workspaceId: ws.id, projectId: {in: userProjectIds}, deletedAt: null, ...filtroDaSituacao};
 
     const [intakeIssues, total] = await Promise.all([
       prisma.intakeIssue.findMany({
@@ -2369,7 +2367,18 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         skip,
         take: perPage + 1,
         include: {
-          issue: {select: {id: true, name: true, priority: true, projectId: true, sequenceId: true, createdAt: true, updatedAt: true}},
+          issue: {
+            select: {
+              id: true,
+              name: true,
+              priority: true,
+              projectId: true,
+              sequenceId: true,
+              createdAt: true,
+              updatedAt: true,
+              state: {select: {group: true}},
+            },
+          },
         },
         orderBy: {createdAt: "desc"},
       }),
@@ -2396,6 +2405,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         return {
           id: ii.id,
           status: ii.status ?? -2,
+          situacao: readSituacao(ii.status ?? -2, ii.issue?.state?.group ?? null),
           source: ii.source ?? "IN_APP",
           created_at: ii.createdAt?.toISOString(),
           project: proj ? {id: proj.id, identifier: proj.identifier, name: proj.name} : null,
