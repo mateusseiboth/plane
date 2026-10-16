@@ -6,11 +6,17 @@ import { publishRealtime } from "@utils/realtime";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
 import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requireWorkspaceMember } from "@utils/workspace";
-import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
-import { createSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
+import {EProjectAction, requireProjectAction, requireWorkspaceAction, resolveMemberRole, roleCan} from "@utils/permission-checks";
+import {
+  createSolicitacao,
+  findErrosDaSolicitacao,
+  findOrCreateIntake,
+  findTriageState,
+  requireSistemaDoEspaco,
+} from "@utils/intake";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
-import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
+import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -538,8 +544,18 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .post("/:project_id/inbox-issues/", async ({params: {slug, project_id}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.INTAKE_CREATE);
+    // Como a abertura pela conversa do chat: o Atendimento abre solicitação para
+    // QUALQUER sistema do espaço, sem vínculo com ele. A triagem é de quem recebe
+    // o pedido, não de quem o abre.
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTAKE_CREATE);
+    await requireSistemaDoEspaco(project_id, ws.id);
     const b = (body as any).issue ?? body as any;
+    const referencias = {projectId: project_id, workspaceId: ws.id, moduleId: b.module_id || null, entityId: b.entity_id || null};
+    const erros = await findErrosDaSolicitacao(referencias);
+    if (erros.length) {
+      set.status = 422;
+      return {detail: erros[0]!.message, errors: erros};
+    }
     const issue = await createSolicitacao({
       workspaceId: ws.id,
       projectId: project_id,
@@ -547,7 +563,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       name: b.name ?? "Novo chamado",
       priority: b.priority ?? "none",
       ...(b.description_html !== undefined ? {descriptionHtml: String(b.description_html)} : {}),
-      entityId: b.entity_id ?? null,
+      entityId: referencias.entityId,
+      moduleId: referencias.moduleId,
       assigneeIds: b.assignee_ids ?? b.assignees ?? [],
       headers,
     });
@@ -606,22 +623,22 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
     const antes = await prisma.issue.findFirst({
       where: {id: inbox_id, deletedAt: null},
-      include: {state: {select: {group: true}}},
+      include: {state: {select: {group: true, name: true}}},
     });
 
     // A triagem também reescreve o corpo — o Qualidade limpa o relato do
     // cliente. O que era antes fica gravado. Ver @utils/versoes-da-descricao.
     const abriuVersao = await registrarVersaoDaDescricao({antes, corpo: issuePatch, autorId: user.id});
 
-    // FULFILLED (3) = "atendido": closes the intake. Only the chamado's creator or a
-    // project admin/gestor (role ≥ 18) may set it, and only once the work item is
-    // actually completed. Accepted (1) intakes stay in the OPEN tab until then.
+    // FULFILLED (3) = "atendido": fecha a solicitação. Marca quem abriu o chamado
+    // ou quem tria (`intake.review`, pela matriz de ações, como a tela decide), e
+    // só depois que o chamado está concluído. Aceita (1) segue na aba Abertas.
     if (b.status === 3) {
       const isCreator = antes?.createdById === user.id;
-      const isManager = (callerMember?.role ?? 0) >= 18;
-      if (!isCreator && !isManager) {
+      const isRevisor = roleCan(await resolveMemberRole(ws.id, callerMember as any), EProjectAction.INTAKE_REVIEW);
+      if (!isCreator && !isRevisor) {
         set.status = 403;
-        return {detail: "Apenas o criador do chamado ou um gestor pode marcar como atendido."};
+        return {detail: "Sua função não permite marcar como atendido."};
       }
       if (antes?.state?.group !== "completed") {
         set.status = 400;
@@ -685,6 +702,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         issuePatch.name !== undefined ? diffChange("name", antes.name, issuePatch.name, "updated the name") : null;
       if (mudancaDeTitulo) mudancas.push(mudancaDeTitulo);
       if (abriuVersao) mudancas.push({field: "description", comment: "updated the description"});
+      // A decisão da triagem move o chamado de etapa: o rastro é o mesmo do
+      // quadro, para a solicitação e o chamado mostrarem a mesma atividade.
+      const mudancaDeEtapa = await buildMudancaDeEtapa(antes, issue?.stateId ?? null);
+      if (mudancaDeEtapa) mudancas.push(mudancaDeEtapa);
       if (mudancas.length) {
         await recordActivities(
           {issueId: inbox_id, workspaceId: ws.id, projectId: project_id, actorId: user.id},

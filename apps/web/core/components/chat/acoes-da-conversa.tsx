@@ -11,13 +11,16 @@ import { AlertCircle } from "lucide-react";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
-import { ModalDeChamado, type PedidoDeChamado } from "@/components/chat/modal-de-chamado";
+import type { ErroDoCampo, PedidoDeSolicitacao } from "@/components/solicitacao/formulario-da-solicitacao";
+import { ModalDeSolicitacao } from "@/components/solicitacao/modal-de-solicitacao";
 // services
 import { ChatService, chatApi, type ChatMessage, type ChatSession } from "@/services/chat.service";
 
 const chatService = new ChatService();
 
 const mensagemDoErro = (e: unknown, padrao: string) => (e as { detail?: string } | null)?.detail ?? padrao;
+
+const readErros = (e: unknown): ErroDoCampo[] => (e as { errors?: ErroDoCampo[] } | null)?.errors ?? [];
 
 type Props = {
   sessao: ChatSession;
@@ -40,11 +43,15 @@ const PAUSA_DO_STATUS: Record<string, "pause" | "resume"> = { active: "pause", p
 export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, onAtualizada }: Props) {
   const [abrindoChamado, setAbrindoChamado] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [erros, setErros] = useState<ErroDoCampo[]>([]);
   const api = chatApi(apiUrl);
   const pausa = PAUSA_DO_STATUS[sessao.status] ?? "pause";
 
-  const createChamado = async ({ projectId, dados }: PedidoDeChamado) => {
+  // Estratégia "pela conversa" do modal de solicitação: a rota from-chat junta
+  // a transcrição e os arquivos, e a conversa guarda o atalho para o chamado.
+  const createChamado = async ({ projectId, dados }: PedidoDeSolicitacao) => {
     setEnviando(true);
+    setErros([]);
     try {
       const chamado = await chatService.createChamadoFromChat(slug, projectId, {
         ...dados,
@@ -61,10 +68,16 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
           : "A conversa e os arquivos foram anexados.",
       });
     } catch (e) {
+      setErros(readErros(e));
       setToast({ type: TOAST_TYPE.ERROR, title: "Chamado não aberto", message: mensagemDoErro(e, "Tente de novo.") });
     } finally {
       setEnviando(false);
     }
+  };
+
+  const closeModal = () => {
+    setErros([]);
+    setAbrindoChamado(false);
   };
 
   const changePausa = async () => {
@@ -76,12 +89,20 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
   };
 
   const modalDoChamado = abrindoChamado && (
-    <ModalDeChamado
-      sessao={sessao}
+    <ModalDeSolicitacao
       workspaceSlug={slug}
+      titulo="Abrir chamado"
+      aviso="A conversa e os arquivos vão anexados ao chamado."
+      rotuloDoEnvio="Abrir chamado"
       projetos={projetos}
+      inicial={{
+        projectId: sessao.project_id ?? "",
+        titulo: `Chat ${sessao.protocol}: ${sessao.client_name || sessao.client_phone || "Cliente"}`,
+        entidadeId: sessao.entity_id ?? "",
+      }}
+      erros={erros}
       onConfirmar={(pedido) => void createChamado(pedido)}
-      onCancelar={() => setAbrindoChamado(false)}
+      onCancelar={closeModal}
       enviando={enviando}
     />
   );

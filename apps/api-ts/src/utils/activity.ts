@@ -48,3 +48,18 @@ export function diffChange(field: string, oldValue: any, newValue: any, comment?
   if (o === n) return null;
   return {field, oldValue: o, newValue: n, comment: comment ?? `updated the ${field}`};
 }
+
+type EtapaAnterior = { stateId: string | null; state?: { name: string } | null } | null;
+
+/**
+ * Mudança de etapa no formato que o quadro grava (`state`, nome antigo e novo).
+ * `null` quando a etapa não mudou.
+ */
+export async function buildMudancaDeEtapa(
+  antes: EtapaAnterior,
+  novaEtapaId: string | null
+): Promise<ActivityChange | null> {
+  if (!antes || !novaEtapaId || antes.stateId === novaEtapaId) return null;
+  const nova = await prisma.state.findFirst({ where: { id: novaEtapaId }, select: { name: true } });
+  return diffChange("state", antes.state?.name ?? null, nova?.name ?? null, "updated the state");
+}

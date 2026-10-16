@@ -27,6 +27,20 @@ export class InboxIssueService extends APIService {
       });
   }
 
+  /**
+   * Todos os sistemas do espaço para abrir solicitação (quem tem `intake.create`),
+   * sem filtro por vínculo: o Atendimento abre pedido para qualquer sistema.
+   */
+  async listSistemasParaSolicitacao(
+    workspaceSlug: string
+  ): Promise<Array<{ id: string; name: string; identifier: string }>> {
+    return this.get(`/api/workspaces/${workspaceSlug}/sistemas-para-solicitacao/`)
+      .then((response) => response?.data ?? [])
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async retrieve(workspaceSlug: string, projectId: string, inboxIssueId: string): Promise<TInboxIssue> {
     return this.get(
       `/api/workspaces/${workspaceSlug}/projects/${projectId}/inbox-issues/${inboxIssueId}/?expand=issue_inbox`

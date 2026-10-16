@@ -4,7 +4,9 @@
  * Abre o chamado a partir de uma conversa do chat: a solicitação nasce na
  * triagem como qualquer outra (`createSolicitacao`), com a transcrição na
  * descrição, os arquivos da conversa anexados, a prioridade (urgente é o
- * "cliente parado" do SAC), o módulo e a entidade da conversa.
+ * "cliente parado" do SAC), o módulo e a entidade (a escolhida no modal ou, sem
+ * escolha, a da conversa). O complemento vem do editor de texto rico e entra
+ * antes da transcrição.
  *
  * O chamado aponta para a conversa (`external_source = "chat"`, `external_id =
  * <sessão>`); a conversa guarda o atalho para o chamado quando o atendente
@@ -18,7 +20,7 @@
 import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
-import { createSolicitacao } from "@utils/intake";
+import { createSolicitacao, findErrosDaSolicitacao, requireSistemaDoEspaco } from "@utils/intake";
 import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail } from "@utils/workspace";
 import { copyAnexosDaConversa } from "@modules/chat-chamado/anexos";
@@ -39,6 +41,8 @@ type Corpo = {
   priority?: unknown;
   module_id?: unknown;
   description_html?: unknown;
+  /** Ausente: a entidade da conversa. Vazio ou null: sem entidade. */
+  entity_id?: unknown;
   chat_url?: unknown;
 };
 
@@ -64,10 +68,24 @@ const findChamadoDaConversa = (sessionId: string) =>
     select: { id: true },
   });
 
-const isModuloDoSistema = async (moduleId: string, projectId: string) =>
-  Boolean(await prisma.module.findFirst({ where: { id: moduleId, projectId, deletedAt: null }, select: { id: true } }));
-
 const readTexto = (valor: unknown): string => (typeof valor === "string" ? valor.trim() : "");
+
+/** A entidade do chamado: a informada no corpo prevalece sobre a da conversa. */
+const readEntidade = (corpo: Corpo, sessao: Sessao): string | null =>
+  corpo.entity_id === undefined ? sessao.entity_id : readTexto(corpo.entity_id) || null;
+
+const isHtml = (texto: string) => texto.startsWith("<");
+const readTextoDoHtml = (html: string) => html.replace(/<[^>]+>/g, "").trim();
+
+/**
+ * O complemento como vai na descrição: o HTML do editor como veio; texto puro
+ * (cliente antigo) escapado num parágrafo. Editor vazio (`<p></p>`) não entra.
+ */
+function buildComplemento(valor: unknown): string {
+  const texto = readTexto(valor);
+  if (!readTextoDoHtml(texto)) return "";
+  return isHtml(texto) ? texto : `<p>${escapeHtml(texto)}</p>`;
+}
 
 function buildTitulo(corpo: Corpo, sessao: Sessao): string {
   const informado = readTexto(corpo.name);
@@ -94,6 +112,7 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
     // O atendimento abre solicitação para QUALQUER sistema, inclusive os de
     // que não é membro: a triagem é de quem recebe o pedido, não de quem o abre.
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.CHAT_ABRIR_CHAMADO);
+    await requireSistemaDoEspaco(project_id, ws.id);
     const corpo = (body ?? {}) as Corpo;
     const sessionId = readTexto(corpo.session_id);
     const prioridade = readTexto(corpo.priority) || "none";
@@ -104,13 +123,13 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
     const existente = await findChamadoDaConversa(sessao.id);
     if (existente) return refuse(set, 409, "Esta conversa já tem chamado.", { issue_id: existente.id });
     if (!PRIORIDADES.has(prioridade)) return refuse(set, 422, "Prioridade inválida.");
-    if (moduleId && !(await isModuloDoSistema(moduleId, project_id)))
-      return refuse(set, 422, "O módulo não pertence ao sistema escolhido.");
+    const entityId = readEntidade(corpo, sessao);
+    const erros = await findErrosDaSolicitacao({ projectId: project_id, workspaceId: ws.id, moduleId, entityId });
+    if (erros.length) return refuse(set, 422, erros[0]!.message, { errors: erros });
 
     const mensagens = await readMensagens(sessao.id);
-    const complemento = readTexto(corpo.description_html);
     const descricao =
-      (complemento ? `<p>${escapeHtml(complemento)}</p>` : "") +
+      buildComplemento(corpo.description_html) +
       buildTranscricaoHtml(sessao, mensagens, readTexto(corpo.chat_url) || null);
 
     const issue = await createSolicitacao({
@@ -120,16 +139,13 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
       name: buildTitulo(corpo, sessao),
       priority: prioridade,
       descriptionHtml: descricao,
-      entityId: sessao.entity_id,
+      entityId,
+      moduleId: moduleId || null,
       externalSource: ORIGEM,
       externalId: sessao.id,
       headers,
       auditMetadata: { origem: ORIGEM, protocolo: sessao.protocol },
     });
-    if (moduleId)
-      await prisma.moduleIssue.create({
-        data: { moduleId, issueId: issue.id, projectId: project_id, workspaceId: ws.id },
-      });
     const anexos = await copyAnexosDaConversa(
       { issueId: issue.id, projectId: project_id, workspaceId: ws.id },
       mensagens

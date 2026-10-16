@@ -34,10 +34,13 @@ apps/chat-backend/src/
 apps/api-ts/src/
   modules/chat-chamado/    POST /workspaces/:slug/projects/:pid/inbox-issues/from-chat/
   utils/intake.ts          createSolicitacao: fonte única do POST /inbox-issues/ e do chat
+                           findErrosDaSolicitacao: módulo do sistema e entidade do espaço (422 no campo)
 
 apps/web/core/
   components/chat/modal-de-encerramento.tsx  entidade, motivo, funcionalidade, observação
-  components/chat/modal-de-chamado.tsx       sistema, título, módulo, cliente parado
+  components/solicitacao/modal-de-solicitacao.tsx  sistema, título, módulo, entidade, complemento
+                                             rico, cliente parado; o mesmo modal pela conversa
+                                             (from-chat) e pelo botão "Nova solicitação" (avulsa)
   components/chat/acoes-da-conversa.tsx      Chamado / link do chamado, Pausar/Retomar, FalhaDeEnvio
   components/chat/relatorios-de-atendimento.tsx  relatórios + registros + impressão (no painel)
   components/chat/aba-de-encerramento.tsx    config: motivos, pergunta 1/99, fim do dia

@@ -13,9 +13,9 @@ import { useTranslation } from "@plane/i18n";
 import { AddWorkItemIcon } from "@plane/propel/icons";
 import type { TIssue } from "@plane/types";
 // components
-import { IntakeQuickCreate } from "@/components/inbox/modals/intake-quick-create";
 import { CreateUpdateIssueModal } from "@/components/issues/issue-modal/modal";
 import { SidebarAddButton } from "@/components/sidebar/add-button";
+import { useSolicitacaoAvulsa } from "@/components/solicitacao/use-solicitacao-avulsa";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProject } from "@/hooks/store/use-project";
@@ -28,7 +28,6 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
   // states
   const [isDraftIssueModalOpen, setIsDraftIssueModalOpen] = useState(false);
   const [_isDraftButtonOpen, setIsDraftButtonOpen] = useState(false);
-  const [isIntakeCreateOpen, setIsIntakeCreateOpen] = useState(false);
   // refs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const timeoutRef = useRef<any>();
@@ -39,21 +38,21 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
   const { toggleCreateIssueModal } = useCommandPalette();
   const { joinedProjectIds } = useProject();
   const { can } = useMyWorkspaceActions(workspaceSlug);
+  const solicitacao = useSolicitacaoAvulsa(workspaceSlug);
   // local storage
   const { storedValue, setValue } = useLocalStorage<Record<string, Partial<TIssue>>>("draftedIssue", {});
   // derived values
   const canCreateIssue = can("issue.create");
 
   // D2: quem só opera a mesa de atendimento (abre pedido, não cria chamado) abre
-  // SOLICITAÇÃO, em qualquer sistema de que participa. A função é a mesma em todo
-  // sistema, então a decisão é da matriz do espaço.
-  const intakeProjectIds = isIntakeOnlyOperator(can) ? joinedProjectIds : [];
-  const isAtendimento = intakeProjectIds.length > 0;
+  // SOLICITAÇÃO, no mesmo modal da conversa do chat (sistema, módulo, entidade,
+  // cliente parado), para qualquer sistema do espaço, mesmo sem participar dele.
+  const isAtendimento = isIntakeOnlyOperator(can);
 
-  const disabled = joinedProjectIds.length === 0 || (!canCreateIssue && !isAtendimento);
+  const disabled = !isAtendimento && (joinedProjectIds.length === 0 || !canCreateIssue);
 
   const handleCreateClick = () => {
-    if (isAtendimento) setIsIntakeCreateOpen(true);
+    if (isAtendimento) solicitacao.openSolicitacao();
     else toggleCreateIssueModal(true);
   };
   const workspaceDraftIssue = workspaceSlug ? (storedValue?.[workspaceSlug] ?? undefined) : undefined;
@@ -89,14 +88,7 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
         fetchIssueDetails={false}
         isDraft
       />
-      {workspaceSlug && (
-        <IntakeQuickCreate
-          workspaceSlug={workspaceSlug}
-          projectIds={intakeProjectIds}
-          isOpen={isIntakeCreateOpen}
-          onClose={() => setIsIntakeCreateOpen(false)}
-        />
-      )}
+      {solicitacao.modalDaSolicitacao}
       <div className="flex cursor-pointer items-center justify-between gap-2">
         <SidebarAddButton
           label={

@@ -150,6 +150,53 @@ describe("POST .../inbox-issues/from-chat/", () => {
     expect((await admin.post(url(), { session_id: conversa, priority: "altissima" })).status).toBe(422);
   });
 
+  it("a entidade escolhida no modal prevalece sobre a da conversa", async () => {
+    const outra = await createEntity(wsId, { name: "Câmara de Teste" });
+    const conversa = await createConversa(wsSlug, { entityId: entidadeId });
+    const res = await admin.post(url(), { session_id: conversa, entity_id: outra.id });
+    expect(res.status).toBe(201);
+    const chamado = await prisma.issue.findUniqueOrThrow({ where: { id: ((await res.json()) as any).issue.id } });
+    expect(chamado.entityId).toBe(outra.id);
+  });
+
+  it("entidade de outro espaço: 422 no campo entity_id", async () => {
+    const outroEspaco = await createWorkspace((await createUser()).id);
+    const alheia = await createEntity(outroEspaco.id, { name: "Entidade Alheia" });
+    const res = await admin.post(url(), { session_id: await createConversa(wsSlug), entity_id: alheia.id });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as any).errors).toEqual([
+      { path: "entity_id", message: "A entidade não foi encontrada neste espaço." },
+    ]);
+  });
+
+  it("o complemento em texto rico entra na descrição como veio, antes da conversa", async () => {
+    const res = await admin.post(url(), {
+      session_id: await createConversa(wsSlug),
+      description_html: "<p>Cliente usa a <strong>versão 3</strong>.</p>",
+    });
+    expect(res.status).toBe(201);
+    const chamado = await prisma.issue.findUniqueOrThrow({ where: { id: ((await res.json()) as any).issue.id } });
+    expect(chamado.descriptionHtml).toStartWith("<p>Cliente usa a <strong>versão 3</strong>.</p>");
+    expect(chamado.descriptionHtml).toContain("O sistema não emite a guia.");
+  });
+
+  it("complemento em texto puro continua escapado, e o editor vazio não entra", async () => {
+    const puro = await admin.post(url(), { session_id: await createConversa(wsSlug), description_html: "a < b" });
+    const comPuro = await prisma.issue.findUniqueOrThrow({ where: { id: ((await puro.json()) as any).issue.id } });
+    expect(comPuro.descriptionHtml).toStartWith("<p>a &lt; b</p>");
+
+    const vazio = await admin.post(url(), { session_id: await createConversa(wsSlug), description_html: "<p></p>" });
+    const comVazio = await prisma.issue.findUniqueOrThrow({ where: { id: ((await vazio.json()) as any).issue.id } });
+    expect(comVazio.descriptionHtml).not.toStartWith("<p></p>");
+  });
+
+  it("sistema de outro espaço: 404", async () => {
+    const outroDono = await createUser();
+    const alheio = await createProject((await createWorkspace(outroDono.id)).id, outroDono.id);
+    const res = await admin.post(url(alheio.id), { session_id: await createConversa(wsSlug) });
+    expect(res.status).toBe(404);
+  });
+
   it("quem não abre pedido de chamado no sistema: 403", async () => {
     const conversa = await createConversa(wsSlug);
     const visitante = await createMemberWithToken(wsId, 5, projetoId, 5);

@@ -8,8 +8,10 @@
  */
 
 import prisma from "@db";
+import { recordActivities } from "@utils/activity";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { markChamadoNaoLido } from "@utils/chamado-nao-lido";
+import type { FieldErrorItem } from "@utils/field-error";
 import { notifyQualityOfIntake } from "@utils/notifications";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
@@ -57,6 +59,51 @@ export async function findOrCreateIntake(projectId: string, workspaceId: string)
   return prisma.intake.create({ data: { projectId, workspaceId } });
 }
 
+const isModuloDoSistema = async (moduleId: string, projectId: string) =>
+  Boolean(await prisma.module.findFirst({ where: { id: moduleId, projectId, deletedAt: null }, select: { id: true } }));
+
+const isEntidadeDoEspaco = async (entityId: string, workspaceId: string) =>
+  Boolean(
+    await prisma.entity.findFirst({ where: { id: entityId, workspaceId, deletedAt: null }, select: { id: true } })
+  );
+
+/** O sistema existe neste espaço; senão, 404. Não exige vínculo de quem abre. */
+export async function requireSistemaDoEspaco(projectId: string, workspaceId: string): Promise<void> {
+  const sistema = await prisma.project.findFirst({
+    where: { id: projectId, workspaceId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!sistema) throw { status: 404, message: "Sistema não encontrado." };
+}
+
+type ReferenciasDaSolicitacao = {
+  projectId: string;
+  workspaceId: string;
+  moduleId?: string | null;
+  entityId?: string | null;
+};
+
+/**
+ * Os campos da solicitação que apontam para outro registro: o módulo tem de ser
+ * do sistema escolhido e a entidade, do espaço. Vale para a abertura pela
+ * conversa do chat e para a avulsa; cada recusa volta para o campo dela.
+ */
+export async function findErrosDaSolicitacao({
+  projectId,
+  workspaceId,
+  moduleId,
+  entityId,
+}: ReferenciasDaSolicitacao): Promise<FieldErrorItem[]> {
+  const [isModuloValido, isEntidadeValida] = await Promise.all([
+    !moduleId || isModuloDoSistema(moduleId, projectId),
+    !entityId || isEntidadeDoEspaco(entityId, workspaceId),
+  ]);
+  return [
+    ...(isModuloValido ? [] : [{ path: "module_id", message: "O módulo não pertence ao sistema escolhido." }]),
+    ...(isEntidadeValida ? [] : [{ path: "entity_id", message: "A entidade não foi encontrada neste espaço." }]),
+  ];
+}
+
 export type NovaSolicitacaoDoTime = {
   workspaceId: string;
   projectId: string;
@@ -65,6 +112,8 @@ export type NovaSolicitacaoDoTime = {
   priority?: string;
   descriptionHtml?: string;
   entityId?: string | null;
+  /** Módulo do sistema, já conferido por `findErrosDaSolicitacao`. */
+  moduleId?: string | null;
   assigneeIds?: string[];
   /** De onde o chamado veio, quando não foi digitado na tela (ex.: "chat" + id da conversa). */
   externalSource?: string;
@@ -100,6 +149,12 @@ export async function createSolicitacao(dados: NovaSolicitacaoDoTime) {
       ...(dados.externalSource ? { externalSource: dados.externalSource, externalId: dados.externalId ?? null } : {}),
     },
   });
+  // A solicitação é o chamado: nasce com o mesmo "criou" que o chamado aberto no quadro.
+  await recordActivities({ issueId: issue.id, workspaceId, projectId, actorId: user.id }, [
+    { verb: "created", field: "issue", comment: "created the work item" },
+  ]);
+  if (dados.moduleId)
+    await prisma.moduleIssue.create({ data: { moduleId: dados.moduleId, issueId: issue.id, projectId, workspaceId } });
   const intake = await findOrCreateIntake(projectId, workspaceId);
   await prisma.intakeIssue.create({
     // `createdById` é quem fica esperando a resposta quando o chamado for
