@@ -33,6 +33,7 @@ import {
   IssueArchivedAtActivity,
   IssueInboxActivity,
 } from "./actions";
+import { IssueSistemaActivity } from "@/components/issues/issue-detail/issue-activity/activity/actions/sistema";
 
 type TIssueActivityItem = {
   activityId: string;
@@ -94,6 +95,9 @@ export const IssueActivityItem = observer(function IssueActivityItem(props: TIss
       return <IssueInboxActivity {...componentDefaultProps} />;
     case "type":
       return <IssueTypeActivity {...componentDefaultProps} />;
+    case "moved_to":
+    case "moved_from":
+      return <IssueSistemaActivity {...componentDefaultProps} />;
     default:
       return <AdditionalActivityRoot {...componentDefaultProps} field={activityField} />;
   }
