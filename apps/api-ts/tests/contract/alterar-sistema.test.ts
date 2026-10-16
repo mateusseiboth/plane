@@ -10,13 +10,11 @@
  * exceção por pessoa) no sistema atual e participação no destino.
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { existsSync } from "fs";
-import path from "path";
 import prisma from "@db";
 import { seedWorkflowRoles } from "@utils/permissions";
-import { saveAsset } from "@utils/storage";
 import { cleanDb } from "@tests/helpers/setup";
 import {
+  TEST_API_BASE_URL,
   addMember,
   apiClient,
   createApiToken,
@@ -38,11 +36,28 @@ let destinoId: string;
 let semCanceladosId: string;
 let donoId: string;
 let admin: Cliente;
+let tokenDaDona: string;
 let membro: { id: string; api: Cliente };
 let ti: { id: string; api: Cliente };
 
 const rota = (projeto: string, chamado: string) =>
   `/workspaces/${wsSlug}/projects/${projeto}/issues/${chamado}/alterar-sistema/`;
+
+const assetsUrl = (assetId: string) => `${TEST_API_BASE_URL}/api/v1/assets/v2/workspaces/${wsSlug}/${assetId}/`;
+
+/** Multipart: o Content-Type sai do FormData. */
+const uploadBytesDoAnexo = async (assetId: string, conteudo: string) => {
+  const formulario = new FormData();
+  formulario.append("file", new Blob([conteudo], { type: "image/png" }), "print.png");
+  const res = await fetch(`${assetsUrl(assetId)}upload/`, {
+    method: "POST",
+    headers: { "X-Api-Key": tokenDaDona },
+    body: formulario,
+  });
+  if (!res.ok) throw new Error(`upload do anexo de teste falhou: ${res.status}`);
+};
+
+const readBytesDoAnexo = (assetId: string) => fetch(assetsUrl(assetId), { headers: { "X-Api-Key": tokenDaDona } });
 
 const etapaDe = async (projectId: string, name: string) =>
   (await prisma.state.findFirstOrThrow({ where: { projectId, name, deletedAt: null } })).id;
@@ -89,7 +104,8 @@ beforeAll(async () => {
   semCanceladosId = (await createProject(wsId, dono.id, { identifier: "SEMC", name: "Sem cancelados" })).id;
   await prisma.state.deleteMany({ where: { projectId: semCanceladosId, group: "cancelled" } });
   await seedWorkflowRoles(prisma, wsId);
-  admin = apiClient((await createApiToken(dono.id)).token);
+  tokenDaDona = (await createApiToken(dono.id)).token;
+  admin = apiClient(tokenDaDona);
   membro = await createPessoa(15, [origemId, destinoId]);
   ti = await createPessoa(12, [origemId]);
 });
@@ -189,7 +205,9 @@ describe("alterar sistema: o chamado completo", () => {
         },
       })
     ).id;
-    await saveAsset(anexoAntigoId, new Blob(["abcd"]));
+    // Pelo servidor, não pelo disco deste processo: o storage do servidor de
+    // teste pode estar em outra pasta (MEDIA_ROOT), e é lá que a cópia acontece.
+    await uploadBytesDoAnexo(anexoAntigoId, "abcd");
     await prisma.issueAttachment.create({
       data: {
         issueId: antigo.id,
@@ -307,7 +325,9 @@ describe("alterar sistema: o chamado completo", () => {
     expect(anexos[0]!.attributes).toMatchObject({ name: "print.png" });
     const arquivo = await prisma.fileAsset.findUniqueOrThrow({ where: { id: anexos[0]!.asset } });
     expect(arquivo).toMatchObject({ entityId: novoId, projectId: destinoId, mimeType: "image/png", isUploaded: true });
-    expect(existsSync(path.join(process.env.MEDIA_ROOT!, arquivo.id))).toBe(true);
+    const baixado = await readBytesDoAnexo(arquivo.id);
+    expect(baixado.status).toBe(200);
+    expect(await baixado.text()).toBe("abcd");
   });
 
   it("as versões da descrição vão junto, e o painel da solicitação mostra o texto pedido", async () => {
