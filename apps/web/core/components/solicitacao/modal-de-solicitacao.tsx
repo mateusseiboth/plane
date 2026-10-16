@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
 import type { EditorRefApi } from "@plane/editor";
+import { EFileAssetType } from "@plane/types";
 import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
@@ -23,6 +24,7 @@ import {
   type PedidoDeSolicitacao,
 } from "@/components/solicitacao/formulario-da-solicitacao";
 // hooks
+import { useEditorAsset } from "@/hooks/store/use-editor-asset";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useModulosDoSistema } from "@/hooks/use-chat-atendimento";
 import { useEntities } from "@/hooks/use-entities";
@@ -54,11 +56,9 @@ const ROTULO = "mb-1 block text-12 font-medium text-secondary";
  * Sem chamado ainda não há onde guardar arquivo: imagem e anexo ficam de fora do
  * complemento. Na conversa, os arquivos vão anexados pelo servidor.
  */
-const EXTENSOES_SEM_ARQUIVO = ["image", "attachment"] as const;
-
-const recuseArquivo = async (): Promise<string> => {
-  throw new Error("Anexe arquivos depois de abrir a solicitação.");
-};
+/** Anexo de arquivo fica para o chamado; imagem colada entra pelo editor. */
+const EXTENSOES_SEM_ARQUIVO = ["attachment"] as const;
+const ESCOLHA_O_SISTEMA_ANTES = "Escolha o sistema antes de colar a imagem.";
 
 function ErroDoCampoDaTela({ mensagem }: { mensagem?: string }) {
   if (!mensagem) return null;
@@ -93,7 +93,42 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
     entidadeId: inicial.entidadeId ?? "",
     complementoHtml: "<p></p>",
     clienteParado: false,
+    assetIds: [],
   });
+  const { uploadEditorAsset, duplicateEditorAsset } = useEditorAsset();
+
+  // Imagem colada (Ctrl+V) sobe como arquivo do sistema escolhido, igual ao
+  // modal de chamado; o vínculo com o chamado vem depois de criado.
+  const requireSistemaParaArquivo = () => {
+    if (!formulario.projectId) throw new Error(ESCOLHA_O_SISTEMA_ANTES);
+    return formulario.projectId;
+  };
+  const keepAsset = (assetId: string) =>
+    setFormulario((atual) => ({ ...atual, assetIds: [...atual.assetIds, assetId] }));
+  const uploadImagem = async (blockId: string, file: File): Promise<string> => {
+    const projectId = requireSistemaParaArquivo();
+    const { asset_id } = await uploadEditorAsset({
+      blockId,
+      data: { entity_identifier: "", entity_type: EFileAssetType.ISSUE_DESCRIPTION },
+      file,
+      projectId,
+      workspaceSlug,
+    });
+    keepAsset(asset_id);
+    return asset_id;
+  };
+  const duplicateImagem = async (assetId: string): Promise<string> => {
+    const projectId = requireSistemaParaArquivo();
+    const duplicado = await duplicateEditorAsset({
+      assetId,
+      entityId: undefined,
+      entityType: EFileAssetType.ISSUE_DESCRIPTION,
+      projectId,
+      workspaceSlug,
+    });
+    keepAsset(duplicado.asset_id);
+    return duplicado.asset_id;
+  };
   const { currentWorkspace } = useWorkspace();
   const { modulos } = useModulosDoSistema(workspaceSlug, formulario.projectId);
   const { entities } = useEntities(workspaceSlug);
@@ -175,8 +210,8 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
               searchMentionCallback={async (payload) =>
                 await workspaceService.searchEntity(workspaceSlug, { ...payload, project_id: formulario.projectId })
               }
-              uploadFile={recuseArquivo}
-              duplicateFile={recuseArquivo}
+              uploadFile={uploadImagem}
+              duplicateFile={duplicateImagem}
               containerClassName="min-h-[96px] rounded-md border border-subtle bg-surface-2"
             />
           </div>

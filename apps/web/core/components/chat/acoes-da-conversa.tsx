@@ -11,6 +11,7 @@ import { AlertCircle } from "lucide-react";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
+import { bindArquivosDaSolicitacao } from "@/components/solicitacao/arquivos-da-solicitacao";
 import type { ErroDoCampo, PedidoDeSolicitacao } from "@/components/solicitacao/formulario-da-solicitacao";
 import { ModalDeSolicitacao } from "@/components/solicitacao/modal-de-solicitacao";
 // services
@@ -49,7 +50,7 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
 
   // Estratégia "pela conversa" do modal de solicitação: a rota from-chat junta
   // a transcrição e os arquivos, e a conversa guarda o atalho para o chamado.
-  const createChamado = async ({ projectId, dados }: PedidoDeSolicitacao) => {
+  const createChamado = async ({ projectId, dados, assetIds }: PedidoDeSolicitacao) => {
     setEnviando(true);
     setErros([]);
     try {
@@ -58,6 +59,7 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
         session_id: sessao.id,
         chat_url: chatUrl,
       });
+      await bindArquivosDaSolicitacao(slug, projectId, chamado.issue.id, assetIds);
       onAtualizada(await api.linkChamado(slug, sessao.id, chamado.issue.id));
       setAbrindoChamado(false);
       setToast({

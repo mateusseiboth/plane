@@ -14,3 +14,11 @@ export const isIssueDeleteAllowed = (can: TCan, isCreator: boolean): boolean =>
 
 /** Quem abre pedido de chamado mas não cria chamado (o atalho "novo" vira "nova solicitação"). */
 export const isIntakeOnlyOperator = (can: TCan): boolean => can("intake.create") && !can("issue.create");
+
+/**
+ * Quem só abre pedidos vê o modal de SOLICITAÇÃO em TODO botão ou atalho de
+ * criar (barra lateral, triagem do sistema, estados vazios, tecla C), nunca o
+ * de chamado. Editar um chamado existente não entra nessa troca.
+ */
+export const isSolicitacaoNoLugarDoChamado = (can: TCan, isEdicao: boolean): boolean =>
+  !isEdicao && isIntakeOnlyOperator(can);

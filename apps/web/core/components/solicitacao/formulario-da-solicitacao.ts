@@ -14,6 +14,8 @@ export type FormularioDaSolicitacao = {
   complementoHtml: string;
   /** Cliente parado: prioridade urgente (como no SAC). */
   clienteParado: boolean;
+  /** Imagens coladas no complemento, já no storage do sistema; vinculam-se ao chamado depois de criado. */
+  assetIds: string[];
 };
 
 export type DadosDaSolicitacao = {
@@ -24,7 +26,7 @@ export type DadosDaSolicitacao = {
   description_html?: string;
 };
 
-export type PedidoDeSolicitacao = { projectId: string; dados: DadosDaSolicitacao };
+export type PedidoDeSolicitacao = { projectId: string; dados: DadosDaSolicitacao; assetIds: string[] };
 
 export type ErroDoCampo = { path: string; message: string };
 
@@ -39,6 +41,7 @@ export const buildPedidoDaSolicitacao = (formulario: FormularioDaSolicitacao): P
     entity_id: formulario.entidadeId || null,
     ...(isComplementoVazio(formulario.complementoHtml) ? {} : { description_html: formulario.complementoHtml }),
   },
+  assetIds: formulario.assetIds,
 });
 
 const PENDENCIAS: Array<[(formulario: FormularioDaSolicitacao) => boolean, string]> = [

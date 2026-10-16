@@ -3,7 +3,12 @@
  * Puro: recebe o `can` de `useMyWorkspaceActions`. Rodar com `bun test core/lib/permissoes`.
  */
 import { describe, expect, it } from "bun:test";
-import { isIntakeOnlyOperator, isIssueDeleteAllowed, isIssueEditAllowed } from "./regras-de-chamado";
+import {
+  isIntakeOnlyOperator,
+  isIssueDeleteAllowed,
+  isIssueEditAllowed,
+  isSolicitacaoNoLugarDoChamado,
+} from "./regras-de-chamado";
 
 const can = (permitidas: string[]) => (acao: string) => permitidas.includes(acao);
 
@@ -35,5 +40,19 @@ describe("isIntakeOnlyOperator", () => {
     expect(isIntakeOnlyOperator(can(["intake.create"]))).toBe(true);
     expect(isIntakeOnlyOperator(can(["intake.create", "issue.create"]))).toBe(false);
     expect(isIntakeOnlyOperator(can([]))).toBe(false);
+  });
+});
+
+describe("isSolicitacaoNoLugarDoChamado", () => {
+  it("quem só abre pedidos vê o modal de solicitação em TODO botão de criar", () => {
+    expect(isSolicitacaoNoLugarDoChamado(can(["intake.create"]), false)).toBe(true);
+  });
+
+  it("quem cria chamado continua no modal de chamado", () => {
+    expect(isSolicitacaoNoLugarDoChamado(can(["intake.create", "issue.create"]), false)).toBe(false);
+  });
+
+  it("editar um chamado existente nunca vira solicitação", () => {
+    expect(isSolicitacaoNoLugarDoChamado(can(["intake.create"]), true)).toBe(false);
   });
 });

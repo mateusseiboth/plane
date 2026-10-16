@@ -17,6 +17,7 @@ const FORMULARIO: FormularioDaSolicitacao = {
   entidadeId: "",
   complementoHtml: "<p></p>",
   clienteParado: false,
+  assetIds: [],
 };
 
 describe("buildPedidoDaSolicitacao", () => {
@@ -24,7 +25,13 @@ describe("buildPedidoDaSolicitacao", () => {
     expect(buildPedidoDaSolicitacao(FORMULARIO)).toEqual({
       projectId: "p1",
       dados: { name: "Guia não emite", priority: "none", entity_id: null },
+      assetIds: [],
     });
+  });
+
+  it("as imagens coladas no complemento vão como arquivos para vincular ao chamado", () => {
+    const pedido = buildPedidoDaSolicitacao({ ...FORMULARIO, assetIds: ["a1", "a2"] });
+    expect(pedido.assetIds).toEqual(["a1", "a2"]);
   });
 
   it("cliente parado vira prioridade urgente", () => {
