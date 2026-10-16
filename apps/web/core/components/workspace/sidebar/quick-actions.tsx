@@ -46,10 +46,10 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
 
   // D2: quem só opera a mesa de atendimento (abre pedido, não cria chamado) abre
   // SOLICITAÇÃO, no mesmo modal da conversa do chat (sistema, módulo, entidade,
-  // cliente parado), nos sistemas em que pode abrir pedido.
-  const isAtendimento = isIntakeOnlyOperator(can) && solicitacao.projetos.length > 0;
+  // cliente parado), para qualquer sistema do espaço, mesmo sem participar dele.
+  const isAtendimento = isIntakeOnlyOperator(can);
 
-  const disabled = joinedProjectIds.length === 0 || (!canCreateIssue && !isAtendimento);
+  const disabled = !isAtendimento && (joinedProjectIds.length === 0 || !canCreateIssue);
 
   const handleCreateClick = () => {
     if (isAtendimento) solicitacao.openSolicitacao();

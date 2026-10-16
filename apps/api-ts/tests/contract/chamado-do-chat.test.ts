@@ -190,6 +190,13 @@ describe("POST .../inbox-issues/from-chat/", () => {
     expect(comVazio.descriptionHtml).not.toStartWith("<p></p>");
   });
 
+  it("sistema de outro espaço: 404", async () => {
+    const outroDono = await createUser();
+    const alheio = await createProject((await createWorkspace(outroDono.id)).id, outroDono.id);
+    const res = await admin.post(url(alheio.id), { session_id: await createConversa(wsSlug) });
+    expect(res.status).toBe(404);
+  });
+
   it("quem não abre pedido de chamado no sistema: 403", async () => {
     const conversa = await createConversa(wsSlug);
     const visitante = await createMemberWithToken(wsId, 5, projetoId, 5);

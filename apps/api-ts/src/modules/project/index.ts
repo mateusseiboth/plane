@@ -7,7 +7,13 @@ import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
 import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requireWorkspaceMember } from "@utils/workspace";
 import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
-import { createSolicitacao, findErrosDaSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
+import {
+  createSolicitacao,
+  findErrosDaSolicitacao,
+  findOrCreateIntake,
+  findTriageState,
+  requireSistemaDoEspaco,
+} from "@utils/intake";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
@@ -538,7 +544,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
   .post("/:project_id/inbox-issues/", async ({params: {slug, project_id}, body, user, set, headers}) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.INTAKE_CREATE);
+    // Como a abertura pela conversa do chat: o Atendimento abre solicitação para
+    // QUALQUER sistema do espaço, sem vínculo com ele. A triagem é de quem recebe
+    // o pedido, não de quem o abre.
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTAKE_CREATE);
+    await requireSistemaDoEspaco(project_id, ws.id);
     const b = (body as any).issue ?? body as any;
     const referencias = {projectId: project_id, workspaceId: ws.id, moduleId: b.module_id || null, entityId: b.entity_id || null};
     const erros = await findErrosDaSolicitacao(referencias);

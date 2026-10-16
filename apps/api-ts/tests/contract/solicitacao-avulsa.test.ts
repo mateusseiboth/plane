@@ -88,4 +88,51 @@ describe("POST .../inbox-issues/ (solicitação avulsa)", () => {
     const res = await apiClient(atendente.token).post(url(), { name: "Pedido do atendimento", priority: "urgent" });
     expect(res.status).toBe(201);
   });
+
+  it("atendente sem vínculo com o sistema abre mesmo assim: intake.create no espaço basta", async () => {
+    const atendente = await createMemberWithToken(wsId, 6);
+    const res = await apiClient(atendente.token).post(url(), { name: "Pedido de quem não participa" });
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as any).issue.project_id).toBe(projetoId);
+  });
+
+  it("negada a ação intake.create por pessoa, 403", async () => {
+    const atendente = await createMemberWithToken(wsId, 6);
+    await prisma.workspaceMember.updateMany({
+      where: { workspaceId: wsId, memberId: atendente.user.id },
+      data: { revokedActions: ["intake.create"] },
+    });
+    expect((await apiClient(atendente.token).post(url(), { name: "X" })).status).toBe(403);
+  });
+
+  it("sistema de outro espaço: 404", async () => {
+    const outroDono = await createUser();
+    const outroEspaco = await createWorkspace(outroDono.id);
+    const alheio = await createProject(outroEspaco.id, outroDono.id);
+    expect((await admin.post(url(alheio.id), { name: "X" })).status).toBe(404);
+  });
+});
+
+describe("GET /workspaces/:slug/sistemas-para-solicitacao/", () => {
+  const rota = () => `/workspaces/${wsSlug}/sistemas-para-solicitacao/`;
+
+  it("atendente sem vínculo recebe todos os sistemas do espaço, só id, nome e identificador", async () => {
+    const atendente = await createMemberWithToken(wsId, 6);
+    const res = await apiClient(atendente.token).get(rota());
+    expect(res.status).toBe(200);
+    const sistemas = (await res.json()) as any[];
+    const total = await prisma.project.count({ where: { workspaceId: wsId, deletedAt: null, archivedAt: null } });
+    expect(sistemas).toHaveLength(total);
+    expect(Object.keys(sistemas[0]).toSorted()).toEqual(["id", "identifier", "name"]);
+    expect(sistemas.map((p) => p.id)).toContain(projetoId);
+  });
+
+  it("sem intake.create, 403", async () => {
+    const atendente = await createMemberWithToken(wsId, 6);
+    await prisma.workspaceMember.updateMany({
+      where: { workspaceId: wsId, memberId: atendente.user.id },
+      data: { revokedActions: ["intake.create"] },
+    });
+    expect((await apiClient(atendente.token).get(rota())).status).toBe(403);
+  });
 });

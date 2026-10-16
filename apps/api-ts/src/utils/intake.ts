@@ -67,6 +67,15 @@ const isEntidadeDoEspaco = async (entityId: string, workspaceId: string) =>
     await prisma.entity.findFirst({ where: { id: entityId, workspaceId, deletedAt: null }, select: { id: true } })
   );
 
+/** O sistema existe neste espaço; senão, 404. Não exige vínculo de quem abre. */
+export async function requireSistemaDoEspaco(projectId: string, workspaceId: string): Promise<void> {
+  const sistema = await prisma.project.findFirst({
+    where: { id: projectId, workspaceId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!sistema) throw { status: 404, message: "Sistema não encontrado." };
+}
+
 type ReferenciasDaSolicitacao = {
   projectId: string;
   workspaceId: string;

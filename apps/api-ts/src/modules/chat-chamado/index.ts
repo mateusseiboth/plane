@@ -20,7 +20,7 @@
 import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
-import { createSolicitacao, findErrosDaSolicitacao } from "@utils/intake";
+import { createSolicitacao, findErrosDaSolicitacao, requireSistemaDoEspaco } from "@utils/intake";
 import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail } from "@utils/workspace";
 import { copyAnexosDaConversa } from "@modules/chat-chamado/anexos";
@@ -112,6 +112,7 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
     // O atendimento abre solicitação para QUALQUER sistema, inclusive os de
     // que não é membro: a triagem é de quem recebe o pedido, não de quem o abre.
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.CHAT_ABRIR_CHAMADO);
+    await requireSistemaDoEspaco(project_id, ws.id);
     const corpo = (body ?? {}) as Corpo;
     const sessionId = readTexto(corpo.session_id);
     const prioridade = readTexto(corpo.priority) || "none";

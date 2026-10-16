@@ -7,13 +7,13 @@
 "use client";
 
 import { useState } from "react";
+import useSWR from "swr";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
 import type { ErroDoCampo, PedidoDeSolicitacao } from "@/components/solicitacao/formulario-da-solicitacao";
 import { ModalDeSolicitacao } from "@/components/solicitacao/modal-de-solicitacao";
 // hooks
-import { useProject } from "@/hooks/store/use-project";
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { InboxIssueService } from "@/services/inbox";
@@ -25,19 +25,22 @@ type Recusa = { detail?: string; errors?: ErroDoCampo[] } | null | undefined;
 /**
  * Estratégia "avulsa" do modal de solicitação: o botão "Nova solicitação" da
  * barra lateral, sem conversa. Envia pela rota padrão da triagem
- * (`POST .../inbox-issues/`). Os sistemas são os do espaço em que a pessoa pode
- * abrir pedido (`canInProject("intake.create", sistema)`).
+ * (`POST .../inbox-issues/`). Os sistemas são TODOS os do espaço, sem vínculo
+ * (`GET /sistemas-para-solicitacao/`): o Atendimento abre pedido para qualquer
+ * sistema, como pela conversa do chat.
  */
 export function useSolicitacaoAvulsa(workspaceSlug: string | undefined) {
   const [aberta, setAberta] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erros, setErros] = useState<ErroDoCampo[]>([]);
-  const { workspaceProjectIds, getProjectById } = useProject();
-  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
+  const { can } = useMyWorkspaceActions(workspaceSlug);
+  const { data: sistemas } = useSWR(
+    aberta && workspaceSlug && can("intake.create") ? `SISTEMAS_PARA_SOLICITACAO_${workspaceSlug}` : null,
+    () => inboxIssueService.listSistemasParaSolicitacao(workspaceSlug!),
+    { revalidateOnFocus: false }
+  );
 
-  const projetos = (workspaceProjectIds ?? [])
-    .filter((projectId) => canInProject("intake.create", projectId))
-    .map((projectId) => ({ value: projectId, label: getProjectById(projectId)?.name ?? projectId }));
+  const projetos = (sistemas ?? []).map((sistema) => ({ value: sistema.id, label: sistema.name }));
 
   const close = () => {
     setErros([]);
@@ -79,5 +82,5 @@ export function useSolicitacaoAvulsa(workspaceSlug: string | undefined) {
     />
   );
 
-  return { openSolicitacao: () => setAberta(true), modalDaSolicitacao, projetos };
+  return { openSolicitacao: () => setAberta(true), modalDaSolicitacao };
 }

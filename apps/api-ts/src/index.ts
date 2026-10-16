@@ -4,6 +4,7 @@ import { swagger } from "@elysiajs/swagger";
 
 import { projectModule } from "@modules/project";
 import { chatChamadoModule } from "@modules/chat-chamado";
+import { solicitacaoModule } from "@modules/solicitacao";
 import { stateModule } from "@modules/state";
 import { labelModule, issueLabelModule } from "@modules/label";
 import { cycleModule } from "@modules/cycle";
@@ -196,6 +197,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(projectModule)
   // Chamado aberto a partir de uma conversa do chat (transcrição + arquivos).
   .use(chatChamadoModule)
+  .use(solicitacaoModule)
   .use(stateModule)
   .use(labelModule)
   .use(issueLabelModule)
