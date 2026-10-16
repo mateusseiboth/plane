@@ -280,6 +280,18 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(ACTION_CATALOG.POSATENDIMENTO_RECORD).toMatchObject({ scope: "workspace" });
     expect(ACTION_CATALOG.POSATENDIMENTO_VERIFY).toMatchObject({ scope: "workspace" });
   });
+
+  // W44: a tela deixou de decidir por nível. Os dois cortes que não tinham ação
+  // viraram ação com o mesmo padrão de antes, para nada mudar no deploy.
+  it("exportar chamados fica com quem exportava pela tela (Membro e admin)", () => {
+    expect(donosDe("issue.export")).toEqual(["admin", "member"]);
+    expect(ACTION_CATALOG.ISSUE_EXPORT).toMatchObject({ scope: "workspace" });
+  });
+
+  it("enviar plugins e widgets fica com a TI e o admin", () => {
+    expect(donosDe("extension.upload")).toEqual(["admin", "ti"]);
+    expect(ACTION_CATALOG.EXTENSION_UPLOAD).toMatchObject({ scope: "workspace" });
+  });
 });
 
 describe("applyMemberOverrides", () => {

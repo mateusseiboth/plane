@@ -1,6 +1,8 @@
 /**
  * Quem pode publicar extensões (plugins/widgets): admin de instância, superuser
- * ou qualquer usuário com o papel TI (role 12) em algum workspace ativo.
+ * ou quem tem a ação `extension.upload` (TI por padrão) ou `plugin.manage` em
+ * algum espaço ativo. Antes era o NÚMERO do papel TI (12); agora segue a matriz
+ * de ações, com as exceções por pessoa (W44).
  */
 import {afterAll, beforeAll, describe, expect, it} from "bun:test";
 import prisma from "@db";
@@ -49,6 +51,22 @@ describe("registry-access", () => {
     it("nega membro comum e usuário sem workspace", async () => {
       expect(await isUploader(asUser(memberId))).toBe(false);
       expect(await isUploader(asUser((await createUser()).id))).toBe(false);
+    });
+
+    it("libera quem recebeu extension.upload por pessoa, sem ser TI", async () => {
+      const concedido = await createUser();
+      await prisma.workspaceMember.create({
+        data: {workspaceId, memberId: concedido.id, role: 8, isActive: true, grantedActions: ["extension.upload"]},
+      });
+      expect(await isUploader(asUser(concedido.id))).toBe(true);
+    });
+
+    it("nega a TI de quem teve extension.upload negada por pessoa", async () => {
+      const negado = await createUser();
+      await prisma.workspaceMember.create({
+        data: {workspaceId, memberId: negado.id, role: 12, isActive: true, revokedActions: ["extension.upload"]},
+      });
+      expect(await isUploader(asUser(negado.id))).toBe(false);
     });
 
     it("nega quando a associação TI está inativa", async () => {
