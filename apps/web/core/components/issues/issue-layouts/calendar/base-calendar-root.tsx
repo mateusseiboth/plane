@@ -9,7 +9,7 @@ import { useCallback, useEffect } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EIssueGroupByToServerOptions, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
+import { EIssueGroupByToServerOptions } from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TGroupedIssues } from "@plane/types";
 import { EIssuesStoreType } from "@plane/types";
@@ -17,7 +17,8 @@ import { EIssuesStoreType } from "@plane/types";
 import { useCalendarView } from "@/hooks/store/use-calendar-view";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useRealtimeRefetch } from "@/hooks/use-realtime";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isIssueEditAllowed } from "@/lib/permissoes/regras-de-chamado";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
 // types
@@ -59,7 +60,7 @@ export const BaseCalendarRoot = observer(function BaseCalendarRoot(props: IBaseC
   // hooks
   const fallbackStoreType = useIssueStoreType() as CalendarStoreType;
   const storeType = isEpic ? EIssuesStoreType.EPIC : fallbackStoreType;
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { issues, issuesFilter, issueMap } = useIssues(storeType);
   const {
     fetchIssues,
@@ -75,10 +76,8 @@ export const BaseCalendarRoot = observer(function BaseCalendarRoot(props: IBaseC
 
   const issueCalendarView = useCalendarView();
 
-  const isEditingAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  // Editar no calendário: issue.edit.all ou issue.edit.own, participando do sistema aberto.
+  const isEditingAllowed = isIssueEditAllowed((action) => canInProject(action, undefined));
 
   const { enableInlineEditing } = issues?.viewFlags || {};
 

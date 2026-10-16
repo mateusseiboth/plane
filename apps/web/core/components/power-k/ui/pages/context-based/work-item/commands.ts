@@ -19,12 +19,11 @@ import {
   Users,
 } from "lucide-react";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { LinkIcon, TrashIcon, ContrastIcon, DiceIcon, DoubleCircleIcon } from "@plane/propel/icons";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
 import type { ICycle, IIssueLabel, IModule, TIssue, TIssuePriorities } from "@plane/types";
-import { EIssueServiceType, EUserPermissions } from "@plane/types";
+import { EIssueServiceType } from "@plane/types";
 import { copyTextToClipboard } from "@plane/utils";
 // components
 import type { TPowerKCommandConfig } from "@/components/power-k/core/types";
@@ -34,6 +33,8 @@ import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useProject } from "@/hooks/store/use-project";
 import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isIssueDeleteAllowed, isIssueEditAllowed } from "@/lib/permissoes/regras-de-chamado";
 
 export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] => {
   // params
@@ -41,8 +42,9 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
   // store
   const {
     data: currentUser,
-    permission: { allowPermissions },
+    permission: { getProjectRoleByWorkspaceSlugAndProjectId },
   } = useUser();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { toggleDeleteIssueModal } = useCommandPalette();
   const { getProjectById } = useProject();
   const { areEstimateEnabledByProjectId } = useProjectEstimates();
@@ -76,14 +78,16 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
   const updateEntity = isEpic ? updateEpic : updateIssue;
   const createEntitySubscription = isEpic ? createEpicSubscription : createSubscription;
   const removeEntitySubscription = isEpic ? removeEpicSubscription : removeSubscription;
-  // permission
-  const isEditingAllowed =
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-      workspaceSlug?.toString(),
-      entityDetails?.project_id ?? undefined
-    ) && !entityDetails?.archived_at;
+  // permission: editar confere issue.edit.*; excluir, issue.delete.* (dono ou todos); assinar, só participar do sistema.
+  const entityProjectId = entityDetails?.project_id ?? undefined;
+  const canInEntityProject = (action: string) => canInProject(action, entityProjectId);
+  const isActive = !entityDetails?.archived_at;
+  const isEditingAllowed = isIssueEditAllowed(canInEntityProject) && isActive;
+  const isDeletingAllowed =
+    isIssueDeleteAllowed(canInEntityProject, entityDetails?.created_by === currentUser?.id) && isActive;
+  const isSubscriptionAllowed =
+    getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug?.toString() ?? "", entityProjectId) !== undefined &&
+    isActive;
 
   const handleUpdateEntity = useCallback(
     async (formData: Partial<TIssue>) => {
@@ -397,8 +401,8 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
       type: "action",
       action: handleSubscription,
       modifierShortcut: "shift+s",
-      isEnabled: () => isEditingAllowed,
-      isVisible: () => isEditingAllowed,
+      isEnabled: () => isSubscriptionAllowed,
+      isVisible: () => isSubscriptionAllowed,
       closeOnSelect: true,
     },
     {
@@ -410,8 +414,8 @@ export const usePowerKWorkItemContextBasedCommands = (): TPowerKCommandConfig[] 
       type: "action",
       action: handleDeleteWorkItem,
       modifierShortcut: "cmd+backspace",
-      isEnabled: () => isEditingAllowed,
-      isVisible: () => isEditingAllowed,
+      isEnabled: () => isDeletingAllowed,
+      isVisible: () => isDeletingAllowed,
       closeOnSelect: true,
     },
     {

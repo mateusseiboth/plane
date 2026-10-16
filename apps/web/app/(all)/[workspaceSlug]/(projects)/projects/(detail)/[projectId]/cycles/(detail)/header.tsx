@@ -10,14 +10,7 @@ import { useParams } from "next/navigation";
 // icons
 import { ChartNoAxesColumn, PanelRight, SlidersHorizontal } from "lucide-react";
 // plane imports
-import {
-  EIssueFilterType,
-  EUserPermissions,
-  EUserPermissionsLevel,
-  ISSUE_DISPLAY_FILTERS_BY_PAGE,
-  WORK_ITEM_TRACKER_ELEMENTS,
-  PROJECT_WORK_ROLES,
-} from "@plane/constants";
+import { EIssueFilterType, ISSUE_DISPLAY_FILTERS_BY_PAGE, WORK_ITEM_TRACKER_ELEMENTS } from "@plane/constants";
 import { usePlatformOS } from "@plane/hooks";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
@@ -46,9 +39,9 @@ import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 import useLocalStorage from "@/hooks/use-local-storage";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web imports
 import { CommonProjectBreadcrumbs } from "@/plane-web/components/breadcrumbs/common";
 
@@ -71,7 +64,7 @@ export const CycleIssuesHeader = observer(function CycleIssuesHeader() {
   const { toggleCreateIssueModal } = useCommandPalette();
   const { currentProjectDetails, loader } = useProject();
   const { isMobile } = usePlatformOS();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const activeLayout = issueFilters?.displayFilters?.layout;
 
@@ -109,10 +102,7 @@ export const CycleIssuesHeader = observer(function CycleIssuesHeader() {
   // derived values
   const cycleDetails = cycleId ? getCycleById(cycleId.toString()) : undefined;
   const isCompletedCycle = cycleDetails?.status?.toLocaleLowerCase() === "completed";
-  const canUserCreateIssue = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const canUserCreateIssue = canInProject("issue.create", projectId?.toString());
 
   const switcherOptions = currentProjectCycleIds
     ?.map((id) => {

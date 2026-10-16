@@ -7,7 +7,7 @@
 import { cloneDeep, set } from "lodash-es";
 import { action, makeObservable, observable, runInAction, computed } from "mobx";
 // plane imports
-import { API_BASE_URL, PROJECT_WORK_ROLES } from "@plane/constants";
+import { API_BASE_URL } from "@plane/constants";
 import type { IUser, TUserPermissions } from "@plane/types";
 // plane web imports
 import type { RootStore } from "@/plane-web/store/root.store";
@@ -263,14 +263,16 @@ export class UserStore implements IUserStore {
    * @returns {{[projectId: string]: number} || null}
    */
   fetchProjectsWithCreatePermissions = (): { [key: string]: TUserPermissions } => {
-    const { workspaceSlug } = this.store.router;
+    const slug = this.store.router.workspaceSlug || "";
 
-    const allWorkspaceProjectRoles = this.permission.getProjectRolesByWorkspaceSlug(workspaceSlug || "");
+    const allWorkspaceProjectRoles = this.permission.getProjectRolesByWorkspaceSlug(slug);
+    // Criar chamado: issue.create da função (vale em todo sistema), só nos sistemas de que a pessoa participa.
+    if (!this.permission.canDo("issue.create", slug)) return {};
 
     const userPermissions =
       (allWorkspaceProjectRoles &&
         Object.keys(allWorkspaceProjectRoles)
-          .filter((key) => (PROJECT_WORK_ROLES as number[]).includes(allWorkspaceProjectRoles[key]))
+          .filter((key) => allWorkspaceProjectRoles[key] !== undefined)
           .reduce(
             (res: { [projectId: string]: number }, key: string) => ((res[key] = allWorkspaceProjectRoles[key]), res),
             {}

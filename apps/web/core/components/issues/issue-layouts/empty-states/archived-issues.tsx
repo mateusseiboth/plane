@@ -7,14 +7,13 @@
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { EIssuesStoreType } from "@plane/types";
 // hooks
-import { useUserPermissions } from "@/hooks/store/user";
 import { useWorkItemFilterInstance } from "@/hooks/store/work-item-filters/use-work-item-filter-instance";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const ProjectArchivedEmptyState = observer(function ProjectArchivedEmptyState() {
   // router
@@ -25,13 +24,11 @@ export const ProjectArchivedEmptyState = observer(function ProjectArchivedEmptyS
   // plane hooks
   const { t } = useTranslation();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
   const archivedWorkItemFilter = useWorkItemFilterInstance(EIssuesStoreType.ARCHIVED, projectId);
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  // O botão leva às automações do sistema (arquivar automático): project.settings.
+  const canConfigureAutomations = canInProject("project.settings", projectId);
 
   return (
     <div className="relative h-full w-full overflow-y-auto">
@@ -44,7 +41,7 @@ export const ProjectArchivedEmptyState = observer(function ProjectArchivedEmptyS
             {
               label: "Limpar filtros",
               onClick: archivedWorkItemFilter?.clearFilters,
-              disabled: !canPerformEmptyStateActions || !archivedWorkItemFilter,
+              disabled: !archivedWorkItemFilter,
               variant: "secondary",
             },
           ]}
@@ -58,7 +55,7 @@ export const ProjectArchivedEmptyState = observer(function ProjectArchivedEmptyS
             {
               label: t("workspace_empty_state.archive_work_items.cta_primary"),
               onClick: () => router.push(`/${workspaceSlug}/settings/projects/${projectId}/automations`),
-              disabled: !canPerformEmptyStateActions,
+              disabled: !canConfigureAutomations,
               variant: "primary",
             },
           ]}

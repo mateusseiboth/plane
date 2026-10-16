@@ -9,7 +9,6 @@ import { isNil } from "lodash-es";
 import { observer } from "mobx-react";
 import { Bell, BellOff } from "lucide-react";
 // plane-i18n
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 // UI
 import { Button } from "@plane/propel/button";
@@ -39,15 +38,11 @@ export const IssueSubscription = observer(function IssueSubscription(props: TIss
   // state
   const [loading, setLoading] = useState(false);
   // hooks
-  const { allowPermissions } = useUserPermissions();
+  const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
 
   const isSubscribed = getSubscriptionByIssueId(issueId);
-  const isEditable = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId
-  );
+  // Assinar o chamado não é ação da matriz: basta participar do sistema.
+  const isEditable = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId) !== undefined;
 
   const handleSubscription = async () => {
     setLoading(true);

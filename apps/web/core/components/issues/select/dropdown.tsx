@@ -7,12 +7,10 @@
 import React from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
-import { EUserPermissionsLevel } from "@plane/constants";
 import type { IIssueLabel } from "@plane/types";
-import { EUserPermissions } from "@plane/types";
 // hooks
 import { useLabel } from "@/hooks/store/use-label";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import type { TWorkItemLabelSelectBaseProps } from "./base";
 import { WorkItemLabelSelectBase } from "./base";
@@ -26,14 +24,13 @@ export const IssueLabelSelect = observer(function IssueLabelSelect(props: TWorkI
   // router
   const { workspaceSlug } = useParams();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { getProjectLabelIds, getLabelById, fetchProjectLabels, createLabel } = useLabel();
   // derived values
   const projectLabelIds = getProjectLabelIds(projectId);
 
-  const canCreateLabel =
-    projectId &&
-    allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug?.toString(), projectId);
+  // Criar etiqueta direto no seletor: label.manage no sistema do chamado.
+  const canCreateLabel = !!projectId && canInProject("label.manage", projectId);
 
   const onDropdownOpen = () => {
     if (projectLabelIds === undefined && workspaceSlug && projectId)

@@ -7,7 +7,7 @@
 import {observer} from "mobx-react";
 import {useCallback} from "react";
 // plane constants
-import {ALL_ISSUES, EIssueFilterType, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
+import {ALL_ISSUES, EIssueFilterType} from "@plane/constants";
 import type {IIssueDisplayFilterOptions} from "@plane/types";
 import {EIssueLayoutTypes, EIssuesStoreType} from "@plane/types";
 // components
@@ -15,7 +15,8 @@ import {AllIssueQuickActions} from "@/components/issues/issue-layouts/quick-acti
 import {SpreadsheetLayoutLoader} from "@/components/ui/loader/layouts/spreadsheet-layout-loader";
 // hooks
 import {useIssues} from "@/hooks/store/use-issues";
-import {useUserPermissions} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
+import {isIssueEditAllowed} from "@/lib/permissoes/regras-de-chamado";
 import {useIssuesActions} from "@/hooks/use-issues-actions";
 import {useWorkspaceIssueProperties} from "@/hooks/use-workspace-issue-properties";
 // store
@@ -49,23 +50,18 @@ export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRo
     issues: {getIssueLoader, getPaginationData, groupedIssueIds},
   } = useIssues(EIssuesStoreType.GLOBAL);
   const {updateIssue, removeIssue, archiveIssue} = useIssuesActions(EIssuesStoreType.GLOBAL);
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug);
 
   // Derived values
   const issueFilters = globalViewId ? filters?.[globalViewId.toString()] : undefined;
 
-  // Permission checker
+  // Editar o chamado na visão do espaço: issue.edit.all ou issue.edit.own, no sistema DELE.
   const canEditProperties = useCallback(
     (projectId: string | undefined) => {
       if (!projectId) return false;
-      return allowPermissions(
-        PROJECT_WORK_ROLES,
-        EUserPermissionsLevel.PROJECT,
-        workspaceSlug.toString(),
-        projectId,
-      );
+      return isIssueEditAllowed((action) => canInProject(action, projectId));
     },
-    [allowPermissions, workspaceSlug],
+    [canInProject],
   );
 
   // Display filters handler

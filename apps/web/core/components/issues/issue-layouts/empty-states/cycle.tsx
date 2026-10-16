@@ -9,7 +9,7 @@ import { isEmpty } from "lodash-es";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel, WORK_ITEM_TRACKER_ELEMENTS, PROJECT_WORK_ROLES } from "@plane/constants";
+import { WORK_ITEM_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -20,8 +20,8 @@ import { ExistingIssuesListModal } from "@/components/core/modals/existing-issue
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useIssues } from "@/hooks/store/use-issues";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useWorkItemFilterInstance } from "@/hooks/store/work-item-filters/use-work-item-filter-instance";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const CycleEmptyState = observer(function CycleEmptyState() {
   // router
@@ -37,16 +37,15 @@ export const CycleEmptyState = observer(function CycleEmptyState() {
   const { getCycleById } = useCycle();
   const { issues } = useIssues(EIssuesStoreType.CYCLE);
   const { toggleCreateIssueModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
   const cycleWorkItemFilter = useWorkItemFilterInstance(EIssuesStoreType.CYCLE, cycleId);
   const cycleDetails = cycleId ? getCycleById(cycleId) : undefined;
   const isCompletedCycleSnapshotAvailable = !isEmpty(cycleDetails?.progress_snapshot ?? {});
   const isCompletedAndEmpty = isCompletedCycleSnapshotAvailable || cycleDetails?.status?.toLowerCase() === "completed";
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const canCreateIssue = canInProject("issue.create", projectId);
+  // Pôr chamados existentes no ciclo: a rota de chamados do ciclo confere cycle.manage.
+  const canManageCycle = canInProject("cycle.manage", projectId);
 
   const handleAddIssuesToCycle = async (data: ISearchIssueResponse[]) => {
     if (!workspaceSlug || !projectId || !cycleId) return;
@@ -98,7 +97,7 @@ export const CycleEmptyState = observer(function CycleEmptyState() {
               {
                 label: "Limpar filtros",
                 onClick: cycleWorkItemFilter?.clearFilters,
-                disabled: !canPerformEmptyStateActions || !cycleWorkItemFilter,
+                disabled: !cycleWorkItemFilter,
                 variant: "secondary",
               },
             ]}
@@ -114,14 +113,14 @@ export const CycleEmptyState = observer(function CycleEmptyState() {
                 onClick: () => {
                   toggleCreateIssueModal(true, EIssuesStoreType.CYCLE);
                 },
-                disabled: !canPerformEmptyStateActions,
+                disabled: !canCreateIssue,
                 variant: "primary",
                 "data-ph-element": WORK_ITEM_TRACKER_ELEMENTS.EMPTY_STATE_ADD_BUTTON.CYCLE,
               },
               {
                 label: t("project_empty_state.cycle_work_items.cta_secondary"),
                 onClick: () => setCycleIssuesListModal(true),
-                disabled: !canPerformEmptyStateActions,
+                disabled: !canManageCycle,
                 variant: "secondary",
                 "data-ph-element": WORK_ITEM_TRACKER_ELEMENTS.EMPTY_STATE_ADD_BUTTON.CYCLE,
               },

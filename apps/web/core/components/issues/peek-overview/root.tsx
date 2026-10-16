@@ -9,7 +9,6 @@ import { observer } from "mobx-react";
 import { usePathname } from "next/navigation";
 // Plane imports
 import useSWR from "swr";
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setPromiseToast, setToast } from "@plane/propel/toast";
 import type { IWorkItemPeekOverview, TIssue } from "@plane/types";
@@ -19,8 +18,9 @@ import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
 import type { TSetFieldError } from "@/helpers/api-field-errors.helper";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isIssueEditAllowed } from "@/lib/permissoes/regras-de-chamado";
 import { useWorkItemProperties } from "@/plane-web/hooks/use-issue-properties";
 // local imports
 import type { TIssueOperations } from "../issue-detail";
@@ -37,8 +37,6 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
   // router
   const pathname = usePathname();
   // store hook
-  const { allowPermissions } = useUserPermissions();
-
   const {
     issues: { restoreIssue },
   } = useIssues(EIssuesStoreType.ARCHIVED);
@@ -48,6 +46,7 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
     issue: { fetchIssue },
     fetchActivities,
   } = useIssueDetail();
+  const { canInProject } = useMyWorkspaceActions(peekIssue?.workspaceSlug);
   const issueStoreType = useIssueStoreType();
   const storeType = issueStoreFromProps ?? issueStoreType;
   const { issues } = useIssues(storeType);
@@ -241,13 +240,8 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
 
   if (!peekIssue?.workspaceSlug || !peekIssue?.projectId || !peekIssue?.issueId) return <></>;
 
-  // Check if issue is editable, based on user role
-  const isEditable = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    peekIssue?.workspaceSlug,
-    peekIssue?.projectId
-  );
+  // Editar o chamado: issue.edit.all ou issue.edit.own, participando do sistema dele.
+  const isEditable = isIssueEditAllowed((action) => canInProject(action, peekIssue.projectId));
 
   return (
     <IssueView

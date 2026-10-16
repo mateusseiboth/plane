@@ -5,8 +5,9 @@
  */
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 // types
-import { PROJECT_ERROR_MESSAGES, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { PROJECT_ERROR_MESSAGES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TWorkspaceDraftIssue } from "@plane/types";
@@ -15,7 +16,8 @@ import { AlertModalCore } from "@plane/ui";
 // constants
 // hooks
 import { useIssues } from "@/hooks/store/use-issues";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 type Props = {
   isOpen: boolean;
@@ -31,12 +33,13 @@ export function WorkspaceDraftIssueDeleteIssueModal(props: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   // store hooks
   const { issueMap } = useIssues();
-  const { allowPermissions } = useUserPermissions();
+  const { workspaceSlug } = useParams();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { t } = useTranslation();
   const { data: currentUser } = useUser();
 
-  // derived values
-  const canPerformProjectAdminActions = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT);
+  // O rascunho é de quem o escreveu; além dele, só quem exclui qualquer chamado (issue.delete.all).
+  const canDeleteAnyIssue = can("issue.delete.all");
 
   useEffect(() => {
     setIsDeleting(false);
@@ -47,7 +50,7 @@ export function WorkspaceDraftIssueDeleteIssueModal(props: Props) {
   // derived values
   const issue = data ? data : issueMap[dataId!];
   const isIssueCreator = issue?.created_by === currentUser?.id;
-  const authorized = isIssueCreator || canPerformProjectAdminActions;
+  const authorized = isIssueCreator || canDeleteAnyIssue;
 
   const onClose = () => {
     setIsDeleting(false);

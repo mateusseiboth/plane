@@ -8,10 +8,9 @@ import {cloneDeep, isEqual} from "lodash-es";
 import {observer} from "mobx-react";
 import {useCallback, useMemo, useState} from "react";
 // plane imports
-import {EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {setToast, TOAST_TYPE} from "@plane/propel/toast";
 import type {IProjectView, TWorkItemFilterExpression} from "@plane/types";
-import {EUserProjectRoles, EViewAccess} from "@plane/types";
+import {EViewAccess} from "@plane/types";
 // components
 import {removeNillKeys} from "@/components/issues/issue-layouts/utils";
 import {CreateUpdateProjectViewModal} from "@/components/views/modal";
@@ -24,7 +23,8 @@ import {useModule} from "@/hooks/store/use-module";
 import {useProject} from "@/hooks/store/use-project";
 import {useProjectState} from "@/hooks/store/use-project-state";
 import {useProjectView} from "@/hooks/store/use-project-view";
-import {useUser, useUserPermissions} from "@/hooks/store/user";
+import {useUser} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
 // local imports
 import {WorkItemFiltersHOC} from "./base";
 import type {TEnableSaveViewProps, TEnableUpdateViewProps, TSharedWorkItemFiltersHOCProps} from "./shared";
@@ -46,7 +46,7 @@ export const ProjectLevelWorkItemFiltersHOC = observer(function ProjectLevelWork
   const {getProjectById} = useProject();
   const {getViewById, updateView} = useProjectView();
   const {data: currentUser} = useUser();
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug);
   const {getProjectCycleIds} = useCycle();
   const {entities} = useEntities(workspaceSlug);
   const {getProjectLabelIds} = useLabel();
@@ -56,25 +56,21 @@ export const ProjectLevelWorkItemFiltersHOC = observer(function ProjectLevelWork
   const {getProjectModuleIds} = useModule();
   const {getProjectStateIds} = useProjectState();
   // derived values
-  const hasProjectMemberLevelPermissions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId,
-  );
+  // Salvar o filtro como visão (ou atualizar a visão): view.create no sistema.
+  const canSaveView = canInProject("view.create", projectId);
   const projectDetails = getProjectById(projectId);
   const viewDetails = entityId ? getViewById(entityId) : null;
   const isViewLocked = viewDetails ? viewDetails?.is_locked : false;
   const isCurrentUserOwner = viewDetails ? viewDetails.owned_by === currentUser?.id : false;
   const canCreateView = useMemo(
     () =>
-      projectDetails?.issue_views_view === true && enableSaveView && !props.saveViewOptions?.isDisabled && hasProjectMemberLevelPermissions,
-    [projectDetails?.issue_views_view, enableSaveView, props.saveViewOptions?.isDisabled, hasProjectMemberLevelPermissions],
+      projectDetails?.issue_views_view === true && enableSaveView && !props.saveViewOptions?.isDisabled && canSaveView,
+    [projectDetails?.issue_views_view, enableSaveView, props.saveViewOptions?.isDisabled, canSaveView],
   );
   const canUpdateView = useMemo(
     () =>
-      enableUpdateView && !props.updateViewOptions?.isDisabled && !isViewLocked && hasProjectMemberLevelPermissions && isCurrentUserOwner,
-    [enableUpdateView, props.updateViewOptions?.isDisabled, isViewLocked, hasProjectMemberLevelPermissions, isCurrentUserOwner],
+      enableUpdateView && !props.updateViewOptions?.isDisabled && !isViewLocked && canSaveView && isCurrentUserOwner,
+    [enableUpdateView, props.updateViewOptions?.isDisabled, isViewLocked, canSaveView, isCurrentUserOwner],
   );
   const createViewLabel = useMemo(() => props.saveViewOptions?.label, [props.saveViewOptions?.label]);
   const updateViewLabel = useMemo(() => props.updateViewOptions?.label, [props.updateViewOptions?.label]);

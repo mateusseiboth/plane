@@ -199,7 +199,8 @@
     "copy_link": "Copiar link do chamado",
     "delete": {
       "label": "Excluir chamado",
-      "error": "Erro ao excluir chamado"
+      "error": "Erro ao excluir chamado",
+      "permission_denied": "Sua função não permite excluir este chamado."
     },
     "subscription": {
       "actions": {

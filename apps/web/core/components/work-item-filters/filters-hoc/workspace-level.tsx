@@ -8,7 +8,7 @@ import { useCallback, useMemo, useState } from "react";
 import { isEqual, cloneDeep } from "lodash-es";
 import { observer } from "mobx-react";
 // plane imports
-import { DEFAULT_GLOBAL_VIEWS_LIST, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
+import { DEFAULT_GLOBAL_VIEWS_LIST } from "@plane/constants";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
 import type { IWorkspaceView, TWorkItemFilterExpression } from "@plane/types";
 import { EViewAccess } from "@plane/types";
@@ -22,7 +22,8 @@ import { useLabel } from "@/hooks/store/use-label";
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { WorkItemFiltersHOC } from "./base";
 import type { TEnableSaveViewProps, TEnableUpdateViewProps, TSharedWorkItemFiltersHOCProps } from "./shared";
@@ -57,7 +58,7 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
   const { getViewDetailsById, updateGlobalView } = useGlobalView();
   const { entities } = useEntities(workspaceSlug);
   const { data: currentUser } = useUser();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug);
   const { joinedProjectIds } = useProject();
   const {
     workspace: { getWorkspaceMemberIds },
@@ -74,18 +75,15 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
   // same-named state/label across the workspace when filtering.
   const workspaceStateIds = useMemo(() => dedupeIdsByName(workspaceStates), [workspaceStates]);
   const workspaceLabelIds = useMemo(() => dedupeIdsByName(workspaceLabels), [workspaceLabels]);
-  const hasWorkspaceMemberLevelPermissions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.WORKSPACE,
-    workspaceSlug
-  );
+  // Salvar o filtro como visão do espaço (ou atualizá-la): view.create.
+  const canSaveView = can("view.create");
   const viewDetails = entityId ? getViewDetailsById(entityId) : null;
   const isDefaultView = typeof entityId === "string" && DEFAULT_GLOBAL_VIEWS_LIST.some((view) => view.key === entityId);
   const isViewLocked = viewDetails ? viewDetails?.is_locked : false;
   const isCurrentUserOwner = viewDetails ? viewDetails.owned_by === currentUser?.id : false;
   const canCreateView = useMemo(
-    () => enableSaveView && !props.saveViewOptions?.isDisabled && hasWorkspaceMemberLevelPermissions,
-    [enableSaveView, props.saveViewOptions?.isDisabled, hasWorkspaceMemberLevelPermissions]
+    () => enableSaveView && !props.saveViewOptions?.isDisabled && canSaveView,
+    [enableSaveView, props.saveViewOptions?.isDisabled, canSaveView]
   );
   const canUpdateView = useMemo(
     () =>
@@ -93,14 +91,14 @@ export const WorkspaceLevelWorkItemFiltersHOC = observer(function WorkspaceLevel
       !isDefaultView &&
       !props.updateViewOptions?.isDisabled &&
       !isViewLocked &&
-      hasWorkspaceMemberLevelPermissions &&
+      canSaveView &&
       isCurrentUserOwner,
     [
       enableUpdateView,
       props.updateViewOptions?.isDisabled,
       isDefaultView,
       isViewLocked,
-      hasWorkspaceMemberLevelPermissions,
+      canSaveView,
       isCurrentUserOwner,
     ]
   );

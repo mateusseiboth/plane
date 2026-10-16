@@ -9,7 +9,7 @@ import { useCallback, useEffect } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane constants
-import { EIssueFilterType, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
+import { EIssueFilterType } from "@plane/constants";
 // types
 import type { EIssuesStoreType, GroupByColumnTypes, TGroupedIssues, TIssueKanbanFilters } from "@plane/types";
 import { EIssueLayoutTypes } from "@plane/types";
@@ -17,7 +17,8 @@ import { EIssueLayoutTypes } from "@plane/types";
 // hooks
 import { useIssues } from "@/hooks/store/use-issues";
 import { useRealtimeRefetch } from "@/hooks/use-realtime";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isIssueEditAllowed } from "@/lib/permissoes/regras-de-chamado";
 // hooks
 import { useGroupIssuesDragNDrop } from "@/hooks/use-group-dragndrop";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
@@ -71,8 +72,6 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
     archiveIssue,
     restoreIssue,
   } = useIssuesActions(storeType);
-  // mobx store
-  const { allowPermissions } = useUserPermissions();
   const { issueMap } = useIssues();
 
   const displayFilters = issuesFilter?.issueFilters?.displayFilters;
@@ -87,6 +86,7 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
     (displayFilters?.show_empty_groups ?? false);
 
   const { workspaceSlug, projectId } = useParams();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { updateFilters } = useIssuesActions(storeType);
   const collapsedGroups =
     issuesFilter?.issueFilters?.kanbanFilters || ({ group_by: [], sub_group_by: [] } as TIssueKanbanFilters);
@@ -105,10 +105,9 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
 
   const groupedIssueIds = issues?.groupedIssueIds as TGroupedIssues | undefined;
   // auth
-  const isEditingAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  // Editar na lista: issue.edit.all ou issue.edit.own, participando do sistema aberto.
+  const isEditingAllowed = isIssueEditAllowed((action) => canInProject(action, projectId?.toString()));
+  const isCreatingAllowed = canInProject("issue.create", projectId?.toString());
   const { enableInlineEditing, enableQuickAdd, enableIssueCreation } = issues?.viewFlags || {};
 
   const canEditProperties = useCallback(
@@ -181,7 +180,7 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
           quickAddCallback={quickAddIssue}
           enableIssueQuickAdd={!!enableQuickAdd}
           canEditProperties={canEditProperties}
-          disableIssueCreation={!enableIssueCreation || !isEditingAllowed}
+          disableIssueCreation={!enableIssueCreation || !isCreatingAllowed}
           addIssuesToView={addIssuesToView}
           isCompletedCycle={isCompletedCycle}
           handleOnDrop={handleOnDrop}
