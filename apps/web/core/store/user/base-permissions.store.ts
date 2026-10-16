@@ -184,24 +184,27 @@ export abstract class BaseUserPermissionStore implements IBaseUserPermissionStor
    * A pessoa pode fazer a ação no espaço? Lê a matriz de ações (função + exceções
    * por pessoa), a mesma que o api-ts confere. Enquanto ela não chegou, nega.
    */
-  canDo = computedFn((required: TRequiredAction, workspaceSlug?: string): boolean => {
+  // Sem `computedFn`: ele exige o mesmo número de argumentos em toda chamada
+  // (DeepMap), e `canDo` é chamado com e sem o slug. Lê observáveis, então os
+  // componentes `observer` já reagem à matriz chegar.
+  canDo = (required: TRequiredAction, workspaceSlug?: string): boolean => {
     const slug = workspaceSlug || this.store.router.workspaceSlug || "";
     const myActions = this.workspaceActions[slug];
     if (!myActions) return false;
     return isRequiredActionAllowed(required, (key) => isActionAllowed(key, myActions.permissions, undefined));
-  });
+  };
 
   /**
    * Ação dentro de um sistema: a função da pessoa é a do espaço; participar do
    * sistema (vínculo, ou admin e Gestor de Projeto, que o backend já devolve) é
    * o que restringe.
    */
-  canDoInProject = computedFn((required: TRequiredAction, workspaceSlug?: string, projectId?: string): boolean => {
+  canDoInProject = (required: TRequiredAction, workspaceSlug?: string, projectId?: string): boolean => {
     const slug = workspaceSlug || this.store.router.workspaceSlug || "";
     const project = projectId || this.store.router.projectId;
     const isProjectMember = !!this.workspaceProjectsPermissions[slug]?.[project ?? ""];
     return isProjectMember && this.canDo(required, slug);
-  });
+  };
 
   // actions
   /**

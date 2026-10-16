@@ -46,3 +46,17 @@ describe("BaseUserPermissionStore.canDo", () => {
     expect(store.canDoInProject("project.settings", SLUG, SISTEMA)).toBe(false);
   });
 });
+
+describe("aridade das chamadas", () => {
+  it("canDo e canDoInProject aceitam, no mesmo store, chamadas com e sem slug ou sistema", async () => {
+    const store = buildStore(["issue.create"]);
+    await store.fetchMyWorkspaceActions(SLUG);
+    store.workspaceProjectsPermissions = { [SLUG]: { [SISTEMA]: 15 } } as any;
+    expect(store.canDo("issue.create")).toBe(true);
+    expect(store.canDo("issue.create", SLUG)).toBe(true);
+    expect(store.canDoInProject("issue.create")).toBe(true);
+    expect(store.canDoInProject("issue.create", SLUG)).toBe(true);
+    expect(store.canDoInProject("issue.create", SLUG, SISTEMA)).toBe(true);
+    expect(store.canDoInProject("issue.create", SLUG, "outro")).toBe(false);
+  });
+});
