@@ -8,7 +8,6 @@ import { useCallback, useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { Clock, FileStack, MoreHorizontal, MoveRight } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { IconButton, getIconButtonStyling } from "@plane/propel/icon-button";
@@ -35,7 +34,9 @@ import { IntakePrintAction } from "@/components/print";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
 import { useProjectState } from "@/hooks/store/use-project-state";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { ACAO_DE_TRIAGEM, isTriagemPermitida } from "./triagem-permitida";
 import { useAppRouter } from "@/hooks/use-app-router";
 // store
 import type { IInboxIssueStore } from "@/store/inbox/inbox-issue.store";
@@ -78,7 +79,6 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
   // store
   const { currentTab, deleteInboxIssue, filteredInboxIssueIds } = useProjectInbox();
   const { data: currentUser } = useUser();
-  const { allowPermissions } = useUserPermissions();
   const { getPartialProjectById } = useProject();
   const currentProjectDetails = getPartialProjectById(projectId);
   const { t } = useTranslation();
@@ -88,35 +88,26 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
 
   const issue = inboxIssue?.issue;
   // derived values
-  const isAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId
-  );
-  const canMarkAsDuplicate = isAllowed && (inboxIssue?.status === 0 || inboxIssue?.status === -2);
-  const canMarkAsAccepted = isAllowed && (inboxIssue?.status === 0 || inboxIssue?.status === -2);
-  const canMarkAsDeclined = isAllowed && (inboxIssue?.status === 0 || inboxIssue?.status === -2);
-  // can delete only if admin or is creator of the issue
-  const canDelete =
-    allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug, projectId) ||
-    issue?.created_by === currentUser?.id;
-  const isProjectAdmin = allowPermissions(
-    [EUserPermissions.ADMIN],
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId
-  );
+  // Triar (aceitar, recusar, adiar, duplicar) é a ação `intake.review` da
+  // matriz, a mesma que o servidor confere: nada de nível fixo de papel aqui.
+  const { can } = useMyWorkspaceActions(workspaceSlug);
+  const podeTriar = isTriagemPermitida({ can, status: inboxIssue?.status });
+  const isCreator = issue?.created_by === currentUser?.id;
+  // Excluir: quem exclui qualquer chamado, ou quem abriu este.
+  const canDelete = can("issue.delete.all") || isCreator;
+  // O menu de mais ações reúne triagem e exclusão.
+  const isAllowed = can(ACAO_DE_TRIAGEM) || canDelete;
+  const canMarkAsDuplicate = podeTriar;
+  const canMarkAsAccepted = podeTriar;
+  const canMarkAsDeclined = podeTriar;
+  // Quem chegou até os botões já passou pela matriz; o guard por clique fica só
+  // como rede para o caso de a configuração mudar com a tela aberta.
+  const isProjectAdmin = podeTriar;
   const isAcceptedOrDeclined = inboxIssue?.status ? [-1, 1, 2, 3].includes(inboxIssue.status) : undefined;
   // ── "Atendido" / "Devolver para Em Teste" (accepted chamados only) ──────────
   const { getStateById, getProjectStates } = useProjectState();
-  const isCreator = issue?.created_by === currentUser?.id;
-  const isManager = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.GESTOR_PROJETO],
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId
-  );
+  // Quem tria também fecha ou devolve a solicitação aceita.
+  const isManager = can(ACAO_DE_TRIAGEM);
   const isAccepted = inboxIssue?.status === EInboxIssueStatus.ACCEPTED;
   const isWorkItemDone = getStateById(issue?.state_id)?.group === "completed";
   // The creator (cliente/atendente) or a manager can close or return an accepted
@@ -467,7 +458,7 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
                           handleActionWithPermission(
                             isProjectAdmin,
                             () => setSelectDuplicateIssue(true),
-                            "Apenas administradores do projeto podem marcar a solicitação como duplicada"
+                            "Sua função não permite marcar a solicitação como duplicada."
                           )
                         }
                       >

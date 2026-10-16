@@ -86,6 +86,19 @@ describe("gestor de projeto sem vínculo com o sistema", () => {
     expect(res.status).toBe(200);
   });
 
+  it("as funções por sistema e a lista global de solicitações cobrem todo sistema", async () => {
+    const funcoes = await gestor.get(`/users/me/workspaces/${wsSlug}/project-roles/`);
+    expect(funcoes.status).toBe(200);
+    expect((await funcoes.json())[projetoId]).toBe(18);
+
+    const { issue } = await createIntakeIssue(projetoId, wsId, { name: "Pedido pendente do gestor" });
+    const globais = await gestor.get(`/workspaces/${wsSlug}/global-intake-issues/?status=-2`);
+    expect(globais.status).toBe(200);
+    const nomes = (await globais.json()).results.map((r: any) => r.issue?.name ?? r.name);
+    expect(nomes).toContain("Pedido pendente do gestor");
+    expect(issue.id).toBeTruthy();
+  });
+
   it("membro comum sem vínculo continua de fora do sistema", async () => {
     const lista = await membro.get(`/workspaces/${wsSlug}/projects/`);
     expect((await lista.json()).some((p: any) => p.id === projetoId)).toBe(false);

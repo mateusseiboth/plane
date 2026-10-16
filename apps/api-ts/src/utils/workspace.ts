@@ -26,12 +26,28 @@ export async function requireWorkspaceMember(workspaceId: string, userId: string
  * todos os chamados dele, e só dele.
  */
 export async function findMemberProjectIds(workspaceId: string, userId: string): Promise<string[]> {
+  if (await isParticipanteDeTodoSistemaNoEspaco(workspaceId, userId)) {
+    const projetos = await prisma.project.findMany({where: {workspaceId, deletedAt: null}, select: {id: true}});
+    return projetos.map((p) => p.id);
+  }
   const membros = await prisma.projectMember.findMany({
     where: {workspaceId, memberId: userId, isActive: true, deletedAt: null},
     select: {projectId: true},
   });
   return membros.map((m) => m.projectId);
 }
+
+/** O vínculo do espaço de quem participa de todo sistema, ou null para quem depende de `project_members`. */
+export async function findParticipanteDeTodoSistema(workspaceId: string, userId: string) {
+  return prisma.workspaceMember.findFirst({
+    // permissao-estrutural: quem participa de todo sistema (isParticipanteDeTodoSistema).
+    where: {workspaceId, memberId: userId, role: {gte: NIVEL_QUE_PARTICIPA_DE_TODO_SISTEMA}, isActive: true, deletedAt: null},
+    select: {memberId: true, role: true, workflowRoleId: true},
+  });
+}
+
+const isParticipanteDeTodoSistemaNoEspaco = async (workspaceId: string, userId: string) =>
+  (await findParticipanteDeTodoSistema(workspaceId, userId)) !== null;
 
 // Não há guarda por nível aqui: "pode fazer X" é `requireWorkspaceAction` /
 // `requireProjectAction` (utils/permission-checks.ts), pela matriz de ações.
@@ -83,10 +99,7 @@ export async function getProjectOrFail(workspaceId: string, projectId: string, u
   // gravado. Vale também quando existe um vínculo de nível menor (migrações que
   // puseram o admin nos sistemas como 15): sem elevar, a pessoa tomava 403 em
   // ação de função, como a transição de etapa, no próprio sistema.
-  const participante = await prisma.workspaceMember.findFirst({
-    // permissao-estrutural: quem participa de todo sistema (isParticipanteDeTodoSistema).
-    where: {workspaceId, memberId: userId, role: {gte: NIVEL_QUE_PARTICIPA_DE_TODO_SISTEMA}, isActive: true, deletedAt: null},
-  });
+  const participante = await findParticipanteDeTodoSistema(workspaceId, userId);
   if (participante) {
     member = member
       ? // A função vem junto com o nível: manter o `workflowRoleId` da associação

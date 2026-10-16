@@ -28,7 +28,7 @@ import {
 } from "@modules/workspace/preferencias-da-barra";
 import {ATIVIDADE_INCLUDE, serializeTrilha, withoutMarcadorInterno} from "@utils/trilha";
 import {dataLocal} from "@utils/prazo";
-import {getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
+import {findMemberProjectIds, getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
 import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
@@ -2140,12 +2140,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     await requireWorkspaceMember(ws.id, user.id);
 
     // Limit to projects where user is an active member
-    const userProjectIds = (
-      await prisma.projectMember.findMany({
-        where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
-        select: {projectId: true},
-      })
-    ).map((m) => m.projectId);
+    // Os sistemas de que a pessoa participa: vínculo gravado ou, para admin e
+    // Gestor de Projeto, todos (isParticipanteDeTodoSistema).
+    const userProjectIds = await findMemberProjectIds(ws.id, user.id);
 
     const where: any = {
       workspaceId: ws.id,
@@ -2280,12 +2277,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
-    const userProjectIds = (
-      await prisma.projectMember.findMany({
-        where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
-        select: {projectId: true},
-      })
-    ).map((m) => m.projectId);
+    // Os sistemas de que a pessoa participa: vínculo gravado ou, para admin e
+    // Gestor de Projeto, todos (isParticipanteDeTodoSistema).
+    const userProjectIds = await findMemberProjectIds(ws.id, user.id);
 
     const where: any = {
       workspaceId: ws.id,
@@ -2351,12 +2345,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
-    const userProjectIds = (
-      await prisma.projectMember.findMany({
-        where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
-        select: {projectId: true},
-      })
-    ).map((m) => m.projectId);
+    // Os sistemas de que a pessoa participa: vínculo gravado ou, para admin e
+    // Gestor de Projeto, todos (isParticipanteDeTodoSistema).
+    const userProjectIds = await findMemberProjectIds(ws.id, user.id);
 
     const statusFilter: number[] | null = (query as any).status
       ? String((query as any).status)

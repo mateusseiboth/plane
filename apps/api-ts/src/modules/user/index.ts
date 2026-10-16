@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
+import { findParticipanteDeTodoSistema } from "@utils/workspace";
 import { paginate } from "@utils/pagination";
 import { buildProfileDto, readProfileData } from "@modules/user/profile";
 
@@ -467,7 +468,13 @@ export const userModule = new Elysia({ prefix: "/users" })
       where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
       select: { projectId: true, role: true },
     });
-    return Object.fromEntries(memberships.map((m) => [m.projectId, m.role]));
+    const gravadas = Object.fromEntries(memberships.map((m) => [m.projectId, m.role]));
+    // Admin e Gestor de Projeto participam de todo sistema com o nível do espaço;
+    // o vínculo gravado, quando existe, prevalece (isParticipanteDeTodoSistema).
+    const participante = await findParticipanteDeTodoSistema(ws.id, user.id);
+    if (!participante) return gravadas;
+    const projetos = await prisma.project.findMany({ where: { workspaceId: ws.id, deletedAt: null }, select: { id: true } });
+    return { ...Object.fromEntries(projetos.map((p) => [p.id, participante.role])), ...gravadas };
   })
 
   // ── Last visited workspace ────────────────────────────────────────────────────

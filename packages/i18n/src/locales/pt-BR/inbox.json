@@ -38,9 +38,9 @@
       }
     },
     "errors": {
-      "snooze_permission": "Apenas administradores do projeto podem adiar/reativar solicitações",
-      "accept_permission": "Apenas administradores do projeto podem aceitar solicitações",
-      "decline_permission": "Apenas administradores do projeto podem recusar solicitações"
+      "snooze_permission": "Sua função não permite adiar ou reativar solicitações.",
+      "accept_permission": "Sua função não permite aceitar solicitações.",
+      "decline_permission": "Sua função não permite recusar solicitações."
     },
     "actions": {
       "accept": "Aceitar",
