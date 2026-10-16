@@ -359,8 +359,8 @@
         "description": "Permita que não membros compartilhem bugs, feedback e sugestões; sem interromper seu fluxo de trabalho.",
         "toggle_title": "Ativar solicitações",
         "toggle_description": "Permitir que membros do projeto criem solicitações pelo aplicativo.",
-        "toggle_tooltip_on": "Peça ao administrador do projeto para ativar.",
-        "toggle_tooltip_off": "Peça ao administrador do projeto para desativar.",
+        "toggle_tooltip_on": "Sua função não permite ativar as solicitações.",
+        "toggle_tooltip_off": "Sua função não permite desativar as solicitações.",
         "notify_assignee": {
           "title": "Notificar responsáveis",
           "description": "A cada nova solicitação, os responsáveis padrão serão alertados via notificações"
@@ -380,7 +380,7 @@
           "fieldName": "URL do formulário padrão",
           "create_forms": "Criar formulários usando tipos de chamado",
           "manage_forms": "Gerenciar formulários",
-          "manage_forms_tooltip": "Peça ao administrador do espaço de trabalho para gerenciar.",
+          "manage_forms_tooltip": "Sua função não permite gerenciar formulários.",
           "create_form": "Criar formulário",
           "edit_form": "Editar detalhes do formulário",
           "form_title": "Título do formulário",

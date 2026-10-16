@@ -15,6 +15,7 @@ import { Button } from "@plane/propel/button";
 import { SettingsBoxedControlItem } from "@/components/settings/boxed-control-item";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { ArchiveRestoreProjectModal } from "../archive-restore-modal";
 import { DeleteProjectModal } from "../delete-project-modal";
@@ -34,8 +35,11 @@ export const GeneralProjectSettingsControlSection = observer(function GeneralPro
   const { workspaceSlug } = useParams();
   // store hooks
   const { currentProjectDetails } = useProject();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // translation
   const { t } = useTranslation();
+  // Excluir o sistema tem ação própria; arquivar fica com quem configura o sistema (a página já exige).
+  const canDeleteProject = canInProject("project.delete", projectId);
 
   if (!currentProjectDetails) return null;
 
@@ -58,7 +62,7 @@ export const GeneralProjectSettingsControlSection = observer(function GeneralPro
       <div className="rounded-lg border border-subtle bg-layer-2">
         {/* Project Selector */}
         <SettingsBoxedControlItem
-          className="rounded-b-none border-0 border-b"
+          className={canDeleteProject ? "rounded-b-none border-0 border-b" : "border-0"}
           title={t("archive")}
           description="Arquivar um projeto o removerá da navegação lateral, embora você ainda possa acessá-lo pela página de projetos. Você pode restaurar ou excluir o projeto quando quiser."
           control={
@@ -68,20 +72,22 @@ export const GeneralProjectSettingsControlSection = observer(function GeneralPro
           }
         />
         {/* Format Selector */}
-        <SettingsBoxedControlItem
-          className="rounded-t-none border-0"
-          title={t("delete")}
-          description="Ao excluir um projeto, todos os dados e recursos dentro dele serão removidos permanentemente e não poderão ser recuperados."
-          control={
-            <Button
-              variant="error-outline"
-              onClick={() => setSelectedProject(currentProjectDetails.id ?? null)}
-              data-ph-element={PROJECT_TRACKER_ELEMENTS.DELETE_PROJECT_BUTTON}
-            >
-              {t("delete")}
-            </Button>
-          }
-        />
+        {canDeleteProject && (
+          <SettingsBoxedControlItem
+            className="rounded-t-none border-0"
+            title={t("delete")}
+            description="Ao excluir um projeto, todos os dados e recursos dentro dele serão removidos permanentemente e não poderão ser recuperados."
+            control={
+              <Button
+                variant="error-outline"
+                onClick={() => setSelectedProject(currentProjectDetails.id ?? null)}
+                data-ph-element={PROJECT_TRACKER_ELEMENTS.DELETE_PROJECT_BUTTON}
+              >
+                {t("delete")}
+              </Button>
+            }
+          />
+        )}
       </div>
     </div>
   );

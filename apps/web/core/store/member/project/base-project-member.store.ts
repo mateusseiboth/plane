@@ -236,6 +236,7 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
     if (!this.projectMemberMap?.[projectId]) return null;
     let members = this.getProjectMemberships(projectId);
     if (includeGuestUsers === false) {
+      // permissao-estrutural: nível de quem está NA LISTA (dado), não de quem está logado; o chamador pede a lista sem convidados.
       members = members.filter((m) => m.role !== EUserPermissions.GUEST);
     }
     members = sortBy(members, [

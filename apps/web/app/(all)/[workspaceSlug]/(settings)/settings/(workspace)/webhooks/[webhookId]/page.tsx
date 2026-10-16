@@ -7,7 +7,6 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IWebhook } from "@plane/types";
 // ui
@@ -19,7 +18,7 @@ import { DeleteWebhookModal, WebhookDeleteSection, WebhookForm } from "@/compone
 // hooks
 import { useWebhook } from "@/hooks/store/use-webhook";
 import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import type { Route } from "./+types/page";
 import { WebhookDetailsWorkspaceSettingsHeader } from "./header";
@@ -32,19 +31,19 @@ function WebhookDetailsPage({ params }: Route.ComponentProps) {
   // mobx store
   const { currentWebhook, fetchWebhookById, updateWebhook } = useWebhook();
   const { currentWorkspace } = useWorkspace();
-  const { allowPermissions } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
 
   // TODO: fix this error
   // useEffect(() => {
   //   if (isCreated !== "true") clearSecretKey();
   // }, [clearSecretKey, isCreated]);
   // derived values
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageIntegrations = can("integration.manage");
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Webhook` : undefined;
 
   useSWR(
-    isAdmin ? `WEBHOOK_DETAILS_${workspaceSlug}_${webhookId}` : null,
-    isAdmin ? () => fetchWebhookById(workspaceSlug, webhookId) : null
+    canManageIntegrations ? `WEBHOOK_DETAILS_${workspaceSlug}_${webhookId}` : null,
+    canManageIntegrations ? () => fetchWebhookById(workspaceSlug, webhookId) : null
   );
 
   const handleUpdateWebhook = async (formData: IWebhook) => {
@@ -77,7 +76,7 @@ function WebhookDetailsPage({ params }: Route.ComponentProps) {
     }
   };
 
-  if (!isAdmin)
+  if (!isLoadingActions && !canManageIntegrations)
     return (
       <>
         <PageHead title={pageTitle} />

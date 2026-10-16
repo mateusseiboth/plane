@@ -13,7 +13,8 @@ import { mutate } from "swr";
 
 import { Disclosure } from "@headlessui/react";
 // plane imports
-import { ROLE, EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS } from "@plane/constants";
+import { ROLE, MEMBER_TRACKER_ELEMENTS } from "@plane/constants";
+import type { EUserPermissions } from "@plane/constants";
 import { TrashIcon, SuspendedUserIcon } from "@plane/propel/icons";
 import { Pill, EPillVariant, EPillSize } from "@plane/propel/pill";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -27,10 +28,12 @@ import { FreezeDialog } from "@/components/freeze/freeze-dialog";
 import { ResetMemberPasswordModal } from "@/components/workspace/reset-member-password-modal";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
 import { FROZEN_MEMBERS_KEY } from "@/hooks/use-freeze";
-
-type TMemberAction = "reset-password" | "freeze" | "remove";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+// local imports
+import { buildMemberMenuActions } from "./member-menu-actions";
+import type { TMemberAction } from "./member-menu-actions";
 
 export interface RowData {
   member: IWorkspaceMember;
@@ -41,7 +44,8 @@ export interface RowData {
 type NameProps = {
   rowData: RowData;
   workspaceSlug: string;
-  isAdmin: boolean;
+  /** `workspace.members`: redefinir senha, congelar e remover outra pessoa. */
+  canManageMembers: boolean;
   currentUser: IUser | undefined;
   setRemoveMemberModal: (rowData: RowData) => void;
 };
@@ -52,7 +56,7 @@ type AccountTypeProps = {
 };
 
 export function NameColumn(props: NameProps) {
-  const { rowData, workspaceSlug, isAdmin, currentUser, setRemoveMemberModal } = props;
+  const { rowData, workspaceSlug, canManageMembers, currentUser, setRemoveMemberModal } = props;
   // states
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isFreezeOpen, setIsFreezeOpen] = useState(false);
@@ -63,12 +67,7 @@ export function NameColumn(props: NameProps) {
   const { avatar_url, display_name, email, first_name, id, last_name } = rowData.member;
   const isSuspended = rowData.is_active === false;
   const isCurrentUser = id === currentUser?.id;
-  // Admins can reset other members' passwords; the remove/leave action stays for
-  // admins (any row) and for the current user (their own row).
-  const canResetPassword = isAdmin && !isCurrentUser && !isSuspended;
-  const menuActions: TMemberAction[] = [];
-  if (canResetPassword) menuActions.push("reset-password", "freeze");
-  if (isAdmin || isCurrentUser) menuActions.push("remove");
+  const menuActions = buildMemberMenuActions({ canManageMembers, isCurrentUser, isSuspended });
   const displayName = display_name || `${first_name} ${last_name}`.trim() || email || "";
 
   const openAction: Record<TMemberAction, () => void> = {
@@ -190,7 +189,7 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
     formState: { errors },
   } = useForm();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug);
 
   const {
     workspace: { updateMember },
@@ -199,8 +198,8 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
 
   // derived values
   const isCurrentUser = currentUser?.id === rowData.member.id;
-  const isAdminRole = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
-  const isRoleNonEditable = isCurrentUser || !isAdminRole;
+  // Trocar a função de alguém é o que o PATCH /members/:pk/ confere (`workspace.members`).
+  const isRoleNonEditable = isCurrentUser || !can("workspace.members");
   const isSuspended = rowData.is_active === false;
 
   return (

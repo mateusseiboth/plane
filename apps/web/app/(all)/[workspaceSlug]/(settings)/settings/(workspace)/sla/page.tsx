@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { Clock, Tag } from "lucide-react";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
 import { PageHead } from "@/components/core/page-title";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 type PrioritySla = { urgent: number; high: number; medium: number; low: number; none: number };
 type LabelSla = { name: string; color: string; sla_hours: number | null; project_count: number };
@@ -33,8 +32,9 @@ const hoursHint = (h: number | null) => {
 const WorkspaceSlaPage = observer(() => {
   const { currentWorkspace } = useWorkspace();
   const slug = currentWorkspace?.slug ?? "";
-  const { allowPermissions } = useUserPermissions();
-  const canManage = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(slug || undefined);
+  // O PUT /label-sla/ confere `label.sla`.
+  const canManage = can("label.sla");
 
   const [sla, setSla] = useState<PrioritySla>(DEFAULTS);
   const [labels, setLabels] = useState<LabelSla[]>([]);
@@ -62,6 +62,7 @@ const WorkspaceSlaPage = observer(() => {
     load();
   }, [load]);
 
+  if (isLoadingActions) return null;
   if (!canManage) return <NotAuthorizedView section="settings" className="h-auto" />;
 
   const savePriority = async () => {

@@ -36,6 +36,7 @@ export const MemberSelect = observer(function MemberSelect(props: Props) {
       const memberDetails = projectId ? getProjectMemberDetails(userId, projectId.toString()) : null;
 
       if (!memberDetails?.member) return;
+      // permissao-estrutural: nível de quem aparece na lista (dado); convidado não lidera nem é responsável padrão.
       const isGuest = memberDetails.role === EUserProjectRoles.GUEST;
       if (isGuest) return;
 

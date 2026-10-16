@@ -11,7 +11,6 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -28,6 +27,7 @@ import { applyApiFieldErrors } from "@/helpers/api-field-errors.helper";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useEmailConfig } from "@/hooks/use-email-config";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import emailConfigService, { type TEmailConfig, type TSmtpSecurity } from "@/services/email-config.service";
 // local imports
@@ -87,11 +87,12 @@ function buildFormValues(config?: TEmailConfig): TEmailForm {
 function EmailSettingsPage() {
   const { workspaceSlug } = useParams();
   const slug = workspaceSlug?.toString() ?? "";
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(slug);
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
-  const { config, isLoading, refetch } = useEmailConfig(slug, isAdmin);
+  const canManageWorkspaceSettings = can("workspace.settings");
+  const { config, isLoading, refetch } = useEmailConfig(slug, canManageWorkspaceSettings);
   const [isTesting, setIsTesting] = useState(false);
 
   const {
@@ -106,7 +107,8 @@ function EmailSettingsPage() {
     if (config) reset(buildFormValues(config));
   }, [config, reset]);
 
-  if (workspaceUserInfo && !isAdmin) return <NotAuthorizedView section="settings" className="h-auto" />;
+  if (workspaceUserInfo && !isLoadingActions && !canManageWorkspaceSettings)
+    return <NotAuthorizedView section="settings" className="h-auto" />;
 
   const onSubmit = async (form: TEmailForm) => {
     try {

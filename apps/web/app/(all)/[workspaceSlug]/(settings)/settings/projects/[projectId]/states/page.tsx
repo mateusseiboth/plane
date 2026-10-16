@@ -5,7 +5,6 @@
  */
 
 import { observer } from "mobx-react";
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_CONFIG_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 // components
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
@@ -16,6 +15,7 @@ import { SettingsHeading } from "@/components/settings/heading";
 // hook
 import { useProject } from "@/hooks/store/use-project";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import type { Route } from "./+types/page";
 import { StatesProjectSettingsHeader } from "./header";
@@ -24,19 +24,17 @@ function StatesSettingsPage({ params }: Route.ComponentProps) {
   const { workspaceSlug, projectId } = params;
   // store
   const { currentProjectDetails } = useProject();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { canInProject, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
 
   const { t } = useTranslation();
 
   // derived values
   const pageTitle = currentProjectDetails?.name ? `${currentProjectDetails?.name} - States` : undefined;
   // derived values
-  const canPerformProjectMemberActions = allowPermissions(
-    PROJECT_CONFIG_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const canPerformProjectMemberActions = canInProject("state.manage", projectId);
 
-  if (workspaceUserInfo && !canPerformProjectMemberActions) {
+  if (workspaceUserInfo && !isLoadingActions && !canPerformProjectMemberActions) {
     return <NotAuthorizedView section="settings" isProjectView className="h-auto" />;
   }
 

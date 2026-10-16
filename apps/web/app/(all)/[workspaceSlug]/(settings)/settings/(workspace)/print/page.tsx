@@ -11,7 +11,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { Trash2, Upload } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, MAX_FILE_SIZE } from "@plane/constants";
+import { MAX_FILE_SIZE } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -27,6 +27,7 @@ import { SettingsHeading } from "@/components/settings/heading";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { FileService } from "@/services/file.service";
 import { WorkspaceService } from "@/services/workspace.service";
@@ -38,7 +39,8 @@ const fileService = new FileService();
 
 function PrintSettingsPage() {
   const { workspaceSlug } = useParams();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
   const { printSettings, isLoading, mutate } = usePrintSettings(workspaceSlug?.toString());
@@ -48,7 +50,7 @@ function PrintSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageWorkspaceSettings = can("workspace.settings");
 
   useEffect(() => setForm(printSettings), [printSettings]);
 
@@ -56,7 +58,7 @@ function PrintSettingsPage() {
     ? `${currentWorkspace.name} - ${t("workspace_settings.settings.print.title")}`
     : undefined;
 
-  if (workspaceUserInfo && !isAdmin) {
+  if (workspaceUserInfo && !isLoadingActions && !canManageWorkspaceSettings) {
     return <NotAuthorizedView section="settings" className="h-auto" />;
   }
 

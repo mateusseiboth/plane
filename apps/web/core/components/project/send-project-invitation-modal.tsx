@@ -18,7 +18,6 @@ import { Avatar, CustomSelect, CustomSearchSelect, EModalPosition, EModalWidth, 
 import { getFileURL } from "@plane/utils";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
-import { useUserPermissions } from "@/hooks/store/user";
 
 type Props = {
   isOpen: boolean;
@@ -51,7 +50,6 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
   // plane hooks
   const { t } = useTranslation();
   // store hooks
-  const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
   const {
     project: { getProjectMemberDetails, bulkAddMembersToProject },
     workspace: { workspaceMemberIds, getWorkspaceMemberDetails },
@@ -70,7 +68,6 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
     name: "members",
   });
   // derived values
-  const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
   const uninvitedPeople = workspaceMemberIds?.filter((userId) => {
     const projectMemberDetails = getProjectMemberDetails(userId, projectId);
     const isInvited = projectMemberDetails?.member.id && projectMemberDetails?.original_role;
@@ -162,6 +159,7 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
     const currentMemberWorkspaceRole = getWorkspaceMemberDetails(value)?.role;
     if (!value || !currentMemberWorkspaceRole) return ROLE;
 
+    // permissao-estrutural: nível do membro ESCOLHIDO (dado), não de quem convida; admin e convidado do espaço entram no sistema com o mesmo nível.
     const isGuestOROwner = [EUserPermissions.ADMIN, EUserPermissions.GUEST].includes(
       currentMemberWorkspaceRole as EUserPermissions
     );
@@ -253,15 +251,11 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
                           input
                         >
                           {Object.entries(checkCurrentOptionWorkspaceRole(watch(`members.${index}.member_id`))).map(
-                            ([key, label]) => {
-                              if (parseInt(key) > (currentProjectRole ?? EUserPermissions.GUEST)) return null;
-
-                              return (
-                                <CustomSelect.Option key={key} value={key}>
-                                  {label}
-                                </CustomSelect.Option>
-                              );
-                            }
+                            ([key, label]) => (
+                              <CustomSelect.Option key={key} value={key}>
+                                {label}
+                              </CustomSelect.Option>
+                            )
                           )}
                         </CustomSelect>
                       )}

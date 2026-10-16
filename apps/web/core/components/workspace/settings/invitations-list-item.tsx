@@ -8,7 +8,8 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { ROLE, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { ROLE } from "@plane/constants";
+import type { EUserPermissions } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { LinkIcon, TrashIcon, ChevronDownIcon } from "@plane/propel/icons";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -20,6 +21,7 @@ import { ConfirmWorkspaceMemberRemove } from "@/components/workspace/confirm-wor
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 type Props = {
   invitationId: string;
@@ -34,24 +36,16 @@ export const WorkspaceInvitationsListItem = observer(function WorkspaceInvitatio
   // plane hooks
   const { t } = useTranslation();
   // store hooks
-  const { allowPermissions, workspaceInfoBySlug } = useUserPermissions();
+  const { workspaceInfoBySlug } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   const {
     workspace: { updateMemberInvitation, deleteMemberInvitation, getWorkspaceInvitationDetails },
   } = useMember();
   // derived values
   const invitationDetails = getWorkspaceInvitationDetails(invitationId);
   const currentWorkspaceMemberInfo = workspaceInfoBySlug(workspaceSlug.toString());
-  const currentWorkspaceRole = currentWorkspaceMemberInfo?.role;
-  // is the current logged in user admin
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
-  // role change access-
-  // 1. user cannot change their own role
-  // 2. only admin or member can change role
-  // 3. user cannot change role of higher role
-  const hasRoleChangeAccess = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // Trocar a função do convite e removê-lo: o que as rotas de convite conferem (`workspace.invite`).
+  const canManageInvitation = can("workspace.invite");
 
   const handleRemoveInvitation = async () => {
     try {
@@ -104,7 +98,7 @@ export const WorkspaceInvitationsListItem = observer(function WorkspaceInvitatio
       },
       title: t("common.remove"),
       icon: TrashIcon,
-      shouldRender: isAdmin,
+      shouldRender: canManageInvitation,
       className: "text-danger-primary",
       iconClassName: "text-danger-primary",
     },
@@ -139,12 +133,12 @@ export const WorkspaceInvitationsListItem = observer(function WorkspaceInvitatio
               <div className="item-center flex gap-1 rounded-sm px-2 py-0.5">
                 <span
                   className={`flex items-center rounded-sm text-caption-sm-medium ${
-                    hasRoleChangeAccess ? "" : "text-placeholder"
+                    canManageInvitation ? "" : "text-placeholder"
                   }`}
                 >
                   {ROLE[invitationDetails.role]}
                 </span>
-                {hasRoleChangeAccess && (
+                {canManageInvitation && (
                   <span className="grid place-items-center">
                     <ChevronDownIcon className="h-3 w-3" />
                   </span>
@@ -166,25 +160,17 @@ export const WorkspaceInvitationsListItem = observer(function WorkspaceInvitatio
                 });
               });
             }}
-            disabled={!hasRoleChangeAccess}
+            disabled={!canManageInvitation}
             placement="bottom-end"
           >
-            {Object.keys(ROLE).map((key) => {
-              if (
-                currentWorkspaceRole &&
-                Number(currentWorkspaceRole) !== 20 &&
-                Number(currentWorkspaceRole) < parseInt(key)
-              )
-                return null;
-
-              return (
-                <CustomSelect.Option key={key} value={parseInt(key, 10)}>
-                  <>{ROLE[parseInt(key) as keyof typeof ROLE]}</>
-                </CustomSelect.Option>
-              );
-            })}
+            {/* As opções são o nível que será gravado no convite (dado), não uma decisão sobre quem convida. */}
+            {Object.keys(ROLE).map((key) => (
+              <CustomSelect.Option key={key} value={parseInt(key, 10)}>
+                <>{ROLE[parseInt(key) as keyof typeof ROLE]}</>
+              </CustomSelect.Option>
+            ))}
           </CustomSelect>
-          {isAdmin && (
+          {canManageInvitation && (
             <CustomMenu ellipsis placement="bottom-end" closeOnSelect>
               {MENU_ITEMS.map((item) => {
                 if (item.shouldRender === false) return null;

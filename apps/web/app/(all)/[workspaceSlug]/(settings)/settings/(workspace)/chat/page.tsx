@@ -11,7 +11,6 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -24,6 +23,7 @@ import { SettingsHeading } from "@/components/settings/heading";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { ChatService } from "@/services/chat.service";
 // local imports
@@ -33,7 +33,8 @@ const chatService = new ChatService();
 
 function ChatSettingsPage() {
   const { workspaceSlug } = useParams();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
 
@@ -42,11 +43,12 @@ function ChatSettingsPage() {
   const [wsUrl, setWsUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  // Ligar o chat e apontar o backend é o que o PATCH /chat-config/ confere: `chat.configurar`.
+  const canConfigureChat = can("chat.configurar");
 
   const { data, isLoading, mutate } = useSWR(
-    workspaceSlug && isAdmin ? `CHAT_CONFIG_${workspaceSlug}` : null,
-    workspaceSlug && isAdmin ? () => chatService.getConfig(workspaceSlug.toString()) : null
+    workspaceSlug && canConfigureChat ? `CHAT_CONFIG_${workspaceSlug}` : null,
+    workspaceSlug && canConfigureChat ? () => chatService.getConfig(workspaceSlug.toString()) : null
   );
 
   useEffect(() => {
@@ -58,7 +60,7 @@ function ChatSettingsPage() {
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - ${t("workspace_settings.settings.chat.title")}` : undefined;
 
-  if (workspaceUserInfo && !isAdmin) return <NotAuthorizedView section="settings" className="h-auto" />;
+  if (workspaceUserInfo && !isLoadingActions && !canConfigureChat) return <NotAuthorizedView section="settings" className="h-auto" />;
 
   const handleSave = async () => {
     if (!workspaceSlug) return;

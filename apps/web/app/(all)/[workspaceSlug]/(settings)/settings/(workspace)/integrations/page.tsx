@@ -7,7 +7,6 @@
 import { observer } from "mobx-react";
 import useSWR from "swr";
 // components
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
 import { PageHead } from "@/components/core/page-title";
 import { SingleIntegrationCard } from "@/components/integration/single-integration-card";
@@ -17,7 +16,7 @@ import { IntegrationsSettingsLoader } from "@/components/ui/loader/settings/inte
 import { APP_INTEGRATIONS } from "@/constants/fetch-keys";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { IntegrationService } from "@/services/integrations";
 
@@ -26,16 +25,17 @@ const integrationService = new IntegrationService();
 function WorkspaceIntegrationsPage() {
   // store hooks
   const { currentWorkspace } = useWorkspace();
-  const { allowPermissions } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(currentWorkspace?.slug);
 
   // derived values
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageIntegrations = can("integration.manage");
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Integrations` : undefined;
-  const { data: appIntegrations } = useSWR(isAdmin ? APP_INTEGRATIONS : null, () =>
-    isAdmin ? integrationService.getAppIntegrationsList() : null
+  const { data: appIntegrations } = useSWR(canManageIntegrations ? APP_INTEGRATIONS : null, () =>
+    canManageIntegrations ? integrationService.getAppIntegrationsList() : null
   );
 
-  if (!isAdmin) return <NotAuthorizedView section="settings" className="h-auto" />;
+  if (isLoadingActions) return <IntegrationsSettingsLoader />;
+  if (!canManageIntegrations) return <NotAuthorizedView section="settings" className="h-auto" />;
 
   return (
     <>

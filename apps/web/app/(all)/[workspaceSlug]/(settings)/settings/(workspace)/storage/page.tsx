@@ -11,7 +11,6 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -24,6 +23,7 @@ import { SettingsHeading } from "@/components/settings/heading";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { WorkspaceService } from "@/services/workspace.service";
 // local imports
@@ -44,7 +44,8 @@ const EMPTY: FormState = { useS3: false, endpoint: "", region: "", bucket: "", a
 
 function StoragePage() {
   const { workspaceSlug } = useParams();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
 
@@ -52,11 +53,11 @@ function StoragePage() {
   const [hasSecret, setHasSecret] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageWorkspaceSettings = can("workspace.settings");
 
   const { data, isLoading, mutate } = useSWR(
-    workspaceSlug && isAdmin ? `STORAGE_CONFIG_${workspaceSlug}` : null,
-    workspaceSlug && isAdmin ? () => workspaceService.getStorageConfig(workspaceSlug.toString()) : null
+    workspaceSlug && canManageWorkspaceSettings ? `STORAGE_CONFIG_${workspaceSlug}` : null,
+    workspaceSlug && canManageWorkspaceSettings ? () => workspaceService.getStorageConfig(workspaceSlug.toString()) : null
   );
 
   useEffect(() => {
@@ -76,7 +77,7 @@ function StoragePage() {
     ? `${currentWorkspace.name} - ${t("workspace_settings.settings.storage.title")}`
     : undefined;
 
-  if (workspaceUserInfo && !isAdmin) {
+  if (workspaceUserInfo && !isLoadingActions && !canManageWorkspaceSettings) {
     return <NotAuthorizedView section="settings" className="h-auto" />;
   }
 

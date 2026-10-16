@@ -10,8 +10,6 @@ import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
 // import { Info } from "lucide-react";
 import {
-  EUserPermissions,
-  EUserPermissionsLevel,
   EXPORTERS_LIST,
   // ISSUE_DISPLAY_FILTERS_BY_PAGE,
 } from "@plane/constants";
@@ -25,7 +23,8 @@ import { CustomSearchSelect, CustomSelect } from "@plane/ui";
 // import { WorkspaceLevelWorkItemFiltersHOC } from "@/components/work-item-filters/filters-hoc/workspace-level";
 // import { WorkItemFiltersRow } from "@/components/work-item-filters/filters-row";
 import { useProject } from "@/hooks/store/use-project";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import { ProjectExportService } from "@/services/project/project-export.service";
 // local imports
 import { SettingsBoxedControlItem } from "../settings/boxed-control-item";
@@ -61,9 +60,9 @@ export const ExportForm = observer(function ExportForm(props: Props) {
   const [exportLoading, setExportLoading] = useState(false);
 
   // store hooks
-  const { allowPermissions } = useUserPermissions();
-  const { data: user, canPerformAnyCreateAction, projectsWithCreatePermissions } = useUser();
-  const { workspaceProjectIds, getProjectById } = useProject();
+  const { can } = useMyWorkspaceActions(workspaceSlug);
+  const { data: user } = useUser();
+  const { workspaceProjectIds, joinedProjectIds, getProjectById } = useProject();
   const { t } = useTranslation();
   // form
   const { handleSubmit, control } = useForm<FormData>({
@@ -77,10 +76,9 @@ export const ExportForm = observer(function ExportForm(props: Props) {
 
   // derived values
   const hasProjects = workspaceProjectIds && workspaceProjectIds.length > 0;
-  const isMember = allowPermissions([EUserPermissions.ADMIN, EUserPermissions.MEMBER], EUserPermissionsLevel.WORKSPACE);
-  const wsProjectIdsWithCreatePermisisons = projectsWithCreatePermissions
-    ? intersection(workspaceProjectIds, Object.keys(projectsWithCreatePermissions))
-    : [];
+  const canExportIssues = can("issue.export");
+  // Exporta dos sistemas em que a pessoa participa; quem exporta é decidido por `issue.export`.
+  const wsProjectIdsWithCreatePermisisons = intersection(workspaceProjectIds, joinedProjectIds);
   const options = wsProjectIdsWithCreatePermisisons?.map((projectId) => {
     const projectDetails = getProjectById(projectId);
 
@@ -153,7 +151,7 @@ export const ExportForm = observer(function ExportForm(props: Props) {
             <Controller
               control={control}
               name="project"
-              disabled={!isMember && (!hasProjects || !canPerformAnyCreateAction)}
+              disabled={!canExportIssues || !hasProjects}
               render={({ field: { value, onChange } }) => (
                 <CustomSearchSelect
                   value={value ?? []}
@@ -187,7 +185,7 @@ export const ExportForm = observer(function ExportForm(props: Props) {
             <Controller
               control={control}
               name="provider"
-              disabled={!isMember && (!hasProjects || !canPerformAnyCreateAction)}
+              disabled={!canExportIssues || !hasProjects}
               render={({ field: { value, onChange } }) => (
                 <CustomSelect
                   value={value}

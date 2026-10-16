@@ -15,6 +15,7 @@ import type { IState, TStateOperationsCallbacks } from "@plane/types";
 import { AlertModalCore } from "@plane/ui";
 import { cn } from "@plane/utils";
 // hooks
+import { useUserPermissions } from "@/hooks/store/user";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 
 type TStateDelete = {
@@ -28,11 +29,14 @@ export const StateDelete = observer(function StateDelete(props: TStateDelete) {
   const { totalStates, state, deleteStateCallback } = props;
   // hooks
   const { isMobile } = usePlatformOS();
+  const { canDoInProject } = useUserPermissions();
   // states
   const [isDeleteModal, setIsDeleteModal] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
   // derived values
   const isDeleteDisabled = state.default ? true : totalStates === 1 ? true : false;
+  // Excluir etapa tem ação própria (`state.delete`), separada de editar etapas.
+  const canDeleteState = canDoInProject("state.delete");
 
   const handleDeleteState = async () => {
     if (isDeleteDisabled) return;
@@ -61,6 +65,8 @@ export const StateDelete = observer(function StateDelete(props: TStateDelete) {
       setIsDelete(false);
     }
   };
+
+  if (!canDeleteState) return null;
 
   return (
     <>

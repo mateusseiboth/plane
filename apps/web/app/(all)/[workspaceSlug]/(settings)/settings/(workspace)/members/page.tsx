@@ -7,7 +7,6 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 // types
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { SearchIcon } from "@plane/propel/icons";
@@ -42,20 +41,19 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
   // router
   const { workspaceSlug } = params;
   // store hooks
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
   const {
     workspace: { workspaceMemberIds, inviteMembersToWorkspace, filtersStore },
   } = useMember();
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
-  const { can } = useMyWorkspaceActions(workspaceSlug);
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
 
   // derived values
-  const canPerformWorkspaceAdminActions = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
-  const canPerformWorkspaceMemberActions = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.WORKSPACE
-  );
+  const canInvite = can("workspace.invite");
+  const canManageMembers = can("workspace.members");
+  // A tela serve a quem convida ou a quem cuida dos membros (o mesmo item do menu).
+  const canViewMembersSettings = canInvite || canManageMembers;
 
   const handleWorkspaceInvite = async (data: IWorkspaceBulkInviteFormData) => {
     try {
@@ -100,7 +98,7 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
   const appliedRoleFilters = filtersStore.filters?.roles || [];
 
   // if user is not authorized to view this page
-  if (workspaceUserInfo && !canPerformWorkspaceMemberActions) {
+  if (workspaceUserInfo && !isLoadingActions && !canViewMembersSettings) {
     return <NotAuthorizedView section="settings" className="h-auto" />;
   }
 
@@ -115,7 +113,7 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
       <CreateMemberModal open={createModal} onClose={() => setCreateModal(false)} workspaceSlug={workspaceSlug} />
       <section
         className={cn("size-full", {
-          "opacity-60": !canPerformWorkspaceMemberActions,
+          "opacity-60": !canViewMembersSettings,
         })}
       >
         <div className="flex items-center justify-between gap-4 pb-3.5">
@@ -143,20 +141,20 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
               memberType="workspace"
             />
             <MembersActivityButton workspaceSlug={workspaceSlug} />
-            {can("workspace.members") && (
+            {canManageMembers && (
               <Button variant="secondary" size="lg" onClick={() => setCreateModal(true)}>
                 Criar usuário
               </Button>
             )}
-            {canPerformWorkspaceAdminActions && (
+            {canInvite && (
               <Button variant="primary" size="lg" onClick={() => setInviteModal(true)}>
                 {t("workspace_settings.settings.members.add_member")}
               </Button>
             )}
-            <BillingActionsButton canPerformWorkspaceAdminActions={canPerformWorkspaceAdminActions} />
+            <BillingActionsButton canPerformWorkspaceAdminActions={can("workspace.settings")} />
           </div>
         </div>
-        <WorkspaceMembersList searchQuery={searchQuery} isAdmin={canPerformWorkspaceAdminActions} />
+        <WorkspaceMembersList searchQuery={searchQuery} canManageMembers={canManageMembers} canInvite={canInvite} />
       </section>
     </SettingsContentWrapper>
   );

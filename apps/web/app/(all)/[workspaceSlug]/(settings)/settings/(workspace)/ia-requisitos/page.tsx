@@ -17,7 +17,6 @@
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 // components
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
@@ -30,16 +29,18 @@ import { FormularioIaRequisitos } from "@/components/workspace/settings/ia-requi
 import { useConfiguracaoDeIa } from "@/hooks/use-configuracao-de-ia";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { IaRequisitosWorkspaceSettingsHeader } from "./header";
 
 function IaRequisitosSettingsPage() {
   const { workspaceSlug } = useParams();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageWorkspaceSettings = can("workspace.settings");
 
   // O mesmo hook que o texto fantasma e a análise usam: uma leitura só, e o
   // que for salvo aqui já chega às telas de chamado sem recarregar a página.
@@ -50,7 +51,7 @@ function IaRequisitosSettingsPage() {
   const titulo = t("workspace_settings.settings.ia_requisitos.title");
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - ${titulo}` : undefined;
 
-  if (workspaceUserInfo && !isAdmin) return <NotAuthorizedView section="settings" className="h-auto" />;
+  if (workspaceUserInfo && !isLoadingActions && !canManageWorkspaceSettings) return <NotAuthorizedView section="settings" className="h-auto" />;
 
   return (
     <SettingsContentWrapper header={<IaRequisitosWorkspaceSettingsHeader />} hugging>

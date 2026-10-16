@@ -10,7 +10,6 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { CustomSelect, Input } from "@plane/ui";
@@ -25,6 +24,7 @@ import { AuditLogsPrintDocument, usePrint, type TLinhaDaAuditoria } from "@/comp
 import { useAuditLogs, useAuditLogsParaImpressao, useAuditRecorder } from "@/hooks/use-audit-logs";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { auditService, type TAuditFilters, type TAuditLog } from "@/services/audit.service";
 // local imports
@@ -193,7 +193,8 @@ function toLinhaDaAuditoria(log: TAuditLog): TLinhaDaAuditoria {
 function AuditoriaSettingsPage() {
   const { workspaceSlug } = useParams();
   const slug = workspaceSlug?.toString();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(slug);
   const { currentWorkspace } = useWorkspace();
   const { t } = useTranslation();
 
@@ -204,7 +205,7 @@ function AuditoriaSettingsPage() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(0);
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canViewAudit = can("audit.view");
 
   const filters: TAuditFilters = useMemo(
     () => ({
@@ -217,7 +218,7 @@ function AuditoriaSettingsPage() {
     [action, entity, dateFrom, dateTo, page]
   );
 
-  const { logs, totalCount, hasNextPage, isLoading } = useAuditLogs(slug, filters, { enabled: isAdmin });
+  const { logs, totalCount, hasNextPage, isLoading } = useAuditLogs(slug, filters, { enabled: canViewAudit });
 
   const visibleLogs = useMemo(() => filterPorEmail(logs, actorEmail), [logs, actorEmail]);
 
@@ -246,7 +247,8 @@ function AuditoriaSettingsPage() {
 
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Auditoria` : undefined;
 
-  if (workspaceUserInfo && !isAdmin) return <NotAuthorizedView section="settings" className="h-auto" />;
+  if (workspaceUserInfo && !isLoadingActions && !canViewAudit)
+    return <NotAuthorizedView section="settings" className="h-auto" />;
 
   const resetFilters = () => {
     setAction("");

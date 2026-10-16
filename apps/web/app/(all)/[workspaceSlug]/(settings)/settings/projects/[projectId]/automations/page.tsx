@@ -6,7 +6,6 @@
 
 import { observer } from "mobx-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IProject } from "@plane/types";
@@ -18,6 +17,7 @@ import { SettingsHeading } from "@/components/settings/heading";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web imports
 import { CustomAutomationsRoot } from "@/plane-web/components/automations/root";
 // local imports
@@ -28,13 +28,14 @@ function AutomationSettingsPage({ params }: Route.ComponentProps) {
   // router
   const { workspaceSlug, projectId } = params;
   // store hooks
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { canInProject, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
   const { currentProjectDetails: projectDetails, updateProject } = useProject();
 
   const { t } = useTranslation();
 
   // derived values
-  const canPerformProjectAdminActions = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT);
+  const canPerformProjectAdminActions = canInProject("project.settings", projectId);
 
   const handleChange = async (formData: Partial<IProject>) => {
     if (!projectDetails) return;
@@ -53,7 +54,7 @@ function AutomationSettingsPage({ params }: Route.ComponentProps) {
   // derived values
   const pageTitle = projectDetails?.name ? `${projectDetails?.name} - Automations` : undefined;
 
-  if (workspaceUserInfo && !canPerformProjectAdminActions) {
+  if (workspaceUserInfo && !isLoadingActions && !canPerformProjectAdminActions) {
     return <NotAuthorizedView section="settings" isProjectView className="h-auto" />;
   }
 

@@ -6,7 +6,6 @@
 
 import { useState } from "react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import type { IWorkspaceMember, TProjectMembership } from "@plane/types";
 import { renderFormattedDate } from "@plane/utils";
 // components
@@ -14,7 +13,8 @@ import { MemberHeaderColumn } from "@/components/project/member-header-column";
 import { AccountTypeColumn, NameColumn } from "@/components/project/settings/member-columns";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { IMemberFilters } from "@/store/member/utils";
 
 export interface RowData extends Pick<TProjectMembership, "original_role"> {
@@ -33,21 +33,15 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
 
   // store hooks
   const { data: currentUser } = useUser();
-  const { allowPermissions, getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   const {
     project: {
       filters: { getFilters, updateFilters },
     },
   } = useMember();
   // derived values
-  const isAdmin = allowPermissions(
-    [EUserPermissions.ADMIN],
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug.toString(),
-    projectId.toString()
-  );
-  const currentProjectRole =
-    getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug.toString(), projectId.toString()) ?? EUserPermissions.GUEST;
+  // Remover outra pessoa do sistema é o que DELETE /members/:pk/ confere.
+  const canManageMembers = canInProject("member.manage", projectId);
 
   const displayFilters = getFilters(projectId);
 
@@ -72,7 +66,7 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
         <NameColumn
           rowData={rowData}
           workspaceSlug={workspaceSlug}
-          isAdmin={isAdmin}
+          canManageMembers={canManageMembers}
           currentUser={currentUser}
           setRemoveMemberModal={setRemoveMemberModal}
         />
@@ -113,12 +107,7 @@ export const useProjectColumns = (props: TUseProjectColumnsProps) => {
         />
       ),
       tdRender: (rowData: RowData) => (
-        <AccountTypeColumn
-          rowData={rowData}
-          currentProjectRole={currentProjectRole}
-          projectId={projectId}
-          workspaceSlug={workspaceSlug}
-        />
+        <AccountTypeColumn rowData={rowData} projectId={projectId} workspaceSlug={workspaceSlug} />
       ),
     },
     {

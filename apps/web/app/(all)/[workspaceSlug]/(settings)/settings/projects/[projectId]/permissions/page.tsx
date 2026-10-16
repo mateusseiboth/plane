@@ -24,7 +24,6 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { EProjectAction, EUserPermissions, EUserPermissionsLevel, PROJECT_ACTION_LABELS } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { Dialog, EDialogWidth } from "@plane/propel/dialog";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -35,8 +34,7 @@ import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { describeTransitionSide } from "@/constants/workflow-roles";
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
-import { useWorkspaceWorkflowRoles } from "@/hooks/use-workflow-role";
+import { useMyWorkspaceActions, useRoleActionCatalog, useWorkspaceWorkflowRoles } from "@/hooks/use-workflow-role";
 import projectMemberService from "@/services/project/project-member.service";
 import type { TRoleTransition, TWorkflowRole } from "@/services/roles.service";
 import type { Route } from "./+types/page";
@@ -94,10 +92,6 @@ const DEFAULT_ROLE_STYLE: TRoleStyle = {
 
 const styleForLevel = (level: number): TRoleStyle => ROLE_STYLES[level] ?? DEFAULT_ROLE_STYLE;
 
-const CAPABILITY_ROWS = (Object.values(EProjectAction) as EProjectAction[]).map((action) => ({
-  action,
-  label: PROJECT_ACTION_LABELS[action] ?? action,
-}));
 
 type TTransitionRow = {
   key: string;
@@ -146,18 +140,26 @@ const MatrixCell = ({ allowed }: { allowed: boolean }) =>
 
 const ProjectPermissionsPage = observer(function ProjectPermissionsPage({ params }: Route.ComponentProps) {
   const { workspaceSlug, projectId } = params;
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
   const { currentProjectDetails } = useProject();
   const { getUserDetails } = useMember();
   const { roles, isLoading: isRolesLoading } = useWorkspaceWorkflowRoles(workspaceSlug);
+  // Linhas e rótulos da matriz vêm do catálogo do backend (`GET /roles/actions/`), não de uma cópia no web.
+  const { data: actionCatalog } = useRoleActionCatalog(workspaceSlug);
+  const capabilityRows = useMemo(
+    () => (actionCatalog ?? []).filter((a) => a.scope === "project").map((a) => ({ action: a.key, label: a.label })),
+    [actionCatalog]
+  );
+  const actionLabels = useMemo(() => new Map((actionCatalog ?? []).map((a) => [a.key, a.label])), [actionCatalog]);
 
   const [members, setMembers] = useState<TProjectMemberRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [roleDialogMember, setRoleDialogMember] = useState<TProjectMemberRow | null>(null);
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
-  const isWorkspaceAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  // A tela mostra a matriz de funções (`role.manage`); trocar o papel de alguém é o PATCH de membro (`member.manage`).
+  const canManageRoles = canInProject("role.manage", projectId);
+  const canManageMembers = canInProject("member.manage", projectId);
 
   const configuredRoles = useMemo(() => roles ?? [], [roles]);
   const transitionRows = useMemo(() => buildTransitionRows(configuredRoles), [configuredRoles]);
@@ -202,7 +204,7 @@ const ProjectPermissionsPage = observer(function ProjectPermissionsPage({ params
     }
   };
 
-  if (!isAdmin && !isWorkspaceAdmin) {
+  if (!isLoadingActions && !canManageRoles) {
     return (
       <NotAuthorizedView
         section="settings"
@@ -281,7 +283,7 @@ const ProjectPermissionsPage = observer(function ProjectPermissionsPage({ params
                             className="flex items-center gap-1.5 text-xs text-secondary-text"
                           >
                             <div className="h-1 w-1 shrink-0 rounded-full bg-secondary-text" />
-                            {PROJECT_ACTION_LABELS[permission as EProjectAction] ?? permission}
+                            {actionLabels.get(permission) ?? permission}
                           </li>
                         ))}
                         {role.permissions.length > 3 && (
@@ -317,8 +319,7 @@ const ProjectPermissionsPage = observer(function ProjectPermissionsPage({ params
               Configuração de funções do workspace
             </h4>
             <p className="mt-1 text-xs text-secondary-text">
-              Somente leitura. Quem participa do projeto enxerga todos os chamados, em qualquer etapa — o que varia por
-              função é o que ela pode fazer e para quais etapas pode mover.
+              Somente leitura. Mostra o que cada função pode fazer e para quais etapas pode mover os chamados.
             </p>
           </div>
           <Link
@@ -353,7 +354,7 @@ const ProjectPermissionsPage = observer(function ProjectPermissionsPage({ params
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle">
-                {CAPABILITY_ROWS.map((row) => (
+                {capabilityRows.map((row) => (
                   <tr
                     key={row.action}
                     className="transition-colors hover:bg-surface-3"
@@ -394,7 +395,7 @@ const ProjectPermissionsPage = observer(function ProjectPermissionsPage({ params
                         <MatrixCell
                           allowed={
                             row.roleIds.has(role.id) ||
-                            role.permissions.includes(EProjectAction.STATE_MOVE_UNRESTRICTED)
+                            role.permissions.includes("state.unrestricted")
                           }
                         />
                       </td>
@@ -477,7 +478,7 @@ const ProjectPermissionsPage = observer(function ProjectPermissionsPage({ params
                               variant="secondary"
                               size="sm"
                               onClick={() => setRoleDialogMember(member)}
-                              disabled={!isAdmin && !isWorkspaceAdmin}
+                              disabled={!canManageMembers}
                             >
                               Alterar papel
                             </Button>

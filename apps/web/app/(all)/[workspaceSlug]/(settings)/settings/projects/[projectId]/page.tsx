@@ -5,8 +5,6 @@
  */
 
 import { observer } from "mobx-react";
-// plane imports
-import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 // components
 import { PageHead } from "@/components/core/page-title";
 import { ProjectDetailsForm } from "@/components/project/form";
@@ -14,7 +12,7 @@ import { ProjectDetailsFormLoader } from "@/components/project/form-loader";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import type { Route } from "./+types/page";
 import { GeneralProjectSettingsHeader } from "./header";
@@ -25,27 +23,28 @@ function ProjectSettingsPage({ params }: Route.ComponentProps) {
   const { workspaceSlug, projectId } = params;
   // store hooks
   const { currentProjectDetails } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
-  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
+  // Todo membro do sistema lê a tela; editar e arquivar é `project.settings`.
+  const canEditProject = canInProject("project.settings", projectId);
 
   const pageTitle = currentProjectDetails?.name ? `${currentProjectDetails?.name} - General Settings` : undefined;
 
   return (
     <SettingsContentWrapper header={<GeneralProjectSettingsHeader />}>
       <PageHead title={pageTitle} />
-      <div className={`w-full ${isAdmin ? "" : "opacity-60"}`}>
+      <div className={`w-full ${canEditProject ? "" : "opacity-60"}`}>
         {currentProjectDetails ? (
           <ProjectDetailsForm
             project={currentProjectDetails}
             workspaceSlug={workspaceSlug}
             projectId={projectId}
-            isAdmin={isAdmin}
+            isAdmin={canEditProject}
           />
         ) : (
           <ProjectDetailsFormLoader />
         )}
-        {isAdmin && <GeneralProjectSettingsControlSection projectId={projectId} />}
+        {canEditProject && <GeneralProjectSettingsControlSection projectId={projectId} />}
       </div>
     </SettingsContentWrapper>
   );

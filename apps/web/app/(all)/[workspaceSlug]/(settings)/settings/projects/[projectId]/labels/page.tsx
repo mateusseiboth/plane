@@ -8,8 +8,8 @@ import { useEffect, useRef } from "react";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import { autoScrollForElements } from "@atlaskit/pragmatic-drag-and-drop-auto-scroll/element";
 import { observer } from "mobx-react";
+import { useParams } from "react-router";
 // components
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_CONFIG_ROLES } from "@plane/constants";
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
 import { PageHead } from "@/components/core/page-title";
 import { ProjectSettingsLabelList } from "@/components/labels";
@@ -17,23 +17,24 @@ import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { LabelsProjectSettingsHeader } from "./header";
 
 function LabelsSettingsPage() {
+  // router
+  const { workspaceSlug, projectId } = useParams();
   // store hooks
   const { currentProjectDetails } = useProject();
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { canInProject, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
 
   const pageTitle = currentProjectDetails?.name ? `${currentProjectDetails?.name} - Labels` : undefined;
 
   const scrollableContainerRef = useRef<HTMLDivElement | null>(null);
 
   // derived values
-  const canPerformProjectMemberActions = allowPermissions(
-    PROJECT_CONFIG_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const canPerformProjectMemberActions = canInProject("label.manage", projectId);
 
   // Enable Auto Scroll for Labels list
   useEffect(() => {
@@ -48,7 +49,7 @@ function LabelsSettingsPage() {
     );
   }, []);
 
-  if (workspaceUserInfo && !canPerformProjectMemberActions) {
+  if (workspaceUserInfo && !isLoadingActions && !canPerformProjectMemberActions) {
     return <NotAuthorizedView section="settings" isProjectView className="h-auto" />;
   }
 

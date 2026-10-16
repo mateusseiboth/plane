@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
 // Plane Imports
-import { ORGANIZATION_SIZE, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { ORGANIZATION_SIZE } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { EditIcon } from "@plane/propel/icons";
@@ -21,7 +21,7 @@ import { WorkspaceImageUploadModal } from "@/components/core/modals/workspace-im
 import { TimezoneSelect } from "@/components/global/timezone-select";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web components
 import { DeleteWorkspaceSection } from "@/plane-web/components/workspace/delete-workspace-section";
 
@@ -39,7 +39,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
   const [isImageUploadModalOpen, setIsImageUploadModalOpen] = useState(false);
   // store hooks
   const { currentWorkspace, updateWorkspace } = useWorkspace();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(currentWorkspace?.slug);
   const { t } = useTranslation();
 
   // form info
@@ -123,7 +123,8 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
     if (currentWorkspace) reset({ ...currentWorkspace });
   }, [currentWorkspace, reset]);
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  // Editar e excluir o espaço: o que PATCH e DELETE /workspaces/:slug/ conferem.
+  const canEditWorkspace = can("workspace.settings");
 
   if (!currentWorkspace) return null;
 
@@ -145,10 +146,10 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
           />
         )}
       />
-      <div className={cn("flex w-full flex-col gap-y-7", { "opacity-60": !isAdmin })}>
+      <div className={cn("flex w-full flex-col gap-y-7", { "opacity-60": !canEditWorkspace })}>
         <div className="flex items-center gap-5">
           <div className="flex shrink-0 flex-col gap-1">
-            <button type="button" onClick={() => setIsImageUploadModalOpen(true)} disabled={!isAdmin}>
+            <button type="button" onClick={() => setIsImageUploadModalOpen(true)} disabled={!canEditWorkspace}>
               {workspaceLogo && workspaceLogo !== "" ? (
                 <div className="relative flex size-14">
                   <img
@@ -169,7 +170,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
             <button type="button" onClick={handleCopyUrl} className="text-left text-body-xs-regular tracking-tight">{`${
               typeof window !== "undefined" && window.location.origin.replace("http://", "").replace("https://", "")
             }/${currentWorkspace.slug}`}</button>
-            {isAdmin && (
+            {canEditWorkspace && (
               <button
                 type="button"
                 className="flex items-center gap-1.5 text-left text-caption-sm-medium text-accent-primary"
@@ -208,7 +209,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
                     hasError={Boolean(errors.name)}
                     placeholder={t("workspace_settings.settings.general.name")}
                     className="w-full rounded-md"
-                    disabled={!isAdmin}
+                    disabled={!canEditWorkspace}
                   />
                 )}
               />
@@ -231,7 +232,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
                     }
                     buttonClassName="border border-subtle bg-layer-2 !shadow-none !rounded-md"
                     input
-                    disabled={!isAdmin}
+                    disabled={!canEditWorkspace}
                   >
                     {ORGANIZATION_SIZE.map((item) => (
                       <CustomSelect.Option key={item} value={item}>
@@ -274,14 +275,14 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
                 control={control}
                 render={({ field: { value, onChange } }) => (
                   <>
-                    <TimezoneSelect value={value} onChange={onChange} disabled={!isAdmin} />
+                    <TimezoneSelect value={value} onChange={onChange} disabled={!canEditWorkspace} />
                   </>
                 )}
               />
             </div>
           </div>
         </div>
-        {isAdmin && (
+        {canEditWorkspace && (
           <div className="flex items-center justify-between py-2">
             <Button
               variant="primary"
@@ -296,7 +297,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
           </div>
         )}
       </div>
-      {isAdmin && (
+      {canEditWorkspace && (
         <div className="mt-10">
           <DeleteWorkspaceSection workspace={currentWorkspace} />
         </div>

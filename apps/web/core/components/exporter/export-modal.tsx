@@ -17,7 +17,6 @@ import type { IUser, IImporterService } from "@plane/types";
 import { Checkbox, CustomSearchSelect, EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUser } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 // services
 import { ProjectExportService } from "@/services/project";
@@ -41,13 +40,11 @@ export const Exporter = observer(function Exporter(props: Props) {
   const router = useAppRouter();
   const { workspaceSlug } = useParams();
   // store hooks
-  const { workspaceProjectIds, getProjectById } = useProject();
-  const { projectsWithCreatePermissions } = useUser();
+  const { workspaceProjectIds, joinedProjectIds, getProjectById } = useProject();
   const { t } = useTranslation();
 
-  const wsProjectIdsWithCreatePermisisons = projectsWithCreatePermissions
-    ? intersection(workspaceProjectIds, Object.keys(projectsWithCreatePermissions))
-    : [];
+  // Exporta dos sistemas em que a pessoa participa; quem exporta é decidido por `issue.export`.
+  const wsProjectIdsWithCreatePermisisons = intersection(workspaceProjectIds, joinedProjectIds);
 
   const options = wsProjectIdsWithCreatePermisisons?.map((projectId) => {
     const projectDetails = getProjectById(projectId);

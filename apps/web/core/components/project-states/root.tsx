@@ -8,13 +8,11 @@ import { useMemo } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
 // components
-import { EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import type { IState, TStateOperationsCallbacks } from "@plane/types";
-import { EUserProjectRoles } from "@plane/types";
 import { ProjectStateLoader, GroupList } from "@/components/project-states";
 // hooks
 import { useProjectState } from "@/hooks/store/use-project-state";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 type TProjectState = {
   workspaceSlug: string;
@@ -33,13 +31,9 @@ export const ProjectStateRoot = observer(function ProjectStateRoot(props: TProje
     deleteState,
     markStateAsDefault,
   } = useProjectState();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
-  const isEditable = allowPermissions(PROJECT_CONFIG_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    projectId
-  );
+  const isEditable = canInProject("state.manage", projectId);
 
   // Fetching all project states
   useSWR(

@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { ArchiveRestore } from "lucide-react";
 // plane imports
-import { PROJECT_AUTOMATION_MONTHS, EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
+import { PROJECT_AUTOMATION_MONTHS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { IProject } from "@plane/types";
 import { CustomSelect, Loader, ToggleSwitch } from "@plane/ui";
@@ -18,7 +18,7 @@ import { SelectMonthModal } from "@/components/automation";
 import { SettingsControlItem } from "@/components/settings/control-item";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 type Props = {
   handleChange: (formData: Partial<IProject>) => Promise<void>;
@@ -33,16 +33,13 @@ export const AutoArchiveAutomation = observer(function AutoArchiveAutomation(pro
   // states
   const [monthModal, setmonthModal] = useState(false);
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { t } = useTranslation();
 
   const { currentProjectDetails } = useProject();
 
-  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug?.toString(),
-    currentProjectDetails?.id
-  );
+  // A automação é gravada no PATCH do sistema (`project.settings`).
+  const isAdmin = canInProject("project.settings", currentProjectDetails?.id);
 
   const autoArchiveStatus = useMemo(() => {
     if (currentProjectDetails?.archive_in === undefined) return false;

@@ -5,7 +5,6 @@
  */
 
 // plane imports
-import { EUserProjectRoles } from "@plane/types";
 import type { TProjectSettingsItem, TProjectSettingsTabs } from "@plane/types";
 
 export enum PROJECT_SETTINGS_CATEGORY {
@@ -29,107 +28,90 @@ export const PROJECT_SETTINGS_CATEGORY_LABELS: Record<PROJECT_SETTINGS_CATEGORY,
   [PROJECT_SETTINGS_CATEGORY.EXECUTION]: "common.execution",
 };
 
+// `action`: a ação da matriz que a tela exige, conferida junto com participar do sistema.
+// Sem `action`, todo membro do sistema vê o item (a tela decide o que ele pode editar).
 export const PROJECT_SETTINGS: Record<TProjectSettingsTabs, TProjectSettingsItem> = {
   general: {
     key: "general",
     i18n_label: "common.general",
     href: ``,
-    access: [
-      EUserProjectRoles.ADMIN,
-      EUserProjectRoles.GESTOR_PROJETO,
-      EUserProjectRoles.MEMBER,
-      EUserProjectRoles.TI,
-      EUserProjectRoles.QUALIDADE,
-      EUserProjectRoles.ATENDIMENTO,
-      EUserProjectRoles.GUEST,
-    ],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/`,
   },
   members: {
     key: "members",
     i18n_label: "common.members",
     href: `/members`,
-    access: [
-      EUserProjectRoles.ADMIN,
-      EUserProjectRoles.GESTOR_PROJETO,
-      EUserProjectRoles.MEMBER,
-      EUserProjectRoles.TI,
-      EUserProjectRoles.QUALIDADE,
-      EUserProjectRoles.ATENDIMENTO,
-      EUserProjectRoles.GUEST,
-    ],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/members/`,
   },
   features_cycles: {
     key: "features_cycles",
     i18n_label: "project_settings.features.cycles.short_title",
     href: `/features/cycles`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "project.settings",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/features/cycles/`,
   },
   features_modules: {
     key: "features_modules",
     i18n_label: "project_settings.features.modules.short_title",
     href: `/features/modules`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "project.settings",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/features/modules/`,
   },
   features_views: {
     key: "features_views",
     i18n_label: "project_settings.features.views.short_title",
     href: `/features/views`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "project.settings",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/features/views/`,
   },
   features_pages: {
     key: "features_pages",
     i18n_label: "project_settings.features.pages.short_title",
     href: `/features/pages`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "project.settings",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/features/pages/`,
   },
   features_intake: {
     key: "features_intake",
     i18n_label: "project_settings.features.intake.short_title",
     href: `/features/intake`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "project.settings",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/features/intake/`,
   },
   states: {
     key: "states",
     i18n_label: "common.states",
     href: `/states`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "state.manage",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/states/`,
   },
   labels: {
     key: "labels",
     i18n_label: "common.labels",
     href: `/labels`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "label.manage",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/labels/`,
   },
   estimates: {
     key: "estimates",
     i18n_label: "common.estimates",
     href: `/estimates`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "estimate.manage",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/estimates/`,
   },
   automations: {
     key: "automations",
     i18n_label: "project_settings.automations.label",
     href: `/automations`,
-    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.GESTOR_PROJETO, EUserProjectRoles.MEMBER],
+    action: "project.settings",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/automations/`,
   },
   permissions: {
     key: "permissions",
     i18n_label: "common.permissions",
     href: `/permissions`,
-    // Editing the role/permission matrix stays admin-only (the roles API also
-    // requires workspace role >= 18, which no member/gestor reaches at workspace level).
-    access: [EUserProjectRoles.ADMIN],
+    // A matriz de funções é a mesma do espaço: quem edita é quem tem `role.manage`.
+    action: "role.manage",
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/permissions/`,
   },
 };

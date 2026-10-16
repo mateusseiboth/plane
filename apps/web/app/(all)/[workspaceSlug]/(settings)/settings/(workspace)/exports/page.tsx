@@ -5,7 +5,6 @@
  */
 
 import { observer } from "mobx-react";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { cn } from "@plane/utils";
 // components
@@ -17,26 +16,25 @@ import { SettingsHeading } from "@/components/settings/heading";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { ExportsWorkspaceSettingsHeader } from "./header";
 
 function ExportsPage() {
   // store hooks
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
   const { currentWorkspace } = useWorkspace();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(currentWorkspace?.slug);
   const { t } = useTranslation();
 
   // derived values
-  const canPerformWorkspaceMemberActions = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.WORKSPACE
-  );
+  const canExportIssues = can("issue.export");
   const pageTitle = currentWorkspace?.name
     ? `${currentWorkspace.name} - ${t("workspace_settings.settings.exports.title")}`
     : undefined;
 
   // if user is not authorized to view this page
-  if (workspaceUserInfo && !canPerformWorkspaceMemberActions) {
+  if (workspaceUserInfo && !isLoadingActions && !canExportIssues) {
     return <NotAuthorizedView section="settings" className="h-auto" />;
   }
 
@@ -45,7 +43,7 @@ function ExportsPage() {
       <PageHead title={pageTitle} />
       <div
         className={cn("flex w-full flex-col gap-y-6", {
-          "opacity-60": !canPerformWorkspaceMemberActions,
+          "opacity-60": !canExportIssues,
         })}
       >
         <SettingsHeading
