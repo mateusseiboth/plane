@@ -14,9 +14,7 @@ import { Info, SquareUser } from "lucide-react";
 import {
   MODULE_STATUS,
   PROGRESS_STATE_GROUPS_DETAILS,
-  EUserPermissions,
-  EUserPermissionsLevel,
-  IS_FAVORITE_MENU_OPEN, PROJECT_WORK_ROLES} from "@plane/constants";
+  IS_FAVORITE_MENU_OPEN} from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { WorkItemsIcon } from "@plane/propel/icons";
 import { TOAST_TYPE, setPromiseToast, setToast } from "@plane/propel/toast";
@@ -35,6 +33,7 @@ import { useModule } from "@/hooks/store/use-module";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 import { usePlatformOS } from "@/hooks/use-platform-os";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 type Props = {
   moduleId: string;
@@ -50,17 +49,17 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canDoInProject } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { getModuleById, addModuleToFavorites, removeModuleFromFavorites, updateModuleDetails } = useModule();
   const { getUserDetails } = useMember();
   // local storage
   const { setValue: toggleFavoriteMenu, storedValue } = useLocalStorage<boolean>(IS_FAVORITE_MENU_OPEN, false);
   // derived values
   const moduleDetails = getModuleById(moduleId);
-  const isEditingAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const isEditingAllowed = canInProject("module.manage", projectId?.toString());
+  // Favoritar é preferência pessoal: basta participar do sistema.
+  const isFavoriteAllowed = canDoInProject(undefined, workspaceSlug?.toString(), projectId?.toString());
   const isDisabled = !isEditingAllowed || !!moduleDetails?.archived_at;
   const renderIcon = Boolean(moduleDetails?.start_date) || Boolean(moduleDetails?.target_date);
 
@@ -249,7 +248,7 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
         </Card>
       </Link>
       <div className="absolute right-4 bottom-[18px] flex items-center gap-1.5">
-        {isEditingAllowed && (
+        {isFavoriteAllowed && (
           <FavoriteStar
             onClick={(e) => {
               if (moduleDetails.is_favorite) handleRemoveFromFavorites(e);

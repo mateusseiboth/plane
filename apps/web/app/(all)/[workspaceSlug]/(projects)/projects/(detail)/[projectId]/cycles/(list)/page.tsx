@@ -8,11 +8,10 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
 import { useTheme } from "next-themes";
-import { EUserPermissionsLevel, CYCLE_TRACKER_ELEMENTS, PROJECT_WORK_ROLES } from "@plane/constants";
+import { CYCLE_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import type { TCycleFilters } from "@plane/types";
-import { EUserProjectRoles } from "@plane/types";
 // components
 import { Header, EHeaderVariant } from "@plane/ui";
 import { calculateTotalFilters } from "@plane/utils";
@@ -30,8 +29,8 @@ import { CycleModuleListLayoutLoader } from "@/components/ui/loader/cycle-module
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useCycleFilter } from "@/hooks/store/use-cycle-filter";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { Route } from "./+types/page";
 
 function ProjectCyclesPage({ params }: Route.ComponentProps) {
@@ -49,17 +48,15 @@ function ProjectCyclesPage({ params }: Route.ComponentProps) {
   const { t } = useTranslation();
   // cycle filters hook
   const { clearAllFilters, currentProjectFilters, updateFilters } = useCycleFilter();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
   const resolvedEmptyState = resolvedTheme === "light" ? lightEmptyState : darkEmptyState;
   const totalCycles = currentProjectCycleIds?.length ?? 0;
   const project = getProjectById(projectId);
   const pageTitle = project?.name ? `${project?.name} - ${t("common.cycles", { count: 2 })}` : undefined;
-  const hasAdminLevelPermission = allowPermissions([EUserProjectRoles.ADMIN], EUserPermissionsLevel.PROJECT);
-  const hasMemberLevelPermission = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  // Ligar ciclos é na tela de recursos do sistema (`project.settings`); criar ciclo é `cycle.manage`.
+  const canEditProjectFeatures = canInProject("project.settings", projectId);
+  const canCreateCycle = canInProject("cycle.manage", projectId);
 
   const handleRemoveFilter = (key: keyof TCycleFilters, value: string | null) => {
     let newValues = currentProjectFilters?.[key] ?? [];
@@ -83,7 +80,7 @@ function ProjectCyclesPage({ params }: Route.ComponentProps) {
             onClick: () => {
               router.push(`/${workspaceSlug}/settings/projects/${projectId}/features`);
             },
-            disabled: !hasAdminLevelPermission,
+            disabled: !canEditProjectFeatures,
           }}
         />
       </div>
@@ -112,7 +109,7 @@ function ProjectCyclesPage({ params }: Route.ComponentProps) {
                   label: t("project_empty_state.cycles.cta_primary"),
                   onClick: () => setCreateModal(true),
                   variant: "primary",
-                  disabled: !hasMemberLevelPermission,
+                  disabled: !canCreateCycle,
                   "data-ph-element": CYCLE_TRACKER_ELEMENTS.EMPTY_STATE_ADD_BUTTON,
                 },
               ]}

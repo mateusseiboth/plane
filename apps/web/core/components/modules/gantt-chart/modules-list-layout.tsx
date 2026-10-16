@@ -16,13 +16,13 @@ import { ModuleGanttBlock } from "@/components/modules";
 // hooks
 import { useModule } from "@/hooks/store/use-module";
 import { useModuleFilter } from "@/hooks/store/use-module-filter";
-import { useProject } from "@/hooks/store/use-project";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const ModulesListGanttChartView = observer(function ModulesListGanttChartView() {
   // router
   const { workspaceSlug, projectId } = useParams();
   // store
-  const { currentProjectDetails } = useProject();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { getFilteredModuleIds, updateModuleDetails } = useModule();
   const { currentProjectDisplayFilters: displayFilters } = useModuleFilter();
 
@@ -51,7 +51,8 @@ export const ModulesListGanttChartView = observer(function ModulesListGanttChart
     await updateModuleDetails(workspaceSlug.toString(), projectId.toString(), blockUpdate.id, payload);
   };
 
-  const isAllowed = currentProjectDetails?.member_role === 20 || currentProjectDetails?.member_role === 15;
+  // Mover, redimensionar e reordenar o módulo na linha do tempo altera o módulo.
+  const isAllowed = canInProject("module.manage", projectId?.toString());
 
   if (!filteredModuleIds) return null;
 

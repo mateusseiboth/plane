@@ -8,12 +8,10 @@ import {Star, StarOff, Users} from "lucide-react";
 import {useParams} from "next/navigation";
 import {useCallback} from "react";
 // plane imports
-import {EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {LinkIcon, ModuleStatusIcon} from "@plane/propel/icons";
 import {setToast, TOAST_TYPE} from "@plane/propel/toast";
 import type {IModule, TModuleStatus} from "@plane/types";
-import {EUserPermissions} from "@plane/types";
 import {copyTextToClipboard} from "@plane/utils";
 // components
 import type {TPowerKCommandConfig} from "@/components/power-k/core/types";
@@ -26,18 +24,18 @@ export const usePowerKModuleContextBasedActions = (): TPowerKCommandConfig[] => 
   const {workspaceSlug, projectId, moduleId} = useParams();
   // store
   const {
-    permission: {allowPermissions},
+    permission: {canDoInProject},
   } = useUser();
   const {getModuleById, addModuleToFavorites, removeModuleFromFavorites, updateModuleDetails} = useModule();
   // derived values
   const moduleDetails = moduleId ? getModuleById(moduleId.toString()) : null;
   const isFavorite = !!moduleDetails?.is_favorite;
+  const isActive = !moduleDetails?.archived_at;
   // permission
   const isEditingAllowed =
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-    ) && !moduleDetails?.archived_at;
+    canDoInProject("module.manage", workspaceSlug?.toString(), projectId?.toString()) && isActive;
+  // Favoritar é preferência pessoal: basta participar do sistema.
+  const isFavoriteAllowed = canDoInProject(undefined, workspaceSlug?.toString(), projectId?.toString()) && isActive;
   // translation
   const {t} = useTranslation();
 
@@ -150,8 +148,8 @@ export const usePowerKModuleContextBasedActions = (): TPowerKCommandConfig[] => 
       type: "action",
       action: toggleFavorite,
       modifierShortcut: "shift+f",
-      isEnabled: () => isEditingAllowed,
-      isVisible: () => isEditingAllowed,
+      isEnabled: () => isFavoriteAllowed,
+      isVisible: () => isFavoriteAllowed,
       closeOnSelect: true,
     },
     {

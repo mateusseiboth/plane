@@ -8,7 +8,7 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
 import { useParams, useRouter } from "next/navigation";
-import { EUserPermissionsLevel, EPageAccess, PROJECT_WORK_ROLES } from "@plane/constants";
+import { EPageAccess } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -17,7 +17,7 @@ import type { TPage, TPageNavigationTabs } from "@plane/types";
 // components
 import { PageLoader } from "@/components/pages/loaders/page-loader";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web hooks
 import { EPageStoreType, usePageStore } from "@/plane-web/hooks/store";
 
@@ -35,20 +35,18 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
   const { currentProjectDetails } = useProject();
   const { isAnyPageAvailable, getCurrentProjectFilteredPageIdsByTab, getCurrentProjectPageIdsByTab, loader } =
     usePageStore(storeType);
-  const { allowPermissions } = useUserPermissions();
   const { createPage } = usePageStore(EPageStoreType.PROJECT);
   // states
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   // router
   const router = useRouter();
   const { workspaceSlug } = useParams();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
   const pageIds = getCurrentProjectPageIdsByTab(pageType);
   const filteredPageIds = getCurrentProjectFilteredPageIdsByTab(pageType);
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  // Os botões do estado vazio criam página.
+  const canPerformEmptyStateActions = canInProject("page.create", currentProjectDetails?.id);
 
   // handle page create
   const handleCreatePage = async () => {

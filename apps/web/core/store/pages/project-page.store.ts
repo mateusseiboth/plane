@@ -8,9 +8,7 @@ import { unset, set } from "lodash-es";
 import { makeObservable, observable, runInAction, action, reaction, computed } from "mobx";
 import { computedFn } from "mobx-utils";
 // types
-import { EUserPermissions } from "@plane/constants";
 import type { TPage, TPageFilters, TPageNavigationTabs } from "@plane/types";
-import { EUserProjectRoles } from "@plane/types";
 // helpers
 import { filterPagesByPageType, getPageName, orderPages, shouldFilterPage } from "@plane/utils";
 // plane web constants
@@ -22,17 +20,11 @@ import { ProjectPageService } from "@/services/page";
 import type { CoreRootStore } from "../root.store";
 import type { TProjectPage } from "./project-page";
 import { ProjectPage } from "./project-page";
+import { ACAO_DE_ESCREVER_PAGINA } from "./regras-da-pagina";
 
 type TLoader = "init-loader" | "mutation-loader" | undefined;
 
 type TError = { title: string; description: string };
-
-export const ROLE_PERMISSIONS_TO_CREATE_PAGE = [
-  EUserPermissions.ADMIN,
-  EUserPermissions.MEMBER,
-  EUserProjectRoles.ADMIN,
-  EUserProjectRoles.MEMBER,
-];
 
 export interface IProjectPageStore {
   // observables
@@ -127,11 +119,7 @@ export class ProjectPageStore implements IProjectPageStore {
    */
   get canCurrentUserCreatePage() {
     const { workspaceSlug, projectId } = this.store.router;
-    const currentUserProjectRole = this.store.user.permission.getProjectRoleByWorkspaceSlugAndProjectId(
-      workspaceSlug?.toString() || "",
-      projectId?.toString() || ""
-    );
-    return !!currentUserProjectRole && ROLE_PERMISSIONS_TO_CREATE_PAGE.includes(currentUserProjectRole);
+    return this.store.user.permission.canDoInProject(ACAO_DE_ESCREVER_PAGINA, workspaceSlug, projectId);
   }
 
   /**

@@ -7,7 +7,7 @@
 import { computed, makeObservable } from "mobx";
 import { computedFn } from "mobx-utils";
 // constants
-import { EPageAccess, EUserPermissions } from "@plane/constants";
+import { EPageAccess } from "@plane/constants";
 import type { TPage } from "@plane/types";
 // plane web store
 import type { RootStore } from "@/plane-web/store/root.store";
@@ -17,6 +17,13 @@ const projectPageService = new ProjectPageService();
 // store
 import { BasePage } from "./base-page";
 import type { TPageInstance } from "./base-page";
+import {
+  ACAO_DE_ESCREVER_PAGINA,
+  ACAO_DE_GERIR_PAGINA_DE_OUTRO,
+  isPageContentEditable,
+  isPageEditAllowed,
+  isPageManageAllowed,
+} from "./regras-da-pagina";
 
 export type TProjectPage = TPageInstance;
 
@@ -75,112 +82,112 @@ export class ProjectPage extends BasePage implements TProjectPage {
     });
   }
 
-  private getHighestRoleAcrossProjects = computedFn((): EUserPermissions | undefined => {
+  /** A pessoa tem a ação da matriz e participa de algum sistema a que a página pertence. */
+  private canDoInAnyPageProject = computedFn((action: string): boolean => {
     const { workspaceSlug } = this.rootStore.router;
-    if (!workspaceSlug || !this.project_ids?.length) return;
-    let highestRole: EUserPermissions | undefined = undefined;
-    this.project_ids.map((projectId) => {
-      const currentUserProjectRole = this.rootStore.user.permission.getProjectRoleByWorkspaceSlugAndProjectId(
-        workspaceSlug?.toString() || "",
-        projectId?.toString() || ""
-      );
-      if (currentUserProjectRole) {
-        if (!highestRole) highestRole = currentUserProjectRole;
-        else if (currentUserProjectRole > highestRole) highestRole = currentUserProjectRole;
-      }
-    });
-    return highestRole;
+    const { permission } = this.rootStore.user;
+    return (this.project_ids ?? []).some((projectId) => permission.canDoInProject(action, workspaceSlug, projectId));
   });
+
+  /** Participa de algum sistema da página: vínculo, não permissão. */
+  private isMemberOfAnyPageProject = computedFn((): boolean => {
+    const workspaceSlug = this.rootStore.router.workspaceSlug ?? "";
+    const { permission } = this.rootStore.user;
+    return (this.project_ids ?? []).some(
+      (projectId) => permission.getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId) !== undefined
+    );
+  });
+
+  private get isPagePublic() {
+    return this.access === EPageAccess.PUBLIC;
+  }
+
+  /** Dono, ou `page.manage.all` no espaço: o mesmo `canManage` que o api-ts confere. */
+  private get canCurrentUserManagePage() {
+    const canManageAll = this.rootStore.user.permission.canDo(ACAO_DE_GERIR_PAGINA_DE_OUTRO);
+    return isPageManageAllowed({ isOwner: this.isCurrentUserOwner, canManageAll });
+  }
 
   /**
    * @description returns true if the current logged in user can access the page
    */
   get canCurrentUserAccessPage() {
-    const isPagePublic = this.access === EPageAccess.PUBLIC;
-    return isPagePublic || this.isCurrentUserOwner;
+    return this.isPagePublic || this.isCurrentUserOwner;
   }
 
   /**
    * @description returns true if the current logged in user can edit the page
    */
   get canCurrentUserEditPage() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    const isPagePublic = this.access === EPageAccess.PUBLIC;
-    return (
-      (isPagePublic && !!highestRole && highestRole >= EUserPermissions.MEMBER) ||
-      (!isPagePublic && this.isCurrentUserOwner)
-    );
+    return isPageEditAllowed({
+      isOwner: this.isCurrentUserOwner,
+      isPublic: this.isPagePublic,
+      canWrite: this.canDoInAnyPageProject(ACAO_DE_ESCREVER_PAGINA),
+    });
   }
 
   /**
    * @description returns true if the current logged in user can create a duplicate the page
    */
   get canCurrentUserDuplicatePage() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    return !!highestRole && highestRole >= EUserPermissions.MEMBER;
+    // Duplicar cria uma página nova no sistema.
+    return this.canDoInAnyPageProject(ACAO_DE_ESCREVER_PAGINA);
   }
 
   /**
    * @description returns true if the current logged in user can lock the page
    */
   get canCurrentUserLockPage() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    return this.isCurrentUserOwner || highestRole === EUserPermissions.ADMIN;
+    return this.canCurrentUserManagePage;
   }
 
   /**
    * @description returns true if the current logged in user can change the access of the page
    */
   get canCurrentUserChangeAccess() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    return this.isCurrentUserOwner || highestRole === EUserPermissions.ADMIN;
+    return this.canCurrentUserManagePage;
   }
 
   /**
    * @description returns true if the current logged in user can archive the page
    */
   get canCurrentUserArchivePage() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    return this.isCurrentUserOwner || highestRole === EUserPermissions.ADMIN;
+    return this.canCurrentUserManagePage;
   }
 
   /**
    * @description returns true if the current logged in user can delete the page
    */
   get canCurrentUserDeletePage() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    return this.isCurrentUserOwner || highestRole === EUserPermissions.ADMIN;
+    return this.canCurrentUserManagePage;
   }
 
   /**
    * @description returns true if the current logged in user can favorite the page
    */
   get canCurrentUserFavoritePage() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    return !!highestRole && highestRole >= EUserPermissions.MEMBER;
+    // Favoritar é preferência pessoal: basta participar do sistema (o api-ts só exige leitura).
+    return this.isMemberOfAnyPageProject();
   }
 
   /**
    * @description returns true if the current logged in user can move the page
    */
   get canCurrentUserMovePage() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    return this.isCurrentUserOwner || highestRole === EUserPermissions.ADMIN;
+    return this.canCurrentUserManagePage;
   }
 
   /**
    * @description returns true if the page can be edited
    */
   get isContentEditable() {
-    const highestRole = this.getHighestRoleAcrossProjects();
-    const isOwner = this.isCurrentUserOwner;
-    const isPublic = this.access === EPageAccess.PUBLIC;
-    const isArchived = this.archived_at;
-    const isLocked = this.is_locked;
-
-    return (
-      !isArchived && !isLocked && (isOwner || (isPublic && !!highestRole && highestRole >= EUserPermissions.MEMBER))
-    );
+    return isPageContentEditable({
+      isArchived: !!this.archived_at,
+      isLocked: !!this.is_locked,
+      isOwner: this.isCurrentUserOwner,
+      isPublic: this.isPagePublic,
+      canWrite: this.canDoInAnyPageProject(ACAO_DE_ESCREVER_PAGINA),
+    });
   }
 
   getRedirectionLink = computedFn(() => {

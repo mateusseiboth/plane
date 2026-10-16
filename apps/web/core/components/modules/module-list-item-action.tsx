@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { SquareUser } from "lucide-react";
 // Plane imports
-import { MODULE_STATUS, EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN, PROJECT_WORK_ROLES} from "@plane/constants";
+import { MODULE_STATUS, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setPromiseToast, setToast } from "@plane/propel/toast";
@@ -25,6 +25,7 @@ import { ModuleStatusDropdown } from "@/components/modules/module-status-dropdow
 import { useMember } from "@/hooks/store/use-member";
 import { useModule } from "@/hooks/store/use-module";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import { ButtonAvatars } from "../dropdowns/member/avatar";
 
 type Props = {
@@ -38,7 +39,8 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
   // router
   const { workspaceSlug, projectId } = useParams();
   //   store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canDoInProject } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { addModuleToFavorites, removeModuleFromFavorites, updateModuleDetails } = useModule();
   const { getUserDetails } = useMember();
 
@@ -49,10 +51,9 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
   // derived values
 
   const moduleStatus = MODULE_STATUS.find((status) => status.value === moduleDetails.status);
-  const isEditingAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const isEditingAllowed = canInProject("module.manage", projectId?.toString());
+  // Favoritar é preferência pessoal: basta participar do sistema.
+  const isFavoriteAllowed = canDoInProject(undefined, workspaceSlug?.toString(), projectId?.toString());
   const isDisabled = !isEditingAllowed || !!moduleDetails?.archived_at;
   const renderIcon = Boolean(moduleDetails.start_date) || Boolean(moduleDetails.target_date);
 
@@ -171,7 +172,7 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
         </Tooltip>
       )}
 
-      {isEditingAllowed && !moduleDetails.archived_at && (
+      {isFavoriteAllowed && !moduleDetails.archived_at && (
         <FavoriteStar
           onClick={(e) => {
             if (moduleDetails.is_favorite) handleRemoveFromFavorites(e);

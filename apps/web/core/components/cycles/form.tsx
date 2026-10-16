@@ -19,7 +19,7 @@ import { getDate, renderFormattedPayloadDate, getTabIndex } from "@plane/utils";
 import { DateRangeDropdown } from "@/components/dropdowns/date-range";
 import { ProjectDropdown } from "@/components/dropdowns/project/dropdown";
 // hooks
-import { useUser } from "@/hooks/store/user/user-user";
+import { useUserPermissions } from "@/hooks/store/user";
 
 type Props = {
   handleFormSubmit: (values: Partial<ICycle>) => Promise<void>;
@@ -43,7 +43,8 @@ export function CycleForm(props: Props) {
   // plane hooks
   const { t } = useTranslation();
   // store hooks
-  const { projectsWithCreatePermissions } = useUser();
+  // Só os sistemas em que a pessoa participa e pode `cycle.manage` (a mesma ação da rota).
+  const { canDoInProject } = useUserPermissions();
   // form data
   const {
     formState: { errors, isSubmitting },
@@ -89,7 +90,7 @@ export function CycleForm(props: Props) {
                     }}
                     multiple={false}
                     buttonVariant="border-with-text"
-                    renderCondition={(projectId) => !!projectsWithCreatePermissions?.[projectId]}
+                    renderCondition={(id) => canDoInProject("cycle.manage", undefined, id)}
                     tabIndex={getIndex("cover_image")}
                   />
                 </div>

@@ -6,7 +6,6 @@
 
 import {observer} from "mobx-react";
 // plane imports
-import {EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {CloseIcon} from "@plane/propel/icons";
 import type {TCycleFilters} from "@plane/types";
@@ -30,19 +29,15 @@ const DATE_FILTERS = ["start_date", "end_date"];
 export const CycleAppliedFiltersList = observer(function CycleAppliedFiltersList(props: Props) {
   const {appliedFilters, handleClearAllFilters, handleRemoveFilter, alwaysAllowEditing} = props;
   // store hooks
-  const {allowPermissions} = useUserPermissions();
+  const {canDoInProject} = useUserPermissions();
   const {t} = useTranslation();
 
   if (!appliedFilters) return null;
 
   if (Object.keys(appliedFilters).length === 0) return null;
 
-  const isEditingAllowed =
-    alwaysAllowEditing ||
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-    );
+  // Tirar filtro da lista é preferência de exibição: sem ação, basta participar do sistema.
+  const isEditingAllowed = alwaysAllowEditing || canDoInProject(undefined);
 
   return (
     <div className="flex flex-wrap items-stretch gap-2 bg-surface-1">

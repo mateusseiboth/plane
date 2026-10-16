@@ -8,10 +8,8 @@ import { useCallback } from "react";
 import { observer } from "mobx-react";
 import { useTheme } from "next-themes";
 // plane imports
-import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { TModuleFilters } from "@plane/types";
-import { EUserProjectRoles } from "@plane/types";
 import { calculateTotalFilters } from "@plane/utils";
 // assets
 import darkModulesAsset from "@/app/assets/empty-state/disabled-feature/modules-dark.webp?url";
@@ -23,8 +21,8 @@ import { ModuleAppliedFiltersList, ModulesListView } from "@/components/modules"
 // hooks
 import { useModuleFilter } from "@/hooks/store/use-module-filter";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { Route } from "./+types/page";
 
 function ProjectModulesPage({ params }: Route.ComponentProps) {
@@ -44,11 +42,12 @@ function ProjectModulesPage({ params }: Route.ComponentProps) {
     updateFilters,
     updateDisplayFilters,
   } = useModuleFilter();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
   const project = getProjectById(projectId);
   const pageTitle = project?.name ? `${project?.name} - Modules` : undefined;
-  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
+  // O botão leva à tela de recursos do sistema, onde se ligam os módulos.
+  const canEditProjectFeatures = canInProject("project.settings", projectId);
   const resolvedPath = resolvedTheme === "light" ? lightModulesAsset : darkModulesAsset;
 
   const handleRemoveFilter = useCallback(
@@ -76,7 +75,7 @@ function ProjectModulesPage({ params }: Route.ComponentProps) {
             onClick: () => {
               router.push(`/${workspaceSlug}/settings/projects/${projectId}/features`);
             },
-            disabled: !canPerformEmptyStateActions,
+            disabled: !canEditProjectFeatures,
           }}
         />
       </div>
