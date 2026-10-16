@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
 import type { EditorRefApi } from "@plane/editor";
+import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { RichTextEditor } from "@/components/editor/rich-text/editor";
@@ -102,18 +103,10 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
   const erroDe = (path: string) => readErroDoCampoDaSolicitacao(erros, path);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancelar}
-      role="presentation"
-    >
-      <div
-        className="shadow-xl max-h-full w-full max-w-lg overflow-y-auto rounded-xl border border-subtle bg-surface-1 p-5"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        onKeyDown={(e) => e.key === "Escape" && onCancelar()}
-      >
+    // ModalCore abre num portal, fora da barra lateral: um `fixed` montado
+    // dentro dela ficava preso ao painel, encolhido embaixo do botão.
+    <ModalCore isOpen handleClose={onCancelar} position={EModalPosition.CENTER} width={EModalWidth.LG}>
+      <div className="p-5" onKeyDown={(e) => e.key === "Escape" && onCancelar()}>
         <h2 className="text-15 font-semibold text-primary">{titulo}</h2>
         {aviso && <p className="mt-1 text-12 text-secondary">{aviso}</p>}
 
@@ -215,6 +208,6 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
           </button>
         </div>
       </div>
-    </div>
+    </ModalCore>
   );
 });
