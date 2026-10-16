@@ -5,24 +5,23 @@
  */
 
 import { observer } from "mobx-react";
+import { useParams } from "next/navigation";
 // components
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { EIssuesStoreType } from "@plane/types";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const ProjectViewEmptyState = observer(function ProjectViewEmptyState() {
+  // router
+  const { workspaceSlug, projectId } = useParams();
   // store hooks
   const { toggleCreateIssueModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
 
   // auth
-  const isCreatingIssueAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const isCreatingIssueAllowed = canInProject("issue.create", projectId?.toString());
 
   return (
     // TODO: Add translation

@@ -17,7 +17,10 @@ import { CustomMenu, CustomSelect } from "@plane/ui";
 import { getFileURL } from "@plane/utils";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+// local imports
+import { isProjectMemberRemovable, isProjectRoleEditable } from "./project-role-editable";
 
 export interface RowData extends Pick<TProjectMembership, "original_role"> {
   member: IWorkspaceMember;
@@ -26,22 +29,23 @@ export interface RowData extends Pick<TProjectMembership, "original_role"> {
 type NameProps = {
   rowData: RowData;
   workspaceSlug: string;
-  isAdmin: boolean;
+  /** `member.manage` no sistema: remover outra pessoa. */
+  canManageMembers: boolean;
   currentUser: IUser | undefined;
   setRemoveMemberModal: (rowData: RowData) => void;
 };
 
 type AccountTypeProps = {
   rowData: RowData;
-  currentProjectRole: EUserPermissions | undefined;
   workspaceSlug: string;
   projectId: string;
 };
 
 export function NameColumn(props: NameProps) {
-  const { rowData, workspaceSlug, isAdmin, currentUser, setRemoveMemberModal } = props;
+  const { rowData, workspaceSlug, canManageMembers, currentUser, setRemoveMemberModal } = props;
   // derived values
   const { avatar_url, display_name, email, first_name, id, last_name } = rowData.member;
+  const isRemovable = isProjectMemberRemovable({ canManageMembers, isCurrentUser: id === currentUser?.id });
 
   return (
     <Disclosure>
@@ -68,7 +72,7 @@ export function NameColumn(props: NameProps) {
               )}
               {first_name} {last_name}
             </div>
-            {(isAdmin || id === currentUser?.id) && (
+            {isRemovable && (
               <CustomMenu
                 ellipsis
                 buttonClassName="p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -102,7 +106,7 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
     workspace: { getWorkspaceMemberDetails },
   } = useMember();
   const { data: currentUser } = useUser();
-  const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // form info
   const {
     control,
@@ -110,34 +114,21 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
   } = useForm();
   // derived values
   const roleLabel = ROLE[rowData.original_role ?? EUserPermissions.GUEST];
-  const isCurrentUser = currentUser?.id === rowData.member.id;
-  const isRowDataWorkspaceAdmin = [EUserPermissions.ADMIN].includes(
-    Number(getWorkspaceMemberDetails(rowData.member.id)?.role) ?? EUserPermissions.GUEST
-  );
-  const isCurrentUserWorkspaceAdmin = currentUser
-    ? [EUserPermissions.ADMIN].includes(
-        Number(getWorkspaceMemberDetails(currentUser.id)?.role) ?? EUserPermissions.GUEST
-      )
-    : false;
-  const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
-
-  const isCurrentUserProjectAdmin = currentProjectRole
-    ? ![EUserPermissions.MEMBER, EUserPermissions.GUEST].includes(Number(currentProjectRole) ?? EUserPermissions.GUEST)
-    : false;
-
-  // logic
-  // Workspace admin can change his own role
-  // Project admin can change any role except his own and workspace admin's role
-  const isRoleEditable =
-    (isCurrentUserWorkspaceAdmin && isCurrentUser) ||
-    (isCurrentUserProjectAdmin && !isRowDataWorkspaceAdmin && !isCurrentUser);
+  const isRoleEditable = isProjectRoleEditable({
+    canManageMembers: canInProject("member.manage", projectId),
+    isCurrentUser: currentUser?.id === rowData.member.id,
+    // permissao-estrutural: nível de quem está NA LINHA (dado); admin do espaço tem nível de admin em todo sistema.
+    isRowWorkspaceAdmin: Number(getWorkspaceMemberDetails(rowData.member.id)?.role) === EUserPermissions.ADMIN,
+  });
   const checkCurrentOptionWorkspaceRole = (value: string) => {
     const currentMemberWorkspaceRole = getWorkspaceMemberDetails(value)?.role as EUserPermissions | undefined;
     if (!value || !currentMemberWorkspaceRole) return ROLE;
 
-    const isGuest = [EUserPermissions.GUEST].includes(currentMemberWorkspaceRole);
+    // permissao-estrutural: nível de quem está NA LINHA (dado); convidado do espaço só é convidado no sistema.
+    const isGuest = currentMemberWorkspaceRole === EUserPermissions.GUEST;
 
     return Object.fromEntries(
+      // permissao-estrutural: as opções são o nível a gravar (dado), limitadas pelo nível do membro da linha.
       Object.entries(ROLE).filter(([key]) => !isGuest || parseInt(key) === EUserPermissions.GUEST)
     );
   };

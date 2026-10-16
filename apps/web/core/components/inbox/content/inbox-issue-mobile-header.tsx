@@ -161,7 +161,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     handleIssueSnoozeAction,
-                    "Apenas administradores do projeto podem adiar ou reativar solicitações"
+                    "Sua função não permite adiar ou reativar solicitações."
                   )
                 }
               >
@@ -177,7 +177,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     () => setSelectDuplicateIssue(true),
-                    "Apenas administradores do projeto podem marcar solicitações como duplicadas"
+                    "Sua função não permite marcar solicitações como duplicadas."
                   )
                 }
               >
@@ -193,7 +193,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     () => setAcceptIssueModal(true),
-                    "Apenas administradores do projeto podem aceitar solicitações"
+                    "Sua função não permite aceitar solicitações."
                   )
                 }
               >
@@ -209,7 +209,7 @@ export const InboxIssueActionsMobileHeader = observer(function InboxIssueActions
                   handleActionWithPermission(
                     isProjectAdmin,
                     () => setDeclineIssueModal(true),
-                    "Apenas administradores do projeto podem recusar solicitações"
+                    "Sua função não permite recusar solicitações."
                   )
                 }
               >

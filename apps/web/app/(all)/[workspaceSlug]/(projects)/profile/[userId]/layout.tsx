@@ -9,15 +9,13 @@ import { usePathname } from "next/navigation";
 import { Outlet } from "react-router";
 import useSWR from "swr";
 // components
-import { PROFILE_VIEWER_TAB, PROFILE_ADMINS_TAB, EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES } from "@plane/constants";
-import { useTranslation } from "@plane/i18n";
+import { PROFILE_VIEWER_TAB, PROFILE_ADMINS_TAB } from "@plane/constants";
 import { AppHeader } from "@/components/core/app-header";
 import { ContentWrapper } from "@/components/core/content-wrapper";
 import { ProfileSidebar } from "@/components/profile/sidebar";
 // constants
 import { USER_PROFILE_PROJECT_SEGREGATION } from "@/constants/fetch-keys";
 // hooks
-import { useUserPermissions } from "@/hooks/store/user";
 import useSize from "@/hooks/use-window-size";
 // local components
 import { UserService } from "@/services/user.service";
@@ -32,15 +30,6 @@ function UseProfileLayout({ params }: Route.ComponentProps) {
   // router
   const { workspaceSlug, userId } = params;
   const pathname = usePathname();
-  // store hooks
-  const { allowPermissions } = useUserPermissions();
-  const { t } = useTranslation();
-  // derived values
-  const isAuthorized = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
-
   const windowSize = useSize();
   const isSmallerScreen = windowSize[0] >= 768;
 
@@ -48,11 +37,10 @@ function UseProfileLayout({ params }: Route.ComponentProps) {
     userService.getUserProfileProjectsSegregation(workspaceSlug, userId)
   );
   // derived values
-  const isAuthorizedPath =
-    pathname.includes("assigned") || pathname.includes("created") || pathname.includes("subscribed");
   const isIssuesTab = pathname.includes("assigned") || pathname.includes("created") || pathname.includes("subscribed");
 
-  const tabsList = isAuthorized ? [...PROFILE_VIEWER_TAB, ...PROFILE_ADMINS_TAB] : PROFILE_VIEWER_TAB;
+  // O perfil é leitura: todo membro do espaço vê todas as abas.
+  const tabsList = [...PROFILE_VIEWER_TAB, ...PROFILE_ADMINS_TAB];
   const currentTab = tabsList.find((tab) => pathname === `/${workspaceSlug}/profile/${userId}${tab.selected}`);
 
   return (
@@ -74,16 +62,10 @@ function UseProfileLayout({ params }: Route.ComponentProps) {
           <ContentWrapper>
             <div className="flex h-full w-full flex-row md:flex-col md:overflow-hidden">
               <div className="flex w-full flex-col md:h-full md:overflow-hidden">
-                <ProfileNavbar isAuthorized={!!isAuthorized} />
-                {isAuthorized || !isAuthorizedPath ? (
-                  <div className={`h-full w-full overflow-hidden`}>
-                    <Outlet />
-                  </div>
-                ) : (
-                  <div className="grid h-full w-full place-items-center text-secondary">
-                    {t("you_do_not_have_the_permission_to_access_this_page")}
-                  </div>
-                )}
+                <ProfileNavbar />
+                <div className={`h-full w-full overflow-hidden`}>
+                  <Outlet />
+                </div>
               </div>
               {!isSmallerScreen && <ProfileSidebar userProjectsData={userProjectsData} />}
             </div>

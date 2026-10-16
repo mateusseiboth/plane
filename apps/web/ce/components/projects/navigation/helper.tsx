@@ -5,7 +5,7 @@
  */
 
 // plane imports
-import {EProjectFeatureKey, EUserPermissions} from "@plane/constants";
+import {EProjectFeatureKey} from "@plane/constants";
 import {CycleIcon, IntakeIcon, ModuleIcon, PageIcon, ViewsIcon, WorkItemsIcon} from "@plane/propel/icons";
 // components
 import type {TNavigationItem} from "@/components/workspace/sidebar/project-navigation";
@@ -27,15 +27,6 @@ export const getProjectFeatureNavigation = (
     name: "Chamados",
     href: `/${workspaceSlug}/projects/${projectId}/issues`,
     icon: WorkItemsIcon,
-    access: [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-      EUserPermissions.GUEST,
-    ],
     shouldRender: true,
     sortOrder: 1,
   },
@@ -45,14 +36,6 @@ export const getProjectFeatureNavigation = (
     name: "Cycles",
     href: `/${workspaceSlug}/projects/${projectId}/cycles`,
     icon: CycleIcon,
-    access: [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
     shouldRender: project.cycle_view,
     sortOrder: 2,
   },
@@ -62,14 +45,6 @@ export const getProjectFeatureNavigation = (
     name: "Modules",
     href: `/${workspaceSlug}/projects/${projectId}/modules`,
     icon: ModuleIcon,
-    access: [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-    ],
     shouldRender: project.module_view,
     sortOrder: 3,
   },
@@ -79,15 +54,6 @@ export const getProjectFeatureNavigation = (
     name: "Views",
     href: `/${workspaceSlug}/projects/${projectId}/views`,
     icon: ViewsIcon,
-    access: [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-      EUserPermissions.GUEST,
-    ],
     shouldRender: project.issue_views_view,
     sortOrder: 4,
   },
@@ -97,15 +63,6 @@ export const getProjectFeatureNavigation = (
     name: "Pages",
     href: `/${workspaceSlug}/projects/${projectId}/pages`,
     icon: PageIcon,
-    access: [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-      EUserPermissions.GUEST,
-    ],
     shouldRender: project.page_view,
     sortOrder: 5,
   },
@@ -115,15 +72,6 @@ export const getProjectFeatureNavigation = (
     name: "Solicitações",
     href: `/${workspaceSlug}/projects/${projectId}/intake`,
     icon: IntakeIcon,
-    access: [
-      EUserPermissions.ADMIN,
-      EUserPermissions.GESTOR_PROJETO,
-      EUserPermissions.MEMBER,
-      EUserPermissions.TI,
-      EUserPermissions.QUALIDADE,
-      EUserPermissions.ATENDIMENTO,
-      EUserPermissions.GUEST,
-    ],
     shouldRender: project.inbox_view,
     sortOrder: 6,
   },

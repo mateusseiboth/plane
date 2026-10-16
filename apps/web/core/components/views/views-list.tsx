@@ -7,32 +7,30 @@
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
-import { EUserProjectRoles } from "@plane/types";
 // components
 import { ListLayout } from "@/components/core/list";
 import { ViewListLoader } from "@/components/ui/loader/view-list-loader";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProjectView } from "@/hooks/store/use-project-view";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { ProjectViewListItem } from "./view-list-item";
 
 export const ProjectViewsList = observer(function ProjectViewsList() {
-  const { projectId } = useParams();
+  const { workspaceSlug, projectId } = useParams();
   // plane hooks
   const { t } = useTranslation();
   // store hooks
   const { toggleCreateViewModal } = useCommandPalette();
   const { getProjectViews, getFilteredProjectViews, loader } = useProjectView();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
   const projectViews = getProjectViews(projectId?.toString());
   const filteredProjectViews = getFilteredProjectViews(projectId?.toString());
-  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
+  const canPerformEmptyStateActions = canInProject("view.create", projectId?.toString());
 
   if (loader || !projectViews || !filteredProjectViews) return <ViewListLoader />;
 

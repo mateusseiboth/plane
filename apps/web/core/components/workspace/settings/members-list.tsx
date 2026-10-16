@@ -25,9 +25,12 @@ import { WorkspaceMembersListItem } from "./members-list-item";
 
 export const WorkspaceMembersList = observer(function WorkspaceMembersList(props: {
   searchQuery: string;
-  isAdmin: boolean;
+  /** `workspace.members`: vê e reativa os membros congelados. */
+  canManageMembers: boolean;
+  /** `workspace.invite`: vê os convites pendentes. */
+  canInvite: boolean;
 }) {
-  const { searchQuery, isAdmin } = props;
+  const { searchQuery, canManageMembers, canInvite } = props;
   const [showPendingInvites, setShowPendingInvites] = useState<boolean>(true);
 
   // router
@@ -79,8 +82,8 @@ export const WorkspaceMembersList = observer(function WorkspaceMembersList(props
           <h4 className="mt-16 text-center text-body-xs-regular text-placeholder">{t("no_matching_members")}</h4>
         )}
       </div>
-      {isAdmin && workspaceSlug && <FrozenMembersList workspaceSlug={workspaceSlug.toString()} />}
-      {isAdmin && searchedInvitationsIds && searchedInvitationsIds.length > 0 && (
+      {canManageMembers && workspaceSlug && <FrozenMembersList workspaceSlug={workspaceSlug.toString()} />}
+      {canInvite && searchedInvitationsIds && searchedInvitationsIds.length > 0 && (
         <Collapsible
           isOpen={showPendingInvites}
           onToggle={() => setShowPendingInvites((prev) => !prev)}

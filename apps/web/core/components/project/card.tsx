@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArchiveRestoreIcon, Settings, UserPlus } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
+import { IS_FAVORITE_MENU_OPEN } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { Button } from "@plane/propel/button";
 import { Logo } from "@plane/propel/emoji-icon-picker";
@@ -25,9 +25,9 @@ import { copyUrlToClipboard, cn, getFileURL, renderFormattedDate } from "@plane/
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 import { usePlatformOS } from "@/hooks/use-platform-os";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { CoverImage } from "@/components/common/cover-image";
 import { DeleteProjectModal } from "./delete-project-modal";
@@ -52,19 +52,17 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
   // store hooks
   const { getUserDetails } = useMember();
   const { addProjectToFavorites, removeProjectFromFavorites } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   // hooks
   const { isMobile } = usePlatformOS();
   // derived values
   const projectMembersIds = project.members;
-  const shouldRenderFavorite = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.WORKSPACE
-  );
-  // auth
+  // auth: `member_role` só diz se a pessoa participa do sistema; o que ela faz vem da matriz.
   const isMemberOfProject = !!project.member_role;
-  const hasAdminRole = project.member_role === EUserPermissions.ADMIN;
-  const hasMemberRole = project.member_role === EUserPermissions.MEMBER;
+  // Configurar e restaurar o sistema: `project.settings` (as rotas de configuração e de
+  // arquivar conferem essa ação); excluir: `project.delete`.
+  const canConfigureProject = isMemberOfProject && can("project.settings");
+  const canDeleteProject = isMemberOfProject && can("project.delete");
   // archive
   const isArchived = !!project.archived_at;
   // local storage
@@ -128,7 +126,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
       action: () => router.push(`/${workspaceSlug}/settings/projects/${project.id}`),
       title: "Configurações",
       icon: Settings,
-      shouldRender: !isArchived && (hasAdminRole || hasMemberRole),
+      shouldRender: !isArchived && canConfigureProject,
     },
     {
       key: "join",
@@ -156,14 +154,14 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
       action: () => setRestoreProject(true),
       title: "Restaurar",
       icon: ArchiveRestoreIcon,
-      shouldRender: isArchived && hasAdminRole,
+      shouldRender: isArchived && canConfigureProject,
     },
     {
       key: "delete",
       action: () => setDeleteProjectModal(true),
       title: "Excluir",
       icon: TrashIcon,
-      shouldRender: isArchived && hasAdminRole,
+      shouldRender: isArchived && canDeleteProject,
     },
   ];
 
@@ -246,21 +244,20 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                 >
                   <LinkIcon className="h-3 w-3 text-on-color" />
                 </button>
-                {shouldRenderFavorite && (
-                  <FavoriteStar
-                    buttonClassName="h-6 w-6 bg-white/10 rounded-sm"
-                    iconClassName={cn("h-3 w-3", {
-                      "text-on-color": !project.is_favorite,
-                    })}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (project.is_favorite) handleRemoveFromFavorites();
-                      else handleAddToFavorites();
-                    }}
-                    selected={!!project.is_favorite}
-                  />
-                )}
+                {/* Favoritar: todo membro do espaço. */}
+                <FavoriteStar
+                  buttonClassName="h-6 w-6 bg-white/10 rounded-sm"
+                  iconClassName={cn("h-3 w-3", {
+                    "text-on-color": !project.is_favorite,
+                  })}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (project.is_favorite) handleRemoveFromFavorites();
+                    else handleAddToFavorites();
+                  }}
+                  selected={!!project.is_favorite}
+                />
               </div>
             )}
           </div>
@@ -305,8 +302,8 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
               {isArchived && <div className="text-11 font-medium text-placeholder">Arquivado</div>}
             </div>
             {isArchived ? (
-              hasAdminRole && (
-                <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2">
+                {canConfigureProject && (
                   <div
                     className="flex items-center justify-center text-11 font-medium text-placeholder hover:text-secondary"
                     onClick={(e) => {
@@ -320,6 +317,8 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                       Restore
                     </div>
                   </div>
+                )}
+                {canDeleteProject && (
                   <div
                     className="flex items-center justify-center text-11 font-medium text-placeholder hover:text-secondary"
                     onClick={(e) => {
@@ -330,12 +329,12 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
                   </div>
-                </div>
-              )
+                )}
+              </div>
             ) : (
               <>
                 {isMemberOfProject &&
-                  (hasAdminRole || hasMemberRole ? (
+                  (canConfigureProject ? (
                     <Link
                       className="flex items-center justify-center rounded-sm p-1 text-placeholder hover:bg-layer-1 hover:text-secondary"
                       onClick={(e) => {

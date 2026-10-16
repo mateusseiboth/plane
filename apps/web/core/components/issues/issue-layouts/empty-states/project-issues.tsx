@@ -7,31 +7,27 @@
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { EIssuesStoreType } from "@plane/types";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useWorkItemFilterInstance } from "@/hooks/store/work-item-filters/use-work-item-filter-instance";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const ProjectEmptyState = observer(function ProjectEmptyState() {
   // router
-  const { projectId: routerProjectId } = useParams();
+  const { workspaceSlug, projectId: routerProjectId } = useParams();
   const projectId = routerProjectId ? routerProjectId.toString() : undefined;
   // plane imports
   const { t } = useTranslation();
   // store hooks
   const { toggleCreateIssueModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
   const projectWorkItemFilter = useWorkItemFilterInstance(EIssuesStoreType.PROJECT, projectId);
 
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const canCreateIssue = canInProject("issue.create", projectId);
 
   return (
     <div className="relative h-full w-full overflow-y-auto">
@@ -44,7 +40,7 @@ export const ProjectEmptyState = observer(function ProjectEmptyState() {
             {
               label: t("project_issues.empty_state.issues_empty_filter.secondary_button.text"),
               onClick: projectWorkItemFilter?.clearFilters,
-              disabled: !canPerformEmptyStateActions || !projectWorkItemFilter,
+              disabled: !projectWorkItemFilter,
               variant: "secondary",
             },
           ]}
@@ -60,7 +56,7 @@ export const ProjectEmptyState = observer(function ProjectEmptyState() {
               onClick: () => {
                 toggleCreateIssueModal(true, EIssuesStoreType.PROJECT);
               },
-              disabled: !canPerformEmptyStateActions,
+              disabled: !canCreateIssue,
               variant: "primary",
             },
           ]}

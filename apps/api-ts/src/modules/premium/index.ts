@@ -310,7 +310,7 @@ export const premiumModule = new Elysia()
 
   .post("/workspaces/:slug/export-issues/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ISSUE_EXPORT);
     const b = body as any;
     // A tela de exportação manda {provider, project: string[], multiple};
     // chamadas internas mais antigas mandam {format, project_id}.
@@ -342,7 +342,8 @@ export const premiumModule = new Elysia()
    */
   .get("/workspaces/:slug/export-issues/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    // O histórico traz o link de download do que foi exportado: mesma ação.
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ISSUE_EXPORT);
     const where = { workspaceId: ws.id };
     const page = await paginate({
       query: (skip, take) => prisma.exportJob.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
@@ -371,7 +372,7 @@ export const premiumModule = new Elysia()
 
   .get("/workspaces/:slug/export-jobs/:job_id/", async ({ params: { slug, job_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
-    await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.ISSUE_EXPORT);
     return prisma.exportJob.findFirstOrThrow({ where: { id: job_id, workspaceId: ws.id } });
   })
 

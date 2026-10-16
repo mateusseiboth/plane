@@ -8,7 +8,6 @@ import { observer } from "mobx-react";
 // plane imports
 import { useTranslation } from "@plane/i18n";
 // components
-import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view";
 import { PageHead } from "@/components/core/page-title";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
@@ -17,6 +16,7 @@ import { ProjectSettingsFeatureControlItem } from "@/components/settings/project
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import type { Route } from "./+types/page";
 import { FeaturesModulesProjectSettingsHeader } from "./header";
@@ -24,7 +24,8 @@ import { FeaturesModulesProjectSettingsHeader } from "./header";
 function FeaturesModulesSettingsPage({ params }: Route.ComponentProps) {
   const { workspaceSlug, projectId } = params;
   // store hooks
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { canInProject, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
   const { currentProjectDetails } = useProject();
   // translation
   const { t } = useTranslation();
@@ -32,9 +33,9 @@ function FeaturesModulesSettingsPage({ params }: Route.ComponentProps) {
   const pageTitle = currentProjectDetails?.name
     ? `${currentProjectDetails?.name} configurações - ${t("project_settings.features.modules.short_title")}`
     : undefined;
-  const canPerformProjectAdminActions = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT);
+  const canPerformProjectAdminActions = canInProject("project.settings", projectId);
 
-  if (workspaceUserInfo && !canPerformProjectAdminActions) {
+  if (workspaceUserInfo && !isLoadingActions && !canPerformProjectAdminActions) {
     return <NotAuthorizedView section="settings" isProjectView className="h-auto" />;
   }
 

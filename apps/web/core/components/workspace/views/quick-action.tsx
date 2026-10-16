@@ -7,7 +7,6 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IWorkspaceView } from "@plane/types";
 import { CustomMenu } from "@plane/ui";
@@ -15,7 +14,8 @@ import { copyUrlToClipboard, cn } from "@plane/utils";
 // helpers
 import { useViewMenuItems } from "@/components/common/quick-actions-helper";
 // hooks
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { DeleteGlobalViewModal } from "./delete-view-modal";
 import { CreateUpdateWorkspaceViewModal } from "./modal";
@@ -32,10 +32,11 @@ export const WorkspaceViewQuickActions = observer(function WorkspaceViewQuickAct
   const [deleteViewModal, setDeleteViewModal] = useState(false);
   // store hooks
   const { data } = useUser();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug);
   // auth
   const isOwner = view?.owned_by === data?.id;
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  // Excluir visão de outro: o api-ts só exige ser do espaço; a matriz libera para quem gerencia visões.
+  const isAdmin = can("view.create");
 
   const viewLink = `${workspaceSlug}/workspace-views/${view.id}`;
   const handleCopyText = async () => {

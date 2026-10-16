@@ -9,7 +9,6 @@ import { usePathname } from "next/navigation";
 import { useParams } from "react-router";
 // plane imports
 import {
-  EUserPermissionsLevel,
   GROUPED_WORKSPACE_SETTINGS,
   WORKSPACE_SETTINGS_CATEGORIES,
   WORKSPACE_SETTINGS_CATEGORY_LABELS,
@@ -19,7 +18,8 @@ import { joinUrlPath } from "@plane/utils";
 // components
 import { SettingsSidebarItem } from "@/components/settings/sidebar/item";
 // hooks
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isRequiredActionAllowed } from "@/lib/permissoes/acao-efetiva";
 // local imports
 import { WORKSPACE_SETTINGS_ICONS } from "./item-icon";
 
@@ -28,7 +28,7 @@ export const WorkspaceSettingsSidebarItemCategories = observer(function Workspac
   const { workspaceSlug } = useParams();
   const pathname = usePathname();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   // translation
   const { t } = useTranslation();
 
@@ -36,9 +36,8 @@ export const WorkspaceSettingsSidebarItemCategories = observer(function Workspac
     <div className="mt-3 flex flex-col divide-y divide-subtle px-3">
       {WORKSPACE_SETTINGS_CATEGORIES.map((category) => {
         const categoryItems = GROUPED_WORKSPACE_SETTINGS[category];
-        const accessibleItems = categoryItems.filter((item) =>
-          allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, workspaceSlug)
-        );
+        // Cada item pede a ação que a tela de destino exige.
+        const accessibleItems = categoryItems.filter((item) => isRequiredActionAllowed(item.action, can));
 
         if (accessibleItems.length === 0) return null;
 

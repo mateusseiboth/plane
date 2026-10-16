@@ -8,7 +8,7 @@ import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 import {useCallback, useEffect} from "react";
 // plane imports
-import {ALL_ISSUES, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
+import {ALL_ISSUES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {TOAST_TYPE, setToast} from "@plane/propel/toast";
 import type {EIssuesStoreType, IBlockUpdateData, TIssue} from "@plane/types";
@@ -21,7 +21,8 @@ import {IssueGanttSidebar} from "@/components/gantt-chart/sidebar/issues/sidebar
 // hooks
 import {useIssues} from "@/hooks/store/use-issues";
 import {useRealtimeRefetch} from "@/hooks/use-realtime";
-import {useUserPermissions} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
+import {isIssueEditAllowed} from "@/lib/permissoes/regras-de-chamado";
 import {useIssueStoreType} from "@/hooks/use-issue-layout-store";
 import {useIssuesActions} from "@/hooks/use-issues-actions";
 import {useTimeLineChart} from "@/hooks/use-timeline-chart";
@@ -56,7 +57,7 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
   const {fetchIssues, fetchNextIssues, updateIssue, quickAddIssue} = useIssuesActions(storeType);
   const {initGantt} = useTimeLineChart(GANTT_TIMELINE_TYPE.ISSUE);
   // store hooks
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const appliedDisplayFilters = issuesFilter.issueFilters?.displayFilters;
   // plane web hooks
@@ -99,10 +100,9 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
     updateIssue && (await updateIssue(issue.project_id, issue.id, payload));
   };
 
-  const isAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT,
-  );
+  // Mover e redimensionar no gantt edita o chamado: issue.edit.all ou issue.edit.own, no sistema aberto.
+  const isAllowed = isIssueEditAllowed((action) => canInProject(action, projectId?.toString()));
+  const isCreatingAllowed = canInProject("issue.create", projectId?.toString());
   const updateBlockDates = useCallback(
     (
       updates: {
@@ -122,7 +122,7 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
   );
 
   const quickAdd =
-    enableIssueCreation && isAllowed && !isCompletedCycle ? (
+    enableIssueCreation && isCreatingAllowed && !isCompletedCycle ? (
       <QuickAddIssueRoot
         layout={EIssueLayoutTypes.GANTT}
         QuickAddButton={GanttQuickAddIssueButton}

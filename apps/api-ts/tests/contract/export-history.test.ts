@@ -7,6 +7,7 @@
  * quais projetos, formato, status) e o isolamento entre espaços de trabalho.
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import prisma from "@db";
 import { cleanDb } from "@tests/helpers/setup";
 import {
   apiClient,
@@ -140,5 +141,24 @@ describe("TestExportHistory", () => {
     const res = await membro.get(url());
     expect(res.status).toBe(200);
     expect(((await res.json()) as any).results.length).toBeGreaterThan(0);
+  });
+
+  // W44: exportar virou a ação `issue.export` (padrão: Membro e admin), a mesma
+  // que a tela consulta. Antes só a tela barrava, por nível.
+  it("sem issue.export a exportação e o histórico respondem 403", async () => {
+    const { token } = await createMemberWithToken(wsId, 8);
+    const qualidade = apiClient(token);
+    expect((await exportar({ provider: "csv", project: [projetoA] }, qualidade)).status).toBe(403);
+    expect((await qualidade.get(url())).status).toBe(403);
+  });
+
+  it("issue.export concedida por pessoa libera a exportação", async () => {
+    const { user, token } = await createMemberWithToken(wsId, 8);
+    await prisma.workspaceMember.updateMany({
+      where: { workspaceId: wsId, memberId: user.id },
+      data: { grantedActions: ["issue.export"] },
+    });
+    const res = await exportar({ provider: "csv", project: [projetoA] }, apiClient(token));
+    expect(res.status).toBe(201);
   });
 });

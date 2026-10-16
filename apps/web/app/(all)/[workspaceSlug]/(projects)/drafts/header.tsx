@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { observer } from "mobx-react";
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
+import { useParams } from "next/navigation";
 import { useTranslation } from "@plane/i18n";
 // ui
 import { Button } from "@plane/propel/button";
@@ -20,23 +20,22 @@ import { CreateUpdateIssueModal } from "@/components/issues/issue-modal/modal";
 
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useWorkspaceDraftIssues } from "@/hooks/store/workspace-draft";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const WorkspaceDraftHeader = observer(function WorkspaceDraftHeader() {
+  // router
+  const { workspaceSlug } = useParams();
   // state
   const [isDraftIssueModalOpen, setIsDraftIssueModalOpen] = useState(false);
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { paginationInfo } = useWorkspaceDraftIssues();
   const { joinedProjectIds } = useProject();
 
   const { t } = useTranslation();
-  // check if user is authorized to create draft work item
-  const isAuthorizedUser = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // Rascunho vira chamado: issue.create.
+  const isAuthorizedUser = can("issue.create");
 
   return (
     <>

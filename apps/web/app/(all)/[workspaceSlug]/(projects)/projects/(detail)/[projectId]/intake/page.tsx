@@ -8,9 +8,8 @@ import { observer } from "mobx-react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 // plane imports
-import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
-import { EUserProjectRoles, EInboxIssueCurrentTab } from "@plane/types";
+import { EInboxIssueCurrentTab } from "@plane/types";
 // assets
 import darkIntakeAsset from "@/app/assets/empty-state/disabled-feature/intake-dark.webp?url";
 import lightIntakeAsset from "@/app/assets/empty-state/disabled-feature/intake-light.webp?url";
@@ -20,8 +19,8 @@ import { DetailedEmptyState } from "@/components/empty-state/detailed-empty-stat
 import { InboxIssueRoot } from "@/components/inbox";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { Route } from "./+types/page";
 
 function ProjectInboxPage({ params }: Route.ComponentProps) {
@@ -37,9 +36,10 @@ function ProjectInboxPage({ params }: Route.ComponentProps) {
   const { t } = useTranslation();
   // hooks
   const { currentProjectDetails } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
-  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
+  // O botão leva aos recursos do sistema, para ligar a triagem: project.settings.
+  const canPerformEmptyStateActions = canInProject("project.settings", projectId);
   const resolvedPath = resolvedTheme === "light" ? lightIntakeAsset : darkIntakeAsset;
 
   // No access to inbox

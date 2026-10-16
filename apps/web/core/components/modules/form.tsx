@@ -20,7 +20,7 @@ import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { ProjectDropdown } from "@/components/dropdowns/project/dropdown";
 import { ModuleStatusSelect } from "@/components/modules";
 // hooks
-import { useUser } from "@/hooks/store/user/user-user";
+import { useUserPermissions } from "@/hooks/store/user";
 
 type Props = {
   handleFormSubmit: (values: Partial<IModule>, dirtyFields: any) => Promise<void>;
@@ -43,7 +43,8 @@ const defaultValues: Partial<IModule> = {
 export function ModuleForm(props: Props) {
   const { handleFormSubmit, handleClose, status, projectId, setActiveProject, data, isMobile = false } = props;
   // store hooks
-  const { projectsWithCreatePermissions } = useUser();
+  // Só os sistemas em que a pessoa participa e pode `module.manage` (a mesma ação da rota).
+  const { canDoInProject } = useUserPermissions();
   // form info
   const {
     formState: { errors, isSubmitting, dirtyFields },
@@ -100,7 +101,7 @@ export function ModuleForm(props: Props) {
                     }}
                     multiple={false}
                     buttonVariant="border-with-text"
-                    renderCondition={(projectId) => !!projectsWithCreatePermissions?.[projectId]}
+                    renderCondition={(id) => canDoInProject("module.manage", undefined, id)}
                     tabIndex={getIndex("cover_image")}
                   />
                 </div>

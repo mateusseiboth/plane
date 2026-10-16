@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // types
-import { PROJECT_ERROR_MESSAGES, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { PROJECT_ERROR_MESSAGES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TDeDupeIssue, TIssue } from "@plane/types";
@@ -18,8 +18,14 @@ import { AlertModalCore } from "@plane/ui";
 // hooks
 import { useIssues } from "@/hooks/store/use-issues";
 import { useProject } from "@/hooks/store/use-project";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isIssueDeleteAllowed } from "@/lib/permissoes/regras-de-chamado";
 // plane-web
+
+const ISSUE_DELETE_DENIED = { i18n_title: "common.error.label", i18n_message: "issue.delete.permission_denied" };
+// Corpo do 403 do api-ts quando a função não tem a ação (DENIED em utils/permission-checks.ts).
+const API_DENIAL_DETAIL = "Sua função não permite esta ação.";
 
 type Props = {
   isOpen: boolean;
@@ -39,7 +45,7 @@ export const DeleteIssueModal = observer(function DeleteIssueModal(props: Props)
   const { workspaceSlug } = useParams();
   const { issueMap } = useIssues();
   const { getProjectById } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { t } = useTranslation();
 
   const { data: currentUser } = useUser();
@@ -55,14 +61,8 @@ export const DeleteIssueModal = observer(function DeleteIssueModal(props: Props)
   const projectDetails = getProjectById(issue?.project_id);
   const isIssueCreator = issue?.created_by === currentUser?.id;
 
-  const canPerformProjectAdminActions = allowPermissions(
-    [EUserPermissions.ADMIN],
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug?.toString(),
-    projectDetails?.id
-  );
-
-  const authorized = isIssueCreator || canPerformProjectAdminActions;
+  // Excluir: issue.delete.all, ou issue.delete.own para quem abriu o chamado (a mesma regra do DELETE no api-ts).
+  const authorized = isIssueDeleteAllowed((action) => canInProject(action, projectDetails?.id), isIssueCreator);
 
   const onClose = () => {
     setIsDeleting(false);
@@ -74,10 +74,9 @@ export const DeleteIssueModal = observer(function DeleteIssueModal(props: Props)
 
     if (!authorized) {
       setToast({
-        title: t(PROJECT_ERROR_MESSAGES.permissionError.i18n_title),
+        title: t(ISSUE_DELETE_DENIED.i18n_title),
         type: TOAST_TYPE.ERROR,
-        message:
-          PROJECT_ERROR_MESSAGES.permissionError.i18n_message && t(PROJECT_ERROR_MESSAGES.permissionError.i18n_message),
+        message: t(ISSUE_DELETE_DENIED.i18n_message),
       });
       onClose();
       return;
@@ -95,12 +94,8 @@ export const DeleteIssueModal = observer(function DeleteIssueModal(props: Props)
           onClose();
         })
         .catch((errors) => {
-          const isPermissionError =
-            errors?.error ===
-            `Somente o administrador ou quem criou pode excluir ${isSubIssue ? "o subchamado" : isEpic ? "a épica" : "o chamado"}.`;
-          const currentError = isPermissionError
-            ? PROJECT_ERROR_MESSAGES.permissionError
-            : PROJECT_ERROR_MESSAGES.issueDeleteError;
+          const isPermissionError = errors?.detail === API_DENIAL_DETAIL;
+          const currentError = isPermissionError ? ISSUE_DELETE_DENIED : PROJECT_ERROR_MESSAGES.issueDeleteError;
           setToast({
             title: t(currentError.i18n_title),
             type: TOAST_TYPE.ERROR,

@@ -5,28 +5,25 @@
  */
 
 import { observer } from "mobx-react";
+import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { EIssuesStoreType } from "@plane/types";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const GlobalViewEmptyState = observer(function GlobalViewEmptyState() {
+  // router
+  const { workspaceSlug } = useParams();
   // plane imports
   const { t } = useTranslation();
   // store hooks
   const { workspaceProjectIds } = useProject();
   const { toggleCreateIssueModal, toggleCreateProjectModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
-  // derived values
-  const hasMemberLevelPermission = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
   if (workspaceProjectIds?.length === 0) {
     return (
@@ -41,7 +38,7 @@ export const GlobalViewEmptyState = observer(function GlobalViewEmptyState() {
             onClick: () => {
               toggleCreateProjectModal(true);
             },
-            disabled: !hasMemberLevelPermission,
+            disabled: !can("project.create"),
             variant: "primary",
           },
         ]}
@@ -61,7 +58,7 @@ export const GlobalViewEmptyState = observer(function GlobalViewEmptyState() {
           onClick: () => {
             toggleCreateIssueModal(true, EIssuesStoreType.PROJECT);
           },
-          disabled: !hasMemberLevelPermission,
+          disabled: !can("issue.create"),
           variant: "primary",
         },
       ]}

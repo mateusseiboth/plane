@@ -8,7 +8,6 @@ import { useState, useEffect } from "react";
 import { observer } from "mobx-react";
 import { useRouter } from "next/navigation";
 // plane package imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { Tabs } from "@plane/propel/tabs";
@@ -38,17 +37,14 @@ function AnalyticsPage({ params }: Route.ComponentProps) {
   const { toggleCreateProjectModal } = useCommandPalette();
   const { workspaceProjectIds, loader } = useProject();
   const { currentWorkspace } = useWorkspace();
-  const { allowPermissions } = useUserPermissions();
+  const { canDo } = useUserPermissions();
 
   const pageTitle = currentWorkspace?.name
     ? t(`workspace_analytics.page_label`, { workspace: currentWorkspace?.name })
     : undefined;
 
-  // permissions
-  const canPerformEmptyStateActions = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // O botão do estado vazio cria um sistema.
+  const canPerformEmptyStateActions = canDo("project.create", params.workspaceSlug);
 
   const workspaceSlug = params.workspaceSlug;
   const ANALYTICS_TABS = useAnalyticsTabs(workspaceSlug.toString());

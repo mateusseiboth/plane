@@ -8,7 +8,6 @@ import { useState, useRef } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { EmptyStateCompact } from "@plane/propel/empty-state";
@@ -23,7 +22,7 @@ import {
 } from "@/components/labels";
 // hooks
 import { useLabel } from "@/hooks/store/use-label";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { SettingsHeading } from "../settings/heading";
 
@@ -40,9 +39,9 @@ export const ProjectSettingsLabelList = observer(function ProjectSettingsLabelLi
   const { t } = useTranslation();
   // store hooks
   const { projectLabels, updateLabelPosition, projectLabelsTree, createLabel, updateLabel } = useLabel();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
-  const isEditable = allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT);
+  const isEditable = canInProject("label.manage", projectId?.toString());
   const labelOperationsCallbacks: TLabelOperationsCallbacks = {
     createLabel: (data: Partial<IIssueLabel>) => createLabel(workspaceSlug?.toString(), projectId?.toString(), data),
     updateLabel: (labelId: string, data: Partial<IIssueLabel>) =>

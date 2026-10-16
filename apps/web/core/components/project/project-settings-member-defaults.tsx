@@ -10,7 +10,6 @@ import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
 import useSWR from "swr";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IProject, IUserLite, IWorkspace } from "@plane/types";
@@ -19,7 +18,7 @@ import { Loader, ToggleSwitch } from "@plane/ui";
 import { PROJECT_DETAILS } from "@/constants/fetch-keys";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import { MemberSelect } from "./member-select";
 
@@ -58,15 +57,12 @@ export const ProjectSettingsMemberDefaults = observer(function ProjectSettingsMe
   // plane hooks
   const { t } = useTranslation();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
 
   const { currentProjectDetails, fetchProjectDetails, updateProject } = useProject();
   // derived values
-  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug,
-    currentProjectDetails?.id
-  );
+  // Líder, responsável padrão e acesso de convidado são gravados no PATCH do sistema (`project.settings`).
+  const isAdmin = canInProject("project.settings", currentProjectDetails?.id);
   // form info
   const { reset, control } = useForm<IProject>({ defaultValues });
   // fetching user members

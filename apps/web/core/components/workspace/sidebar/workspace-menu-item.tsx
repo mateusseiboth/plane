@@ -8,15 +8,15 @@ import { observer } from "mobx-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
-import type { EUserWorkspaceRoles } from "@plane/types";
 import { cn } from "@plane/utils";
 // components
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isRequiredActionAllowed } from "@/lib/permissoes/acao-efetiva";
+import type { TRequiredAction } from "@/lib/permissoes/acao-efetiva";
 // plane web imports
 import { UpgradeBadge } from "@/plane-web/components/workspace/upgrade-badge";
 
@@ -26,7 +26,8 @@ export type SidebarWorkspaceMenuItemProps = {
     key: string;
     href: string;
     Icon: any;
-    access: EUserWorkspaceRoles[];
+    /** Ação da matriz exigida; sem ação, todo membro do espaço vê. */
+    action?: TRequiredAction;
   };
 };
 
@@ -39,7 +40,7 @@ export const SidebarWorkspaceMenuItem = observer(function SidebarWorkspaceMenuIt
   // nextjs hooks
   const pathname = usePathname();
   const { workspaceSlug } = useParams();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   // store hooks
   const { toggleSidebar } = useAppTheme();
 
@@ -49,9 +50,7 @@ export const SidebarWorkspaceMenuItem = observer(function SidebarWorkspaceMenuIt
     }
   };
 
-  if (!allowPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) {
-    return null;
-  }
+  if (!isRequiredActionAllowed(item.action, can)) return null;
 
   const isActive = item.href === pathname;
 

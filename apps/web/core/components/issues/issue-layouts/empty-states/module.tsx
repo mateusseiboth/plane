@@ -8,7 +8,6 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -19,8 +18,8 @@ import { ExistingIssuesListModal } from "@/components/core/modals/existing-issue
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useIssues } from "@/hooks/store/use-issues";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useWorkItemFilterInstance } from "@/hooks/store/work-item-filters/use-work-item-filter-instance";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const ModuleEmptyState = observer(function ModuleEmptyState() {
   // router
@@ -35,13 +34,12 @@ export const ModuleEmptyState = observer(function ModuleEmptyState() {
   // store hooks
   const { issues } = useIssues(EIssuesStoreType.MODULE);
   const { toggleCreateIssueModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
   const moduleWorkItemFilter = useWorkItemFilterInstance(EIssuesStoreType.MODULE, moduleId);
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const canCreateIssue = canInProject("issue.create", projectId);
+  // Pôr chamados existentes no módulo: a rota de chamados do módulo confere module.manage.
+  const canManageModule = canInProject("module.manage", projectId);
 
   const handleAddIssuesToModule = async (data: ISearchIssueResponse[]) => {
     if (!workspaceSlug || !projectId || !moduleId) return;
@@ -85,7 +83,7 @@ export const ModuleEmptyState = observer(function ModuleEmptyState() {
               {
                 label: "Limpar filtros",
                 onClick: moduleWorkItemFilter?.clearFilters,
-                disabled: !canPerformEmptyStateActions || !moduleWorkItemFilter,
+                disabled: !moduleWorkItemFilter,
                 variant: "secondary",
               },
             ]}
@@ -101,13 +99,13 @@ export const ModuleEmptyState = observer(function ModuleEmptyState() {
                 onClick: () => {
                   toggleCreateIssueModal(true, EIssuesStoreType.MODULE);
                 },
-                disabled: !canPerformEmptyStateActions,
+                disabled: !canCreateIssue,
                 variant: "primary",
               },
               {
                 label: t("project_empty_state.module_work_items.cta_secondary"),
                 onClick: () => setModuleIssuesListModal(true),
-                disabled: !canPerformEmptyStateActions,
+                disabled: !canManageModule,
                 variant: "secondary",
               },
             ]}

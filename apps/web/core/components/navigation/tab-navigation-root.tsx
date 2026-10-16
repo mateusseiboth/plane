@@ -4,17 +4,15 @@
  * See the LICENSE file for details.
  */
 
-import {EUserPermissions, EUserPermissionsLevel, PROJECT_VIEW_ROLES} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {TabNavigationItem, TabNavigationList} from "@plane/propel/tab-navigation";
-import type {EUserProjectRoles} from "@plane/types";
 import {observer} from "mobx-react";
 import React, {useEffect} from "react";
 import {Link, useLocation, useNavigate, useParams} from "react-router";
 // hooks
 import {useIssueDetail} from "@/hooks/store/use-issue-detail";
 import {useProject} from "@/hooks/store/use-project";
-import {useUserPermissions} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
 // plane web imports
 import {useNavigationItems} from "@/plane-web/components/navigations";
 // local imports
@@ -35,7 +33,6 @@ export type TNavigationItem = {
   name: string;
   href: string;
   icon: React.ElementType;
-  access: EUserPermissions[] | EUserProjectRoles[];
   shouldRender: boolean;
   sortOrder: number;
   i18n_key: string;
@@ -57,7 +54,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
 
   // Store hooks
   const {getPartialProjectById} = useProject();
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug);
   const {
     issue: {getIssueIdByIdentifier, getIssueById},
   } = useIssueDetail();
@@ -75,7 +72,6 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
     workspaceSlug,
     projectId,
     project,
-    allowPermissions,
   });
 
   // Active tab hook
@@ -132,15 +128,8 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
   if (allNavigationItems.length === 0) return null;
   if (!project) return null;
 
-  // Permission checks
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug.toString(), project?.id);
-
-  const isAuthorized = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug.toString(),
-    project?.id,
-  );
+  // Publicar o sistema é configuração dele: a mesma ação que a rota de publicação confere.
+  const canPublish = canInProject("project.settings", project.id);
 
   return (
     <>
@@ -166,8 +155,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
             <ProjectActionsMenu
               workspaceSlug={workspaceSlug}
               project={project}
-              isAdmin={isAdmin}
-              isAuthorized={isAuthorized}
+              canPublish={canPublish}
               onCopyText={handleCopyText}
               onLeaveProject={handleLeaveProject}
               onPublishModal={() => handlePublishModal(true)}

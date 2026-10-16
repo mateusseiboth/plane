@@ -8,7 +8,7 @@ import { useCallback, useRef, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_TRACKER_ELEMENTS, PROJECT_VIEW_ROLES } from "@plane/constants";
+import { PROJECT_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateCompact } from "@plane/propel/empty-state";
 import { PlusIcon, SearchIcon } from "@plane/propel/icons";
@@ -21,7 +21,7 @@ import { SidebarProjectsListItem } from "@/components/workspace/sidebar/projects
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { TProject } from "@/plane-web/types";
 import { ExtendedSidebarWrapper } from "./extended-sidebar-wrapper";
 
@@ -37,7 +37,7 @@ export const ExtendedProjectSidebar = observer(function ExtendedProjectSidebar()
   const { t } = useTranslation();
   const { isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar } = useAppTheme();
   const { getPartialProjectById, joinedProjectIds: joinedProjects, updateProjectView } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const handleOnProjectDrop = (
     sourceId: string | undefined,
@@ -76,11 +76,8 @@ export const ExtendedProjectSidebar = observer(function ExtendedProjectSidebar()
     return project.name.toLowerCase().includes(searchQuery.toLowerCase()) || project.identifier.includes(searchQuery);
   });
 
-  // auth
-  const isAuthorizedUser = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // O botão "+" abre a criação de sistema.
+  const canCreateProject = can("project.create");
 
   const handleClose = useCallback(() => toggleExtendedProjectSidebar(false), [toggleExtendedProjectSidebar]);
 
@@ -113,7 +110,7 @@ export const ExtendedProjectSidebar = observer(function ExtendedProjectSidebar()
         <div className="sticky top-4 flex w-full flex-col gap-1 px-4">
           <div className="flex items-center justify-between">
             <span className="py-1.5 text-13 font-semibold text-tertiary">Projetos</span>
-            {isAuthorizedUser && (
+            {canCreateProject && (
               <Tooltip tooltipHeading={t("create_project")} tooltipContent="">
                 <button
                   type="button"

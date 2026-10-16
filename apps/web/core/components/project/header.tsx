@@ -7,7 +7,7 @@
 import { observer } from "mobx-react";
 import { usePathname } from "next/navigation";
 // i18n
-import { EUserPermissionsLevel, PROJECT_TRACKER_ELEMENTS, PROJECT_CREATE_ROLES } from "@plane/constants";
+import { PROJECT_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 // ui
 import { Button } from "@plane/propel/button";
@@ -28,14 +28,11 @@ export const ProjectsBaseHeader = observer(function ProjectsBaseHeader() {
   const { t } = useTranslation();
   // store hooks
   const { toggleCreateProjectModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
+  const { canDo } = useUserPermissions();
 
   const pathname = usePathname();
-  // auth
-  const isAuthorizedUser = allowPermissions(
-    PROJECT_CREATE_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // Criar sistema: a mesma ação que a rota de criação confere.
+  const isAuthorizedUser = canDo("project.create");
   const isArchived = pathname.includes("/archives");
 
   return (

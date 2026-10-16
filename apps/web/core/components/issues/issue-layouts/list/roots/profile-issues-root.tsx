@@ -4,11 +4,11 @@
  * See the LICENSE file for details.
  */
 
-import {EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 // hooks
-import {useUserPermissions} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
+import {isIssueEditAllowed} from "@/lib/permissoes/regras-de-chamado";
 // local imports
 import {ProjectIssueQuickActions} from "../../quick-action-dropdowns";
 import {BaseListRoot} from "../base-list-root";
@@ -17,15 +17,10 @@ export const ProfileIssuesListLayout = observer(function ProfileIssuesListLayout
   // router
   const {workspaceSlug, profileViewId} = useParams();
   // store
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const canEditPropertiesBasedOnProject = (projectId: string) =>
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-      workspaceSlug.toString(),
-      projectId,
-    );
+    isIssueEditAllowed((action) => canInProject(action, projectId));
 
   return (
     <BaseListRoot

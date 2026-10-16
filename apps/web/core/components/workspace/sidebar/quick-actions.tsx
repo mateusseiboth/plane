@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
-import { EProjectAction, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES, SIDEBAR_TRACKER_ELEMENTS, canPerform } from "@plane/constants";
+import { SIDEBAR_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { AddWorkItemIcon } from "@plane/propel/icons";
 import type { TIssue } from "@plane/types";
@@ -19,8 +19,9 @@ import { SidebarAddButton } from "@/components/sidebar/add-button";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import useLocalStorage from "@/hooks/use-local-storage";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isIntakeOnlyOperator } from "@/lib/permissoes/regras-de-chamado";
 
 export const SidebarQuickActions = observer(function SidebarQuickActions() {
   const { t } = useTranslation();
@@ -37,27 +38,17 @@ export const SidebarQuickActions = observer(function SidebarQuickActions() {
   // store hooks
   const { toggleCreateIssueModal } = useCommandPalette();
   const { joinedProjectIds } = useProject();
-  const { allowPermissions, getProjectRolesByWorkspaceSlug } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug);
   // local storage
   const { storedValue, setValue } = useLocalStorage<Record<string, Partial<TIssue>>>("draftedIssue", {});
   // derived values
-  const canCreateIssue = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  const canCreateIssue = can("issue.create");
 
-  // D2 — quem só opera a mesa de atendimento abre SOLICITAÇÃO, não chamado.
-  // A decisão sai da capacidade (INTAKE_CREATE sem ISSUE_CREATE), não de comparar
-  // o papel com o número 6: papéis customizados também podem ter esse perfil, e o
-  // número deixaria todos eles de fora.
-  const projectRoles = workspaceSlug ? getProjectRolesByWorkspaceSlug(workspaceSlug) : {};
-  const intakeProjectIds = Object.entries(projectRoles ?? {})
-    .filter(([, role]) => {
-      const level = Number(role);
-      return canPerform(level, EProjectAction.INTAKE_CREATE) && !canPerform(level, EProjectAction.ISSUE_CREATE);
-    })
-    .map(([projectId]) => projectId);
-  const isAtendimento = !canCreateIssue && intakeProjectIds.length > 0;
+  // D2: quem só opera a mesa de atendimento (abre pedido, não cria chamado) abre
+  // SOLICITAÇÃO, em qualquer sistema de que participa. A função é a mesma em todo
+  // sistema, então a decisão é da matriz do espaço.
+  const intakeProjectIds = isIntakeOnlyOperator(can) ? joinedProjectIds : [];
+  const isAtendimento = intakeProjectIds.length > 0;
 
   const disabled = joinedProjectIds.length === 0 || (!canCreateIssue && !isAtendimento);
 

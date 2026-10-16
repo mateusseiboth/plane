@@ -8,7 +8,6 @@ import { useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Star, StarOff } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { LinkIcon } from "@plane/propel/icons";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
@@ -24,16 +23,15 @@ export const usePowerKCycleContextBasedActions = (): TPowerKCommandConfig[] => {
   const { workspaceSlug, cycleId } = useParams();
   // store
   const {
-    permission: { allowPermissions },
+    permission: { canDoInProject },
   } = useUser();
   const { getCycleById, addCycleToFavorites, removeCycleFromFavorites } = useCycle();
   // derived values
   const cycleDetails = cycleId ? getCycleById(cycleId.toString()) : null;
   const isFavorite = !!cycleDetails?.is_favorite;
-  // permission
+  // permission: o único comando com gate é favoritar, preferência pessoal (basta participar do sistema)
   const isEditingAllowed =
-    allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT) &&
-    !cycleDetails?.archived_at;
+    canDoInProject(undefined, workspaceSlug?.toString(), cycleDetails?.project_id) && !cycleDetails?.archived_at;
   // translation
   const { t } = useTranslation();
 

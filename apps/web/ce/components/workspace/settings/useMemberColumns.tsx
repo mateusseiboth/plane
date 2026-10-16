@@ -6,14 +6,15 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { EUserPermissions, EUserPermissionsLevel, LOGIN_MEDIUM_LABELS } from "@plane/constants";
+import { LOGIN_MEDIUM_LABELS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { renderFormattedDate } from "@plane/utils";
 import { MemberHeaderColumn } from "@/components/project/member-header-column";
 import type { RowData } from "@/components/workspace/settings/member-columns";
 import { AccountTypeColumn, NameColumn } from "@/components/workspace/settings/member-columns";
 import { useMember } from "@/hooks/store/use-member";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import type { IMemberFilters } from "@/store/member/utils";
 
 export const useMemberColumns = () => {
@@ -23,7 +24,7 @@ export const useMemberColumns = () => {
   const { workspaceSlug } = useParams();
 
   const { data: currentUser } = useUser();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   const {
     workspace: {
       filtersStore: { filters, updateFilters },
@@ -32,7 +33,7 @@ export const useMemberColumns = () => {
   const { t } = useTranslation();
 
   // derived values
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageMembers = can("workspace.members");
 
   const isSuspended = (rowData: RowData) => rowData.is_active === false;
 
@@ -57,7 +58,7 @@ export const useMemberColumns = () => {
         <NameColumn
           rowData={rowData}
           workspaceSlug={workspaceSlug}
-          isAdmin={isAdmin}
+          canManageMembers={canManageMembers}
           currentUser={currentUser}
           setRemoveMemberModal={setRemoveMemberModal}
         />

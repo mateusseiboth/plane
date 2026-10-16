@@ -17,7 +17,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {createRoot} from "react-dom/client";
 import scrollIntoView from "smooth-scroll-into-view-if-needed";
 // plane imports
-import {EUserPermissions, EUserPermissionsLevel, MEMBER_TRACKER_ELEMENTS, PROJECT_VIEW_ROLES} from "@plane/constants";
+import {MEMBER_TRACKER_ELEMENTS} from "@plane/constants";
 import {useOutsideClickDetector} from "@plane/hooks";
 import {useTranslation} from "@plane/i18n";
 import {Logo} from "@plane/propel/emoji-icon-picker";
@@ -35,9 +35,9 @@ import {PublishProjectModal} from "@/components/project/publish-project/modal";
 import {useAppTheme} from "@/hooks/store/use-app-theme";
 import {useCommandPalette} from "@/hooks/store/use-command-palette";
 import {useProject} from "@/hooks/store/use-project";
-import {useUserPermissions} from "@/hooks/store/user";
 import {useProjectNavigationPreferences} from "@/hooks/use-navigation-preferences";
 import {usePlatformOS} from "@/hooks/use-platform-os";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
 // plane web imports
 import {useNavigationItems} from "@/plane-web/components/navigations";
 import {ProjectNavigationRoot} from "@/plane-web/components/sidebar";
@@ -70,7 +70,6 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
   const {t} = useTranslation();
   const {getPartialProjectById} = useProject();
   const {isMobile} = usePlatformOS();
-  const {allowPermissions} = useUserPermissions();
   const {getIsProjectListOpen, toggleProjectListOpen} = useCommandPalette();
   const {preferences: projectPreferences} = useProjectNavigationPreferences();
   const {isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar, toggleAnySidebarDropdown} = useAppTheme();
@@ -89,6 +88,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
   // router
   const {workspaceSlug, projectId: URLProjectId} = useParams();
   const router = useRouter();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
   const project = getPartialProjectById(projectId);
 
@@ -97,7 +97,6 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
     workspaceSlug: workspaceSlug.toString(),
     projectId,
     project,
-    allowPermissions,
   });
   const availableTabKeys = navigationItems.map((item) => item.key);
 
@@ -110,14 +109,9 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
 
   // toggle project list open
   const setIsProjectListOpen = useCallback((value: boolean) => toggleProjectListOpen(projectId, value), [projectId, toggleProjectListOpen]);
-  // auth
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug.toString(), project?.id);
-  const isAuthorized = allowPermissions(
-    PROJECT_VIEW_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug.toString(),
-    project?.id,
-  );
+  // Publicar o sistema é configuração dele (`project.settings`, a ação da rota de publicação).
+  // Arquivados (leitura) e sair do sistema valem para todo membro do sistema.
+  const canPublish = canInProject("project.settings", project?.id);
 
   const handleLeaveProject = () => {
     setLeaveProjectModal(true);
@@ -397,7 +391,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
                   )} */}
 
                   {/* publish project settings */}
-                  {isAdmin && (
+                  {canPublish && (
                     <CustomMenu.MenuItem onClick={() => setPublishModal(true)}>
                       <div className="relative flex flex-shrink-0 items-center justify-start gap-2">
                         <div className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-sm text-secondary transition-all duration-300 hover:bg-layer-1">
@@ -413,18 +407,16 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
                       <span>{t("copy_link")}</span>
                     </span>
                   </CustomMenu.MenuItem>
-                  {isAuthorized && (
-                    <CustomMenu.MenuItem
-                      onClick={() => {
-                        router.push(`/${workspaceSlug}/projects/${project?.id}/archives/issues`);
-                      }}
-                    >
-                      <div className="flex cursor-pointer items-center justify-start gap-2">
-                        <ArchiveIcon className="h-3.5 w-3.5 stroke-[1.5]" />
-                        <span>{t("archives")}</span>
-                      </div>
-                    </CustomMenu.MenuItem>
-                  )}
+                  <CustomMenu.MenuItem
+                    onClick={() => {
+                      router.push(`/${workspaceSlug}/projects/${project?.id}/archives/issues`);
+                    }}
+                  >
+                    <div className="flex cursor-pointer items-center justify-start gap-2">
+                      <ArchiveIcon className="h-3.5 w-3.5 stroke-[1.5]" />
+                      <span>{t("archives")}</span>
+                    </div>
+                  </CustomMenu.MenuItem>
                   <CustomMenu.MenuItem
                     onClick={() => {
                       router.push(`/${workspaceSlug}/settings/projects/${project?.id}`);
@@ -436,17 +428,15 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
                     </div>
                   </CustomMenu.MenuItem>
                   {/* leave project */}
-                  {!isAuthorized && (
-                    <CustomMenu.MenuItem
-                      onClick={handleLeaveProject}
-                      data-ph-element={MEMBER_TRACKER_ELEMENTS.SIDEBAR_PROJECT_QUICK_ACTIONS}
-                    >
-                      <div className="flex items-center justify-start gap-2">
-                        <LogOut className="h-3.5 w-3.5 stroke-[1.5]" />
-                        <span>{t("leave_project")}</span>
-                      </div>
-                    </CustomMenu.MenuItem>
-                  )}
+                  <CustomMenu.MenuItem
+                    onClick={handleLeaveProject}
+                    data-ph-element={MEMBER_TRACKER_ELEMENTS.SIDEBAR_PROJECT_QUICK_ACTIONS}
+                  >
+                    <div className="flex items-center justify-start gap-2">
+                      <LogOut className="h-3.5 w-3.5 stroke-[1.5]" />
+                      <span>{t("leave_project")}</span>
+                    </div>
+                  </CustomMenu.MenuItem>
                 </CustomMenu>
                 {isAccordionMode && (
                   <IconButton

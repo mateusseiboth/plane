@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 // components
@@ -23,6 +22,7 @@ import { WebhooksList, CreateWebhookModal } from "@/components/web-hooks";
 import { useWebhook } from "@/hooks/store/use-webhook";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // local imports
 import type { Route } from "./+types/page";
 import { WebhooksWorkspaceSettingsHeader } from "./header";
@@ -35,15 +35,16 @@ function WebhooksListPage({ params }: Route.ComponentProps) {
   // plane hooks
   const { t } = useTranslation();
   // mobx store
-  const { workspaceUserInfo, allowPermissions } = useUserPermissions();
+  const { workspaceUserInfo } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
   const { fetchWebhooks, webhooks, clearSecretKey, webhookSecretKey, createWebhook } = useWebhook();
   const { currentWorkspace } = useWorkspace();
   // derived values
-  const canPerformWorkspaceAdminActions = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageIntegrations = can("integration.manage");
 
   useSWR(
-    canPerformWorkspaceAdminActions ? `WEBHOOKS_LIST_${workspaceSlug}` : null,
-    canPerformWorkspaceAdminActions ? () => fetchWebhooks(workspaceSlug) : null
+    canManageIntegrations ? `WEBHOOKS_LIST_${workspaceSlug}` : null,
+    canManageIntegrations ? () => fetchWebhooks(workspaceSlug) : null
   );
 
   const pageTitle = currentWorkspace?.name
@@ -55,7 +56,7 @@ function WebhooksListPage({ params }: Route.ComponentProps) {
     if (!showCreateWebhookModal && webhookSecretKey) clearSecretKey();
   }, [showCreateWebhookModal, webhookSecretKey, clearSecretKey]);
 
-  if (workspaceUserInfo && !canPerformWorkspaceAdminActions) {
+  if (workspaceUserInfo && !isLoadingActions && !canManageIntegrations) {
     return <NotAuthorizedView section="settings" className="h-auto" />;
   }
 

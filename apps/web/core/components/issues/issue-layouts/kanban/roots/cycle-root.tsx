@@ -8,12 +8,12 @@ import React, { useCallback } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // components
-import { EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import { EIssuesStoreType } from "@plane/types";
 // hooks
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useIssues } from "@/hooks/store/use-issues";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isIssueEditAllowed } from "@/lib/permissoes/regras-de-chamado";
 // local imports
 import { CycleIssueQuickActions } from "../../quick-action-dropdowns";
 import { BaseKanBanRoot } from "../base-kanban-root";
@@ -24,14 +24,11 @@ export const CycleKanBanLayout = observer(function CycleKanBanLayout() {
   // store
   const { issues } = useIssues(EIssuesStoreType.CYCLE);
   const { currentProjectCompletedCycleIds } = useCycle();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const isCompletedCycle =
     cycleId && currentProjectCompletedCycleIds ? currentProjectCompletedCycleIds.includes(cycleId.toString()) : false;
-  const isEditingAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const isEditingAllowed = isIssueEditAllowed((action) => canInProject(action, projectId?.toString()));
 
   const canEditIssueProperties = useCallback(
     () => !isCompletedCycle && isEditingAllowed,

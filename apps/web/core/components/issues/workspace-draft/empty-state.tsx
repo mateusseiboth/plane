@@ -7,25 +7,24 @@
 import { Fragment, useState } from "react";
 // components
 import { observer } from "mobx-react";
-import { EUserPermissionsLevel, PROJECT_WORK_ROLES } from "@plane/constants";
+import { useParams } from "next/navigation";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
 import { EIssuesStoreType } from "@plane/types";
 import { CreateUpdateIssueModal } from "@/components/issues/issue-modal/modal";
 // constants
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 export const WorkspaceDraftEmptyState = observer(function WorkspaceDraftEmptyState() {
+  // router
+  const { workspaceSlug } = useParams();
   // state
   const [isDraftIssueModalOpen, setIsDraftIssueModalOpen] = useState(false);
   // store hooks
   const { t } = useTranslation();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  const canPerformEmptyStateActions = can("issue.create");
 
   return (
     <Fragment>

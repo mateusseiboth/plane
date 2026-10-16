@@ -7,7 +7,7 @@
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // ui
-import { EUserPermissions, EUserPermissionsLevel, CYCLE_TRACKER_ELEMENTS, PROJECT_WORK_ROLES } from "@plane/constants";
+import { CYCLE_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { CycleIcon } from "@plane/propel/icons";
@@ -18,8 +18,8 @@ import { CyclesViewHeader } from "@/components/cycles/cycles-view-header";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web imports
 import { CommonProjectBreadcrumbs } from "@/plane-web/components/breadcrumbs/common";
 
@@ -30,14 +30,11 @@ export const CyclesListHeader = observer(function CyclesListHeader() {
 
   // store hooks
   const { toggleCreateCycleModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { currentProjectDetails, loader } = useProject();
   const { t } = useTranslation();
 
-  const canUserCreateCycle = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  const canUserCreateCycle = canInProject("cycle.manage", projectId?.toString());
 
   return (
     <Header>

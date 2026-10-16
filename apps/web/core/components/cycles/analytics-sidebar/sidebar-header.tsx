@@ -9,7 +9,7 @@ import {observer} from "mobx-react";
 import {useEffect} from "react";
 import {Controller, useForm} from "react-hook-form";
 // Plane Imports
-import {CYCLE_STATUS, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
+import {CYCLE_STATUS} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {ChevronRightIcon} from "@plane/propel/icons";
 import {TOAST_TYPE, setToast} from "@plane/propel/toast";
@@ -19,8 +19,8 @@ import {getDate, renderFormattedPayloadDate} from "@plane/utils";
 import {DateRangeDropdown} from "@/components/dropdowns/date-range";
 // hooks
 import {useCycle} from "@/hooks/store/use-cycle";
-import {useUserPermissions} from "@/hooks/store/user";
 import {useTimeZoneConverter} from "@/hooks/use-timezone-converter";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
 // services
 import {CycleService} from "@/services/cycle.service";
 
@@ -42,7 +42,7 @@ const cycleService = new CycleService();
 export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Props) {
   const {workspaceSlug, projectId, cycleDetails, handleClose, isArchived = false} = props;
   // hooks
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug);
   const {updateCycleDetails} = useCycle();
   const {t} = useTranslation();
   const {renderFormattedDateInUserTimezone, getProjectUTCOffset} = useTimeZoneConverter(projectId);
@@ -114,10 +114,7 @@ export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Pr
     return isDateValid;
   };
 
-  const isEditingAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT,
-  );
+  const isEditingAllowed = canInProject("cycle.manage", projectId);
 
   return (
     <>

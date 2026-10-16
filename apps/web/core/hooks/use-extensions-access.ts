@@ -4,30 +4,35 @@
  * See the LICENSE file for details.
  */
 
-// Quem pode gerenciar extensões (plugins/widgets) no UI: admins de instância OU
-// usuários do grupo TI (role 12 em qualquer workspace). Espelha o gate do backend
-// (utils/registry-access.ts). Use dentro de componentes `observer` (lê mobx).
+// Quem pode gerenciar extensões (plugins/widgets) no UI: admin da instância, ou
+// quem tem `extension.upload` ou `plugin.manage` em algum espaço de que participa.
+// As telas de extensões ficam em /settings/ (sem espaço na rota), e o backend
+// (utils/registry-access.ts) aceita a ação em QUALQUER espaço: por isso a matriz
+// de todos os espaços da pessoa. Use dentro de componentes `observer` (lê mobx).
 
 import useSWR from "swr";
-import { EUserPermissions } from "@plane/constants";
+import { isExtensionManager } from "@/hooks/extensions-access";
 import { useUserPermissions } from "@/hooks/store/user";
+import { useWorkspace } from "@/hooks/store/use-workspace";
 import userService from "@/services/user.service";
 
+const SWR_ONCE = { revalidateOnFocus: false, shouldRetryOnError: false } as const;
+
 export function useCanManageExtensions(): boolean {
-  const userPermissions = useUserPermissions();
+  const { fetchMyWorkspaceActions } = useUserPermissions();
+  const { workspaces } = useWorkspace();
+  const slugs = Object.values(workspaces ?? {}).map((workspace) => workspace.slug);
 
   const { data: adminStatus } = useSWR(
     "CURRENT_USER_INSTANCE_ADMIN_STATUS",
     () => userService.currentUserInstanceAdminStatus(),
-    { revalidateOnFocus: false, shouldRetryOnError: false }
+    SWR_ONCE
   );
-  if (adminStatus?.is_instance_admin) return true;
+  const { data: workspacesActions } = useSWR(
+    slugs.length > 0 ? `EXTENSIONS_ACCESS_ACTIONS_${slugs.join(",")}` : null,
+    () => Promise.all(slugs.map((slug) => fetchMyWorkspaceActions(slug))),
+    SWR_ONCE
+  );
 
-  const info = (userPermissions as unknown as { workspaceUserInfo?: Record<string, { role?: number }> }).workspaceUserInfo;
-  if (info) {
-    for (const v of Object.values(info)) {
-      if (v?.role === EUserPermissions.TI) return true;
-    }
-  }
-  return false;
+  return isExtensionManager(!!adminStatus?.is_instance_admin, workspacesActions ?? []);
 }

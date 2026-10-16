@@ -9,7 +9,6 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
 import { DraftIcon, HomeIcon, PiChatLogo, YourWorkIcon, DashboardIcon } from "@plane/propel/icons";
-import { EUserWorkspaceRoles } from "@plane/types";
 // hooks
 import { useUserPermissions, useUser } from "@/hooks/store/user";
 // local imports
@@ -22,77 +21,38 @@ export const SidebarUserMenu = observer(function SidebarUserMenu() {
   const { workspaceUserInfo } = useUserPermissions();
   const { data: currentUser } = useUser();
 
+  // Sem `action`: todo membro do espaço vê (tela de leitura).
   const SIDEBAR_USER_MENU_ITEMS = [
     {
       key: "home",
       labelTranslationKey: "sidebar.home",
       href: `/${workspaceSlug.toString()}/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-        EUserWorkspaceRoles.GUEST,
-      ],
       Icon: HomeIcon,
     },
     {
       key: "dashboards",
       labelTranslationKey: "workspace_dashboards",
       href: `/${workspaceSlug.toString()}/dashboards/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-      ],
       Icon: DashboardIcon,
     },
     {
       key: "your-work",
       labelTranslationKey: "sidebar.your_work",
       href: `/${workspaceSlug.toString()}/profile/${currentUser?.id}/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-      ],
       Icon: YourWorkIcon,
     },
     {
       key: "drafts",
       labelTranslationKey: "sidebar.drafts",
       href: `/${workspaceSlug.toString()}/drafts/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-      ],
+      // Rascunho é chamado ainda não criado.
+      action: "issue.create",
       Icon: DraftIcon,
     },
     {
       key: "pi-chat",
       labelTranslationKey: "sidebar.pi_chat",
       href: `/${workspaceSlug.toString()}/pi-chat/`,
-      access: [
-        EUserWorkspaceRoles.ADMIN,
-        EUserWorkspaceRoles.GESTOR_PROJETO,
-        EUserWorkspaceRoles.MEMBER,
-        EUserWorkspaceRoles.TI,
-        EUserWorkspaceRoles.QUALIDADE,
-        EUserWorkspaceRoles.ATENDIMENTO,
-        EUserWorkspaceRoles.GUEST,
-      ],
       Icon: PiChatLogo,
     },
   ];

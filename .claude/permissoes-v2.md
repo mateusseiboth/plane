@@ -69,15 +69,16 @@ Permissão efetiva de uma pessoa =
 3. **Frontend: decida o que mostrar** pela mesma chave:
 
    ```ts
-   const { can } = useMyWorkspaceActions(workspaceSlug);          // escopo do espaço
-   if (can("mural.publicar")) ...
-   const { canDo } = useProjectRolePermissions(projectId);         // escopo do sistema
+   const { can, canInProject } = useMyWorkspaceActions(workspaceSlug);
+   if (can("mural.publicar")) ...                       // ação no espaço (ou de sistema: a função é a mesma)
+   if (canInProject("issue.create", projectId)) ...     // a ação E participar do sistema
+   // fora de componente (store MobX): rootStore.user.permission.canDo(acao) / canDoInProject(acao, slug, projectId)
    ```
 
-   Para ação de ESPAÇO não precisa mexer em `@plane/constants`: a tela de Funções lê o catálogo da
-   API e `can` aceita a chave. Para ação de SISTEMA consultada por `canDo`, acrescente a chave em
-   `EProjectAction` de `packages/constants/src/project-permissions.ts` (com rótulo e grupo; o teste
-   do pacote cobra) e rode o build do dist.
+   Não há cópia do catálogo no web (W44): `packages/constants/src/project-permissions.ts`,
+   `canPerform` e `PROJECT_*_ROLES` foram apagados. A chave é uma string; o teste
+   `apps/web/core/lib/permissoes/arquitetura-permissoes.test.ts` reprova chave citada no web que não
+   existe no catálogo do backend, e qualquer decisão por nível de papel (ver §10).
 
 4. **Chat** (`apps/chat-backend`): só se a ação for do chat. O módulo do chat registra as
    próprias ações em `apps/api-ts/src/utils/acoes-do-chat.ts` (`ACOES_DO_CHAT`, que o
@@ -174,7 +175,7 @@ do banco compartilhado).
 | `use-project-role-permissions`                                             | função por nível                                       | + exceções por pessoa (`/roles/me/`), `canChangePriority`             |
 | Seletor de prioridade (detalhe, peek, lista/kanban, planilha, solicitação) | edição geral                                           | desabilitado sem `issue.priority`                                     |
 | Chat do atendente `isManager`/`isAdmin`                                    | `allowPermissions([ADMIN, GESTOR])` / `[ADMIN]`        | uma ação por botão (`buildPermissoesDoAtendimento`, W38, §9)          |
-| Demais `allowPermissions([...])` (~centenas, herdados do Plane)            | papel por nível                                        | **pendente** (ver §7): a API já barra; a tela ainda esconde por nível |
+| Demais `allowPermissions([...])` (~centenas, herdados do Plane)            | papel por nível                                        | matriz de ações em todo o web (W44, §10); `allowPermissions` removido do store |
 
 ## 5. Ações novas deste lote
 
@@ -233,11 +234,9 @@ não pôde ser conferido no legado (consulta ao MySQL bloqueada). Ver pendência
 1. Representante/consultor: restringir às entidades de cada um (o legado filtrava por carteira).
    Hoje veem todos os chamados dos sistemas a que estão vinculados.
 2. "Infra" e "administrativo" do SAC: confirmar o que liberavam e, se fizer sentido, criar ação.
-3. Frontend: centenas de `allowPermissions([...])` herdados do Plane seguem por nível. A API já é a
-   fonte da verdade; migrar a tela aos poucos para `can("...")`.
+3. ~~Frontend por nível~~: resolvido no W44 (§10).
 4. Contas de campo reativadas usam a senha padrão da migração, como o resto: pedir troca.
-5. `@plane/constants` ainda espelha parte do catálogo (`EProjectAction`, `ROLE_PERMISSIONS`) como
-   fallback do front; o ideal é o front ler só a API.
+5. ~~`@plane/constants` espelhando o catálogo~~: apagado no W44; o web lê só a API.
 6. Outros `enum` herdados do Plane em `packages/constants` (auth, issue) não foram convertidos
    (fora do escopo); `EProjectAction` já é objeto `as const` nos dois lados.
 7. `apps/chat-backend`: `bun test` da pasta inteira falha porque `tests/horario-atendimento.test.ts`
@@ -330,3 +329,61 @@ o têm por padrão). No WhatsApp a resposta à pesquisa deixou de virar mensagem
 **Diferença de comportamento** (de propósito): `GET /dashboard/` do chat não conferia nada além de
 login; agora pede `chat.relatorios`. Quem tem `chat.ver_todas` (Membro e Gestor por padrão) passa
 a ver, na própria lista, as conversas atribuídas aos outros; antes só as via pelo gerenciador.
+
+## 10. Web sem lista fixa de nível (W44, 16/10/2026)
+
+Pedido do dono, repetido várias vezes: nenhuma decisão de tela sai de lista fixa de nível de papel.
+Saíram do web `PROJECT_VIEW_ROLES`, `PROJECT_WORK_ROLES`, `PROJECT_CONFIG_ROLES`,
+`PROJECT_CREATE_ROLES`, `canPerform`, `ROLE_PERMISSIONS`, `project-permissions.ts`, o método
+`allowPermissions` do store e os `access: [níveis]` dos itens de menu e de configurações (viraram
+`action?: string | string[]`; sem `action` = todo membro).
+
+- **Fonte**: `GET /roles/me/` guardado no store de permissões (`fetchMyWorkspaceActions`,
+  `canDo`, `canDoInProject`), carregado na entrada do espaço (`workspace-wrapper`). O hook
+  `useMyWorkspaceActions(slug)` expõe `can` e `canInProject`.
+- **Participar do sistema não é permissão**: continua do vínculo (`member_role`, `joinedProjectIds`,
+  `getProjectRoleByWorkspaceSlugAndProjectId`). Único uso de nível que sobrou no web: o admin do
+  espaço entra em todo sistema com o nível dele (`getProjectRole`, marcado `permissao-estrutural`),
+  e linhas que exibem ou filtram o nível de OUTRA pessoa (convidado fora do seletor de líder, linha
+  do admin na lista de membros), também marcadas.
+- **Regras puras** (com teste): `core/lib/permissoes/regras-de-chamado.ts` (`isIssueEditAllowed`,
+  `isIssueDeleteAllowed`, `isIntakeOnlyOperator`), `acao-efetiva.ts` (`isRequiredActionAllowed`),
+  `store/pages/regras-da-pagina.ts`, `inbox/content/edicao-de-solicitacao.ts`,
+  `issue-activity/worklog-permitido.ts`, `workspace/settings/member-menu-actions.ts`,
+  `project/settings/project-role-editable.ts`, `hooks/extensions-access.ts`.
+- **Trava**: `apps/web/core/lib/permissoes/arquitetura-permissoes.test.ts` (nível de papel em
+  `apps/web` e `packages/constants/src`, e chave de ação que não existe no catálogo).
+
+| Gate | Ação |
+| --- | --- |
+| criar chamado (botões, estado vazio, quick add, power-k, rascunhos) | `issue.create` |
+| editar chamado (quadro, lista, planilha, calendário, gantt, detalhe, peek, arquivar/restaurar) | `issue.edit.all` ou `issue.edit.own` |
+| excluir chamado | `issue.delete.all`, ou criador com `issue.delete.own` |
+| criar etiqueta inline, config de etiquetas | `label.manage` |
+| triar / editar solicitação | `intake.review` / `intake.review` ou dono com `intake.create` |
+| ciclos / módulos / visões / páginas | `cycle.manage` / `module.manage` / `view.create` / `page.create` (de outro: `page.manage.all`) |
+| config do sistema: geral, recursos, automações, publicar | `project.settings` |
+| etapas / excluir etapa / estimativas / membros / permissões / excluir sistema | `state.manage` / `state.delete` / `estimate.manage` / `member.manage` / `role.manage` / `project.delete` |
+| criar sistema | `project.create` |
+| relatórios e análises | `report.view` |
+| config do espaço (geral, armazenamento, e-mail, impressão, IA de requisitos, cobrança) | `workspace.settings` |
+| membros do espaço / convites | `workspace.members` / `workspace.invite` |
+| SLA, exportar, webhooks e integrações, entidades, IA, chat, portal, painéis, plugins, auditoria | `label.sla`, `issue.export`, `integration.manage`, `entity.manage`, `ai.config`, `chat.configurar`, `portal.manage`, `panel.manage`, `plugin.manage`, `audit.view` |
+| área de extensões (widgets, plugins do desenvolvedor) | `extension.upload` ou `plugin.manage` (ou admin da instância) |
+| menu: solicitações globais, visitas, chat, rascunhos | `intake.create`/`intake.review`, `visit.manage`, `chat.atender`, `issue.create` |
+| leitura (seu trabalho, arquivados, ciclos e módulos no menu, perfil, stickies, favoritos, assinar) | sem ação: todo membro |
+
+**Ações novas**: `issue.export` (padrão Membro; antes só a tela cortava, no nível 15) e
+`extension.upload` (padrão TI; o servidor aceitava extensões pelo número 12). O servidor passou a
+conferir as duas (`export-issues`, `export-jobs`, `isUploader`). A migração
+`20261016120000_acoes_que_a_tela_decidia_por_nivel` dá a ação às funções criadas na tela com o mesmo
+nível; as de sistema recebem no boot. Contrato: `acoes-que-a-tela-decidia-por-nivel.test.ts`,
+`export-history.test.ts`, `registry-access.test.ts`.
+
+**Mudanças de comportamento** (a tela passou a obedecer a mesma matriz que o servidor):
+Visualizador passa a ver Seu trabalho, Arquivados, Ciclos e Módulos (leitura) e a favoritar; Qualidade
+deixa de ver criar/editar ciclo e módulo (o servidor já recusava); TI e Qualidade deixam de ver
+"ativar recurso" e automações (`project.settings`); excluir chamado alheio exige `issue.delete.all`;
+criar etiqueta inline passa de só admin para `label.manage`; excluir/publicar visão de outro passa de só
+admin para `view.create`; Gestor passa a ver Funções e permissões (`role.manage`, que o servidor já lhe
+dava); o filtro "só dou função até o meu nível" saiu dos convites (o servidor não tem essa regra).

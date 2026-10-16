@@ -7,9 +7,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
-// plane imports
-import { EUserPermissionsLevel } from "@plane/constants";
-import type { EUserWorkspaceRoles } from "@plane/types";
 // components
 import { ITENS_DO_MENU_MAIS, buildItensDoMenuMais } from "@/components/workspace/sidebar/fixacao-na-barra";
 // hooks
@@ -27,7 +24,7 @@ export const ExtendedAppSidebar = observer(function ExtendedAppSidebar() {
   const { workspaceSlug } = useParams();
   // store hooks
   const { isExtendedSidebarOpened, toggleExtendedSidebar } = useAppTheme();
-  const { allowPermissions } = useUserPermissions();
+  const { canDo } = useUserPermissions();
   const { preferences: workspacePreferences, updateWorkspaceItemSortOrder } = useWorkspaceNavigationPreferences();
 
   // derived values
@@ -36,12 +33,11 @@ export const ExtendedAppSidebar = observer(function ExtendedAppSidebar() {
   const sortedNavigationItems = useMemo(() => {
     const slug = workspaceSlug.toString();
 
-    const permitidos = ITENS_DO_MENU_MAIS.filter((item) =>
-      allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)
-    );
+    // A ação de cada item (sem ação, todo membro do espaço).
+    const permitidos = ITENS_DO_MENU_MAIS.filter((item) => canDo(item.action, slug));
 
     return buildItensDoMenuMais(permitidos, currentWorkspaceNavigationPreferences);
-  }, [workspaceSlug, currentWorkspaceNavigationPreferences, allowPermissions]);
+  }, [workspaceSlug, currentWorkspaceNavigationPreferences, canDo]);
 
   const sortedNavigationItemsKeys = sortedNavigationItems.map((item) => item.key);
 
@@ -53,7 +49,6 @@ export const ExtendedAppSidebar = observer(function ExtendedAppSidebar() {
       key: string;
       labelTranslationKey: string;
       href: string;
-      access: EUserWorkspaceRoles[];
     }[]
   ): number | undefined => {
     if (sourceIndex < 0 || destinationIndex < 0 || navigationList.length <= 0) return undefined;

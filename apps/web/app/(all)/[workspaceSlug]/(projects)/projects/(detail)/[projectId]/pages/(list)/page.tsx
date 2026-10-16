@@ -8,10 +8,8 @@ import { observer } from "mobx-react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 // plane imports
-import { EUserPermissionsLevel , PROJECT_WORK_ROLES} from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { TPageNavigationTabs } from "@plane/types";
-import { EUserProjectRoles } from "@plane/types";
 // assets
 import darkPagesAsset from "@/app/assets/empty-state/disabled-feature/pages-dark.webp?url";
 import lightPagesAsset from "@/app/assets/empty-state/disabled-feature/pages-light.webp?url";
@@ -22,8 +20,8 @@ import { PagesListRoot } from "@/components/pages/list/root";
 import { PagesListView } from "@/components/pages/pages-list-view";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web hooks
 import { EPageStoreType } from "@/plane-web/hooks/store";
 import type { Route } from "./+types/page";
@@ -46,11 +44,12 @@ function ProjectPagesPage({ params }: Route.ComponentProps) {
   const { t } = useTranslation();
   // store hooks
   const { getProjectById, currentProjectDetails } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
   const project = getProjectById(projectId);
   const pageTitle = project?.name ? `${project?.name} - Pages` : undefined;
-  const canPerformEmptyStateActions = allowPermissions(PROJECT_WORK_ROLES, EUserPermissionsLevel.PROJECT);
+  // O botão leva à tela de recursos do sistema, onde se ligam as páginas.
+  const canEditProjectFeatures = canInProject("project.settings", projectId);
   const resolvedPath = resolvedTheme === "light" ? lightPagesAsset : darkPagesAsset;
   const pageType = getPageType(type);
 
@@ -67,7 +66,7 @@ function ProjectPagesPage({ params }: Route.ComponentProps) {
             onClick: () => {
               router.push(`/${workspaceSlug}/settings/projects/${projectId}/features`);
             },
-            disabled: !canPerformEmptyStateActions,
+            disabled: !canEditProjectFeatures,
           }}
         />
       </div>

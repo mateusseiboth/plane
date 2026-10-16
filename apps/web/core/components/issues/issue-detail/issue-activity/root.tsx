@@ -9,7 +9,7 @@ import uniq from "lodash-es/uniq";
 import { observer } from "mobx-react";
 // plane package imports
 import type { TActivityFilters } from "@plane/constants";
-import { E_SORT_ORDER, defaultActivityFilters, EUserPermissions } from "@plane/constants";
+import { E_SORT_ORDER, defaultActivityFilters } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 // i18n
 import { useTranslation } from "@plane/i18n";
@@ -20,13 +20,15 @@ import { CommentCreate } from "@/components/comments/comment-create";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useProject } from "@/hooks/store/use-project";
-import { useUser, useUserPermissions } from "@/hooks/store/user";
+import { useUser } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web components
 import { ActivityFilterRoot } from "@/plane-web/components/issues/worklog/activity/filter-root";
 import { IssueActivityWorklogCreateButton } from "@/plane-web/components/issues/worklog/activity/worklog-create-button";
 import { IssueActivityCommentRoot } from "./activity-comment-root";
 import { useWorkItemCommentOperations } from "./helper";
 import { ActivitySortRoot } from "./sort-root";
+import { isWorklogAllowed } from "./worklog-permitido";
 
 type TIssueActivity = {
   workspaceSlug: string;
@@ -58,16 +60,17 @@ export const IssueActivity = observer(function IssueActivity(props: TIssueActivi
     issue: { getIssueById },
   } = useIssueDetail();
 
-  const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   const { getProjectById } = useProject();
   const { data: currentUser } = useUser();
   // derived values
   const issue = issueId ? getIssueById(issueId) : undefined;
-  const currentUserProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
-  const isAdmin = currentUserProjectRole === EUserPermissions.ADMIN;
-  const isGuest = currentUserProjectRole === EUserPermissions.GUEST;
   const isAssigned = issue?.assignee_ids && currentUser?.id ? issue?.assignee_ids.includes(currentUser?.id) : false;
-  const isWorklogButtonEnabled = !isIntakeIssue && !isGuest && (isAdmin || isAssigned);
+  const isWorklogButtonEnabled = isWorklogAllowed({
+    can: (action) => canInProject(action, projectId),
+    isAssigned,
+    isIntakeIssue,
+  });
   // toggle filter
   const toggleFilter = (filter: TActivityFilters) => {
     if (!selectedFilters) return;

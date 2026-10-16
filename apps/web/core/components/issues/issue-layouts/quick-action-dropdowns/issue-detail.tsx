@@ -10,16 +10,18 @@ import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 import {useState} from "react";
 // plane imports
-import {ARCHIVABLE_STATE_GROUPS, EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
+import {ARCHIVABLE_STATE_GROUPS} from "@plane/constants";
 import type {TIssue} from "@plane/types";
-import {EIssuesStoreType, EUserProjectRoles} from "@plane/types";
+import {EIssuesStoreType} from "@plane/types";
 import {ContextMenu, CustomMenu} from "@plane/ui";
 import {cn} from "@plane/utils";
 // hooks
 import {useIssues} from "@/hooks/store/use-issues";
 import {useProject} from "@/hooks/store/use-project";
 import {useProjectState} from "@/hooks/store/use-project-state";
-import {useUserPermissions} from "@/hooks/store/user";
+import {useUser} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
+import {isIssueDeleteAllowed, isIssueEditAllowed} from "@/lib/permissoes/regras-de-chamado";
 // plane-web components
 import {DuplicateWorkItemModal} from "@/plane-web/components/issues/issue-layouts/quick-action-dropdowns/duplicate-modal";
 // helper
@@ -65,7 +67,8 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
   const [archiveIssueModal, setArchiveIssueModal] = useState(false);
   const [duplicateWorkItemModal, setDuplicateWorkItemModal] = useState(false);
   // store hooks
-  const {allowPermissions} = useUserPermissions();
+  const {data: currentUser} = useUser();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug?.toString());
   const {issuesFilter} = useIssues(EIssuesStoreType.PROJECT);
   const {getStateById} = useProjectState();
   const {getProjectIdentifierById} = useProject();
@@ -73,28 +76,17 @@ export const WorkItemDetailQuickActions = observer(function WorkItemDetailQuickA
   const activeLayout = `${issuesFilter.issueFilters?.displayFilters?.layout} layout`;
   const stateDetails = getStateById(issue.state_id);
   const projectIdentifier = getProjectIdentifierById(issue?.project_id);
-  // auth — editing: ADMIN, MEMBER, GESTOR_PROJETO, TI, QUALIDADE
-  const isEditingAllowed =
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-      workspaceSlug?.toString(),
-      issue.project_id ?? undefined,
-    ) && !readOnly;
+  // auth: editar, arquivar e restaurar conferem issue.edit.* no sistema do chamado (a rota de arquivo também).
+  const canInIssueProject = (action: string) => canInProject(action, issue.project_id ?? undefined);
+  const isEditingAllowed = isIssueEditAllowed(canInIssueProject) && !readOnly;
 
   const isArchivingAllowed = !issue.archived_at && isEditingAllowed;
   const isInArchivableGroup = !!stateDetails && ARCHIVABLE_STATE_GROUPS.includes(stateDetails?.group);
   const isRestoringAllowed = !!issue.archived_at && isEditingAllowed;
 
-  // Deleting: only ADMIN and GESTOR_PROJETO
+  // Excluir: issue.delete.all, ou issue.delete.own para quem abriu o chamado.
   const isDeletingAllowed =
-    !readOnly &&
-    allowPermissions(
-      [EUserPermissions.ADMIN, EUserProjectRoles.GESTOR_PROJETO],
-      EUserPermissionsLevel.PROJECT,
-      workspaceSlug?.toString(),
-      issue.project_id ?? undefined,
-    );
+    !readOnly && isIssueDeleteAllowed(canInIssueProject, issue.created_by === currentUser?.id);
 
   const duplicateIssuePayload = omit(
     {

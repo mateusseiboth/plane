@@ -6,14 +6,15 @@
 
 import { observer } from "mobx-react";
 // plane types
-import { EUserPermissionsLevel, WORKSPACE_SETTINGS } from "@plane/constants";
+import { WORKSPACE_SETTINGS } from "@plane/constants";
 // components
 import { useTranslation } from "@plane/i18n";
 import type { TPowerKContext } from "@/components/power-k/core/types";
 import { PowerKSettingsMenu } from "@/components/power-k/menus/settings";
 import { WORKSPACE_SETTINGS_ICONS } from "@/components/settings/workspace/sidebar/item-icon";
 // hooks
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { isRequiredActionAllowed } from "@/lib/permissoes/acao-efetiva";
 
 type Props = {
   context: TPowerKContext;
@@ -25,12 +26,10 @@ export const PowerKOpenWorkspaceSettingsMenu = observer(function PowerKOpenWorks
   // plane hooks
   const { t } = useTranslation();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(context.params.workspaceSlug?.toString());
   // derived values
   const settingsList = Object.values(WORKSPACE_SETTINGS).filter(
-    (setting) =>
-      context.params.workspaceSlug &&
-      allowPermissions(setting.access, EUserPermissionsLevel.WORKSPACE, context.params.workspaceSlug?.toString())
+    (setting) => context.params.workspaceSlug && isRequiredActionAllowed(setting.action, can)
   );
   const settingsListWithIcons = settingsList.map((setting) => ({
     ...setting,

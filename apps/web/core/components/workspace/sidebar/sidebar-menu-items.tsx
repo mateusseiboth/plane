@@ -11,8 +11,7 @@ import { useParams, usePathname } from "next/navigation";
 import { Ellipsis, LayoutDashboard } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
-import { WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS, EUserPermissionsLevel } from "@plane/constants";
-import { EUserWorkspaceRoles } from "@plane/types";
+import { WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { ChevronRightIcon } from "@plane/propel/icons";
 import { cn } from "@plane/utils";
@@ -25,9 +24,9 @@ import {
 } from "@/components/workspace/sidebar/fixacao-na-barra";
 // store hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
-import { useUserPermissions } from "@/hooks/store/user";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane-web imports
 import { SidebarItem } from "@/plane-web/components/workspace/sidebar/sidebar-item";
 // plugin imports
@@ -44,14 +43,12 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
 
   // store hooks
   const { isExtendedSidebarOpened, toggleExtendedSidebar } = useAppTheme();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
   // hooks
   const { preferences: workspacePreferences } = useWorkspaceNavigationPreferences();
 
-  const canAccessExtensions = allowPermissions(
-    [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.GESTOR_PROJETO, EUserWorkspaceRoles.TI],
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // Referência de widgets para desenvolvedores: quem envia extensões.
+  const canAccessExtensions = can("extension.upload");
   // translation
   const { t } = useTranslation();
 

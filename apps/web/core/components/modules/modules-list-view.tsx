@@ -7,10 +7,9 @@
 import {observer} from "mobx-react";
 import {useParams, useSearchParams} from "next/navigation";
 // components
-import {EUserPermissionsLevel, MODULE_TRACKER_ELEMENTS, PROJECT_WORK_ROLES} from "@plane/constants";
+import {MODULE_TRACKER_ELEMENTS} from "@plane/constants";
 import {useTranslation} from "@plane/i18n";
 import {EmptyStateDetailed} from "@plane/propel/empty-state";
-import {EUserProjectRoles} from "@plane/types";
 import {ContentWrapper, ERowVariant, Row} from "@plane/ui";
 // components
 import {ListLayout} from "@/components/core/list";
@@ -22,7 +21,7 @@ import {GanttLayoutLoader} from "@/components/ui/loader/layouts/gantt-layout-loa
 import {useCommandPalette} from "@/hooks/store/use-command-palette";
 import {useModule} from "@/hooks/store/use-module";
 import {useModuleFilter} from "@/hooks/store/use-module-filter";
-import {useUserPermissions} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
 
 export const ModulesListView = observer(function ModulesListView() {
   // router
@@ -35,14 +34,11 @@ export const ModulesListView = observer(function ModulesListView() {
   const {toggleCreateModuleModal} = useCommandPalette();
   const {getProjectModuleIds, getFilteredModuleIds, loader} = useModule();
   const {currentProjectDisplayFilters: displayFilters} = useModuleFilter();
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug?.toString());
   // derived values
   const projectModuleIds = projectId ? getProjectModuleIds(projectId.toString()) : undefined;
   const filteredModuleIds = projectId ? getFilteredModuleIds(projectId.toString()) : undefined;
-  const canPerformEmptyStateActions = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT,
-  );
+  const canPerformEmptyStateActions = canInProject("module.manage", projectId?.toString());
 
   if (loader || !projectModuleIds || !filteredModuleIds)
     return (

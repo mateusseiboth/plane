@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { ArchiveX } from "lucide-react";
 // plane imports
-import { PROJECT_AUTOMATION_MONTHS, EUserPermissions, EUserPermissionsLevel, EIconSize , PROJECT_CONFIG_ROLES} from "@plane/constants";
+import { PROJECT_AUTOMATION_MONTHS, EIconSize } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { StateGroupIcon, StatePropertyIcon } from "@plane/propel/icons";
 import type { IProject } from "@plane/types";
@@ -19,7 +19,7 @@ import { SettingsControlItem } from "@/components/settings/control-item";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 
 type Props = {
   handleChange: (formData: Partial<IProject>) => Promise<void>;
@@ -34,7 +34,7 @@ export const AutoCloseAutomation = observer(function AutoCloseAutomation(props: 
   // store hooks
   const { currentProjectDetails } = useProject();
   const { projectStates } = useProjectState();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { t } = useTranslation();
 
   // const stateGroups = projectStateStore.groupedProjectStates ?? undefined;
@@ -64,11 +64,8 @@ export const AutoCloseAutomation = observer(function AutoCloseAutomation(props: 
     default_state: defaultState,
   };
 
-  const isAdmin = allowPermissions(PROJECT_CONFIG_ROLES,
-    EUserPermissionsLevel.PROJECT,
-    workspaceSlug?.toString(),
-    currentProjectDetails?.id
-  );
+  // A automação é gravada no PATCH do sistema (`project.settings`).
+  const isAdmin = canInProject("project.settings", currentProjectDetails?.id);
 
   const autoCloseStatus = useMemo(() => {
     if (currentProjectDetails?.close_in === undefined) return false;

@@ -38,7 +38,7 @@ export const PluginAdminPage: React.FC = observer(() => {
   if (!canManage) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-neutral-500 dark:text-neutral-400">
-        Você não tem permissão para gerenciar plugins. Apenas administradores da instância ou usuários do grupo TI.
+        Sua função não permite gerenciar plugins.
       </div>
     );
   }

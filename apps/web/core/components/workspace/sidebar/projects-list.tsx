@@ -12,7 +12,7 @@ import { useParams, usePathname } from "next/navigation";
 import { Ellipsis } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_TRACKER_ELEMENTS, PROJECT_CREATE_ROLES } from "@plane/constants";
+import { PROJECT_TRACKER_ELEMENTS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { PlusIcon, ChevronRightIcon } from "@plane/propel/icons";
 import { IconButton } from "@plane/propel/icon-button";
@@ -27,8 +27,8 @@ import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { useProjectNavigationPreferences } from "@/hooks/use-navigation-preferences";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web imports
 import type { TProject } from "@/plane-web/types";
 // local imports
@@ -44,7 +44,6 @@ export const SidebarProjectsList = observer(function SidebarProjectsList() {
   // store hooks
   const { t } = useTranslation();
   const { toggleCreateProjectModal } = useCommandPalette();
-  const { allowPermissions } = useUserPermissions();
   const { preferences: projectPreferences } = useProjectNavigationPreferences();
   const { isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar } = useAppTheme();
 
@@ -52,12 +51,10 @@ export const SidebarProjectsList = observer(function SidebarProjectsList() {
   // router params
   const { workspaceSlug } = useParams();
   const pathname = usePathname();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
-  // auth
-  const isAuthorizedUser = allowPermissions(
-    PROJECT_CREATE_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
+  // Criar sistema: a mesma ação que a rota de criação confere.
+  const canCreateProject = can("project.create");
 
   // Compute limited projects for main sidebar
   const displayedProjects = projectPreferences.showLimitedProjects
@@ -186,7 +183,7 @@ export const SidebarProjectsList = observer(function SidebarProjectsList() {
                 <span className="text-13 font-semibold">{t("projects")}</span>
               </Disclosure.Button>
               <div className="flex items-center gap-1">
-                {isAuthorizedUser && (
+                {canCreateProject && (
                   <Tooltip tooltipHeading={t("create_project")} tooltipContent="">
                     <IconButton
                       variant="ghost"
@@ -274,7 +271,7 @@ export const SidebarProjectsList = observer(function SidebarProjectsList() {
           </Disclosure>
         </>
 
-        {isAuthorizedUser && joinedProjects?.length === 0 && (
+        {canCreateProject && joinedProjects?.length === 0 && (
           <button
             type="button"
             data-ph-element={PROJECT_TRACKER_ELEMENTS.SIDEBAR_CREATE_PROJECT_BUTTON}

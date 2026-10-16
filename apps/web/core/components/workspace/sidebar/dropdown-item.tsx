@@ -10,11 +10,12 @@ import { useParams } from "next/navigation";
 import { Settings, UserPlus } from "lucide-react";
 import { Menu } from "@headlessui/react";
 // plane imports
-import { EUserPermissions } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { CheckIcon } from "@plane/propel/icons";
 import type { IWorkspace } from "@plane/types";
 import { cn, getFileURL, getUserRole } from "@plane/utils";
+// hooks
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web imports
 import { SubscriptionPill } from "@/plane-web/components/common/subscription/subscription-pill";
 
@@ -31,6 +32,9 @@ const SidebarDropdownItem = observer(function SidebarDropdownItem(props: TProps)
   const { workspaceSlug } = useParams();
   // hooks
   const { t } = useTranslation();
+  // Os atalhos só aparecem no espaço ativo: só ele busca a matriz de ações.
+  const isActiveWorkspace = workspace.id === activeWorkspace?.id;
+  const { can } = useMyWorkspaceActions(isActiveWorkspace ? workspace.slug : undefined);
 
   return (
     <Link
@@ -91,7 +95,7 @@ const SidebarDropdownItem = observer(function SidebarDropdownItem(props: TProps)
         {workspace.id === activeWorkspace?.id && (
           <>
             <div className="mt-2 mb-1 flex gap-2">
-              {[EUserPermissions.ADMIN, EUserPermissions.MEMBER].includes(workspace?.role) && (
+              {can("workspace.settings") && (
                 <Link
                   href={`/${workspace.slug}/settings`}
                   onClick={(e) => {
@@ -104,7 +108,7 @@ const SidebarDropdownItem = observer(function SidebarDropdownItem(props: TProps)
                   <span className="my-auto text-13 font-medium whitespace-nowrap">{t("settings")}</span>
                 </Link>
               )}
-              {[EUserPermissions.ADMIN].includes(workspace?.role) && (
+              {can("workspace.invite") && (
                 <Link
                   href={`/${workspace.slug}/settings/members`}
                   onClick={(e) => {

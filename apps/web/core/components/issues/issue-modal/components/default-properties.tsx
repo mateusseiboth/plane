@@ -8,7 +8,7 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 import type { Control } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import { ETabIndices, EUserPermissions, EUserPermissionsLevel , PROJECT_CONFIG_ROLES} from "@plane/constants";
+import { ETabIndices } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { ParentPropertyIcon } from "@plane/propel/icons";
 // types
@@ -30,8 +30,8 @@ import { IssueLabelSelect } from "@/components/issues/select";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useProject } from "@/hooks/store/use-project";
-import { useUserPermissions } from "@/hooks/store/user";
 import { usePlatformOS } from "@/hooks/use-platform-os";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // plane web components
 import { IssueIdentifier } from "@/plane-web/components/issues/issue-details/issue-identifier";
 import { EntityDropdown } from "@/components/dropdowns/entity";
@@ -75,14 +75,14 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
   const { areEstimateEnabledByProjectId } = useProjectEstimates();
   const { getProjectById } = useProject();
   const { isMobile } = usePlatformOS();
-  const { allowPermissions } = useUserPermissions();
+  const { canInProject } = useMyWorkspaceActions(workspaceSlug);
   // derived values
   const projectDetails = getProjectById(projectId);
 
   const { getIndex } = getTabIndex(ETabIndices.ISSUE_FORM, isMobile);
 
-  const canCreateLabel =
-    projectId && allowPermissions(PROJECT_CONFIG_ROLES, EUserPermissionsLevel.PROJECT, workspaceSlug, projectId);
+  // Criar etiqueta no modal e mexer no vencimento (que sai do prazo da etiqueta): label.manage no sistema.
+  const canCreateLabel = !!projectId && canInProject("label.manage", projectId);
 
   const minDate = getDate(startDate);
   minDate?.setDate(minDate.getDate());
@@ -202,7 +202,7 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
               minDate={minDate ?? undefined}
               placeholder={t("due_date")}
               tabIndex={getIndex("target_date")}
-              // Due date is driven by the label SLA; only admins may override it.
+              // O vencimento sai do prazo da etiqueta; só quem gerencia etiquetas o altera à mão.
               disabled={!canCreateLabel}
             />
           </div>

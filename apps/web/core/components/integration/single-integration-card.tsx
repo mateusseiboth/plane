@@ -9,7 +9,6 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { CheckCircle } from "lucide-react";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Tooltip } from "@plane/propel/tooltip";
@@ -23,9 +22,9 @@ import SlackLogo from "@/app/assets/services/slack.png?url";
 import { WORKSPACE_INTEGRATIONS } from "@/constants/fetch-keys";
 // hooks
 import { useInstance } from "@/hooks/store/use-instance";
-import { useUserPermissions } from "@/hooks/store/user";
 import useIntegrationPopup from "@/hooks/use-integration-popup";
 import { usePlatformOS } from "@/hooks/use-platform-os";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 // services
 import { IntegrationService } from "@/services/integrations";
 
@@ -56,9 +55,9 @@ export const SingleIntegrationCard = observer(function SingleIntegrationCard({ i
   const { workspaceSlug } = useParams();
   // store hooks
   const { config } = useInstance();
-  const { allowPermissions } = useUserPermissions();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
 
-  const isUserAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageIntegrations = can("integration.manage");
   const { isMobile } = usePlatformOS();
   const { startAuth, isConnecting: isInstalling } = useIntegrationPopup({
     provider: integration.provider,
@@ -137,17 +136,17 @@ export const SingleIntegrationCard = observer(function SingleIntegrationCard({ i
         isInstalled ? (
           <Tooltip
             isMobile={isMobile}
-            disabled={isUserAdmin}
-            tooltipContent={!isUserAdmin ? "Você não tem permissão para executar esta ação" : null}
+            disabled={canManageIntegrations}
+            tooltipContent={!canManageIntegrations ? "Você não tem permissão para executar esta ação" : null}
           >
             <Button
-              className={`${!isUserAdmin ? "hover:cursor-not-allowed" : ""}`}
+              className={`${!canManageIntegrations ? "hover:cursor-not-allowed" : ""}`}
               variant="error-fill"
               onClick={() => {
-                if (!isUserAdmin) return;
+                if (!canManageIntegrations) return;
                 handleRemoveIntegration();
               }}
-              disabled={!isUserAdmin}
+              disabled={!canManageIntegrations}
               loading={deletingIntegration}
             >
               {deletingIntegration ? "Uninstalling..." : "Uninstall"}
@@ -156,14 +155,14 @@ export const SingleIntegrationCard = observer(function SingleIntegrationCard({ i
         ) : (
           <Tooltip
             isMobile={isMobile}
-            disabled={isUserAdmin}
-            tooltipContent={!isUserAdmin ? "Você não tem permissão para executar esta ação" : null}
+            disabled={canManageIntegrations}
+            tooltipContent={!canManageIntegrations ? "Você não tem permissão para executar esta ação" : null}
           >
             <Button
-              className={`${!isUserAdmin ? "hover:cursor-not-allowed" : ""}`}
+              className={`${!canManageIntegrations ? "hover:cursor-not-allowed" : ""}`}
               variant="primary"
               onClick={() => {
-                if (!isUserAdmin) return;
+                if (!canManageIntegrations) return;
                 startAuth();
               }}
               loading={isInstalling}

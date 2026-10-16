@@ -6,7 +6,6 @@
 
 import { FileText, FolderPlus, Layers, SquarePlus } from "lucide-react";
 // plane imports
-import { EUserPermissionsLevel, PROJECT_WORK_ROLES, PROJECT_CREATE_ROLES } from "@plane/constants";
 import { ContrastIcon, DiceIcon, LayersIcon } from "@plane/propel/icons";
 // components
 import type { TPowerKCommandConfig, TPowerKContext } from "@/components/power-k/core/types";
@@ -32,10 +31,9 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
   // store
   const { config } = useInstance();
   const {
-    canPerformAnyCreateAction,
-    permission: { allowPermissions },
+    permission: { canDo, canDoInProject },
   } = useUser();
-  const { workspaceProjectIds, getPartialProjectById } = useProject();
+  const { joinedProjectIds, getPartialProjectById } = useProject();
   const {
     toggleCreateIssueModal,
     toggleCreateProjectModal,
@@ -45,18 +43,13 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
     toggleCreatePageModal,
   } = useCommandPalette();
   // derived values
-  const canCreateWorkItem = canPerformAnyCreateAction && workspaceProjectIds && workspaceProjectIds.length > 0;
-  const canCreateProject = allowPermissions(
-    PROJECT_CREATE_ROLES,
-    EUserPermissionsLevel.WORKSPACE
-  );
-  const hasProjectMemberLevelPermissions = (ctx: TPowerKContext) =>
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-      ctx.params.workspaceSlug?.toString(),
-      ctx.params.projectId?.toString()
-    );
+  // Criar chamado: a ação e participar de algum sistema.
+  const canCreateWorkItem = (ctx: TPowerKContext) =>
+    canDo("issue.create", ctx.params.workspaceSlug?.toString()) && joinedProjectIds.length > 0;
+  const canCreateProject = (ctx: TPowerKContext) => canDo("project.create", ctx.params.workspaceSlug?.toString());
+  // Criar página, visão, ciclo ou módulo no sistema aberto: a ação e participar dele.
+  const canCreateInProject = (ctx: TPowerKContext, action: string) =>
+    canDoInProject(action, ctx.params.workspaceSlug?.toString(), ctx.params.projectId?.toString());
   const isWorkspaceCreationDisabled = config?.is_workspace_creation_disabled ?? false;
 
   const getProjectDetails = (ctx: TPowerKContext) =>
@@ -71,8 +64,8 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
       icon: LayersIcon,
       keySequence: "ni",
       action: () => toggleCreateIssueModal(true),
-      isEnabled: () => Boolean(canCreateWorkItem),
-      isVisible: () => Boolean(canCreateWorkItem),
+      isEnabled: (ctx) => canCreateWorkItem(ctx),
+      isVisible: (ctx) => canCreateWorkItem(ctx),
       closeOnSelect: true,
     },
     create_page: {
@@ -83,9 +76,9 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
       icon: FileText,
       keySequence: "nd",
       action: () => toggleCreatePageModal({ isOpen: true }),
-      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.page_view && hasProjectMemberLevelPermissions(ctx)),
+      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.page_view && canCreateInProject(ctx, "page.create")),
       isVisible: (ctx) =>
-        Boolean(ctx.params.projectId && getProjectDetails(ctx)?.page_view && hasProjectMemberLevelPermissions(ctx)),
+        Boolean(ctx.params.projectId && getProjectDetails(ctx)?.page_view && canCreateInProject(ctx, "page.create")),
       closeOnSelect: true,
     },
     create_view: {
@@ -96,10 +89,10 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
       icon: Layers,
       keySequence: "nv",
       action: () => toggleCreateViewModal(true),
-      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.issue_views_view && hasProjectMemberLevelPermissions(ctx)),
+      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.issue_views_view && canCreateInProject(ctx, "view.create")),
       isVisible: (ctx) =>
         Boolean(
-          ctx.params.projectId && getProjectDetails(ctx)?.issue_views_view && hasProjectMemberLevelPermissions(ctx)
+          ctx.params.projectId && getProjectDetails(ctx)?.issue_views_view && canCreateInProject(ctx, "view.create")
         ),
       closeOnSelect: true,
     },
@@ -111,9 +104,9 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
       icon: ContrastIcon,
       keySequence: "nc",
       action: () => toggleCreateCycleModal(true),
-      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.cycle_view && hasProjectMemberLevelPermissions(ctx)),
+      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.cycle_view && canCreateInProject(ctx, "cycle.manage")),
       isVisible: (ctx) =>
-        Boolean(ctx.params.projectId && getProjectDetails(ctx)?.cycle_view && hasProjectMemberLevelPermissions(ctx)),
+        Boolean(ctx.params.projectId && getProjectDetails(ctx)?.cycle_view && canCreateInProject(ctx, "cycle.manage")),
       closeOnSelect: true,
     },
     create_module: {
@@ -124,9 +117,9 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
       icon: DiceIcon,
       keySequence: "nm",
       action: () => toggleCreateModuleModal(true),
-      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.module_view && hasProjectMemberLevelPermissions(ctx)),
+      isEnabled: (ctx) => Boolean(getProjectDetails(ctx)?.module_view && canCreateInProject(ctx, "module.manage")),
       isVisible: (ctx) =>
-        Boolean(ctx.params.projectId && getProjectDetails(ctx)?.module_view && hasProjectMemberLevelPermissions(ctx)),
+        Boolean(ctx.params.projectId && getProjectDetails(ctx)?.module_view && canCreateInProject(ctx, "module.manage")),
       closeOnSelect: true,
     },
     create_project: {
@@ -137,8 +130,8 @@ export const usePowerKCreationCommandsRecord = (): Record<TPowerKCreationCommand
       icon: FolderPlus,
       keySequence: "np",
       action: () => toggleCreateProjectModal(true),
-      isEnabled: () => Boolean(canCreateProject),
-      isVisible: () => Boolean(canCreateProject),
+      isEnabled: (ctx) => canCreateProject(ctx),
+      isVisible: (ctx) => canCreateProject(ctx),
       closeOnSelect: true,
     },
     create_workspace: {

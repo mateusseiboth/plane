@@ -8,13 +8,14 @@ import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 import {useState} from "react";
 // ui
-import {EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 import {EIssuesStoreType} from "@plane/types";
 import {ContextMenu, CustomMenu} from "@plane/ui";
 import {cn} from "@plane/utils";
 // hooks
 import {useIssues} from "@/hooks/store/use-issues";
-import {useUserPermissions} from "@/hooks/store/user";
+import {useUser} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
+import {isIssueDeleteAllowed, isIssueEditAllowed} from "@/lib/permissoes/regras-de-chamado";
 // local imports
 import {DeleteIssueModal} from "../../delete-issue-modal";
 import type {IQuickActionProps} from "../list/list-view-types";
@@ -37,23 +38,18 @@ export const ArchivedIssueQuickActions = observer(function ArchivedIssueQuickAct
   // router
   const {workspaceSlug} = useParams();
   // store hooks
-  const {allowPermissions} = useUserPermissions();
+  const {data: currentUser} = useUser();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const {issuesFilter} = useIssues(EIssuesStoreType.ARCHIVED);
   // derived values
   const activeLayout = `${issuesFilter.issueFilters?.displayFilters?.layout} layout`;
-  // auth
-  const isEditingAllowed =
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-    ) && !readOnly;
-  const isRestoringAllowed =
-    handleRestore &&
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-    );
+  // auth: restaurar confere issue.edit.* (a rota de arquivo); excluir, issue.delete.* (dono ou todos).
+  const canInIssueProject = (action: string) => canInProject(action, issue.project_id ?? undefined);
+  const isEditingAllowed = isIssueEditAllowed(canInIssueProject) && !readOnly;
+  const isRestoringAllowed = handleRestore && isIssueEditAllowed(canInIssueProject);
+  const isDeletingAllowed =
+    isIssueDeleteAllowed(canInIssueProject, issue.created_by === currentUser?.id) && !readOnly;
 
   // Menu items and modals using helper
   const menuItemProps: MenuItemFactoryProps = {
@@ -61,7 +57,7 @@ export const ArchivedIssueQuickActions = observer(function ArchivedIssueQuickAct
     workspaceSlug: workspaceSlug?.toString(),
     activeLayout,
     isEditingAllowed,
-    isDeletingAllowed: isEditingAllowed,
+    isDeletingAllowed,
     isRestoringAllowed: !!isRestoringAllowed,
     setIssueToEdit: () => {},
     setCreateUpdateIssueModal: () => {},

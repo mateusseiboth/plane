@@ -7,9 +7,9 @@
 import {observer} from "mobx-react";
 import {useParams} from "next/navigation";
 // plane imports
-import {EUserPermissions, EUserPermissionsLevel, PROJECT_WORK_ROLES} from "@plane/constants";
 // hooks
-import {useUserPermissions} from "@/hooks/store/user";
+import {useMyWorkspaceActions} from "@/hooks/use-workflow-role";
+import {isIssueEditAllowed} from "@/lib/permissoes/regras-de-chamado";
 // local imports
 import {ProjectIssueQuickActions} from "../../quick-action-dropdowns";
 import {BaseKanBanRoot} from "../base-kanban-root";
@@ -17,15 +17,10 @@ import {BaseKanBanRoot} from "../base-kanban-root";
 export const ProfileIssuesKanBanLayout = observer(function ProfileIssuesKanBanLayout() {
   // router
   const {workspaceSlug, profileViewId} = useParams();
-  const {allowPermissions} = useUserPermissions();
+  const {canInProject} = useMyWorkspaceActions(workspaceSlug?.toString());
 
   const canEditPropertiesBasedOnProject = (projectId: string) =>
-    allowPermissions(
-      PROJECT_WORK_ROLES,
-      EUserPermissionsLevel.PROJECT,
-      workspaceSlug.toString(),
-      projectId,
-    );
+    isIssueEditAllowed((action) => canInProject(action, projectId));
 
   return (
     <BaseKanBanRoot

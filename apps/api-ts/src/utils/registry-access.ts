@@ -1,8 +1,9 @@
 // Controle de quem pode enviar (upload) extensões — plugins e widgets.
-// Além de admins de instância / superusuários, usuários do grupo **TI** (role 12,
-// ver custom-role-model) podem enviar SEM necessidade de aprovação (uploads ficam
-// ACTIVE diretamente). Plugins/widgets são globais da instância, então "ser TI" é
-// possuir o papel TI em qualquer workspace ativo.
+// Além de admins de instância / superusuários, quem tem a ação `extension.upload`
+// (TI por padrão) envia SEM necessidade de aprovação (uploads ficam ACTIVE
+// diretamente). Plugins/widgets são globais da instância, então basta ter a
+// ação em QUALQUER espaço ativo. Antes era o número do papel TI (12); a ação
+// respeita a função configurada na tela e as exceções por pessoa (W44).
 //
 // A tela de Configurações > Plugins acrescentou um terceiro caminho: quem tem a
 // ação `plugin.manage` em ALGUM espaço ativo também envia. Sem isso o admin do
@@ -11,25 +12,21 @@
 import prisma from "@db";
 import { hasWorkspaceAction, EProjectAction } from "@utils/permission-checks";
 
-// Valor do papel TI no enum de permissões (mantido em sincronia com
-// packages/constants e packages/types). Ver memória custom-role-model.
-const TI_ROLE = 12;
-
 export interface MaybeAdminUser {
   id: string;
   isInstanceAdmin: boolean;
   isSuperuser: boolean;
 }
 
-/** True se o usuário tem `plugin.manage` em algum espaço de que participa. */
-export async function canManagePlugins(userId: string): Promise<boolean> {
+/** True se o usuário tem alguma das ações em algum espaço ativo de que participa. */
+async function hasActionInAnyWorkspace(userId: string, actions: readonly EProjectAction[]): Promise<boolean> {
   try {
     const membros = await prisma.workspaceMember.findMany({
       where: { memberId: userId, isActive: true, deletedAt: null },
       select: { workspaceId: true },
     });
     const permitidos = await Promise.all(
-      membros.map((m) => hasWorkspaceAction(m.workspaceId, userId, EProjectAction.PLUGIN_MANAGE))
+      membros.flatMap((m) => actions.map((action) => hasWorkspaceAction(m.workspaceId, userId, action)))
     );
     return permitidos.some(Boolean);
   } catch {
@@ -37,19 +34,14 @@ export async function canManagePlugins(userId: string): Promise<boolean> {
   }
 }
 
-/** True se o usuário pode enviar extensões (admin de instância, superuser, TI ou `plugin.manage`). */
+/** True se o usuário tem `plugin.manage` em algum espaço de que participa. */
+export const canManagePlugins = (userId: string): Promise<boolean> =>
+  hasActionInAnyWorkspace(userId, [EProjectAction.PLUGIN_MANAGE]);
+
+/** True se o usuário pode enviar extensões (admin de instância, superuser, `extension.upload` ou `plugin.manage`). */
 export async function isUploader(user: MaybeAdminUser): Promise<boolean> {
   if (user.isInstanceAdmin || user.isSuperuser) return true;
-  try {
-    const membership = await prisma.workspaceMember.findFirst({
-      where: { memberId: user.id, role: TI_ROLE, isActive: true, deletedAt: null },
-      select: { id: true },
-    });
-    if (membership) return true;
-  } catch {
-    return false;
-  }
-  return canManagePlugins(user.id);
+  return hasActionInAnyWorkspace(user.id, [EProjectAction.EXTENSION_UPLOAD, EProjectAction.PLUGIN_MANAGE]);
 }
 
 export async function requireUploader(user: MaybeAdminUser, set: { status?: number | string }): Promise<void> {

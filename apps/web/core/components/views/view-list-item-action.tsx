@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { Earth } from "lucide-react";
 // plane imports
-import { EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN, PROJECT_WORK_ROLES} from "@plane/constants";
+import { IS_FAVORITE_MENU_OPEN } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { LockIcon } from "@plane/propel/icons";
 import { Tooltip } from "@plane/propel/tooltip";
@@ -43,7 +43,7 @@ export const ViewListItemAction = observer(function ViewListItemAction(props: Pr
   // router
   const { workspaceSlug, projectId } = useParams();
   // store
-  const { allowPermissions } = useUserPermissions();
+  const { canDoInProject } = useUserPermissions();
 
   const { addViewToFavorites, removeViewFromFavorites } = useProjectView();
   const { getUserDetails } = useMember();
@@ -55,10 +55,8 @@ export const ViewListItemAction = observer(function ViewListItemAction(props: Pr
   );
 
   // derived values
-  const isEditingAllowed = allowPermissions(
-    PROJECT_WORK_ROLES,
-    EUserPermissionsLevel.PROJECT
-  );
+  // Só gate da estrela de favorito: preferência pessoal, basta participar do sistema.
+  const isEditingAllowed = canDoInProject(undefined, workspaceSlug?.toString(), projectId?.toString());
 
   const access = view.access;
 

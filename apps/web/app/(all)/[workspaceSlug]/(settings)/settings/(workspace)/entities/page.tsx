@@ -2,9 +2,8 @@ import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view
 import { PageHead } from "@/components/core/page-title";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { useWorkspace } from "@/hooks/store/use-workspace";
-import { useUserPermissions } from "@/hooks/store/user";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
 import entityService, { type TEntity, entityTypeLabel } from "@/services/entity.service";
-import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Building2, Pencil, Plus, Search, Snowflake, Sun, Trash2 } from "lucide-react";
@@ -60,11 +59,14 @@ function matchesSearch(entity: TEntity, search: string): boolean {
 
 const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({ params }: Route.ComponentProps) {
   const { workspaceSlug } = params;
-  const { allowPermissions } = useUserPermissions();
+  const { can, isLoading: isLoadingActions } = useMyWorkspaceActions(workspaceSlug);
   const { currentWorkspace } = useWorkspace();
   const { entities, isLoading, refetch } = useAllEntities(workspaceSlug);
 
-  const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
+  const canManageEntities = can("entity.manage");
+  // Congelar é ação própria; sincronizar membros é o que o POST /projects/sync-members/ confere.
+  const canFreezeEntity = can("entity.freeze");
+  const canSyncMembers = can("workspace.members");
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<number | null>(null);
@@ -105,7 +107,8 @@ const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({ params }
     }
   };
 
-  if (!isAdmin) return <NotAuthorizedView section="settings" className="h-auto" />;
+  if (isLoadingActions) return null;
+  if (!canManageEntities) return <NotAuthorizedView section="settings" className="h-auto" />;
 
   const filtered = entities.filter(
     (e) =>
@@ -123,9 +126,11 @@ const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({ params }
             <h3 className="text-lg font-semibold">Entidades</h3>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="lg" onClick={handleSyncMembers} loading={syncing}>
-              Sincronizar Membros
-            </Button>
+            {canSyncMembers && (
+              <Button variant="secondary" size="lg" onClick={handleSyncMembers} loading={syncing}>
+                Sincronizar Membros
+              </Button>
+            )}
             <Button variant="primary" size="lg" onClick={() => setModal({ open: true, entity: null })}>
               <Plus className="mr-1 h-4 w-4" /> Nova Entidade
             </Button>
@@ -238,14 +243,16 @@ const WorkspaceEntitiesPage = observer(function WorkspaceEntitiesPage({ params }
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setFreezeTarget(entity)}
-                            className="hover:bg-surface-3 rounded p-1 text-secondary transition-colors hover:text-primary"
-                            title={entity.is_frozen ? "Descongelar" : "Congelar"}
-                          >
-                            <FreezeIcon className="h-3.5 w-3.5" />
-                          </button>
+                          {canFreezeEntity && (
+                            <button
+                              type="button"
+                              onClick={() => setFreezeTarget(entity)}
+                              className="hover:bg-surface-3 rounded p-1 text-secondary transition-colors hover:text-primary"
+                              title={entity.is_frozen ? "Descongelar" : "Congelar"}
+                            >
+                              <FreezeIcon className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDelete(entity.id)}

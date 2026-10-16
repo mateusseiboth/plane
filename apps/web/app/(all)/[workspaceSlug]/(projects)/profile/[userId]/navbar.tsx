@@ -12,17 +12,15 @@ import { useTranslation } from "@plane/i18n";
 import { Header, EHeaderVariant } from "@plane/ui";
 import { cn } from "@plane/utils";
 
-type Props = {
-  isAuthorized: boolean;
-};
+// O perfil é leitura: todo membro do espaço vê todas as abas.
+const PROFILE_TABS = [...PROFILE_VIEWER_TAB, ...PROFILE_ADMINS_TAB];
 
-export function ProfileNavbar(props: Props) {
-  const { isAuthorized } = props;
+export function ProfileNavbar() {
   const { t } = useTranslation();
   const { workspaceSlug, userId } = useParams();
   const pathname = usePathname();
 
-  const tabsList = isAuthorized ? [...PROFILE_VIEWER_TAB, ...PROFILE_ADMINS_TAB] : PROFILE_VIEWER_TAB;
+  const tabsList = PROFILE_TABS;
 
   return (
     <Header variant={EHeaderVariant.SECONDARY} showOnMobile={false}>
