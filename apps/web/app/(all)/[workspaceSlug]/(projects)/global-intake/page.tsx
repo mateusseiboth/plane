@@ -25,7 +25,14 @@ import {
   ABA_PADRAO_DA_TRIAGEM_GLOBAL,
   readAba,
   readAbaDaSolicitacao,
+  readAbaDaTriagemDoSistema,
 } from "@/components/inbox/global/abas-da-triagem-global";
+import { EInboxIssueCurrentTab } from "@plane/types";
+
+const ABA_DA_TRIAGEM_DO_SISTEMA: Record<string, EInboxIssueCurrentTab> = {
+  open: EInboxIssueCurrentTab.OPEN,
+  closed: EInboxIssueCurrentTab.CLOSED,
+};
 
 class GlobalIntakeService extends APIService {
   constructor() { super(API_BASE_URL); }
@@ -43,6 +50,7 @@ function GlobalIntakePage() {
   const searchParams = useSearchParams();
   const selectedProjectId = searchParams.get("projectId");
   const inboxIssueId = searchParams.get("inboxIssueId") ?? undefined;
+  const navigationTab = ABA_DA_TRIAGEM_DO_SISTEMA[searchParams.get("currentTab") ?? ""];
 
   const { joinedProjectIds, getProjectById } = useProject();
   const { currentWorkspace } = useWorkspace();
@@ -145,6 +153,7 @@ function GlobalIntakePage() {
             projectId={activeProject.id}
             inboxIssueId={inboxIssueId}
             inboxAccessible={true}
+            navigationTab={navigationTab}
           />
         ) : (
           <div className="flex h-full flex-col overflow-hidden">
@@ -194,7 +203,7 @@ function GlobalIntakePage() {
               {!loadingAll && allIntakes.map((intake: any) => (
                 <Link
                   key={intake.id}
-                  href={`/${workspaceSlug}/global-intake/?projectId=${intake.project?.id}&inboxIssueId=${intake.issue?.id}`}
+                  href={`/${workspaceSlug}/global-intake/?projectId=${intake.project?.id}&inboxIssueId=${intake.issue?.id}&currentTab=${readAbaDaTriagemDoSistema(intake.status)}`}
                   className="flex items-center gap-3 border-b border-subtle px-6 py-3 hover:bg-surface-2 transition-colors"
                 >
                   <div className="flex-1 min-w-0">

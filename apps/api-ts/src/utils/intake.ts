@@ -8,6 +8,7 @@
  */
 
 import prisma from "@db";
+import { recordActivities } from "@utils/activity";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { markChamadoNaoLido } from "@utils/chamado-nao-lido";
 import type { FieldErrorItem } from "@utils/field-error";
@@ -139,6 +140,10 @@ export async function createSolicitacao(dados: NovaSolicitacaoDoTime) {
       ...(dados.externalSource ? { externalSource: dados.externalSource, externalId: dados.externalId ?? null } : {}),
     },
   });
+  // A solicitação é o chamado: nasce com o mesmo "criou" que o chamado aberto no quadro.
+  await recordActivities({ issueId: issue.id, workspaceId, projectId, actorId: user.id }, [
+    { verb: "created", field: "issue", comment: "created the work item" },
+  ]);
   if (dados.moduleId)
     await prisma.moduleIssue.create({ data: { moduleId: dados.moduleId, issueId: issue.id, projectId, workspaceId } });
   const intake = await findOrCreateIntake(projectId, workspaceId);

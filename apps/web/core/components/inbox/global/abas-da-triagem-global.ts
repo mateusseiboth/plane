@@ -32,3 +32,13 @@ export const readAba = (chave: string): AbaDaTriagemGlobal | undefined => ABA_PO
 /** A aba de uma solicitação da lista: pela `situacao` da API e, sem ela, pelo status. */
 export const readAbaDaSolicitacao = (item: { situacao?: string; status: number }): AbaDaTriagemGlobal | undefined =>
   readAba(item.situacao ?? String(item.status));
+
+/**
+ * Em que aba da triagem do sistema a solicitação aparece (mesmo corte do
+ * `filteredInboxIssueIds` do store): sem a aba certa no link, o detalhe de uma
+ * solicitação fechada não abria a partir desta lista.
+ */
+const STATUS_DA_ABA_FECHADA: ReadonlySet<number> = new Set([3, -1, 2]);
+
+export const readAbaDaTriagemDoSistema = (status: number): "open" | "closed" =>
+  STATUS_DA_ABA_FECHADA.has(status) ? "closed" : "open";

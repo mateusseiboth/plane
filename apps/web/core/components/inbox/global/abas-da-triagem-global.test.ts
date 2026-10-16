@@ -7,6 +7,7 @@ import {
   ABAS_DA_TRIAGEM_GLOBAL,
   ABA_PADRAO_DA_TRIAGEM_GLOBAL,
   readAbaDaSolicitacao,
+  readAbaDaTriagemDoSistema,
 } from "@/components/inbox/global/abas-da-triagem-global";
 
 describe("abas da triagem global", () => {
@@ -42,5 +43,15 @@ describe("readAbaDaSolicitacao", () => {
 
   it("situação desconhecida não tem aba", () => {
     expect(readAbaDaSolicitacao({ status: 9 })).toBeUndefined();
+  });
+});
+
+describe("readAbaDaTriagemDoSistema", () => {
+  it("atendida, recusada e duplicada abrem na aba Fechadas da triagem do sistema", () => {
+    for (const status of [3, -1, 2]) expect(readAbaDaTriagemDoSistema(status)).toBe("closed");
+  });
+
+  it("pendente, adiada e aceita abrem na aba Abertas", () => {
+    for (const status of [-2, 0, 1]) expect(readAbaDaTriagemDoSistema(status)).toBe("open");
   });
 });

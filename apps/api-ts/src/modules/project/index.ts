@@ -10,7 +10,7 @@ import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@uti
 import { createSolicitacao, findErrosDaSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
-import { diffChange, recordActivities, type ActivityChange } from "@utils/activity";
+import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -613,7 +613,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
     const antes = await prisma.issue.findFirst({
       where: {id: inbox_id, deletedAt: null},
-      include: {state: {select: {group: true}}},
+      include: {state: {select: {group: true, name: true}}},
     });
 
     // A triagem também reescreve o corpo — o Qualidade limpa o relato do
@@ -692,6 +692,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         issuePatch.name !== undefined ? diffChange("name", antes.name, issuePatch.name, "updated the name") : null;
       if (mudancaDeTitulo) mudancas.push(mudancaDeTitulo);
       if (abriuVersao) mudancas.push({field: "description", comment: "updated the description"});
+      // A decisão da triagem move o chamado de etapa: o rastro é o mesmo do
+      // quadro, para a solicitação e o chamado mostrarem a mesma atividade.
+      const mudancaDeEtapa = await buildMudancaDeEtapa(antes, issue?.stateId ?? null);
+      if (mudancaDeEtapa) mudancas.push(mudancaDeEtapa);
       if (mudancas.length) {
         await recordActivities(
           {issueId: inbox_id, workspaceId: ws.id, projectId: project_id, actorId: user.id},
