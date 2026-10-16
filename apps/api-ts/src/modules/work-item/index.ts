@@ -8,7 +8,7 @@ import Elysia from "elysia";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
 import { getWorkspaceOrFail, getProjectOrFail } from "@utils/workspace";
-import { serializeIssue, ISSUE_INCLUDE } from "@utils/serialize";
+import { serializeIssue, ISSUE_BY_ID_INCLUDE, ISSUE_INCLUDE } from "@utils/serialize";
 import { paginate } from "@utils/pagination";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { serializarVersao } from "@utils/versoes-da-descricao";
@@ -109,7 +109,7 @@ export const workItemPorIdentificadorModule = new Elysia({ prefix: "/workspaces/
 
     const chamado = await prisma.issue.findFirst({
       where: { projectId: projeto.id, sequenceId: partes.sequencia, deletedAt: null },
-      include: ISSUE_INCLUDE,
+      include: ISSUE_BY_ID_INCLUDE,
     });
     if (!chamado) {
       set.status = 404;

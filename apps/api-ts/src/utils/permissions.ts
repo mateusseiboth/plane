@@ -68,6 +68,9 @@ export const ACTION_CATALOG = {
   ISSUE_EDIT_ALL: {key: "issue.edit.all", label: "Editar qualquer chamado", group: G.CHAMADOS, scope: "project", roles: ESCREVEM},
   ISSUE_DELETE_OWN: {key: "issue.delete.own", label: "Excluir os próprios chamados", group: G.CHAMADOS, scope: "project", roles: MEMBRO_E_GESTOR},
   ISSUE_DELETE_ALL: {key: "issue.delete.all", label: "Excluir qualquer chamado", group: G.CHAMADOS, scope: "project", roles: GESTOR},
+  // Move o chamado para outro sistema (@modules/issue/alterar-sistema.service):
+  // o antigo vai para Cancelados e um novo nasce no destino com tudo dele.
+  ISSUE_CHANGE_SYSTEM: {key: "issue.change_system", label: "Alterar o sistema do chamado", description: "Leva o chamado para outro sistema. O atual vai para Cancelados e um novo é aberto no destino.", group: G.CHAMADOS, scope: "project", roles: ["ti", "gestor_projeto"]},
   // Ação de OBRIGAÇÃO: marcada, a pessoa comenta no chamado antes de mudar a
   // etapa (@modules/issue/movimentacao.rules). Vem marcada para todas para nada
   // mudar em silêncio; desmarcar é o que dispensa.

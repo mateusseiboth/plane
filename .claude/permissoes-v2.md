@@ -207,6 +207,16 @@ A migração `20261009090000_comentar_antes_de_mover` marcou a ação em todas a
 inclusive as criadas na tela (que `mergeNewActions` não alcança). Regra e caminhos em
 `.claude/workflow.md`.
 
+W46: `issue.change_system` ("Alterar o sistema do chamado", grupo Chamados, escopo `project`,
+padrão TI e Gestor, além do admin; os demais por concessão). Rota
+`POST /workspaces/:slug/projects/:project_id/issues/:issue_id/alterar-sistema/` com
+`{ project_id_destino }`: exige a ação no sistema atual (`requireProjectAction`) e, no destino,
+participação com `issue.change_system` ou `issue.create` (`requireProjectAnyAction`; admin e Gestor
+participam de todo sistema). Ação nova sem migração de conversão: o boot (`mergeNewActions`) soma às
+funções de sistema gravadas. No web, o botão "Alterar sistema" do detalhe do chamado aparece com
+`useMyWorkspaceActions(slug).can("issue.change_system")`. Regra e caminhos em
+`apps/api-ts/src/modules/issue/alterar-sistema.*`.
+
 Os padrões reproduzem o corte por número que cada rota tinha (tabela acima), para nada mudar em
 silêncio. Membro e Gestor passam a ter `state.manage`/`project.settings` na matriz (o backend já
 deixava, por número).

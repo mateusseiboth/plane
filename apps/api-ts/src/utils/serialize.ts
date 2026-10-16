@@ -1,5 +1,6 @@
 // Shared serialization helpers — converts Prisma camelCase to frontend snake_case
 import {formatNumeroDoChamado} from "@utils/numero-do-chamado";
+import {buildSolicitacaoDoChamado} from "@utils/solicitacao-de-origem";
 
 export function isoDate(d: any): string | null {
   if (!d) return null;
@@ -26,6 +27,52 @@ export const ISSUE_INCLUDE = {
   labels:    { where: { deletedAt: null }, select: { labelId: true } },
   entity:    { select: { id: true, name: true, entityType: true } },
 } as const;
+
+/** O chamado do outro lado do "Alterar sistema", com o que o selo precisa para o link. */
+const CHAMADO_MOVIDO_SELECT = {
+  select: { id: true, projectId: true, sequenceId: true, project: { select: { identifier: true } } },
+} as const;
+
+/**
+ * Include do GET de UM chamado (por id e por identificador): o registro
+ * completo, com o que as listagens não precisam carregar. A solicitação de
+ * origem (@utils/solicitacao-de-origem) e os dois lados do "Alterar sistema".
+ */
+export const ISSUE_BY_ID_INCLUDE = {
+  ...ISSUE_INCLUDE,
+  movedTo:       CHAMADO_MOVIDO_SELECT,
+  movedFrom:     CHAMADO_MOVIDO_SELECT,
+  createdBy:     { select: { displayName: true } },
+  portalRequest: { select: { account: { select: { name: true } } } },
+  intakeIssues:  { where: { deletedAt: null }, orderBy: { createdAt: "asc" }, take: 1, select: { id: true, createdAt: true, source: true, deletedAt: true } },
+  moduleIssues:  { where: { deletedAt: null }, take: 1, select: { module: { select: { name: true } } } },
+  versions:      { orderBy: { lastSavedAt: "asc" }, take: 1, select: { descriptionHtml: true, name: true } },
+  activities:    { where: { field: "priority", deletedAt: null }, orderBy: { createdAt: "asc" }, take: 1, select: { oldValue: true } },
+} as const;
+
+function serializeChamadoMovido(chamado: any) {
+  if (!chamado) return null;
+  return {
+    id: chamado.id,
+    project_id: chamado.projectId,
+    sequence_id: chamado.sequenceId,
+    project_identifier: chamado.project?.identifier ?? null,
+  };
+}
+
+/**
+ * Campos que só o GET de um chamado carrega. Só entram na resposta quando a
+ * relação veio no include: nas listagens a chave fica de fora e não apaga o
+ * que o detalhe já guardou na tela.
+ */
+function serializeOrigemDoChamado(issue: any): Record<string, unknown> {
+  if (!("movedTo" in issue)) return {};
+  return {
+    moved_to_issue:   serializeChamadoMovido(issue.movedTo),
+    moved_from_issue: serializeChamadoMovido(issue.movedFrom),
+    solicitacao:      buildSolicitacaoDoChamado(issue),
+  };
+}
 
 export function serializeIssue(issue: any): Record<string, unknown> {
   return {
@@ -86,6 +133,7 @@ export function serializeIssue(issue: any): Record<string, unknown> {
     ticket_number: formatNumeroDoChamado(issue),
     // Só as rotas que sabem quem pergunta preenchem (ver @utils/chamado-nao-lido).
     is_unread: issue.isUnread ?? false,
+    ...serializeOrigemDoChamado(issue),
   };
 }
 
