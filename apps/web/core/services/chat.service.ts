@@ -149,6 +149,8 @@ export type NovoChamadoDoChat = {
   name?: string;
   priority: "urgent" | "none";
   module_id?: string;
+  /** Ausente: a entidade da conversa. Null: sem entidade. */
+  entity_id?: string | null;
   description_html?: string;
   chat_url?: string;
 };
