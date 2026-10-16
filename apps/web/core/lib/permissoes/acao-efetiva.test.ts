@@ -4,7 +4,7 @@
  * Rodar com `bun test core/lib/permissoes`.
  */
 import { describe, expect, it } from "bun:test";
-import { isActionAllowed } from "./acao-efetiva";
+import { isActionAllowed, isRequiredActionAllowed } from "./acao-efetiva";
 
 describe("isActionAllowed", () => {
   it("segue a função quando não há exceção", () => {
@@ -20,5 +20,25 @@ describe("isActionAllowed", () => {
     expect(
       isActionAllowed("chat.atender", ["chat.atender"], { granted: ["chat.atender"], revoked: ["chat.atender"] })
     ).toBe(false);
+  });
+});
+
+const can = (permitidas: string[]) => (acao: string) => permitidas.includes(acao);
+
+describe("isRequiredActionAllowed", () => {
+  it("sem ação exigida, basta ser membro", () => {
+    expect(isRequiredActionAllowed(undefined, can([]))).toBe(true);
+    expect(isRequiredActionAllowed([], can([]))).toBe(true);
+  });
+
+  it("uma ação exigida segue a matriz", () => {
+    expect(isRequiredActionAllowed("report.view", can(["report.view"]))).toBe(true);
+    expect(isRequiredActionAllowed("report.view", can(["issue.view"]))).toBe(false);
+  });
+
+  it("lista de ações: qualquer uma libera", () => {
+    const exigidas = ["posatendimento.record", "posatendimento.verify"];
+    expect(isRequiredActionAllowed(exigidas, can(["posatendimento.verify"]))).toBe(true);
+    expect(isRequiredActionAllowed(exigidas, can(["issue.view"]))).toBe(false);
   });
 });

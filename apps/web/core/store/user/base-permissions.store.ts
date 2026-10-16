@@ -8,25 +8,23 @@ import { unset, set } from "lodash-es";
 import { action, makeObservable, observable, runInAction } from "mobx";
 import { computedFn } from "mobx-utils";
 // plane imports
-import type { TUserPermissions, TUserPermissionsLevel } from "@plane/constants";
-import {
-  EUserPermissions,
-  EUserPermissionsLevel,
-  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS,
-} from "@plane/constants";
-import type { EUserProjectRoles, IUserProjectsRole, IWorkspaceMemberMe, TProjectMembership } from "@plane/types";
+import type { TUserPermissions } from "@plane/constants";
+import { EUserPermissions, WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS } from "@plane/constants";
+import type { IUserProjectsRole, IWorkspaceMemberMe, TProjectMembership } from "@plane/types";
 import { EUserWorkspaceRoles } from "@plane/types";
 // plane web imports
 import { WorkspaceService } from "@/services/workspace.service";
 import type { RootStore } from "@/plane-web/store/root.store";
+import { isActionAllowed, isRequiredActionAllowed } from "@/lib/permissoes/acao-efetiva";
+import type { TRequiredAction } from "@/lib/permissoes/acao-efetiva";
 // services
 import projectMemberService from "@/services/project/project-member.service";
+import rolesService from "@/services/roles.service";
+import type { TMyActions } from "@/services/roles.service";
 import userService from "@/services/user.service";
 
 // derived services
 const workspaceService = new WorkspaceService();
-
-type ETempUserRole = TUserPermissions | EUserWorkspaceRoles | EUserProjectRoles; // TODO: Remove this once we have migrated user permissions to enums to plane constants package
 
 export interface IBaseUserPermissionStore {
   loader: boolean;
@@ -34,7 +32,14 @@ export interface IBaseUserPermissionStore {
   workspaceUserInfo: Record<string, IWorkspaceMemberMe>; // workspaceSlug -> IWorkspaceMemberMe
   projectUserInfo: Record<string, Record<string, TProjectMembership>>; // workspaceSlug -> projectId -> TProjectMembership
   workspaceProjectsPermissions: Record<string, IUserProjectsRole>; // workspaceSlug -> IUserProjectsRole
+  /** Matriz de ações de quem está logado, por espaço (`GET /roles/me/`). */
+  workspaceActions: Record<string, TMyActions>;
   // computed helpers
+  /** A pessoa pode fazer a ação (ou qualquer uma da lista) no espaço? Fonte: matriz de ações. */
+  canDo: (action: TRequiredAction, workspaceSlug?: string) => boolean;
+  /** Igual a `canDo`, e a pessoa participa do sistema. */
+  canDoInProject: (action: TRequiredAction, workspaceSlug?: string, projectId?: string) => boolean;
+  fetchMyWorkspaceActions: (workspaceSlug: string) => Promise<TMyActions | undefined>;
   workspaceInfoBySlug: (workspaceSlug: string) => IWorkspaceMemberMe | undefined;
   getWorkspaceRoleByWorkspaceSlug: (workspaceSlug: string) => TUserPermissions | EUserWorkspaceRoles | undefined;
   getProjectRolesByWorkspaceSlug: (workspaceSlug: string) => IUserProjectsRole;
@@ -43,13 +48,6 @@ export interface IBaseUserPermissionStore {
     projectId?: string
   ) => EUserPermissions | undefined;
   fetchWorkspaceLevelProjectEntities: (workspaceSlug: string, projectId: string) => void;
-  allowPermissions: (
-    allowPermissions: ETempUserRole[],
-    level: TUserPermissionsLevel,
-    workspaceSlug?: string,
-    projectId?: string,
-    onPermissionAllowed?: () => boolean
-  ) => boolean;
   // actions
   fetchUserWorkspaceInfo: (workspaceSlug: string) => Promise<IWorkspaceMemberMe>;
   leaveWorkspace: (workspaceSlug: string) => Promise<void>;
@@ -70,7 +68,9 @@ export abstract class BaseUserPermissionStore implements IBaseUserPermissionStor
   workspaceUserInfo: Record<string, IWorkspaceMemberMe> = {};
   projectUserInfo: Record<string, Record<string, TProjectMembership>> = {};
   workspaceProjectsPermissions: Record<string, IUserProjectsRole> = {};
-  // observables
+  workspaceActions: Record<string, TMyActions> = {};
+  // services (atribuível nos testes)
+  rolesService = rolesService;
 
   constructor(protected store: RootStore) {
     makeObservable(this, {
@@ -79,12 +79,14 @@ export abstract class BaseUserPermissionStore implements IBaseUserPermissionStor
       workspaceUserInfo: observable,
       projectUserInfo: observable,
       workspaceProjectsPermissions: observable,
+      workspaceActions: observable,
       // computed
       // actions
       fetchUserWorkspaceInfo: action,
       leaveWorkspace: action,
       fetchUserProjectInfo: action,
       fetchUserProjectPermissions: action,
+      fetchMyWorkspaceActions: action,
       joinProject: action,
       leaveProject: action,
     });
@@ -124,6 +126,7 @@ export abstract class BaseUserPermissionStore implements IBaseUserPermissionStor
     const projectRole = this.workspaceProjectsPermissions?.[workspaceSlug]?.[projectId];
     if (!projectRole) return undefined;
     const workspaceRole = this.workspaceUserInfo?.[workspaceSlug]?.role;
+    // permissao-estrutural: o admin do espaço participa de todo sistema com o nível dele (dado do vínculo, como o backend).
     if (workspaceRole === EUserWorkspaceRoles.ADMIN) return EUserPermissions.ADMIN;
     else return projectRole;
   });
@@ -172,61 +175,33 @@ export abstract class BaseUserPermissionStore implements IBaseUserPermissionStor
   hasPageAccess = computedFn((workspaceSlug: string, key: string): boolean => {
     if (!workspaceSlug || !key) return false;
     const settings = WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.find((item) => item.key === key);
-    if (settings) {
-      return this.allowPermissions(settings.access, EUserPermissionsLevel.WORKSPACE, workspaceSlug);
-    }
-    return false;
+    // A tela exige a ação do item de menu; sem ação, basta ser membro do espaço.
+    if (!settings) return false;
+    return this.canDo(settings.action, workspaceSlug);
   });
 
-  // action helpers
   /**
-   * @description Returns whether the user has the permission to perform an action
-   * @param { TUserPermissions[] } allowPermissions
-   * @param { TUserPermissionsLevel } level
-   * @param { string } workspaceSlug
-   * @param { string } projectId
-   * @param { () => boolean } onPermissionAllowed
-   * @returns { boolean }
+   * A pessoa pode fazer a ação no espaço? Lê a matriz de ações (função + exceções
+   * por pessoa), a mesma que o api-ts confere. Enquanto ela não chegou, nega.
    */
-  allowPermissions = (
-    allowPermissions: ETempUserRole[],
-    level: TUserPermissionsLevel,
-    workspaceSlug?: string,
-    projectId?: string,
-    onPermissionAllowed?: () => boolean
-  ): boolean => {
-    const { workspaceSlug: currentWorkspaceSlug, projectId: currentProjectId } = this.store.router;
-    if (!workspaceSlug) workspaceSlug = currentWorkspaceSlug;
-    if (!projectId) projectId = currentProjectId;
+  canDo = computedFn((required: TRequiredAction, workspaceSlug?: string): boolean => {
+    const slug = workspaceSlug || this.store.router.workspaceSlug || "";
+    const myActions = this.workspaceActions[slug];
+    if (!myActions) return false;
+    return isRequiredActionAllowed(required, (key) => isActionAllowed(key, myActions.permissions, undefined));
+  });
 
-    let currentUserRole: TUserPermissions | undefined = undefined;
-
-    if (level === EUserPermissionsLevel.WORKSPACE) {
-      currentUserRole = (workspaceSlug && this.getWorkspaceRoleByWorkspaceSlug(workspaceSlug)) as
-        | EUserPermissions
-        | undefined;
-    }
-
-    if (level === EUserPermissionsLevel.PROJECT) {
-      currentUserRole = (workspaceSlug &&
-        projectId &&
-        this.getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId)) as EUserPermissions | undefined;
-    }
-
-    if (typeof currentUserRole === "string") {
-      currentUserRole = parseInt(currentUserRole);
-    }
-
-    if (currentUserRole && typeof currentUserRole === "number" && allowPermissions.includes(currentUserRole)) {
-      if (onPermissionAllowed) {
-        return onPermissionAllowed();
-      } else {
-        return true;
-      }
-    }
-
-    return false;
-  };
+  /**
+   * Ação dentro de um sistema: a função da pessoa é a do espaço; participar do
+   * sistema (vínculo, ou admin e Gestor de Projeto, que o backend já devolve) é
+   * o que restringe.
+   */
+  canDoInProject = computedFn((required: TRequiredAction, workspaceSlug?: string, projectId?: string): boolean => {
+    const slug = workspaceSlug || this.store.router.workspaceSlug || "";
+    const project = projectId || this.store.router.projectId;
+    const isProjectMember = !!this.workspaceProjectsPermissions[slug]?.[project ?? ""];
+    return isProjectMember && this.canDo(required, slug);
+  });
 
   // actions
   /**
@@ -309,6 +284,16 @@ export abstract class BaseUserPermissionStore implements IBaseUserPermissionStor
       console.error("Error fetching user project permissions", error);
       throw error;
     }
+  };
+
+  /** Carrega a matriz de ações de quem está logado no espaço (`GET /roles/me/`). */
+  fetchMyWorkspaceActions = async (workspaceSlug: string): Promise<TMyActions | undefined> => {
+    const response = await this.rolesService.me(workspaceSlug);
+    if (!response) return response;
+    runInAction(() => {
+      set(this.workspaceActions, [workspaceSlug], response);
+    });
+    return response;
   };
 
   /**

@@ -11,6 +11,7 @@
  * chamados, em qualquer etapa.
  */
 import useSWR from "swr";
+import { useUserPermissions } from "@/hooks/store/user";
 import { isActionAllowed } from "@/lib/permissoes/acao-efetiva";
 import rolesService, { type TMyActions, type TRoleAction, type TWorkflowRole } from "@/services/roles.service";
 
@@ -53,15 +54,26 @@ export function useRoleActionCatalog(workspaceSlug?: string) {
 }
 
 /**
- * O que quem está logado pode fazer no ESPAÇO (função + exceções por pessoa).
- * `can` responde pelas ações de escopo "workspace" (chat, relatórios, funções…).
+ * O que quem está logado pode fazer (função + exceções por pessoa), a mesma
+ * matriz que o api-ts confere. É a ÚNICA fonte das decisões de tela: nada de
+ * lista fixa de nível de papel.
+ *
+ * - `can(acao)`: ação no espaço. Para ação de sistema também serve: a função da
+ *   pessoa é a do espaço em todos os sistemas.
+ * - `canInProject(acao, projectId)`: a ação e participar do sistema.
+ *
+ * A resposta fica no store de permissões (`fetchMyWorkspaceActions`), para que
+ * outros stores (páginas) leiam a mesma matriz.
  */
 export function useMyWorkspaceActions(workspaceSlug?: string) {
+  const { fetchMyWorkspaceActions, canDoInProject } = useUserPermissions();
   const { data, isLoading, error, mutate } = useSWR<TMyActions | undefined>(
     workspaceSlug ? `WORKSPACE_MY_ACTIONS_${workspaceSlug}` : null,
-    workspaceSlug ? () => rolesService.me(workspaceSlug) : null,
+    workspaceSlug ? () => fetchMyWorkspaceActions(workspaceSlug) : null,
     SWR_ONCE
   );
   const can = (action: string): boolean => !!data && isActionAllowed(action, data.permissions, undefined);
-  return { data, isLoading, error, refetch: mutate, can };
+  const canInProject = (action: string, projectId: string | undefined): boolean =>
+    can(action) && canDoInProject(action, workspaceSlug, projectId);
+  return { data, isLoading, error, refetch: mutate, can, canInProject };
 }
