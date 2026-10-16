@@ -6,7 +6,7 @@ import { publishRealtime } from "@utils/realtime";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
 import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requireWorkspaceMember } from "@utils/workspace";
-import {EProjectAction, requireProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
+import {EProjectAction, requireProjectAction, requireWorkspaceAction, resolveMemberRole, roleCan} from "@utils/permission-checks";
 import {
   createSolicitacao,
   findErrosDaSolicitacao,
@@ -630,15 +630,15 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     // cliente. O que era antes fica gravado. Ver @utils/versoes-da-descricao.
     const abriuVersao = await registrarVersaoDaDescricao({antes, corpo: issuePatch, autorId: user.id});
 
-    // FULFILLED (3) = "atendido": closes the intake. Only the chamado's creator or a
-    // project admin/gestor (role ≥ 18) may set it, and only once the work item is
-    // actually completed. Accepted (1) intakes stay in the OPEN tab until then.
+    // FULFILLED (3) = "atendido": fecha a solicitação. Marca quem abriu o chamado
+    // ou quem tria (`intake.review`, pela matriz de ações, como a tela decide), e
+    // só depois que o chamado está concluído. Aceita (1) segue na aba Abertas.
     if (b.status === 3) {
       const isCreator = antes?.createdById === user.id;
-      const isManager = (callerMember?.role ?? 0) >= 18;
-      if (!isCreator && !isManager) {
+      const isRevisor = roleCan(await resolveMemberRole(ws.id, callerMember as any), EProjectAction.INTAKE_REVIEW);
+      if (!isCreator && !isRevisor) {
         set.status = 403;
-        return {detail: "Apenas o criador do chamado ou um gestor pode marcar como atendido."};
+        return {detail: "Sua função não permite marcar como atendido."};
       }
       if (antes?.state?.group !== "completed") {
         set.status = 400;
