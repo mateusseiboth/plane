@@ -7,6 +7,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { observer } from "mobx-react";
+import useSWR from "swr";
 // plane imports
 import type { EditorRefApi } from "@plane/editor";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
@@ -60,7 +61,7 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
   const { getUserDetails } = useMember();
   const { loader } = useProjectInbox();
   const { getProjectById } = useProject();
-  const { removeIssue, archiveIssue } = useIssueDetail();
+  const { removeIssue, archiveIssue, fetchActivities, fetchComments } = useIssueDetail();
   // reload confirmation
   const { setShowAlert } = useReloadConfirmations(isSubmitting === "submitting");
 
@@ -77,6 +78,16 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
 
   // derived values
   const issue = inboxIssue.issue;
+
+  // A solicitação não é recarregada ao reabrir (revalidateIfStale: false em
+  // ./root.tsx); a atividade e os comentários, sim, como no detalhe do chamado:
+  // o trabalho acontece no quadro, e reabrir tem de mostrar o que mudou lá.
+  useSWR(issue?.id ? `INTAKE_ISSUE_ACTIVITY_${workspaceSlug}_${projectId}_${issue.id}` : null, () =>
+    Promise.all([
+      fetchActivities(workspaceSlug, projectId, issue.id!),
+      fetchComments(workspaceSlug, projectId, issue.id!),
+    ])
+  );
   const projectDetails = issue?.project_id ? getProjectById(issue?.project_id) : undefined;
   const isIntakeAccepted = inboxIssue.status === EInboxIssueStatus.ACCEPTED;
 
