@@ -9,9 +9,11 @@ import { Paperclip } from "lucide-react";
 import { useTranslation } from "@plane/i18n";
 import { LinkIcon, ViewsIcon, RelationPropertyIcon } from "@plane/propel/icons";
 // plane imports
+import { EIssueServiceType } from "@plane/types";
 import type { TIssueServiceType, TWorkItemWidgets } from "@plane/types";
 // plane web imports
 import { WorkItemAdditionalWidgetActionButtons } from "@/plane-web/components/issues/issue-detail-widgets/action-buttons";
+import { AlterarSistemaActionButton } from "@/components/issues/issue-detail/alterar-sistema/alterar-sistema-button";
 // local imports
 import { IssueAttachmentActionButton } from "./attachments";
 import { IssueLinksActionButton } from "./links";
@@ -90,6 +92,14 @@ export function IssueDetailWidgetActionButtons(props: Props) {
           }
           disabled={disabled}
           issueServiceType={issueServiceType}
+        />
+      )}
+      {issueServiceType === EIssueServiceType.ISSUES && (
+        <AlterarSistemaActionButton
+          workspaceSlug={workspaceSlug}
+          projectId={projectId}
+          issueId={issueId}
+          disabled={disabled}
         />
       )}
       <WorkItemAdditionalWidgetActionButtons

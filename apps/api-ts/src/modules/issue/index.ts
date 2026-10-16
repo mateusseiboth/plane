@@ -2,10 +2,10 @@ import prisma from "@db";
 import {authPlugin} from "@middleware/auth";
 import {Prisma} from "@prisma/client/extension";
 import {paginate} from "@utils/pagination";
-import {COMMENT_INCLUDE, ISSUE_INCLUDE, serializeComment, serializeIssue} from "@utils/serialize";
+import {COMMENT_INCLUDE, ISSUE_BY_ID_INCLUDE, ISSUE_INCLUDE, serializeComment, serializeIssue} from "@utils/serialize";
 import {diffChange, recordActivities, type ActivityChange} from "@utils/activity";
 import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
-import {EProjectAction, canTransition, requireOwnOrAll, requireProjectAction, resolveRole, roleCan, requireRoleAction} from "@utils/permission-checks";
+import {EProjectAction, canTransition, requireOwnOrAll, requireProjectAction, requireProjectAnyAction, resolveRole, roleCan, requireRoleAction} from "@utils/permission-checks";
 import {campoDeAtividade, pontoDoProjeto, type PontoDeEstimativa} from "@utils/estimate";
 import {resolverOrdenacao} from "@utils/issue-order";
 import {acompanharSolicitacao} from "@utils/atendimento-da-solicitacao";
@@ -23,6 +23,8 @@ import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 import {isPriorityChange} from "@utils/prioridade";
 import {movimentacaoService} from "@modules/issue/movimentacao.service";
+import {alterarSistemaService} from "@modules/issue/alterar-sistema.service";
+import {requireDestinoValido} from "@modules/issue/alterar-sistema.rules";
 
 // State-transition rules are now data-driven (utils/permission-checks.ts), seeded
 // per workspace and editable through the roles API. See utils/permissions.ts for
@@ -280,7 +282,7 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     await getProjectOrFail(ws.id, project_id, user.id);
     const issue = await prisma.issue.findFirstOrThrow({
       where: {id: issue_id, projectId: project_id, deletedAt: null},
-      include: ISSUE_INCLUDE,
+      include: ISSUE_BY_ID_INCLUDE,
     });
     // LGPD: acesso a dado também é tratamento — quem abriu qual chamado, quando e de onde.
     recordAudit({
@@ -599,6 +601,27 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     });
     set.status = 204;
     return null;
+  })
+
+  // ── Alterar sistema ───────────────────────────────────────────────────────
+  // O antigo vai para Cancelados e um novo nasce no destino com tudo dele
+  // (@modules/issue/alterar-sistema.service). Ação própria no sistema atual e
+  // participação no destino, onde abrir chamado é o que acontece.
+  .post("/:issue_id/alterar-sistema/", async ({params: {slug, project_id, issue_id}, body, user, set, headers}) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireProjectAction(ws.id, project_id, user.id, EProjectAction.ISSUE_CHANGE_SYSTEM);
+    const destinoId = requireDestinoValido(project_id, (body as {project_id_destino?: unknown} | null)?.project_id_destino);
+    await requireProjectAnyAction(ws.id, destinoId, user.id, [EProjectAction.ISSUE_CHANGE_SYSTEM, EProjectAction.ISSUE_CREATE]);
+    const resultado = await alterarSistemaService.alterarSistema({
+      workspaceId: ws.id,
+      origemId: project_id,
+      destinoId,
+      issueId: issue_id,
+      user,
+      headers,
+    });
+    set.status = 201;
+    return resultado;
   })
 
   // Comments ─────────────────────────────────────────────────────────────────

@@ -181,6 +181,10 @@ export class IssueStore implements IIssueStore {
       is_epic: issue?.is_epic,
       ticket_number: issue?.ticket_number,
       legacy_ticket_number: issue?.legacy_ticket_number,
+      // Só o GET de um chamado traz: o outro lado do "Alterar sistema" e a solicitação de origem.
+      moved_to_issue: issue?.moved_to_issue,
+      moved_from_issue: issue?.moved_from_issue,
+      solicitacao: issue?.solicitacao,
       // Quem está vendo o detalhe acabou de abrir o chamado (ver markAsRead).
       is_unread: false,
     };

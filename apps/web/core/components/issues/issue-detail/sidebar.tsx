@@ -54,6 +54,7 @@ import { IssueEntitySelect } from "./entity-select";
 import { IssueLabel } from "./label";
 import { IssueModuleSelect } from "./module-select";
 import { IssueStateField } from "@/components/issues/issue-detail/state-field";
+import { SolicitacaoDeOrigem } from "@/components/issues/issue-detail/solicitacao-de-origem/solicitacao-de-origem";
 import type { TIssueOperations } from "./root";
 import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
@@ -278,6 +279,14 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                 disabled={!isEditable}
               />
             </SidebarPropertyListItem>
+
+            {issue.solicitacao && (
+              <SolicitacaoDeOrigem
+                workspaceSlug={workspaceSlug}
+                projectId={projectId}
+                solicitacao={issue.solicitacao}
+              />
+            )}
 
             <IssueWorklogProperty
               workspaceSlug={workspaceSlug}

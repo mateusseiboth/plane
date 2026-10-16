@@ -439,6 +439,11 @@ model Issue {
   externalSource      String?               @map("external_source")
   externalId          String?               @map("external_id")
   legacyTicketNumber  String?               @map("legacy_ticket_number") @db.VarChar(50)
+  /// Chamado novo quando este foi levado para outro sistema ("Alterar sistema").
+  /// O antigo fica em Cancelados apontando para ele; ver @modules/issue/alterar-sistema.service.
+  movedTo             Issue?                @relation("IssueMovedTo", fields: [movedToIssueId], references: [id], onDelete: SetNull)
+  movedToIssueId      String?               @unique @map("moved_to_issue_id") @db.Uuid
+  movedFrom           Issue?                @relation("IssueMovedTo")
   /// Número anual do chamado ("12-2026"): preenchido pelo gatilho `issues_assign_ticket_number`.
   /// Nunca grave à mão: ver @utils/numero-do-chamado.
   ticketSequence      Int?                  @map("ticket_sequence")

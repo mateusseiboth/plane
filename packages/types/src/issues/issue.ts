@@ -42,6 +42,31 @@ export enum EIssuesStoreType {
   TEAM_PROJECT_WORK_ITEMS = "TEAM_PROJECT_WORK_ITEMS",
 }
 
+/** O chamado do outro lado do "Alterar sistema", com o que o selo precisa para o link. */
+export type TChamadoMovido = {
+  id: string;
+  project_id: string;
+  sequence_id: number;
+  project_identifier: string | null;
+};
+
+export type TOrigemDaSolicitacao = "chat" | "portal" | "app";
+
+/** A solicitação de que o chamado nasceu, como foi pedida (só no GET de um chamado). */
+export type TSolicitacaoDoChamado = {
+  id: string;
+  aberta_em: string;
+  aberta_por: string | null;
+  origem: TOrigemDaSolicitacao;
+  entidade: string | null;
+  modulo: string | null;
+  prioridade: TIssuePriorities;
+  titulo: string;
+  descricao_html: string;
+  /** Sem versão anterior: o texto atual é o original. */
+  is_texto_atual: boolean;
+};
+
 export type TBaseIssue = {
   id: string;
   sequence_id: number;
@@ -51,6 +76,11 @@ export type TBaseIssue = {
   ticket_number?: string | null;
   /** Não lido por quem pergunta: mudou depois da última vez que ele abriu o chamado. */
   is_unread?: boolean;
+  /** Chamado novo quando este foi levado para outro sistema (só no GET de um chamado). */
+  moved_to_issue?: TChamadoMovido | null;
+  /** Chamado antigo de que este veio (só no GET de um chamado). */
+  moved_from_issue?: TChamadoMovido | null;
+  solicitacao?: TSolicitacaoDoChamado | null;
   name: string;
   sort_order: number;
 

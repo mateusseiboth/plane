@@ -193,6 +193,16 @@ describe("DEFAULT_ROLES a partir do catálogo", () => {
     expect(donosDe("issue.priority")).toEqual(["admin", "gestor_projeto"]);
   });
 
+  it("alterar o sistema do chamado é de quem exclui qualquer chamado, mais o TI", () => {
+    expect(donosDe("issue.change_system")).toEqual(["admin", "gestor_projeto", "ti"]);
+    expect(ACTION_CATALOG.ISSUE_CHANGE_SYSTEM).toMatchObject({
+      label: "Alterar o sistema do chamado",
+      group: "Chamados",
+      scope: "project",
+    });
+    expect(ACTION_CATALOG.ISSUE_CHANGE_SYSTEM.description).not.toContain("—");
+  });
+
   it("configuração do espaço, membros, auditoria, plugins e portal ficam só com o admin", () => {
     for (const acao of [
       "workspace.settings",
