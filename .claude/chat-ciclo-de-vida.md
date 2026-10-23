@@ -130,8 +130,12 @@ A tela NÃO redireciona mais para a triagem: o atendente segue na conversa.
 problema, `useSugestoesDaWiki` chama `GET /workspaces/:slug/wiki/sugestoes/?q=&project_id=`
 (módulo `apps/api-ts/src/modules/wiki-sugestoes/`, `intake.create`): o texto perde as palavras
 vazias (`wiki-sugestoes.rules.ts`), vira OU de até 8 termos no `websearch_to_tsquery` sobre o
-mesmo documento do `idx_pages_fts`, e voltam até 5 páginas que a pessoa enxerga, as do sistema
-escolhido primeiro, com trecho (`ts_headline`) e `url`. "Sugerir solução" chama
+mesmo documento do `idx_pages_fts`, e voltam até 5 páginas, as do sistema escolhido primeiro,
+com trecho (`ts_headline`) e `url`. **Recorte próprio** (`recorteDaSolicitacao` no DAO, não o
+`findPaginas` da navegação): o Atendimento quase nunca participa de sistema e é a wiki de cada
+sistema que responde ao cliente, então entra a página PÚBLICA de qualquer sistema do espaço,
+sem vínculo; privada só para o dono; arquivada e excluída nunca; página sem sistema segue
+`wiki.view`. A prioridade do `project_id` vale para quem não participa de sistema nenhum. "Sugerir solução" chama
 `POST .../wiki/sugestoes/resolver/ {texto, paginas}`: a IA de requisitos (`ProvedorDeIa.resolve`)
 responde em até 600 caracteres; sem IA, sem página visível ou com erro vem
 `{sugestao: null, motivo}` e o bloco mostra só as páginas. O botão some quando

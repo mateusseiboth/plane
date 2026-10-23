@@ -13,6 +13,7 @@ import type { ProvedorDeIa } from "@modules/ia-requisitos/tipos";
 import {
   findPaginasDoContexto,
   findPaginasParecidas,
+  recorteDaSolicitacao,
   type AlcanceDasPaginas,
   type PaginaDoContexto,
 } from "@modules/wiki-sugestoes/wiki-sugestoes.dao";
@@ -26,7 +27,6 @@ import {
 } from "@modules/wiki-sugestoes/wiki-sugestoes.rules";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { EProjectAction, hasWorkspaceAction } from "@utils/permission-checks";
-import { findMemberProjectIds } from "@utils/workspace";
 
 type Espaco = { id: string; slug: string };
 type Solicitante = { id: string; email?: string | null };
@@ -41,13 +41,15 @@ export type SugestaoDaWiki = {
 
 export type SugestaoDeSolucao = { sugestao: string } | { sugestao: null; motivo: string };
 
-const readAlcance = async (workspaceId: string, userId: string): Promise<AlcanceDasPaginas> => {
-  const [includeWiki, projectIds] = await Promise.all([
-    hasWorkspaceAction(workspaceId, userId, EProjectAction.WIKI_VIEW),
-    findMemberProjectIds(workspaceId, userId),
-  ]);
-  return { workspaceId, userId, includeWiki, projectIds };
-};
+/**
+ * As duas rotas exigem `intake.create`, então o recorte é sempre o de quem abre
+ * solicitação: páginas públicas de qualquer sistema, sem vínculo.
+ */
+const readAlcance = async (workspaceId: string, userId: string): Promise<AlcanceDasPaginas> => ({
+  workspaceId,
+  userId,
+  includeWiki: await hasWorkspaceAction(workspaceId, userId, EProjectAction.WIKI_VIEW),
+});
 
 /** Até 5 páginas parecidas com o texto; texto sem termo útil devolve lista vazia. */
 export async function findSugestoesDaWiki(args: {
@@ -61,6 +63,7 @@ export async function findSugestoesDaWiki(args: {
 
   const paginas = await findPaginasParecidas({
     alcance: await readAlcance(args.espaco.id, args.userId),
+    recorte: recorteDaSolicitacao,
     consulta,
     projectIdPreferido: args.projectId,
     limite: LIMITE_DE_PAGINAS_DA_WIKI,
@@ -139,7 +142,11 @@ export async function resolveSugestaoDaWiki(args: {
   const provedor = readProvedor();
   if (!provedor) return withoutSugestao(MOTIVO_DA_SUGESTAO.semIa);
 
-  const paginas = await findPaginasDoContexto(await readAlcance(espaco.id, user.id), pedido.paginaIds);
+  const paginas = await findPaginasDoContexto({
+    alcance: await readAlcance(espaco.id, user.id),
+    recorte: recorteDaSolicitacao,
+    ids: pedido.paginaIds,
+  });
   if (!paginas.length) return withoutSugestao(MOTIVO_DA_SUGESTAO.semPaginas);
 
   try {

@@ -123,7 +123,8 @@ apps/
   and integrations (Git, Slack).
 - **Wiki suggestions while opening a request:** `GET /api/v1/workspaces/:slug/wiki/sugestoes/?q=&project_id=`
   returns up to 5 wiki pages similar to the problem being described (full-text, the chosen
-  system's pages first, snippet and screen URL); `POST /api/v1/workspaces/:slug/wiki/sugestoes/resolver/`
+  system's pages first, snippet and screen URL; public pages of any system count, no membership
+  needed); `POST /api/v1/workspaces/:slug/wiki/sugestoes/resolver/`
   `{texto, paginas}` asks the requirements AI what to do based on those pages (`{sugestao}` or
   `{sugestao: null, motivo}`). Both need `intake.create`. See `.claude/chat-ciclo-de-vida.md`.
 - **E-mail:** SMTP config lives on the instance (`configurations.smtp`, edited in

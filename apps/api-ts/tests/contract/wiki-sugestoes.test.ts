@@ -89,6 +89,8 @@ describe("sugestões da wiki ao abrir solicitação", () => {
   let atendimento: Cliente;
   let atendimentoToken: string;
   let visualizador: Cliente;
+  let semVinculo: Cliente;
+  let semVinculoToken: string;
   const paginas: Record<string, string> = {};
 
   const sugestoes = (q: string, projectId?: string) =>
@@ -123,6 +125,9 @@ describe("sugestões da wiki ao abrir solicitação", () => {
     atendimentoToken = a.token;
     atendimento = apiClient(a.token);
     visualizador = apiClient((await createMemberWithToken(ws.id, 5, sistemaId, 5)).token);
+    // Como a maioria do Atendimento: função no espaço, nenhum sistema.
+    semVinculoToken = (await createMemberWithToken(ws.id, 6)).token;
+    semVinculo = apiClient(semVinculoToken);
 
     await createPagina(
       "Emissão de nota fiscal eletrônica",
@@ -143,6 +148,12 @@ describe("sugestões da wiki ao abrir solicitação", () => {
     await createPagina("Rascunho sobre nota fiscal", "<p>Anotações pessoais sobre a nota fiscal.</p>", {
       access: 1,
     });
+    // Páginas do TRIB, sistema de que os atendentes não participam.
+    const PARCELAMENTO = "<p>Para parcelar a dívida ativa, use Tributos, Parcelamento.</p>";
+    await createPagina("Parcelamento de dívida ativa", PARCELAMENTO, {}, outroSistemaId);
+    await createPagina("Parcelamento: anotações internas", PARCELAMENTO, { access: 1 }, outroSistemaId);
+    const antigo = await createPagina("Parcelamento antigo", PARCELAMENTO, {}, outroSistemaId);
+    await prisma.page.update({ where: { id: antigo }, data: { archivedAt: new Date() } });
 
     // Outro espaço, mesma palavra no título: não pode aparecer.
     const outroDono = await createUser();
@@ -194,9 +205,33 @@ describe("sugestões da wiki ao abrir solicitação", () => {
     expect(nomes).not.toContain("Rascunho sobre nota fiscal");
   });
 
-  it("não mostra página de sistema de que a pessoa não participa", async () => {
+  // ── atendente sem vínculo com sistema ─────────────────────────────────────
+  // A wiki de cada sistema é o que responde ao problema do cliente, e o
+  // Atendimento quase nunca participa de sistema: página PÚBLICA de qualquer
+  // sistema entra; privada de outra pessoa e arquivada, não.
+
+  it("atendente sem vínculo acha a página pública de qualquer sistema, aberta nele", async () => {
+    const lista = await readSugestoes(semVinculo, "parcelamento da dívida ativa");
+    expect(lista.find((p) => p.name === "Parcelamento de dívida ativa")).toMatchObject({
+      project_id: outroSistemaId,
+      url: `/${slug}/projects/${outroSistemaId}/pages/${paginas["Parcelamento de dívida ativa"]}`,
+    });
+  });
+
+  it("atendente sem vínculo não acha a privada de outra pessoa nem a arquivada", async () => {
+    const nomes = (await readSugestoes(semVinculo, "parcelamento da dívida ativa")).map((p) => p.name);
+    expect(nomes).not.toContain("Parcelamento: anotações internas");
+    expect(nomes).not.toContain("Parcelamento antigo");
+  });
+
+  it("atendente sem vínculo também tem as páginas do sistema escolhido primeiro", async () => {
+    const lista = await readSugestoes(semVinculo, "emissão de nota fiscal eletrônica", outroSistemaId);
+    expect(lista[0]).toMatchObject({ name: "Nota fiscal no TRIB", project_id: outroSistemaId });
+  });
+
+  it("atendente que participa de um sistema acha também as páginas públicas dos outros", async () => {
     const lista = await readSugestoes(atendimento, "nota fiscal menu");
-    expect(lista.map((p) => p.name)).not.toContain("Nota fiscal no TRIB");
+    expect(lista.map((p) => p.name)).toContain("Nota fiscal no TRIB");
   });
 
   it("ordena por relevância: quem casa mais termos e no título vem antes", async () => {
@@ -316,6 +351,20 @@ describe("sugestões da wiki ao abrir solicitação", () => {
           },
         ],
       });
+    });
+
+    it("atendente sem vínculo manda a página pública do sistema, nunca a privada nem a arquivada", async () => {
+      const cliente = apiClient(semVinculoToken, apis.aviao.base);
+      const res = await cliente.post(resolver(), {
+        texto: "Cliente quer parcelar a dívida ativa",
+        paginas: [
+          paginas["Parcelamento: anotações internas"],
+          paginas["Parcelamento antigo"],
+          paginas["Parcelamento de dívida ativa"],
+        ],
+      });
+      expect(await res.json()).toEqual({ sugestao: SUGESTAO_DA_IA });
+      expect(ia.chamadas[0].corpo.paginas.map((p: any) => p.nome)).toEqual(["Parcelamento de dívida ativa"]);
     });
 
     it("sugestão longa chega cortada no tamanho do aviso", async () => {
