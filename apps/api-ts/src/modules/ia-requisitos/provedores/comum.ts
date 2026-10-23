@@ -19,7 +19,6 @@ import {
   type PedidoAnalise,
   type PedidoIa,
   type PedidoMelhoria,
-  type PedidoResolucao,
   type RespostaAnalise,
   type RespostaIa,
   type RespostaMelhoria,
@@ -502,54 +501,4 @@ export function interpretarMelhoriaDoModelo(bruto: unknown, original: string): R
     }
   }
   return melhoriaDe(semCercaDeCodigo(bruto), original);
-}
-
-// ── Resolver pela wiki ───────────────────────────────────────────────────────
-
-/**
- * A régua da sugestão de solução, para os formatos genéricos. Quem lê é o
- * atendente, com o cliente esperando: poucas frases, o passo a passo das
- * páginas, nada inventado. Sem base nas páginas, o certo é calar.
- */
-const INSTRUCAO_DE_RESOLUCAO = [
-  "Você ajuda o atendimento de suporte de software a resolver o problema de um cliente, em português do Brasil.",
-  "Use SOMENTE as páginas da wiki abaixo como fonte. Não invente tela, menu, passo nem causa que não esteja nelas.",
-  "Diga o que o atendente pode fazer agora, em no máximo quatro frases curtas, citando o nome da página usada.",
-  "Se as páginas não tratam do problema, devolva sugestão vazia.",
-  "Não use Markdown nem HTML.",
-  "",
-  'Responda SOMENTE com JSON, nesta forma: {"sugestao": "texto"}',
-].join("\n");
-
-export function buildInstrucaoDeResolucaoSistema(): string {
-  return INSTRUCAO_DE_RESOLUCAO;
-}
-
-/** O problema e as páginas, em texto corrido. */
-export function buildInstrucaoDeResolucaoUsuario(pedido: PedidoResolucao): string {
-  const paginas = pedido.paginas.map((p, i) => `Página ${i + 1}: ${p.nome}\n${p.trecho || "(sem texto)"}`);
-  return [`Problema relatado pelo cliente:\n${pedido.texto}`, "", "Páginas da wiki:", ...paginas].join("\n");
-}
-
-/** Resposta nativa (`aviao`): `{sugestao}`; qualquer outra forma vira vazio. */
-export function sanitizeResolucaoNativa(bruto: unknown): string {
-  if (!bruto || typeof bruto !== "object") return "";
-  const sugestao = (bruto as Record<string, unknown>).sugestao;
-  return typeof sugestao === "string" ? sugestao.trim() : "";
-}
-
-/**
- * Lê a sugestão de um provedor GENÉRICO. Modelo que não colaborou com o JSON
- * pedido devolve vazio: a tela mostra só as páginas, que já ajudam.
- */
-export function parseResolucaoDoModelo(texto: unknown): string {
-  if (typeof texto !== "string" || !texto.trim()) return "";
-  const json = recortarJson(texto);
-  if (!json) return "";
-  try {
-    return sanitizeResolucaoNativa(JSON.parse(json));
-  } catch {
-    console.warn("[ia-requisitos] o modelo não devolveu JSON válido; sugestão de solução descartada.");
-    return "";
-  }
 }
