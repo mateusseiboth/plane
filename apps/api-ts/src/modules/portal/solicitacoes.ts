@@ -14,7 +14,7 @@
 
 import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
-import { findOrCreateIntake, findTriageState } from "@utils/intake";
+import { buildInicioDaSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
 import { notifyQualityOfIntake } from "@utils/notifications";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
@@ -113,6 +113,7 @@ export async function abrirSolicitacao(
         stateId: triagem?.id ?? null,
         descriptionHtml: descricaoHtml,
         descriptionStripped: textoSemMarcacao(descricaoHtml),
+        startDate: buildInicioDaSolicitacao(),
         // Ninguém do time abriu isto: quem abriu está em `portal_requests`.
         createdById: null,
         entityId: conta.entityId,
