@@ -5,6 +5,7 @@ import { swagger } from "@elysiajs/swagger";
 import { projectModule } from "@modules/project";
 import { chatChamadoModule } from "@modules/chat-chamado";
 import { solicitacaoModule } from "@modules/solicitacao";
+import { wikiSugestoesModule } from "@modules/wiki-sugestoes";
 import { stateModule } from "@modules/state";
 import { labelModule, issueLabelModule } from "@modules/label";
 import { cycleModule } from "@modules/cycle";
@@ -198,6 +199,8 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   // Chamado aberto a partir de uma conversa do chat (transcrição + arquivos).
   .use(chatChamadoModule)
   .use(solicitacaoModule)
+  // Páginas da wiki parecidas com o problema, no modal de abrir solicitação.
+  .use(wikiSugestoesModule)
   .use(stateModule)
   .use(labelModule)
   .use(issueLabelModule)

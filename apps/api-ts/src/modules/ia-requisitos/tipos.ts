@@ -173,19 +173,32 @@ export const MELHORIA_VAZIA: RespostaMelhoria = {
   detail: "",
 };
 
+// ── Resolver pela wiki (o modal de abrir solicitação) ────────────────────────
+
+/** Uma página da wiki que parece tratar do problema: o nome e o começo do texto. */
+export type PaginaDaResolucao = {nome: string; trecho: string};
+
+/**
+ * O problema do cliente, como o atendimento descreveu, e as páginas da wiki
+ * achadas para ele. O serviço responde o que fazer com base NELAS.
+ */
+export type PedidoResolucao = {texto: string; paginas: PaginaDaResolucao[]};
+
 /**
  * Um provedor de IA. Uma implementação por formato de protocolo; a fábrica em
  * `provedores/index.ts` resolve qual usar pelo nome vindo da configuração.
  *
- * Nenhum dos três métodos **lança**: serviço fora do ar, resposta estranha ou
+ * Nenhum dos métodos **lança**: serviço fora do ar, resposta estranha ou
  * tempo estourado viram resposta vazia, porque escrever chamado não pode
- * depender da IA estar de pé.
+ * depender da IA estar de pé. `resolve` devolve texto vazio nesse caso.
  */
 export interface ProvedorDeIa {
   readonly formato: string;
   sugerir(pedido: PedidoIa): Promise<RespostaIa>;
   analisar(pedido: PedidoAnalise): Promise<RespostaAnalise>;
   melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria>;
+  /** O que fazer com o problema, a partir das páginas da wiki. */
+  resolve(pedido: PedidoResolucao): Promise<string>;
 }
 
 const CAMPOS_VALIDOS: CampoIa[] = ["titulo", "descricao", "comentario"];

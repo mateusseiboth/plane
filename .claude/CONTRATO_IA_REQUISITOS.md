@@ -320,3 +320,40 @@ Ao clicar em "Melhorar com IA", **abre a comparação**:
 - A nota antes → depois aparece como referência, sem impedir nada.
 - Se o modelo não produziu proposta, dizer isso — **nunca** "conteúdo
   atualizado" sem ter atualizado, que é o que acontece hoje.
+
+---
+
+# Parte 4 — Sugerir solução pela wiki (pedido do cliente, 23/10/2026)
+
+> "Ao abrir uma solicitação pelo atendimento, ao descrever o problema do
+> cliente, fazer uma pesquisa na wiki e sugerir o que pode ser feito para
+> resolver o problema do cliente."
+
+O Plane acha as páginas da wiki (busca própria, sem IA:
+`GET /workspaces/:slug/wiki/sugestoes/`) e, quando o atendente clica em
+"Sugerir solução", manda o problema e o começo de cada página para o provedor
+(`ProvedorDeIa.resolve`, rota `POST /workspaces/:slug/wiki/sugestoes/resolver/`).
+
+## API do modelo — `POST /resolver` (formato nativo `aviao`)
+
+```jsonc
+// requisição
+{
+  "texto": "O cliente não consegue emitir a nota fiscal eletrônica",
+  "paginas": [{ "nome": "Emissão de nota fiscal eletrônica", "trecho": "até 1500 caracteres do texto" }]
+}
+// resposta
+{ "sugestao": "Reemita pelo menu Tributos, como na página Emissão de nota fiscal eletrônica." }
+```
+
+- Só as páginas como fonte; sem base nelas, `sugestao` vazia.
+- Poucas frases: o Plane corta em 600 caracteres.
+- **O serviço em 10.1.2.189:8101 ainda não tem `/resolver`.** Enquanto não tiver,
+  responde 404, a rota devolve `{sugestao: null, motivo}` e a tela mostra só as
+  páginas. Os formatos genéricos (`openai`, `llamacpp`, `ollama`) já funcionam:
+  a instrução viaja no prompt e a resposta é `{"sugestao": "..."}`.
+- Tempo limite: o da melhoria (`IA_REQUISITOS_MELHORIA_TIMEOUT_MS`), porque
+  alguém clicou e está esperando.
+- Trilha LGPD: `audit_logs` `entity=page`, `action=export`,
+  `metadata.servico="wiki-sugestoes"`, com o tamanho do texto e as páginas
+  enviadas (nunca o conteúdo).

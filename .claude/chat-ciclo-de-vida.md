@@ -41,6 +41,9 @@ apps/web/core/
   components/solicitacao/modal-de-solicitacao.tsx  sistema, título, módulo, entidade, complemento
                                              rico, cliente parado; o mesmo modal pela conversa
                                              (from-chat) e pelo botão "Nova solicitação" (avulsa)
+  components/solicitacao/bloco-da-wiki.tsx   "Na wiki" abaixo do complemento: páginas parecidas
+                                             com título + complemento (600 ms, 3+ palavras) e o
+                                             botão "Sugerir solução" (IA); ver nota abaixo
   components/chat/acoes-da-conversa.tsx      Chamado / link do chamado, Pausar/Retomar, FalhaDeEnvio
   components/chat/relatorios-de-atendimento.tsx  relatórios + registros + impressão (no painel)
   components/chat/aba-de-encerramento.tsx    config: motivos, pergunta 1/99, fim do dia
@@ -122,6 +125,22 @@ atalho (`issue_label`), posta "Chamado SIA-42 aberto a partir desta conversa." e
 a mostrar o link. Arquivo do WhatsApp (`ext:`) só por https; arquivo do chat vem de
 `CHAT_INTERNAL_URL` (padrão `http://chat-backend:8002`). Arquivo que falha é pulado e contado.
 A tela NÃO redireciona mais para a triagem: o atendente segue na conversa.
+
+**Wiki no modal de solicitação** (W48, pedido de 23/10/2026): enquanto o atendente descreve o
+problema, `useSugestoesDaWiki` chama `GET /workspaces/:slug/wiki/sugestoes/?q=&project_id=`
+(módulo `apps/api-ts/src/modules/wiki-sugestoes/`, `intake.create`): o texto perde as palavras
+vazias (`wiki-sugestoes.rules.ts`), vira OU de até 8 termos no `websearch_to_tsquery` sobre o
+mesmo documento do `idx_pages_fts`, e voltam até 5 páginas, as do sistema escolhido primeiro,
+com trecho (`ts_headline`) e `url`. **Recorte próprio** (`recorteDaSolicitacao` no DAO, não o
+`findPaginas` da navegação): o Atendimento quase nunca participa de sistema e é a wiki de cada
+sistema que responde ao cliente, então entra a página PÚBLICA de qualquer sistema do espaço,
+sem vínculo; privada só para o dono; arquivada e excluída nunca; página sem sistema segue
+`wiki.view`. A prioridade do `project_id` vale para quem não participa de sistema nenhum. "Sugerir solução" chama
+`POST .../wiki/sugestoes/resolver/ {texto, paginas}`: a IA de requisitos (`ProvedorDeIa.resolve`)
+responde em até 600 caracteres; sem IA, sem página visível ou com erro vem
+`{sugestao: null, motivo}` e o bloco mostra só as páginas. O botão some quando
+`/ia/configuracao/` diz `ia_disponivel: false`. Nada disso bloqueia o envio. O formato nativo
+(`aviao`) precisa da rota `/resolver` no serviço (Parte 4 de `CONTRATO_IA_REQUISITOS.md`).
 
 **Relatórios** (`chat.relatorios`): período padrão = últimos 7 dias; filtros entidade, sistema,
 motivo, atendente. Agregação em memória (uma passada), sem `_count` de relação.

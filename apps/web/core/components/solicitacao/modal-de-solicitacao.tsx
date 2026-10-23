@@ -15,6 +15,8 @@ import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { RichTextEditor } from "@/components/editor/rich-text/editor";
+import { BlocoDaWiki } from "@/components/solicitacao/bloco-da-wiki";
+import { buildTextoDaBuscaNaWiki } from "@/components/solicitacao/sugestoes-da-wiki";
 import {
   buildPedidoDaSolicitacao,
   findPendenciaDaSolicitacao,
@@ -215,6 +217,12 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
               containerClassName="min-h-[96px] rounded-md border border-subtle bg-surface-2"
             />
           </div>
+
+          <BlocoDaWiki
+            workspaceSlug={workspaceSlug}
+            texto={buildTextoDaBuscaNaWiki(formulario.titulo, formulario.complementoHtml)}
+            projectId={formulario.projectId || undefined}
+          />
 
           <label className="flex items-center gap-2 text-13 text-primary">
             <input
