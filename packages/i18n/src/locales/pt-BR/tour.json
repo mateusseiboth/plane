@@ -3,7 +3,7 @@
     "workitems": {
       "step_zero": {
         "title": "Bem-vindo ao seu espaço de trabalho",
-        "description": "Para ajudá-lo a começar, criamos um Projeto Demo para você. Vamos adicionar seu primeiro chamado."
+        "description": "Para ajudá-lo a começar, criamos um Sistema Demo para você. Vamos adicionar seu primeiro chamado."
       },
       "step_one": {
         "title": "Clique em \"+ Adicionar chamado\"",
@@ -25,11 +25,11 @@
     "cycle": {
       "step_zero": {
         "title": "Progrida com Ciclos",
-        "description": "Pressione Q para criar um Ciclo. Nomeie-o e defina datas—apenas um ciclo por projeto."
+        "description": "Pressione Q para criar um Ciclo. Nomeie-o e defina datas—apenas um ciclo por sistema."
       },
       "step_one": {
         "title": "Criar um novo ciclo",
-        "description": "Pressione Q para criar um Ciclo. Nomeie-o e defina datas—apenas um ciclo por projeto."
+        "description": "Pressione Q para criar um Ciclo. Nomeie-o e defina datas—apenas um ciclo por sistema."
       },
       "step_two": {
         "title": "Clique em \"+\"",
@@ -46,12 +46,12 @@
     },
     "module": {
       "step_zero": {
-        "title": "Divida seu projeto em Módulos",
-        "description": "Módulos são projetos menores e focados que ajudam os usuários a agrupar e organizar chamados dentro de prazos específicos."
+        "title": "Divida seu sistema em Módulos",
+        "description": "Módulos são sistemas menores e focados que ajudam os usuários a agrupar e organizar chamados dentro de prazos específicos."
       },
       "step_one": {
         "title": "Criar Módulo",
-        "description": "Módulos são projetos menores e focados que ajudam os usuários a agrupar e organizar chamados dentro de prazos específicos."
+        "description": "Módulos são sistemas menores e focados que ajudam os usuários a agrupar e organizar chamados dentro de prazos específicos."
       },
       "step_two": {
         "title": "Clique em \"+\"",
@@ -69,7 +69,7 @@
     "page": {
       "step_zero": {
         "title": "Documente com Páginas com IA",
-        "description": "As Páginas no Avião permitem capturar, organizar e colaborar em informações do projeto—sem ferramentas externas."
+        "description": "As Páginas no Avião permitem capturar, organizar e colaborar em informações do sistema—sem ferramentas externas."
       },
       "step_one": {
         "title": "Tornar página Pública ou Privada",
@@ -103,7 +103,7 @@
       },
       "step_two": {
         "title": "Aceitar/recusar uma solicitação pendente",
-        "description": "Aceite para editar e mover a solicitação para seu projeto ou recuse para marcá-la como Cancelada."
+        "description": "Aceite para editar e mover a solicitação para seu sistema ou recuse para marcá-la como Cancelada."
       },
       "step_three": {
         "title": "Adiar por enquanto",
@@ -127,7 +127,7 @@
       },
       "step_zero": {
         "title": "Encontre qualquer coisa instantaneamente",
-        "description": "Use a pesquisa universal para pular para tarefas, projetos, páginas e pessoas—sem sair do seu fluxo."
+        "description": "Use a pesquisa universal para pular para tarefas, sistemas, páginas e pessoas—sem sair do seu fluxo."
       },
       "step_one": {
         "title": "Mantenha o controle das atualizações",
@@ -148,8 +148,8 @@
       "got_it": "Entendi"
     },
     "seed_data": {
-      "title": "Aqui está seu projeto demo",
-      "description": "Os projetos permitem que você gerencie suas equipes, tarefas e tudo o que precisa para realizar as coisas dentro do seu espaço de trabalho."
+      "title": "Aqui está seu sistema demo",
+      "description": "Os sistemas permitem que você gerencie suas equipes, tarefas e tudo o que precisa para realizar as coisas dentro do seu espaço de trabalho."
     }
   },
   "get_started": {
@@ -160,7 +160,7 @@
       "description": "Comece sua configuração e veja suas ideias ganharem vida mais rapidamente.",
       "checklist_items": {
         "item_1": {
-          "title": "Criar um projeto"
+          "title": "Criar um sistema"
         },
         "item_2": {
           "title": "Criar um chamado"

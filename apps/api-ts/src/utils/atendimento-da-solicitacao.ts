@@ -115,7 +115,12 @@ export async function acompanharSolicitacao({
   const destino = destinoDe(grupo, solicitacao.status);
   if (destino === null) return;
 
-  await prisma.intakeIssue.update({ where: { id: solicitacao.id }, data: { status: destino } });
+  // Mudou a situação, o visto de quem abriu recomeça: reaberta não é "resolvida
+  // vista", e a próxima conclusão volta a contar no menu Solicitação/Triagem.
+  await prisma.intakeIssue.update({
+    where: { id: solicitacao.id },
+    data: { status: destino, vistoPeloSolicitanteEm: null },
+  });
   if (destino !== SITUACAO.atendida) return;
 
   // Guarda COMO foi resolvido junto do atendimento: quem lê a solicitação

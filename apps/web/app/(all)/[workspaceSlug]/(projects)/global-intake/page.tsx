@@ -18,6 +18,8 @@ import { InboxIssueRoot } from "@/components/inbox";
 import { IntakeListPrintDocument, PrintButton } from "@/components/print";
 import { useProject } from "@/hooks/store/use-project";
 import { useWorkspace } from "@/hooks/store/use-workspace";
+import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { useTranslation } from "@plane/i18n";
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL } from "@plane/constants";
 import {
@@ -27,6 +29,7 @@ import {
   readAbaDaSolicitacao,
   readAbaDaTriagemDoSistema,
 } from "@/components/inbox/global/abas-da-triagem-global";
+import { readRotuloDaTriagem } from "@/components/inbox/global/rotulo-da-triagem";
 import { EInboxIssueCurrentTab } from "@plane/types";
 
 const ABA_DA_TRIAGEM_DO_SISTEMA: Record<string, EInboxIssueCurrentTab> = {
@@ -54,6 +57,8 @@ function GlobalIntakePage() {
 
   const { joinedProjectIds, getProjectById } = useProject();
   const { currentWorkspace } = useWorkspace();
+  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
+  const { t } = useTranslation();
 
   // A lista da barra lateral é longa (um item por sistema): sem busca, achar um
   // sistema pelo nome vira rolagem no olho.
@@ -70,7 +75,8 @@ function GlobalIntakePage() {
     ? intakeProjects.find((p) => p?.id === selectedProjectId)
     : undefined;
 
-  const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - Solicitações globais` : "Solicitações globais";
+  const rotulo = t(readRotuloDaTriagem(can));
+  const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - ${rotulo}` : rotulo;
 
   // ── Global list state (when no project is selected) ──────────────────────
   const [statusFilter, setStatusFilter] = useState<string>(ABA_PADRAO_DA_TRIAGEM_GLOBAL);
@@ -93,7 +99,7 @@ function GlobalIntakePage() {
       <div className="flex h-full w-56 flex-shrink-0 flex-col border-r border-subtle">
         <div className="flex items-center gap-2 border-b border-subtle px-4 py-3">
           <Intake className="size-4 text-secondary" />
-          <span className="text-13 font-semibold">Projetos</span>
+          <span className="text-13 font-semibold">Sistemas</span>
         </div>
         <div className="flex items-center gap-1.5 border-b border-subtle px-3 py-2">
           <Search className="size-3.5 shrink-0 text-placeholder" />
@@ -114,11 +120,11 @@ function GlobalIntakePage() {
             )}
           >
             <Inbox className="size-3.5 text-secondary" />
-            <span>Todos os projetos</span>
+            <span>Todos os sistemas</span>
           </Link>
           {intakeProjects.length === 0 && (
             <p className="px-4 py-3 text-xs text-secondary">
-              {termo ? `Nenhum sistema com "${buscaProjeto}".` : "Nenhum projeto encontrado."}
+              {termo ? `Nenhum sistema com "${buscaProjeto}".` : "Nenhum sistema encontrado."}
             </p>
           )}
           {intakeProjects.map((project) => {

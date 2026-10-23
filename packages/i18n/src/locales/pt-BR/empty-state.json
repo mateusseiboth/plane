@@ -6,7 +6,7 @@
     },
     "updates": {
       "title": "Ainda não há atualizações.",
-      "description": "Quando os membros do projeto adicionarem atualizações, elas aparecerão aqui"
+      "description": "Quando os membros do sistema adicionarem atualizações, elas aparecerão aqui"
     },
     "search": {
       "title": "Nenhum resultado correspondente.",
@@ -25,24 +25,24 @@
   },
   "project_empty_state": {
     "no_access": {
-      "title": "Parece que você não tem acesso a este projeto",
+      "title": "Parece que você não tem acesso a este sistema",
       "restricted_description": "Entre em contato com o administrador para solicitar acesso e você poderá continuar aqui.",
       "join_description": "Clique no botão abaixo para participar.",
-      "cta_primary": "Participar do projeto",
-      "cta_loading": "Participando do projeto"
+      "cta_primary": "Participar do sistema",
+      "cta_loading": "Participando do sistema"
     },
     "invalid_project": {
-      "title": "Projeto não encontrado",
-      "description": "O projeto que você está procurando não existe."
+      "title": "Sistema não encontrado",
+      "description": "O sistema que você está procurando não existe."
     },
     "work_items": {
       "title": "Comece com seu primeiro chamado.",
-      "description": "Os chamados são os blocos de construção do seu projeto — atribua proprietários, defina prioridades e acompanhe o progresso facilmente.",
+      "description": "Os chamados são os blocos de construção do seu sistema — atribua proprietários, defina prioridades e acompanhe o progresso facilmente.",
       "cta_primary": "Criar seu primeiro chamado"
     },
     "cycles": {
       "title": "Agrupe e defina prazos para seu trabalho em Ciclos.",
-      "description": "Divida o trabalho em blocos com prazo definido, trabalhe de trás para frente a partir do prazo do projeto para definir datas e faça progresso tangível como equipe.",
+      "description": "Divida o trabalho em blocos com prazo definido, trabalhe de trás para frente a partir do prazo do sistema para definir datas e faça progresso tangível como equipe.",
       "cta_primary": "Definir seu primeiro ciclo"
     },
     "cycle_work_items": {
@@ -52,8 +52,8 @@
       "cta_secondary": "Adicionar chamado existente"
     },
     "modules": {
-      "title": "Mapeie as metas do seu projeto para Módulos e acompanhe facilmente.",
-      "description": "Os módulos são compostos por chamados interconectados. Eles auxiliam no monitoramento do progresso através das fases do projeto, cada uma com prazos e análises específicas para indicar o quão perto você está de alcançar essas fases.",
+      "title": "Mapeie as metas do seu sistema para Módulos e acompanhe facilmente.",
+      "description": "Os módulos são compostos por chamados interconectados. Eles auxiliam no monitoramento do progresso através das fases do sistema, cada uma com prazos e análises específicas para indicar o quão perto você está de alcançar essas fases.",
       "cta_primary": "Definir seu primeiro módulo"
     },
     "module_work_items": {
@@ -63,13 +63,13 @@
       "cta_secondary": "Adicionar chamado existente"
     },
     "views": {
-      "title": "Salve visualizações personalizadas para seu projeto",
+      "title": "Salve visualizações personalizadas para seu sistema",
       "description": "As visualizações são filtros salvos que ajudam você a acessar rapidamente as informações que mais usa. Colabore sem esforço enquanto os colegas de equipe compartilham e adaptam as visualizações às suas necessidades específicas.",
       "cta_primary": "Criar visualização"
     },
     "no_work_items_in_project": {
-      "title": "Ainda não há chamados no projeto",
-      "description": "Adicione chamados ao seu projeto e divida seu trabalho em partes rastreáveis com visualizações.",
+      "title": "Ainda não há chamados no sistema",
+      "description": "Adicione chamados ao seu sistema e divida seu trabalho em partes rastreáveis com visualizações.",
       "cta_primary": "Adicionar chamado"
     },
     "work_item_filter": {
@@ -79,7 +79,7 @@
     },
     "pages": {
       "title": "Documente tudo — de notas a PRDs",
-      "description": "As páginas permitem que você capture e organize informações em um só lugar. Escreva notas de reuniões, documentação de projetos e PRDs, incorpore chamados e estruture-os com componentes prontos para uso.",
+      "description": "As páginas permitem que você capture e organize informações em um só lugar. Escreva notas de reuniões, documentação de sistemas e PRDs, incorpore chamados e estruture-os com componentes prontos para uso.",
       "cta_primary": "Criar sua primeira Página"
     },
     "archive_pages": {
@@ -88,14 +88,14 @@
     },
     "intake_sidebar": {
       "title": "Registre suas solicitações",
-      "description": "Envie novas solicitações para serem revisadas, priorizadas e rastreadas dentro do fluxo de trabalho do seu projeto.",
+      "description": "Envie novas solicitações para serem revisadas, priorizadas e rastreadas dentro do fluxo de trabalho do seu sistema.",
       "cta_primary": "Criar solicitação"
     },
     "intake_main": {
       "title": "Selecione uma solicitação para ver seus detalhes"
     },
     "epics": {
-      "title": "Transforme projetos complexos em épicos estruturados.",
+      "title": "Transforme sistemas complexos em épicos estruturados.",
       "description": "Um épico ajuda você a organizar grandes objetivos em tarefas menores e rastreáveis.",
       "cta_primary": "Criar um Épico",
       "cta_secondary": "Documentação"
@@ -118,11 +118,11 @@
     },
     "archive_cycles": {
       "title": "Ainda não há ciclos arquivados",
-      "description": "Para organizar seu projeto, arquive ciclos concluídos. Encontre-os aqui uma vez arquivados."
+      "description": "Para organizar seu sistema, arquive ciclos concluídos. Encontre-os aqui uma vez arquivados."
     },
     "archive_modules": {
       "title": "Ainda não há Módulos arquivados",
-      "description": "Para organizar seu projeto, arquive módulos concluídos ou cancelados. Encontre-os aqui uma vez arquivados."
+      "description": "Para organizar seu sistema, arquive módulos concluídos ou cancelados. Encontre-os aqui uma vez arquivados."
     },
     "home_widget_quick_links": {
       "title": "Mantenha referências, recursos ou documentos importantes à mão para o seu trabalho"
@@ -141,7 +141,7 @@
     },
     "views": {
       "title": "Ainda não há Visualizações",
-      "description": "Adicione chamados ao seu projeto e use visualizações para filtrar, classificar e monitorar o progresso sem esforço.",
+      "description": "Adicione chamados ao seu sistema e use visualizações para filtrar, classificar e monitorar o progresso sem esforço.",
       "cta_primary": "Adicionar chamado"
     },
     "drafts": {
@@ -150,14 +150,14 @@
       "cta_primary": "Criar chamado de rascunho"
     },
     "projects_archived": {
-      "title": "Nenhum projeto arquivado",
-      "description": "Parece que todos os seus projetos ainda estão ativos — ótimo trabalho!"
+      "title": "Nenhum sistema arquivado",
+      "description": "Parece que todos os seus sistemas ainda estão ativos — ótimo trabalho!"
     },
     "analytics_projects": {
-      "title": "Crie projetos para visualizar as métricas do projeto aqui."
+      "title": "Crie sistemas para visualizar as métricas do sistema aqui."
     },
     "analytics_work_items": {
-      "title": "Crie projetos com chamados e responsáveis para começar a rastrear desempenho, progresso e impacto da equipe aqui."
+      "title": "Crie sistemas com chamados e responsáveis para começar a rastrear desempenho, progresso e impacto da equipe aqui."
     },
     "analytics_no_cycle": {
       "title": "Crie ciclos para organizar o trabalho em fases com prazo definido e acompanhar o progresso em sprints."
@@ -188,12 +188,12 @@
     },
     "wiki": {
       "title": "Escreva uma nota, um documento ou uma base de conhecimento completa.",
-      "description": "As páginas são espaço para capturar pensamentos no Avião. Anote notas de reuniões, formate-as facilmente, incorpore chamados, organize-as usando uma biblioteca de componentes e mantenha todas no contexto do seu projeto.",
+      "description": "As páginas são espaço para capturar pensamentos no Avião. Anote notas de reuniões, formate-as facilmente, incorpore chamados, organize-as usando uma biblioteca de componentes e mantenha todas no contexto do seu sistema.",
       "cta_primary": "Criar sua página"
     },
     "project_overview_state_sidebar": {
-      "title": "Ativar estados do projeto",
-      "description": "Ative os estados do projeto para visualizar e gerenciar propriedades como estado, prioridade, datas de vencimento e mais."
+      "title": "Ativar estados do sistema",
+      "description": "Ative os estados do sistema para visualizar e gerenciar propriedades como estado, prioridade, datas de vencimento e mais."
     }
   },
   "settings_empty_state": {
@@ -223,16 +223,16 @@
     },
     "webhooks": {
       "title": "Ainda não foi adicionado nenhum Webhook",
-      "description": "Automatize notificações para serviços externos quando ocorrerem eventos do projeto.",
+      "description": "Automatize notificações para serviços externos quando ocorrerem eventos do sistema.",
       "cta_primary": "Adicionar webhook"
     },
     "work_item_types": {
       "title": "Crie e personalize tipos de chamados",
-      "description": "Defina tipos de chamados exclusivos para seu projeto. Cada tipo pode ter suas próprias propriedades, fluxos de trabalho e campos - adaptados às necessidades do seu projeto e equipe.",
+      "description": "Defina tipos de chamados exclusivos para seu sistema. Cada tipo pode ter suas próprias propriedades, fluxos de trabalho e campos - adaptados às necessidades do seu sistema e equipe.",
       "cta_primary": "Ativar"
     },
     "work_item_type_properties": {
-      "title": "Defina a propriedade e os detalhes que você deseja capturar para este tipo de chamado. Personalize-o para corresponder ao fluxo de trabalho do seu projeto.",
+      "title": "Defina a propriedade e os detalhes que você deseja capturar para este tipo de chamado. Personalize-o para corresponder ao fluxo de trabalho do seu sistema.",
       "cta_secondary": "Adicionar propriedade"
     },
     "templates": {
@@ -247,14 +247,14 @@
     },
     "worklogs": {
       "title": "Acompanhe folhas de ponto para todos os membros",
-      "description": "Registre tempo em chamados para ver folhas de ponto detalhadas para qualquer membro da equipe em projetos."
+      "description": "Registre tempo em chamados para ver folhas de ponto detalhadas para qualquer membro da equipe em sistemas."
     },
     "group_syncing": {
       "title": "Ainda não há mapeamentos de grupos"
     },
     "template_setting": {
       "title": "Ainda não há modelos",
-      "description": "Reduza o tempo de configuração criando modelos para projetos, chamados e páginas — e comece novo trabalho em segundos.",
+      "description": "Reduza o tempo de configuração criando modelos para sistemas, chamados e páginas — e comece novo trabalho em segundos.",
       "cta_primary": "Criar modelo"
     },
     "workflows": {

@@ -94,6 +94,9 @@ describe("solicitação de origem no detalhe do chamado", () => {
       titulo: "Holerite sai em branco",
       descricao_html: "<p>como o cliente pediu</p>",
       is_texto_atual: false,
+      // Vínculo gravado sem autor e ainda em triagem: nada para marcar como visto.
+      aberta_por_id: null,
+      is_resolvida_nao_vista: false,
     });
   });
 

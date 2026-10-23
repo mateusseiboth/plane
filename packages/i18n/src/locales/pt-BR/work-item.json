@@ -169,7 +169,7 @@
       "confirm_message": "Tem certeza de que deseja arquivar o chamado? Todos os seus chamados arquivados podem ser restaurados posteriormente.",
       "success": {
         "label": "Sucesso ao arquivar",
-        "message": "Seus arquivos podem ser encontrados nos arquivos do projeto."
+        "message": "Seus arquivos podem ser encontrados nos arquivos do sistema."
       },
       "failed": {
         "message": "Não foi possível arquivar o chamado. Por favor, tente novamente."
@@ -178,7 +178,7 @@
     "restore": {
       "success": {
         "title": "Sucesso ao restaurar",
-        "message": "Seu chamado pode ser encontrado nos chamados do projeto."
+        "message": "Seu chamado pode ser encontrado nos chamados do sistema."
       },
       "failed": {
         "message": "Não foi possível restaurar o chamado. Por favor, tente novamente."
@@ -218,10 +218,10 @@
     "open_in_full_screen": "Abrir chamado em tela cheia",
     "duplicate": {
       "modal": {
-        "title": "Fazer uma cópia para outro projeto",
+        "title": "Fazer uma cópia para outro sistema",
         "description1": "Isto cria uma cópia do chamado.",
         "description2": "Todos os dados de propriedades serão removidos ao duplicar.",
-        "placeholder": "Selecionar um projeto"
+        "placeholder": "Selecionar um sistema"
       }
     },
     "toast": {
@@ -357,7 +357,7 @@
       },
       "create_button": {
         "label": "Criar chamado recorrente",
-        "no_permission": "Entre em contato com o administrador do projeto para criar chamados recorrentes"
+        "no_permission": "Entre em contato com o administrador do sistema para criar chamados recorrentes"
       }
     },
     "empty_state": {

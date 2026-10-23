@@ -14,6 +14,7 @@ import { Checkbox, EModalPosition, EModalWidth, ModalCore, Sortable } from "@pla
 import { cn } from "@plane/utils";
 // components
 import { ITENS_DO_ESPACO_NA_BARRA, isItemFixadoNaBarra } from "@/components/workspace/sidebar/fixacao-na-barra";
+import { readRotuloDoItemDaBarra } from "@/components/workspace/sidebar/rotulo-do-item-da-barra";
 // hooks
 import { useUserPermissions } from "@/hooks/store/user";
 import {
@@ -81,6 +82,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
   // Filter workspace items by permissions and feature flags, then get pinned/unpinned items
   const workspaceItems = useMemo(() => {
     // Mesmo recorte da barra: a ação do item (sem ação, todo membro do espaço).
+    const can = (acao: string) => canDo(acao, workspaceSlug?.toString());
     const permitidos = ITENS_DO_ESPACO_NA_BARRA.filter((item) => canDo(item.action, workspaceSlug?.toString()));
     const items = permitidos.map((item) => {
       // Get pinned status and sort order from localStorage
@@ -90,7 +92,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
 
       return {
         key: item.key,
-        labelTranslationKey: item.labelTranslationKey,
+        labelTranslationKey: readRotuloDoItemDaBarra(item, can),
         isPinned,
         sortOrder,
       };

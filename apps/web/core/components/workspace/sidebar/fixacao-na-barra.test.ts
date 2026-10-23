@@ -4,7 +4,13 @@
  * Rodar com `bun test core/components/workspace/sidebar`.
  */
 import { describe, expect, it } from "bun:test";
-import { ITENS_DO_MENU_MAIS, buildItensDaBarra, buildItensDoMenuMais, isItemFixadoNaBarra } from "./fixacao-na-barra";
+import {
+  ITENS_DO_ESPACO_NA_BARRA,
+  ITENS_DO_MENU_MAIS,
+  buildItensDaBarra,
+  buildItensDoMenuMais,
+  isItemFixadoNaBarra,
+} from "./fixacao-na-barra";
 
 const item = (key: string) => ({ key });
 
@@ -58,6 +64,27 @@ describe("ITENS_DO_MENU_MAIS", () => {
     const chaves = ITENS_DO_MENU_MAIS.map((i) => i.key);
     expect(chaves).toHaveLength(esperadas.length);
     expect(new Set(chaves)).toEqual(new Set(esperadas));
+  });
+});
+
+describe("ITENS_DO_ESPACO_NA_BARRA", () => {
+  // Pedido do cliente (23/10/2026): Solicitação/Triagem, Todos os chamados e Sistemas abrem o grupo.
+  it("abre com a triagem, todos os chamados e os sistemas, nessa ordem", () => {
+    expect(ITENS_DO_ESPACO_NA_BARRA.slice(0, 3).map((i) => i.key)).toEqual([
+      "global-intake",
+      "all-work-items",
+      "projects",
+    ]);
+  });
+
+  it("mantém essa ordem na barra de quem nunca reordenou", () => {
+    const naBarra = buildItensDaBarra(ITENS_DO_ESPACO_NA_BARRA, {});
+    expect(naBarra.slice(0, 4).map((i) => i.key)).toEqual(["global-intake", "all-work-items", "projects", "visits"]);
+  });
+
+  it("a ordem gravada pela pessoa vence a ordem padrão", () => {
+    const naBarra = buildItensDaBarra(ITENS_DO_ESPACO_NA_BARRA, { mural: { is_pinned: true, sort_order: -1 } });
+    expect(naBarra[0].key).toBe("mural");
   });
 });
 

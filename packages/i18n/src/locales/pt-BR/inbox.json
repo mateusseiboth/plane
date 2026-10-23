@@ -51,7 +51,7 @@
       "delete": "Excluir",
       "open": "Abrir solicitação",
       "mark_as_duplicate": "Marcar como duplicado",
-      "move": "Mover {value} para os chamados do projeto"
+      "move": "Mover {value} para os chamados do sistema"
     },
     "source": {
       "in-app": "no aplicativo"

@@ -65,6 +65,10 @@ export type TSolicitacaoDoChamado = {
   descricao_html: string;
   /** Sem versão anterior: o texto atual é o original. */
   is_texto_atual: boolean;
+  /** Quem abriu (usuário do time); null quando veio do portal. */
+  aberta_por_id: string | null;
+  /** Resolvida e quem abriu ainda não viu: abrir o pedido original marca como vista. */
+  is_resolvida_nao_vista: boolean;
 };
 
 export type TBaseIssue = {

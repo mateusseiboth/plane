@@ -8,6 +8,7 @@ import type { ComponentType } from "react";
 import { observer } from "mobx-react";
 // hooks
 import { useOuvidoriaNaoLidas, useOuvidoriaPermissoes } from "@/hooks/use-ouvidoria";
+import { useResumoDaTriagem } from "@/hooks/use-resumo-da-triagem";
 
 type TBadgeProps = { slug: string };
 
@@ -26,9 +27,16 @@ const OuvidoriaNaoLidas = observer(function OuvidoriaNaoLidas({ slug }: TBadgePr
   return <Contador count={count} />;
 });
 
+// Só aparece onde o item aparece: a barra já escondeu o item de quem não abre nem tria pedidos.
+const TriagemResolvidas = observer(function TriagemResolvidas({ slug }: TBadgeProps) {
+  const { resolvidasNaoVistas } = useResumoDaTriagem(slug);
+  return <Contador count={resolvidasNaoVistas} />;
+});
+
 /** Contador ao lado do item do menu, por chave do item (strategy map). */
 const BADGES: Record<string, ComponentType<TBadgeProps>> = {
   ouvidoria: OuvidoriaNaoLidas,
+  "global-intake": TriagemResolvidas,
 };
 
 export function SidebarBadge({ itemKey, slug }: { itemKey: string; slug: string }) {

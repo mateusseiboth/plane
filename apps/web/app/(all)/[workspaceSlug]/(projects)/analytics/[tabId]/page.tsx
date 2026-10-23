@@ -139,7 +139,7 @@ function AnalyticsPage({ params }: Route.ComponentProps) {
               description={t("workspace_projects.empty_state.no_projects.description")}
               actions={[
                 {
-                  label: "Criar um projeto",
+                  label: "Criar um sistema",
                   onClick: () => {
                     toggleCreateProjectModal(true);
                   },

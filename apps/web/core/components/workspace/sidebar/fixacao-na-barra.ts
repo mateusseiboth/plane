@@ -6,6 +6,7 @@
 
 import type { IWorkspaceSidebarNavigationItem } from "@plane/constants";
 import {
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS,
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS,
   WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS,
 } from "@plane/constants";
@@ -47,10 +48,17 @@ export const ITENS_PESSOAIS_DA_BARRA: IWorkspaceSidebarNavigationItem[] = [
   WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["drafts"],
 ];
 
-/** Itens do bloco Espaço, na ordem do catálogo. */
+/**
+ * Abrem o bloco Espaço, antes de Sistemas (pedido do cliente, 23/10/2026):
+ * Solicitação/Triagem e Todos os chamados. A ordem gravada pela pessoa vence.
+ */
+const CHAVES_QUE_ABREM_O_ESPACO = ["global-intake", "all-work-items"];
+
+/** Itens do bloco Espaço, na ordem padrão da barra. */
 export const ITENS_DO_ESPACO_NA_BARRA: IWorkspaceSidebarNavigationItem[] = [
+  ...CHAVES_QUE_ABREM_O_ESPACO.map((chave) => WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS[chave]),
   WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["projects"],
-  ...WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS,
+  ...WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.filter((item) => !CHAVES_QUE_ABREM_O_ESPACO.includes(item.key)),
 ];
 
 /** Tudo o que o menu Mais oferece para fixar e desfixar. */

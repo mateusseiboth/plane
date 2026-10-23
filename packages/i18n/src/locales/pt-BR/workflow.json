@@ -42,11 +42,11 @@
     "confirmation_modals": {
       "reset_workflow": {
         "title": "Tem certeza de que deseja reiniciar este fluxo de trabalho?",
-        "description": "Se você reiniciar este fluxo de trabalho, todas as suas regras de mudança de estado serão excluídas e você terá que criá-las novamente para executá-las neste projeto."
+        "description": "Se você reiniciar este fluxo de trabalho, todas as suas regras de mudança de estado serão excluídas e você terá que criá-las novamente para executá-las neste sistema."
       },
       "delete_state_change": {
         "title": "Tem certeza de que deseja excluir esta regra de mudança de estado?",
-        "description": "Uma vez excluída, você não pode desfazer esta alteração e terá que definir a regra novamente se quiser que ela funcione para este projeto."
+        "description": "Uma vez excluída, você não pode desfazer esta alteração e terá que definir a regra novamente se quiser que ela funcione para este sistema."
       }
     },
     "toasts": {

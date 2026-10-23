@@ -53,13 +53,13 @@
   "workspace_dashboard": {
     "empty_state": {
       "general": {
-        "title": "Visão geral dos seus projetos, atividades e métricas",
-        "description": "Bem-vindo ao Avião, estamos animados por tê-lo aqui. Crie seu primeiro projeto e rastreie seus chamados, e esta página se transformará em um espaço que ajuda você a progredir. Os administradores também verão itens que ajudam sua equipe a progredir.",
+        "title": "Visão geral dos seus sistemas, atividades e métricas",
+        "description": "Bem-vindo ao Avião, estamos animados por tê-lo aqui. Crie seu primeiro sistema e rastreie seus chamados, e esta página se transformará em um espaço que ajuda você a progredir. Os administradores também verão itens que ajudam sua equipe a progredir.",
         "primary_button": {
-          "text": "Construa seu primeiro projeto",
+          "text": "Construa seu primeiro sistema",
           "comic": {
-            "title": "Tudo começa com um projeto no Avião",
-            "description": "Um projeto pode ser o planejamento de um produto, uma campanha de marketing ou o lançamento de um novo carro."
+            "title": "Tudo começa com um sistema no Avião",
+            "description": "Um sistema pode ser o planejamento de um produto, uma campanha de marketing ou o lançamento de um novo carro."
           }
         }
       }
@@ -71,7 +71,7 @@
     "open_tasks": "Total de tarefas abertas",
     "error": "Ocorreu algum erro ao buscar os dados.",
     "work_items_closed_in": "Chamados fechados em",
-    "selected_projects": "Projetos selecionados",
+    "selected_projects": "Sistemas selecionados",
     "total_members": "Total de membros",
     "total_cycles": "Total de ciclos",
     "total_modules": "Total de módulos",
@@ -100,11 +100,11 @@
     "backlog_work_items": "{entity} no backlog",
     "un_started_work_items": "{entity} não iniciados",
     "completed_work_items": "{entity} concluídos",
-    "project_insights": "Insights do projeto",
-    "summary_of_projects": "Resumo dos projetos",
+    "project_insights": "Insights do sistema",
+    "summary_of_projects": "Resumo dos sistemas",
     "all_projects": "10 sistemas com mais chamados",
     "trend_on_charts": "Tendência nos gráficos",
-    "active_projects": "Projetos ativos",
+    "active_projects": "Sistemas ativos",
     "customized_insights": "Insights personalizados",
     "created_vs_resolved": "Criado vs Resolvido",
     "empty_state": {
@@ -122,9 +122,9 @@
       },
       "general": {
         "title": "Acompanhe progresso, cargas de trabalho e alocações. Identifique tendências, remova bloqueios e trabalhe mais rápido",
-        "description": "Veja escopo versus demanda, estimativas e expansão de escopo. Obtenha desempenho por membros da equipe e equipes, garantindo que seu projeto seja executado no prazo.",
+        "description": "Veja escopo versus demanda, estimativas e expansão de escopo. Obtenha desempenho por membros da equipe e equipes, garantindo que seu sistema seja executado no prazo.",
         "primary_button": {
-          "text": "Comece seu primeiro projeto",
+          "text": "Comece seu primeiro sistema",
           "comic": {
             "title": "Analytics funciona melhor com Ciclos + Módulos",
             "description": "Primeiro, defina um tempo limite para seus chamados em Ciclos e, se possível, agrupe itens que abrangem mais de um ciclo em Módulos. Confira ambos na navegação esquerda."
@@ -146,14 +146,14 @@
     },
     "upgrade_to_plan": "Faça upgrade para {plan} para desbloquear {tab}",
     "workitem_resolved_vs_pending": "Chamados resolvidos vs pendentes",
-    "projects_by_status": "Projetos por status",
+    "projects_by_status": "Sistemas por status",
     "active_users": "Usuários ativos",
     "intake_trends": "Tendências de solicitações"
   },
   "workspace_projects": {
-    "label": "{count, plural, one {Projeto} other {Projetos}}",
+    "label": "{count, plural, one {Sistema} other {Sistemas}}",
     "create": {
-      "label": "Adicionar Projeto"
+      "label": "Adicionar Sistema"
     },
     "network": {
       "label": "Rede",
@@ -186,7 +186,7 @@
       "members_length": "Número de membros"
     },
     "scope": {
-      "my_projects": "Meus projetos",
+      "my_projects": "Meus sistemas",
       "archived_projects": "Arquivados"
     },
     "common": {
@@ -195,33 +195,33 @@
     },
     "empty_state": {
       "general": {
-        "title": "Nenhum projeto ativo",
-        "description": "Pense em cada projeto como o pai do trabalho orientado a objetivos. Os projetos são onde os Trabalhos, Ciclos e Módulos vivem e, junto com seus colegas, ajudam você a atingir esse objetivo. Crie um novo projeto ou filtre os projetos arquivados.",
+        "title": "Nenhum sistema ativo",
+        "description": "Pense em cada sistema como o pai do trabalho orientado a objetivos. Os sistemas são onde os Trabalhos, Ciclos e Módulos vivem e, junto com seus colegas, ajudam você a atingir esse objetivo. Crie um novo sistema ou filtre os sistemas arquivados.",
         "primary_button": {
-          "text": "Comece seu primeiro projeto",
+          "text": "Comece seu primeiro sistema",
           "comic": {
-            "title": "Tudo começa com um projeto no Avião",
-            "description": "Um projeto pode ser o roteiro de um produto, uma campanha de marketing ou o lançamento de um novo carro."
+            "title": "Tudo começa com um sistema no Avião",
+            "description": "Um sistema pode ser o roteiro de um produto, uma campanha de marketing ou o lançamento de um novo carro."
           }
         }
       },
       "no_projects": {
-        "title": "Nenhum projeto",
-        "description": "Para criar chamados ou gerenciar seu trabalho, você precisa criar um projeto ou fazer parte de um.",
+        "title": "Nenhum sistema",
+        "description": "Para criar chamados ou gerenciar seu trabalho, você precisa criar um sistema ou fazer parte de um.",
         "primary_button": {
-          "text": "Comece seu primeiro projeto",
+          "text": "Comece seu primeiro sistema",
           "comic": {
-            "title": "Tudo começa com um projeto no Avião",
-            "description": "Um projeto pode ser o roteiro de um produto, uma campanha de marketing ou o lançamento de um novo carro."
+            "title": "Tudo começa com um sistema no Avião",
+            "description": "Um sistema pode ser o roteiro de um produto, uma campanha de marketing ou o lançamento de um novo carro."
           }
         }
       },
       "filter": {
-        "title": "Nenhum projeto correspondente",
-        "description": "Nenhum projeto detectado com os critérios correspondentes.\n Crie um novo projeto em vez disso."
+        "title": "Nenhum sistema correspondente",
+        "description": "Nenhum sistema detectado com os critérios correspondentes.\n Crie um novo sistema em vez disso."
       },
       "search": {
-        "description": "Nenhum projeto detectado com os critérios correspondentes.\nCrie um novo projeto em vez disso"
+        "description": "Nenhum sistema detectado com os critérios correspondentes.\nCrie um novo sistema em vez disso"
       }
     }
   },
@@ -229,8 +229,8 @@
     "add_view": "Adicionar visualização",
     "empty_state": {
       "all-issues": {
-        "title": "Nenhum chamado no projeto",
-        "description": "Primeiro projeto concluído! Agora, divida seu trabalho em partes rastreáveis com chamados. Vamos lá!",
+        "title": "Nenhum chamado no sistema",
+        "description": "Primeiro sistema concluído! Agora, divida seu trabalho em partes rastreáveis com chamados. Vamos lá!",
         "primary_button": {
           "text": "Criar novo chamado"
         }
@@ -290,7 +290,7 @@
     "empty_state": {
       "general": {
         "title": "Escreva uma nota, um documento ou uma base de conhecimento completa. Obtenha ajuda do Galileo, o assistente de IA do Avião, para começar",
-        "description": "Páginas são espaços para desenvolver pensamentos no Avião. Anote notas de reunião, formate-as facilmente, incorpore chamados, organize-os usando uma biblioteca de componentes e mantenha tudo no contexto do seu projeto. Para facilitar qualquer documento, invoque o Galileo, a IA do Avião, com um atalho ou clique de um botão.",
+        "description": "Páginas são espaços para desenvolver pensamentos no Avião. Anote notas de reunião, formate-as facilmente, incorpore chamados, organize-os usando uma biblioteca de componentes e mantenha tudo no contexto do seu sistema. Para facilitar qualquer documento, invoque o Galileo, a IA do Avião, com um atalho ou clique de um botão.",
         "primary_button": {
           "text": "Crie sua primeira página"
         }
@@ -323,7 +323,7 @@
     "empty_state": {
       "active": {
         "title": "Nenhum ciclo ativo",
-        "description": "Ciclos dos seus projetos que incluem qualquer período que engloba a data de hoje dentro de seu intervalo. Encontre o progresso e detalhes de todos os seus ciclos ativos aqui."
+        "description": "Ciclos dos seus sistemas que incluem qualquer período que engloba a data de hoje dentro de seu intervalo. Encontre o progresso e detalhes de todos os seus ciclos ativos aqui."
       }
     }
   },

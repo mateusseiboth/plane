@@ -49,3 +49,26 @@ const isConcluida = (status: number, grupoDaEtapa: string | null) =>
 export function readSituacao(status: number, grupoDaEtapa: string | null): string {
   return isConcluida(status, grupoDaEtapa) ? SITUACAO_CONCLUIDA : String(status);
 }
+
+/**
+ * Solicitação resolvida que quem abriu ainda não viu: o número do menu
+ * Solicitação/Triagem. Mesmo recorte da aba Concluído, sem o visto de quem
+ * abriu (`vistoPeloSolicitanteEm`, gravado ao abrir a solicitação resolvida e
+ * zerado quando ela volta a abrir, ver @utils/atendimento-da-solicitacao).
+ */
+export const FILTRO_RESOLVIDA_NAO_VISTA: Prisma.IntakeIssueWhereInput = {
+  AND: [buildFiltroDaSituacao([SITUACAO_CONCLUIDA]), { vistoPeloSolicitanteEm: null }],
+};
+
+type SolicitacaoParaOVisto = {
+  status: number;
+  grupoDaEtapa: string | null;
+  vistoPeloSolicitanteEm: Date | null;
+};
+
+/** A mesma regra do filtro, para uma solicitação já carregada. */
+export const isResolvidaNaoVista = ({ status, grupoDaEtapa, vistoPeloSolicitanteEm }: SolicitacaoParaOVisto) =>
+  isConcluida(status, grupoDaEtapa) && !vistoPeloSolicitanteEm;
+
+/** Já resolvida: só nela o visto de quem abriu faz sentido. */
+export const isResolvida = (status: number, grupoDaEtapa: string | null) => isConcluida(status, grupoDaEtapa);

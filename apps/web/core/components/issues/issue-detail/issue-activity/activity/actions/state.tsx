@@ -9,6 +9,7 @@ import { observer } from "mobx-react";
 import { StatePropertyIcon } from "@plane/propel/icons";
 import { useTranslation } from "@plane/i18n";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
+import { buildMudancaDeEtapa } from "@/components/issues/issue-detail/issue-activity/detalhe-da-atividade";
 // components
 import { IssueActivityBlockComponent, IssueLink } from "./";
 // icons
@@ -33,7 +34,7 @@ export const IssueStateActivity = observer(function IssueStateActivity(props: TI
       ends={ends}
     >
       <>
-        {t("activity.set_state_to")} <span className="font-medium text-primary">{activity.new_value}</span>
+        {t("activity.changed_state")} <span className="font-medium text-primary">{buildMudancaDeEtapa(activity)}</span>
         {showIssue ? ` ${t("activity.for")} ` : ``}
         {showIssue && <IssueLink activityId={activityId} />}.
       </>

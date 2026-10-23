@@ -14,7 +14,12 @@
  *
  * As consultas vivem no include do GET do chamado (`ISSUE_BY_ID_INCLUDE` em
  * @utils/serialize); aqui só regra pura.
+ *
+ * `aberta_por_id` e `is_resolvida_nao_vista` deixam a tela marcar como vista a
+ * solicitação resolvida quando quem a abriu olha o pedido original (o número do
+ * menu Solicitação/Triagem, ver @utils/situacao-da-solicitacao).
  */
+import { isResolvidaNaoVista } from "@utils/situacao-da-solicitacao";
 
 export type OrigemDaSolicitacao = "chat" | "portal" | "app";
 
@@ -61,7 +66,16 @@ export type ChamadoComOrigem = {
   versions?: Array<{ descriptionHtml: string | null; name: string | null }>;
   /** As trocas de prioridade, a mais antiga primeiro. */
   activities?: Array<{ oldValue: string | null }>;
-  intakeIssues?: Array<{ id: string; createdAt: Date; source: string; deletedAt: Date | null }>;
+  state?: { group: string | null } | null;
+  intakeIssues?: Array<{
+    id: string;
+    createdAt: Date;
+    source: string;
+    deletedAt: Date | null;
+    createdById?: string | null;
+    status?: number;
+    vistoPeloSolicitanteEm?: Date | null;
+  }>;
 };
 
 export type SolicitacaoDoChamado = {
@@ -75,6 +89,8 @@ export type SolicitacaoDoChamado = {
   titulo: string;
   descricao_html: string;
   is_texto_atual: boolean;
+  aberta_por_id: string | null;
+  is_resolvida_nao_vista: boolean;
 };
 
 export function buildSolicitacaoDoChamado(chamado: ChamadoComOrigem): SolicitacaoDoChamado | null {
@@ -93,5 +109,11 @@ export function buildSolicitacaoDoChamado(chamado: ChamadoComOrigem): Solicitaca
     titulo: (texto.isTextoAtual ? null : versao?.name) ?? chamado.name,
     descricao_html: texto.html,
     is_texto_atual: texto.isTextoAtual,
+    aberta_por_id: vinculo.createdById ?? null,
+    is_resolvida_nao_vista: isResolvidaNaoVista({
+      status: vinculo.status ?? -2,
+      grupoDaEtapa: chamado.state?.group ?? null,
+      vistoPeloSolicitanteEm: vinculo.vistoPeloSolicitanteEm ?? null,
+    }),
   };
 }

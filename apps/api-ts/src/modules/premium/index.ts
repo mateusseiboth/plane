@@ -21,6 +21,7 @@ import { inicioRecebido, vencimentoRecebido } from "@utils/prazo";
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
 import { recordActivities } from "@utils/activity";
+import { buildInicioDaSolicitacao } from "@utils/intake";
 import { movimentacaoService } from "@modules/issue/movimentacao.service";
 
 
@@ -244,7 +245,7 @@ export const premiumModule = new Elysia()
           descriptionHtml: b.description_html ?? "<p></p>",
           descriptionStripped: (b.description_html ?? "").replace(/<[^>]+>/g, ""),
           stateId: defaultState?.id ?? null, priority: b.priority ?? "none",
-          isDraft: false, createdById: user.id,
+          startDate: buildInicioDaSolicitacao(), isDraft: false, createdById: user.id,
         },
       });
       return tx.intakeIssue.create({

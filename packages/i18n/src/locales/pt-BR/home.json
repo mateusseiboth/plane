@@ -4,8 +4,8 @@
       "quickstart_guide": "Seu guia de início rápido",
       "not_right_now": "Agora não",
       "create_project": {
-        "title": "Criar um projeto",
-        "description": "A maioria das coisas começa com um projeto no Avião.",
+        "title": "Criar um sistema",
+        "description": "A maioria das coisas começa com um sistema no Avião.",
         "cta": "Começar"
       },
       "invite_team": {
@@ -40,14 +40,14 @@
     "recents": {
       "title": "Recentes",
       "empty": {
-        "project": "Seus projetos recentes aparecerão aqui quando você visitar um.",
+        "project": "Seus sistemas recentes aparecerão aqui quando você visitar um.",
         "page": "Suas páginas recentes aparecerão aqui quando você visitar uma.",
         "issue": "Seus chamados recentes aparecerão aqui quando você visitar um.",
         "default": "Você não tem nenhum item recente ainda."
       },
       "filters": {
         "all": "Todos",
-        "projects": "Projetos",
+        "projects": "Sistemas",
         "pages": "Páginas",
         "issues": "Chamados"
       }

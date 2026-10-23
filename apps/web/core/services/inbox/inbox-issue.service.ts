@@ -10,6 +10,7 @@ import type { TInboxIssue, TIssue, TInboxIssueWithPagination } from "@plane/type
 import { EInboxIssueSource } from "@plane/types";
 // helpers
 // services
+import type { TResumoDaTriagem } from "@/components/inbox/global/resumo-da-triagem";
 import { APIService } from "@/services/api.service";
 
 export class InboxIssueService extends APIService {
@@ -36,6 +37,24 @@ export class InboxIssueService extends APIService {
   ): Promise<Array<{ id: string; name: string; identifier: string }>> {
     return this.get(`/api/workspaces/${workspaceSlug}/sistemas-para-solicitacao/`)
       .then((response) => response?.data ?? [])
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  /** O número do menu Solicitação/Triagem (ver `resumo-da-triagem.ts`). */
+  async readResumoDaTriagem(workspaceSlug: string): Promise<TResumoDaTriagem> {
+    return this.get(`/api/workspaces/${workspaceSlug}/global-intake-issues/resumo/`)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  /** Quem abriu viu a solicitação resolvida; devolve o número novo do menu. */
+  async markSolicitacaoVista(workspaceSlug: string, issueId: string): Promise<TResumoDaTriagem> {
+    return this.post(`/api/workspaces/${workspaceSlug}/global-intake-issues/${issueId}/visto/`, {})
+      .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;
       });

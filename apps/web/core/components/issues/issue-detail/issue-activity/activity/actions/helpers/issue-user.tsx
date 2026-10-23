@@ -7,6 +7,7 @@
 import Link from "next/link";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
+import { readNomeDoAutor } from "@/components/issues/issue-detail/issue-activity/detalhe-da-atividade";
 
 type TIssueUser = {
   activityId: string;
@@ -33,7 +34,7 @@ export function IssueUser(props: TIssueUser) {
           href={`/${activity?.workspace_detail?.slug}/profile/${activity?.actor_detail?.id}`}
           className="font-medium text-primary hover:underline"
         >
-          {activity.actor_detail?.display_name}
+          {readNomeDoAutor(activity.actor_detail)}
         </Link>
       )}
     </>

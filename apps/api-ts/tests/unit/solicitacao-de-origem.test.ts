@@ -80,7 +80,18 @@ describe("buildSolicitacaoDoChamado", () => {
     moduleIssues: [{ module: { name: "Folha" } }],
     versions: [{ descriptionHtml: "<p>pedido</p>", name: "Erro" }],
     activities: [{ oldValue: "urgent" }],
-    intakeIssues: [{ id: "solic-1", createdAt: abertaEm, source: "in-app", deletedAt: null }],
+    state: { group: "started" },
+    intakeIssues: [
+      {
+        id: "solic-1",
+        createdAt: abertaEm,
+        source: "in-app",
+        deletedAt: null,
+        createdById: "user-ana",
+        status: 1,
+        vistoPeloSolicitanteEm: null,
+      },
+    ],
   };
 
   it("monta o painel com os dados de quando a solicitação foi aberta", () => {
@@ -95,7 +106,19 @@ describe("buildSolicitacaoDoChamado", () => {
       titulo: "Erro",
       descricao_html: "<p>pedido</p>",
       is_texto_atual: false,
+      aberta_por_id: "user-ana",
+      is_resolvida_nao_vista: false,
     });
+  });
+
+  it("diz se quem abriu ainda não viu a solicitação resolvida", () => {
+    const concluido = { ...chamado, state: { group: "completed" } };
+    expect(buildSolicitacaoDoChamado(concluido)).toMatchObject({ is_resolvida_nao_vista: true });
+    const vista = {
+      ...concluido,
+      intakeIssues: [{ ...chamado.intakeIssues[0]!, status: 3, vistoPeloSolicitanteEm: new Date() }],
+    };
+    expect(buildSolicitacaoDoChamado(vista)).toMatchObject({ is_resolvida_nao_vista: false });
   });
 
   it("no portal, quem abriu é a conta do cliente", () => {

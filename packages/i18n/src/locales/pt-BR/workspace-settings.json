@@ -75,12 +75,12 @@
       },
       "exports": {
         "heading": "Exportações",
-        "description": "Exporte os dados do seu projeto em vários formatos e acesse seu histórico de exportações com links para download.",
+        "description": "Exporte os dados do seu sistema em vários formatos e acesse seu histórico de exportações com links para download.",
         "title": "Exportações",
         "exporting": "Exportando",
         "previous_exports": "Exportações anteriores",
         "export_separate_files": "Exporte os dados em arquivos separados",
-        "exporting_projects": "Exportando projeto",
+        "exporting_projects": "Exportando sistema",
         "format": "Formato",
         "filters_info": "Aplique filtros para exportar chamados específicos com base em seus critérios.",
         "modal": {
@@ -99,7 +99,7 @@
       },
       "webhooks": {
         "heading": "Webhooks",
-        "description": "Automatize notificações para serviços externos quando ocorrerem eventos do projeto.",
+        "description": "Automatize notificações para serviços externos quando ocorrerem eventos do sistema.",
         "title": "Webhooks",
         "add_webhook": "Adicionar webhook",
         "modal": {
@@ -187,22 +187,22 @@
       "worklogs": {
         "title": "Registros de trabalho",
         "heading": "Registros de trabalho",
-        "description": "Baixe registros de trabalho, também conhecidos como folhas de ponto, de qualquer pessoa em qualquer projeto."
+        "description": "Baixe registros de trabalho, também conhecidos como folhas de ponto, de qualquer pessoa em qualquer sistema."
       },
       "group_syncing": {
         "title": "Sincronização de grupos",
         "heading": "Sincronização de grupos",
-        "description": "Vincule grupos do provedor de identidade a projetos e funções. O acesso do usuário é atualizado automaticamente quando a associação ao grupo muda no seu IdP, simplificando onboarding e offboarding.",
+        "description": "Vincule grupos do provedor de identidade a sistemas e funções. O acesso do usuário é atualizado automaticamente quando a associação ao grupo muda no seu IdP, simplificando onboarding e offboarding.",
         "enable": {
           "title": "Ativar sincronização de grupos",
-          "description": "Adicione automaticamente usuários a projetos com base nos grupos do provedor de identidade."
+          "description": "Adicione automaticamente usuários a sistemas com base nos grupos do provedor de identidade."
         },
         "config": {
           "title": "Configurar sincronização de grupos",
-          "description": "Configure como os grupos do provedor de identidade são mapeados para projetos e funções.",
+          "description": "Configure como os grupos do provedor de identidade são mapeados para sistemas e funções.",
           "sync_on_login": {
             "title": "Sincronizar no login",
-            "description": "Atualize a associação ao grupo e o acesso ao projeto quando um usuário fizer login."
+            "description": "Atualize a associação ao grupo e o acesso ao sistema quando um usuário fizer login."
           },
           "sync_offline": {
             "title": "Sincronização offline",
@@ -210,7 +210,7 @@
           },
           "auto_remove": {
             "title": "Remoção automática",
-            "description": "Remova automaticamente usuários dos projetos quando não corresponderem mais ao grupo."
+            "description": "Remova automaticamente usuários dos sistemas quando não corresponderem mais ao grupo."
           },
           "group_attribute_key": {
             "title": "Chave do atributo de grupo",
@@ -220,7 +220,7 @@
         },
         "group_mapping": {
           "title": "Mapeamento de grupos",
-          "description": "Vincule grupos do provedor de identidade a projetos e funções.",
+          "description": "Vincule grupos do provedor de identidade a sistemas e funções.",
           "button_text": "Adicionar nova sincronização de grupo"
         },
         "toast": {
@@ -230,7 +230,7 @@
         },
         "delete_modal": {
           "title": "Excluir sincronização de grupo",
-          "content": "Novos usuários deste grupo de identidade não serão mais adicionados ao projeto. Usuários já adicionados manterão sua função atual."
+          "content": "Novos usuários deste grupo de identidade não serão mais adicionados ao sistema. Usuários já adicionados manterão sua função atual."
         },
         "modal": {
           "idp_group_name": {
@@ -239,14 +239,14 @@
             "placeholder": "Digite os nomes dos grupos IdP"
           },
           "project": {
-            "text": "Projeto",
-            "required": "O projeto é obrigatório",
-            "placeholder": "Selecione um projeto"
+            "text": "Sistema",
+            "required": "O sistema é obrigatório",
+            "placeholder": "Selecione um sistema"
           },
           "default_role": {
-            "text": "Função do projeto",
-            "required": "A função do projeto é obrigatória",
-            "placeholder": "Selecione uma função do projeto"
+            "text": "Função do sistema",
+            "required": "A função do sistema é obrigatória",
+            "placeholder": "Selecione uma função do sistema"
           }
         }
       },
@@ -256,23 +256,23 @@
         "description": "Configure seu domínio e habilite o Single sign-on"
       },
       "project_states": {
-        "title": "Estados do projeto",
-        "heading": "Veja uma visão geral do progresso de todos os projetos.",
-        "description": "Os Estados de projeto são um recurso exclusivo do Avião para acompanhar o progresso de todos os seus projetos por qualquer propriedade do projeto.",
+        "title": "Estados do sistema",
+        "heading": "Veja uma visão geral do progresso de todos os sistemas.",
+        "description": "Os Estados de sistema são um recurso exclusivo do Avião para acompanhar o progresso de todos os seus sistemas por qualquer propriedade do sistema.",
         "go_to_settings": "Ir para as configurações"
       },
       "projects": {
-        "title": "Projetos",
-        "description": "Gerencie estados de projetos, ative etiquetas de projetos e outras configurações.",
+        "title": "Sistemas",
+        "description": "Gerencie estados de sistemas, ative etiquetas de sistemas e outras configurações.",
         "tabs": {
-          "states": "Estados do projeto",
-          "labels": "Etiquetas do projeto"
+          "states": "Estados do sistema",
+          "labels": "Etiquetas do sistema"
         }
       },
       "templates": {
         "title": "Modelos",
         "heading": "Modelos",
-        "description": "Economize 80% do tempo gasto na criação de projetos, chamados e páginas quando você usar modelos."
+        "description": "Economize 80% do tempo gasto na criação de sistemas, chamados e páginas quando você usar modelos."
       },
       "relations": {
         "title": "Relações",
@@ -465,7 +465,7 @@
         "read": "Leitura",
         "write": "Gravação",
         "scope_description": {
-          "projects": "Acesso a projetos e todas as entidades relacionadas a projetos",
+          "projects": "Acesso a sistemas e todas as entidades relacionadas a sistemas",
           "wiki": "Acesso ao wiki e todas as entidades relacionadas ao wiki",
           "workspaces": "Acesso a workspaces e todas as entidades relacionadas",
           "stickies": "Acesso a stickies e todas as entidades relacionadas a stickies",

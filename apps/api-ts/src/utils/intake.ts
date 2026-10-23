@@ -13,6 +13,7 @@ import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { markChamadoNaoLido } from "@utils/chamado-nao-lido";
 import type { FieldErrorItem } from "@utils/field-error";
 import { notifyQualityOfIntake } from "@utils/notifications";
+import { inicioDeHoje } from "@utils/prazo";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
 
@@ -104,6 +105,14 @@ export async function findErrosDaSolicitacao({
   ];
 }
 
+/**
+ * O início do chamado é o dia em que a solicitação foi aberta (pedido do
+ * cliente, 23/10/2026): o prazo conta da abertura pelo Atendimento, não do
+ * aceite na triagem, que não mexe neste campo. Data pura, como toda
+ * `start_date` (começo do dia no fuso do escritório, ver @utils/prazo).
+ */
+export const buildInicioDaSolicitacao = (abertaEm: Date = new Date()): Date => inicioDeHoje(0, abertaEm);
+
 export type NovaSolicitacaoDoTime = {
   workspaceId: string;
   projectId: string;
@@ -140,6 +149,7 @@ export async function createSolicitacao(dados: NovaSolicitacaoDoTime) {
       name: dados.name,
       stateId: triageState?.id ?? null,
       priority: dados.priority ?? "none",
+      startDate: buildInicioDaSolicitacao(),
       isDraft: false,
       createdById: user.id,
       ...(dados.descriptionHtml !== undefined
