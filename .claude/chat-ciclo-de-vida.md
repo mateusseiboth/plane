@@ -138,16 +138,18 @@ longo não acharia nada) e vai para `GET /api/wiki/search` do serviço. Voltam a
 `{id, name, trecho, url, sistema}`: `url` é a página pública na wiki da Quality (abre em nova aba),
 `sistema` é o primeiro pedaço do `path` (`siart/...`, `Planejar/...`, `web/...`), e o trecho é o `summary`
 ou, como ele quase sempre vem vazio, o começo do conteúdo (`GET /api/wiki/document/:id`, ~300 caracteres
-de texto puro), ou as tags. Páginas cujo primeiro pedaço do `path` ou alguma tag é o identificador ou o nome
-do sistema escolhido sobem (`isPaginaDoSistema`, sem acento e caixa). "Sugerir solução" (sempre visível)
+de texto puro), ou as tags. Páginas em que algum pedaço do `path` (`siart/...`, `web/SIART/...`) ou alguma
+tag é o identificador ou o nome do sistema escolhido sobem (`isPaginaDoSistema`, sem acento e caixa,
+sublinhado vale espaço). "Sugerir solução" (sempre visível)
 chama `POST .../wiki/sugestoes/resolver/ {texto, paginas}`, que pergunta a `POST /api/ai/query` (a IA da
 Quality responde com a base de conhecimento da wiki) citando os títulos das páginas; volta
 `{sugestao (até 600 caracteres), paginas_consultadas}`. Cliente HTTP em `clientes/ia-da-quality.ts`
 (`IA_DA_QUALITY_URL`, `WIKI_DA_QUALITY_URL`, tetos de 6 s na busca e 30 s na resposta): fora do ar, erro,
 tempo estourado ou o erro que o serviço devolve com 200 (`source_info.source = "Error"`) viram `[]` ou
 `{sugestao: null, motivo}`; a tela diz "A IA da Quality não respondeu agora." Nada disso bloqueia o envio.
-Trilha LGPD: `entity=page`, `action=export`, `metadata.servico="wiki-sugestoes"`, `operacao` `busca`
-(quantos termos saíram) ou `resolucao` (tamanho do texto e ids das páginas), nunca o conteúdo.
+Trilha LGPD só no `resolver/` (o relato inteiro sai para a IA): `entity=page`, `action=export`,
+`metadata.servico="wiki-sugestoes"`, `operacao="resolucao"`, tamanho do texto e ids das páginas, nunca o
+conteúdo. A busca não grava: saem só até 8 termos, e cada pausa na digitação é uma busca.
 
 **Relatórios** (`chat.relatorios`): período padrão = últimos 7 dias; filtros entidade, sistema,
 motivo, atendente. Agregação em memória (uma passada), sem `_count` de relação.

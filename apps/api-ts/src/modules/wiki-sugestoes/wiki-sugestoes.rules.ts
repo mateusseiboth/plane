@@ -251,12 +251,13 @@ const normalizeRotulo = (texto: string) =>
     .trim();
 
 /**
- * A página é do sistema quando o primeiro pedaço do caminho, ou uma das tags,
- * é o identificador ou o nome dele. Palavra inteira: `siartweb` não é `siart`.
+ * A página é do sistema quando um pedaço do caminho (`siart/...`,
+ * `web/SIART/...`), ou uma das tags, é o identificador ou o nome dele.
+ * Pedaço inteiro: `siartweb` não é `siart`.
  */
 export const isPaginaDoSistema = (path: string, tags: string[], sistema: SistemaDaBusca): boolean => {
   const nomesDoSistema = new Set([sistema.identifier, sistema.name].map(normalizeRotulo).filter(Boolean));
-  return [readSistemaDoPath(path), ...tags].map(normalizeRotulo).some((rotulo) => nomesDoSistema.has(rotulo));
+  return [...path.split("/"), ...tags].map(normalizeRotulo).some((rotulo) => nomesDoSistema.has(rotulo));
 };
 
 /** As páginas do sistema escolhido primeiro; dentro de cada grupo, a ordem da busca. */

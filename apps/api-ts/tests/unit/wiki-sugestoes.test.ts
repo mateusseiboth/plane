@@ -124,12 +124,14 @@ describe("readSistemaDoPath", () => {
 describe("isPaginaDoSistema", () => {
   const siart = { identifier: "SIART", name: "Sistema de Arrecadação" };
 
-  it("o primeiro pedaço do caminho é o identificador, sem diferença de caixa", () => {
-    expect(isPaginaDoSistema("siart/ConfigParametros", [], siart)).toBe(true);
+  it("um pedaço do caminho é o identificador, sem diferença de caixa", () => {
+    expect(isPaginaDoSistema("siart/ConfigParametrosIrregularidadeSimplesNacional", [], siart)).toBe(true);
+    expect(isPaginaDoSistema("web/SIART/Emissao_de_guias", [], siart)).toBe(true);
   });
 
-  it("o primeiro pedaço do caminho é o nome, sem diferença de acento nem de sublinhado", () => {
+  it("um pedaço do caminho é o nome, sem diferença de acento nem de sublinhado", () => {
     expect(isPaginaDoSistema("Sistema_de_Arrecadacao/x", [], siart)).toBe(true);
+    expect(isPaginaDoSistema("web/sistema_de_arrecadação/x", [], siart)).toBe(true);
   });
 
   it("uma das tags é o identificador ou o nome", () => {
@@ -137,9 +139,9 @@ describe("isPaginaDoSistema", () => {
     expect(isPaginaDoSistema("web/x", ["sistema de arrecadação"], siart)).toBe(true);
   });
 
-  it("o sistema só no meio do caminho ou dentro de uma palavra não conta", () => {
-    expect(isPaginaDoSistema("web/SIART", ["siartweb"], siart)).toBe(false);
-    expect(isPaginaDoSistema("Planejar/x", [], siart)).toBe(false);
+  it("o sistema dentro de uma palavra não conta", () => {
+    expect(isPaginaDoSistema("web/SIARTweb/x", ["siartweb"], siart)).toBe(false);
+    expect(isPaginaDoSistema("Planejar/Emissao_de_guias_siart", [], siart)).toBe(false);
   });
 
   it("sistema sem identificador nem nome não casa com nada", () => {

@@ -125,7 +125,7 @@ apps/
   through the "IA da Quality" service, not Plane pages.
   `GET /api/v1/workspaces/:slug/wiki/sugestoes/?q=&project_id=` sends the problem's key terms to
   `/api/wiki/search` and returns up to 5 pages `{id, name, trecho, url, sistema}` (public Quality
-  wiki URL; pages whose path or tags match the chosen system come first);
+  wiki URL; pages with a path segment or tag matching the chosen system come first);
   `POST /api/v1/workspaces/:slug/wiki/sugestoes/resolver/` `{texto, paginas}` asks `/api/ai/query`
   what to do and returns `{sugestao, paginas_consultadas}` or `{sugestao: null, motivo}`. Both need
   `intake.create`; service down, slow or failing means `[]` / `sugestao: null`, never 500. Env:

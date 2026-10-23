@@ -25,13 +25,11 @@ export const wikiSugestoesModule = new Elysia({ prefix: "/workspaces/:slug/wiki/
   .use(authPlugin)
   .get(
     "/",
-    async ({ params: { slug }, query, user, headers }) => {
+    async ({ params: { slug }, query, user }) => {
       const ws = await getWorkspaceOrFail(slug);
       await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTAKE_CREATE);
       return findSugestoesDaWiki({
         espaco: ws,
-        user,
-        headers,
         texto: readParametro(query.q),
         projectId: readParametro(query.project_id),
       });

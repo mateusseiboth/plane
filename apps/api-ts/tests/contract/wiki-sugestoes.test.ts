@@ -15,7 +15,7 @@
  *  - serviço fora do ar, com erro ou lento devolve `[]` e `sugestao: null`, nunca 500;
  *  - a pergunta à IA leva o relato e os títulos das páginas;
  *  - quem não abre solicitação (`intake.create`) recebe 403;
- *  - a saída do texto para o serviço fica na trilha LGPD.
+ *  - a saída do texto do problema para a IA fica na trilha LGPD; a busca, não.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import prisma from "@db";
@@ -323,18 +323,13 @@ describe("sugestões da wiki da Quality ao abrir solicitação", () => {
     });
   });
 
-  it("a busca também fica na trilha, com a quantidade de termos enviados", async () => {
+  it("a busca não grava auditoria: são só os termos, e cada pausa na digitação é uma busca", async () => {
+    const antes = await prisma.auditLog.count({ where: { metadata: { path: ["servico"], equals: "wiki-sugestoes" } } });
     await readSugestoes("ok", "emitir nota fiscal eletrônica");
-    const registro = await prisma.auditLog.findFirst({
-      where: {
-        action: "export",
-        AND: [
-          { metadata: { path: ["servico"], equals: "wiki-sugestoes" } },
-          { metadata: { path: ["operacao"], equals: "busca" } },
-        ],
-      },
-      orderBy: { createdAt: "desc" },
+    expect(ia.buscas).toHaveLength(1);
+    const depois = await prisma.auditLog.count({
+      where: { metadata: { path: ["servico"], equals: "wiki-sugestoes" } },
     });
-    expect(registro?.metadata).toMatchObject({ termos_enviados: 4 });
+    expect(depois).toBe(antes);
   });
 });

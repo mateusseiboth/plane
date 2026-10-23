@@ -4,8 +4,8 @@
  * Quality (`clientes/ia-da-quality.ts`).
  *
  * Nunca derruba a tela: serviço fora do ar, com erro ou lento vira lista vazia
- * ou sugestão `null` com o motivo. A saída do texto do cliente para o serviço
- * fica na trilha LGPD, contada e não copiada.
+ * ou sugestão `null` com o motivo. A saída do relato do cliente para a IA
+ * (`resolver/`) fica na trilha LGPD, contada e não copiada.
  */
 import {
   askIaDaQuality,
@@ -19,7 +19,6 @@ import { findSistemaDaBusca } from "@modules/wiki-sugestoes/sistema-da-busca.dao
 import {
   buildConsultaDaWiki,
   buildPerguntaDeResolucao,
-  extractTermosDaWiki,
   LIMITE_DE_PAGINAS_DA_WIKI,
   mapSugestaoDaWiki,
   MOTIVO_DA_SUGESTAO,
@@ -40,7 +39,7 @@ type Cabecalhos = Record<string, string | undefined>;
 
 export type SugestaoDeSolucao = RespostaDaIa | { sugestao: null; motivo: string };
 
-/** LGPD: parte do relato do cliente saiu para a IA da Quality. Registra quanto e para onde, não o conteúdo. */
+/** LGPD: o relato do cliente saiu para a IA da Quality. Registra quanto e para onde, não o conteúdo. */
 const saveTrilhaDaSaida = (args: {
   espaco: Espaco;
   user: Solicitante;
@@ -70,21 +69,15 @@ const readConteudo = async (config: ConfigDaIaDaQuality, pagina: PaginaDaIaDaQua
 /** Até 5 páginas da wiki da Quality parecidas com o texto; sem termo útil, lista vazia sem chamar o serviço. */
 export async function findSugestoesDaWiki(args: {
   espaco: Espaco;
-  user: Solicitante;
-  headers: Cabecalhos;
   texto: string;
   projectId: string;
 }): Promise<SugestaoDaWiki[]> {
   const consulta = buildConsultaDaWiki(args.texto);
   if (!consulta) return [];
 
+  // Sem trilha LGPD aqui: saem só os termos (até 8), e cada pausa na digitação
+  // é uma busca. A trilha fica no `resolver/`, onde o relato inteiro sai.
   const config = readConfigDaIaDaQuality();
-  await saveTrilhaDaSaida({
-    ...args,
-    config,
-    paginaId: undefined,
-    metadata: { operacao: "busca", termos_enviados: extractTermosDaWiki(args.texto).length },
-  });
   const [corpo, sistema] = await Promise.all([searchWiki(config, consulta), readSistema(args.espaco, args.projectId)]);
   const paginas = prioritizePaginasDoSistema(readPaginasDaBusca(corpo), sistema).slice(0, LIMITE_DE_PAGINAS_DA_WIKI);
   const conteudos = await Promise.all(paginas.map((pagina) => readConteudo(config, pagina)));
