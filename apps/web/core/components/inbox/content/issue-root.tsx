@@ -23,13 +23,16 @@ import type { TIssueOperations } from "@/components/issues/issue-detail";
 import { IssueActivity } from "@/components/issues/issue-detail/issue-activity";
 import { IssueReaction } from "@/components/issues/issue-detail/reactions";
 import { IssueTitleInput } from "@/components/issues/title-input";
+import { isSolicitacaoResolvida } from "@/components/inbox/global/resumo-da-triagem";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
+import { useProjectState } from "@/hooks/store/use-project-state";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
 import { useUser } from "@/hooks/store/user";
 import useReloadConfirmations from "@/hooks/use-reload-confirmation";
+import { useVistoDaSolicitacao } from "@/hooks/use-resumo-da-triagem";
 import { useUltimaEdicao } from "@/hooks/use-ultima-edicao";
 // store types
 import { DeDupeIssuePopoverRoot } from "@/plane-web/components/de-dupe/duplicate-popover";
@@ -90,6 +93,15 @@ export const InboxIssueMainContent = observer(function InboxIssueMainContent(pro
   );
   const projectDetails = issue?.project_id ? getProjectById(issue?.project_id) : undefined;
   const isIntakeAccepted = inboxIssue.status === EInboxIssueStatus.ACCEPTED;
+
+  // Quem abriu a solicitação e a vê resolvida: ela sai do número do menu Solicitação/Triagem.
+  const { getStateById } = useProjectState();
+  const { markVisto } = useVistoDaSolicitacao(workspaceSlug);
+  const isResolvida = isSolicitacaoResolvida(inboxIssue.status, getStateById(issue?.state_id)?.group);
+  const autorId = inboxIssue.created_by;
+  useEffect(() => {
+    if (issue?.id) void markVisto({ issueId: issue.id, autorId, isResolvida });
+  }, [issue?.id, autorId, isResolvida, markVisto]);
 
   // debounced duplicate issues swr
   const { duplicateIssues } = useDebouncedDuplicateIssues(

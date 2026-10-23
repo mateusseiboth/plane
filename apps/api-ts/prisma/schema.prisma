@@ -1206,6 +1206,8 @@ model IntakeIssue {
   source         String    @default("in-app")
   externalSource String?   @map("external_source")
   externalId     String?   @map("external_id")
+  /// Quando quem abriu viu a solicitação já resolvida (zera se ela voltar a abrir).
+  vistoPeloSolicitanteEm DateTime? @map("visto_pelo_solicitante_em")
 
   @@map("intake_issues")
 }

@@ -44,7 +44,7 @@ export const ISSUE_BY_ID_INCLUDE = {
   movedFrom:     CHAMADO_MOVIDO_SELECT,
   createdBy:     { select: { displayName: true } },
   portalRequest: { select: { account: { select: { name: true } } } },
-  intakeIssues:  { where: { deletedAt: null }, orderBy: { createdAt: "asc" }, take: 1, select: { id: true, createdAt: true, source: true, deletedAt: true } },
+  intakeIssues:  { where: { deletedAt: null }, orderBy: { createdAt: "asc" }, take: 1, select: { id: true, createdAt: true, source: true, deletedAt: true, createdById: true, status: true, vistoPeloSolicitanteEm: true } },
   moduleIssues:  { where: { deletedAt: null }, take: 1, select: { module: { select: { name: true } } } },
   versions:      { orderBy: { lastSavedAt: "asc" }, take: 1, select: { descriptionHtml: true, name: true } },
   activities:    { where: { field: "priority", deletedAt: null }, orderBy: { createdAt: "asc" }, take: 1, select: { oldValue: true } },

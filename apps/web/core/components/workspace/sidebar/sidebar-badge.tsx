@@ -29,8 +29,8 @@ const OuvidoriaNaoLidas = observer(function OuvidoriaNaoLidas({ slug }: TBadgePr
 
 // Só aparece onde o item aparece: a barra já escondeu o item de quem não abre nem tria pedidos.
 const TriagemResolvidas = observer(function TriagemResolvidas({ slug }: TBadgeProps) {
-  const { resolvidasParaAtender } = useResumoDaTriagem(slug);
-  return <Contador count={resolvidasParaAtender} />;
+  const { resolvidasNaoVistas } = useResumoDaTriagem(slug);
+  return <Contador count={resolvidasNaoVistas} />;
 });
 
 /** Contador ao lado do item do menu, por chave do item (strategy map). */

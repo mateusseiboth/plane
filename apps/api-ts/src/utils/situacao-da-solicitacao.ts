@@ -51,11 +51,24 @@ export function readSituacao(status: number, grupoDaEtapa: string | null): strin
 }
 
 /**
- * Solicitação resolvida que ainda espera o "atendido": o chamado terminou, mas
- * a solicitação não foi marcada como atendida (3). É o número que o menu
- * Solicitação/Triagem mostra para quem abriu o pedido. Mesmo recorte da aba
- * Concluído, menos as já atendidas.
+ * Solicitação resolvida que quem abriu ainda não viu: o número do menu
+ * Solicitação/Triagem. Mesmo recorte da aba Concluído, sem o visto de quem
+ * abriu (`vistoPeloSolicitanteEm`, gravado ao abrir a solicitação resolvida e
+ * zerado quando ela volta a abrir, ver @utils/atendimento-da-solicitacao).
  */
-export const FILTRO_RESOLVIDA_PARA_ATENDER: Prisma.IntakeIssueWhereInput = {
-  AND: [buildFiltroDaSituacao([SITUACAO_CONCLUIDA]), { NOT: { status: ATENDIDA } }],
+export const FILTRO_RESOLVIDA_NAO_VISTA: Prisma.IntakeIssueWhereInput = {
+  AND: [buildFiltroDaSituacao([SITUACAO_CONCLUIDA]), { vistoPeloSolicitanteEm: null }],
 };
+
+type SolicitacaoParaOVisto = {
+  status: number;
+  grupoDaEtapa: string | null;
+  vistoPeloSolicitanteEm: Date | null;
+};
+
+/** A mesma regra do filtro, para uma solicitação já carregada. */
+export const isResolvidaNaoVista = ({ status, grupoDaEtapa, vistoPeloSolicitanteEm }: SolicitacaoParaOVisto) =>
+  isConcluida(status, grupoDaEtapa) && !vistoPeloSolicitanteEm;
+
+/** Já resolvida: só nela o visto de quem abriu faz sentido. */
+export const isResolvida = (status: number, grupoDaEtapa: string | null) => isConcluida(status, grupoDaEtapa);

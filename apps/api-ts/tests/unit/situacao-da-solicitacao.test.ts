@@ -5,7 +5,12 @@
  * dessa marcação automática. "Aceito" fica só com o que ainda está em curso.
  */
 import { describe, expect, it } from "bun:test";
-import { SITUACAO_CONCLUIDA, buildFiltroDaSituacao, readSituacao } from "@utils/situacao-da-solicitacao";
+import {
+  SITUACAO_CONCLUIDA,
+  buildFiltroDaSituacao,
+  isResolvidaNaoVista,
+  readSituacao,
+} from "@utils/situacao-da-solicitacao";
 
 const CHAMADO_CONCLUIDO = { issue: { state: { group: "completed" } } };
 
@@ -47,5 +52,26 @@ describe("buildFiltroDaSituacao", () => {
 
   it("valor que não é status nem concluido é ignorado", () => {
     expect(buildFiltroDaSituacao(["abc", "-1"])).toEqual({ OR: [{ status: -1 }] });
+  });
+});
+
+// O número do menu Solicitação/Triagem: resolvida que quem abriu ainda não viu.
+describe("isResolvidaNaoVista", () => {
+  const naoVista = { vistoPeloSolicitanteEm: null };
+
+  it("atendida ou aceita de chamado concluído, sem visto, conta", () => {
+    expect(isResolvidaNaoVista({ status: 3, grupoDaEtapa: "completed", ...naoVista })).toBe(true);
+    expect(isResolvidaNaoVista({ status: 1, grupoDaEtapa: "completed", ...naoVista })).toBe(true);
+  });
+
+  it("depois que quem abriu viu, não conta", () => {
+    expect(isResolvidaNaoVista({ status: 3, grupoDaEtapa: "completed", vistoPeloSolicitanteEm: new Date() })).toBe(
+      false
+    );
+  });
+
+  it("o que ainda não terminou não conta", () => {
+    expect(isResolvidaNaoVista({ status: 1, grupoDaEtapa: "started", ...naoVista })).toBe(false);
+    expect(isResolvidaNaoVista({ status: -2, grupoDaEtapa: "triage", ...naoVista })).toBe(false);
   });
 });

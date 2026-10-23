@@ -51,6 +51,15 @@ export class InboxIssueService extends APIService {
       });
   }
 
+  /** Quem abriu viu a solicitação resolvida; devolve o número novo do menu. */
+  async markSolicitacaoVista(workspaceSlug: string, issueId: string): Promise<TResumoDaTriagem> {
+    return this.post(`/api/workspaces/${workspaceSlug}/global-intake-issues/${issueId}/visto/`, {})
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async retrieve(workspaceSlug: string, projectId: string, inboxIssueId: string): Promise<TInboxIssue> {
     return this.get(
       `/api/workspaces/${workspaceSlug}/projects/${projectId}/inbox-issues/${inboxIssueId}/?expand=issue_inbox`

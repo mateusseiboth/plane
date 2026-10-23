@@ -284,6 +284,7 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
               <SolicitacaoDeOrigem
                 workspaceSlug={workspaceSlug}
                 projectId={projectId}
+                issueId={issue.id}
                 solicitacao={issue.solicitacao}
               />
             )}

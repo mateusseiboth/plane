@@ -11,6 +11,7 @@ import { renderFormattedDateTime } from "@plane/utils";
 import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
 import { RichTextEditor } from "@/components/editor/rich-text";
 import { useWorkspace } from "@/hooks/store/use-workspace";
+import { useVistoDaSolicitacao } from "@/hooks/use-resumo-da-triagem";
 import {
   ROTULO_DA_ORIGEM,
   getAvisoDoTextoOriginal,
@@ -20,6 +21,7 @@ import {
 type Props = {
   workspaceSlug: string;
   projectId: string;
+  issueId: string;
   solicitacao: TSolicitacaoDoChamado;
 };
 
@@ -34,9 +36,10 @@ function DadoDaSolicitacao({ rotulo, valor }: { rotulo: string; valor: string | 
 }
 
 export const SolicitacaoDeOrigem = observer(function SolicitacaoDeOrigem(props: Props) {
-  const { workspaceSlug, projectId, solicitacao } = props;
+  const { workspaceSlug, projectId, issueId, solicitacao } = props;
   const [isAberta, setIsAberta] = useState(false);
   const { currentWorkspace } = useWorkspace();
+  const { markVisto } = useVistoDaSolicitacao(workspaceSlug);
   const aviso = getAvisoDoTextoOriginal(solicitacao);
   const Seta = isAberta ? ChevronDown : ChevronRight;
 
@@ -46,7 +49,15 @@ export const SolicitacaoDeOrigem = observer(function SolicitacaoDeOrigem(props: 
         <button
           type="button"
           className="flex h-7.5 items-center gap-1 rounded-sm px-2 text-body-xs-regular hover:bg-layer-1"
-          onClick={() => setIsAberta((aberta) => !aberta)}
+          onClick={() => {
+            setIsAberta((aberta) => !aberta);
+            // Quem abriu a solicitação resolvida e olha o pedido: sai do número do menu.
+            void markVisto({
+              issueId,
+              autorId: solicitacao.aberta_por_id,
+              isResolvida: solicitacao.is_resolvida_nao_vista,
+            });
+          }}
           aria-expanded={isAberta}
         >
           <Seta className="size-3.5 shrink-0" />
