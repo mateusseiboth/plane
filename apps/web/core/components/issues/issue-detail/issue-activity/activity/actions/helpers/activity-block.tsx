@@ -8,7 +8,8 @@ import type { ReactNode } from "react";
 import { Network } from "lucide-react";
 // plane imports
 import { Tooltip } from "@plane/propel/tooltip";
-import { renderFormattedTime, renderFormattedDate, calculateTimeAgo } from "@plane/utils";
+import { calculateTimeAgo } from "@plane/utils";
+import { formatDataHoraDaAtividade } from "@/components/issues/issue-detail/issue-activity/detalhe-da-atividade";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // plane web imports
@@ -44,21 +45,19 @@ export function IssueActivityBlockComponent(props: TIssueActivityBlockComponent)
       <div className="z-[4] flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-subtle bg-layer-2 text-secondary shadow-raised-100">
         {icon ? icon : <Network className="h-3.5 w-3.5" />}
       </div>
-      <div className="w-full truncate text-secondary">
-        {!activity?.field && activity?.verb === "created" ? (
-          <IssueCreatorDisplay activityId={activityId} customUserName={customUserName} />
-        ) : (
-          <IssueUser activityId={activityId} customUserName={customUserName} />
-        )}
-        <span> {children} </span>
-        <span>
-          <Tooltip
-            isMobile={isMobile}
-            tooltipContent={`${renderFormattedDate(activity.created_at)}, ${renderFormattedTime(activity.created_at)}`}
-          >
-            <span className="whitespace-nowrap text-tertiary"> {calculateTimeAgo(activity.created_at)}</span>
-          </Tooltip>
-        </span>
+      <div className="w-full min-w-0 text-secondary">
+        <div className="break-words">
+          {!activity?.field && activity?.verb === "created" ? (
+            <IssueCreatorDisplay activityId={activityId} customUserName={customUserName} />
+          ) : (
+            <IssueUser activityId={activityId} customUserName={customUserName} />
+          )}
+          <span> {children} </span>
+        </div>
+        {/* Data e hora absolutas sempre à vista; o "há 2 meses" fica no passar do mouse. */}
+        <Tooltip isMobile={isMobile} tooltipContent={calculateTimeAgo(activity.created_at)}>
+          <span className="whitespace-nowrap text-tertiary">{formatDataHoraDaAtividade(activity.created_at)}</span>
+        </Tooltip>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
   "activity": {
     "set_priority_to": "definiu a prioridade como",
     "set_state_to": "definiu o estado como",
+    "changed_state": "mudou a etapa:",
     "set_due_date_to": "definiu a data de entrega para",
     "removed_due_date": "removeu a data de entrega",
     "set_start_date_to": "definiu a data de início para",
