@@ -91,6 +91,9 @@ O `.env` de `/root/plane` **não** vai no rsync (é do servidor). O que cada cha
 | variável | para que serve | sem ela |
 |---|---|---|
 | `IA_REQUISITOS_*` | IA de requisitos (seção própria abaixo) | recurso desligado |
+| `IA_DA_QUALITY_URL` | serviço "IA da Quality" (busca na wiki da Quality e a IA que responde com ela), usado no bloco "Na wiki" do modal de solicitação | padrão `https://ia.qualitysistemas.inf.br`; fora do ar, o bloco mostra "Nada parecido na wiki." |
+| `WIKI_DA_QUALITY_URL` | endereço público da wiki da Quality, para os links das páginas sugeridas | padrão `https://wiki.qualitysistemas.inf.br` |
+| `IA_DA_QUALITY_TIMEOUT_MS` / `IA_DA_QUALITY_RESPOSTA_TIMEOUT_MS` | teto da busca (enquanto digita) e da resposta da IA (no clique em "Sugerir solução") | `6000` / `30000` |
 | `CHAT_SERVICE_TOKEN` | segredo das rotas internas que o robô do chat chama no api-ts (ouvidoria, currículo, e-mail do responsável). O MESMO valor vai para os dois serviços pelo compose | essas rotas respondem 503 e o passo "ação" do robô avisa e segue |
 | `PLUGIN_BRIDGE_SECRET` | assina o proxy `/plugin-sdk/backend/*` até o backend de cada plugin (o backup-manager usa) | o proxy responde 503; não há mais valor padrão |
 | `CHAT_PUBLIC_URL` | endereço público que a Z-API usa para baixar mídia e arquivos do disparo | padrão `http://localhost/chat-api`: a Z-API não alcança, e o disparo cai para base64 |

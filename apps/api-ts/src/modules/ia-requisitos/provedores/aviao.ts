@@ -18,7 +18,6 @@ import {
   sanitizarAnaliseNativa,
   sanitizarMelhoriaNativa,
   sanitizarRespostaNativa,
-  sanitizeResolucaoNativa,
 } from "@modules/ia-requisitos/provedores/comum";
 import {
   ANALISE_VAZIA,
@@ -27,7 +26,6 @@ import {
   type PedidoAnalise,
   type PedidoIa,
   type PedidoMelhoria,
-  type PedidoResolucao,
   type ProvedorDeIa,
   type RespostaAnalise,
   type RespostaIa,
@@ -58,11 +56,6 @@ export function criarProvedorAviao(cfg: ConfigIaRequisitos): ProvedorDeIa {
     async melhorar(pedido: PedidoMelhoria): Promise<RespostaMelhoria> {
       const corpo = await chamar("/melhorar", pedido, cfg.tempoLimiteMelhoriaMs);
       return corpo === null ? MELHORIA_VAZIA : sanitizarMelhoriaNativa(corpo, pedido.texto);
-    },
-    // Parte 4 do contrato: o serviço que ainda não tem `/resolver` responde 404,
-    // que vira texto vazio e a tela mostra só as páginas.
-    async resolve(pedido: PedidoResolucao): Promise<string> {
-      return sanitizeResolucaoNativa(await chamar("/resolver", pedido, cfg.tempoLimiteMelhoriaMs));
     },
   };
 }

@@ -1,18 +1,22 @@
 /**
- * Regras puras das sugestões da wiki ao abrir solicitação: o texto livre do
- * problema vira consulta, cada página achada ganha o endereço da tela, e a
- * sugestão da IA é cortada no tamanho de um aviso. Sem banco, sem rede.
+ * Regras puras das sugestões da wiki da Quality ao abrir solicitação: o texto
+ * livre do problema vira consulta para a IA da Quality, cada resultado vira
+ * sugestão (endereço na wiki, sistema, trecho), as páginas do sistema escolhido
+ * sobem, e a resposta da IA é lida e cortada no tamanho de um aviso.
+ * Sem banco, sem rede.
  */
-import { isUuid } from "@modules/pos-atendimento/pos-atendimento.rules";
 
 /** Termos que vão para a consulta. Texto de atendimento é longo; o começo diz o assunto. */
 export const LIMITE_DE_TERMOS_DA_WIKI = 8;
 
-/** Páginas devolvidas, e também o teto das que viajam para a IA como contexto. */
+/** Páginas devolvidas, e também o teto das que viajam para a IA como referência. */
 export const LIMITE_DE_PAGINAS_DA_WIKI = 5;
 
 /** Teto da sugestão mostrada no modal: um parágrafo curto, não um manual. */
 export const LIMITE_DA_SUGESTAO = 600;
+
+/** Teto do trecho de cada página na lista do modal. */
+export const LIMITE_DO_TRECHO = 300;
 
 /** Teto do problema que sai para a IA; o corpo vem do navegador. */
 export const LIMITE_DO_TEXTO_DO_PROBLEMA = 4000;
@@ -164,67 +168,211 @@ const PALAVRAS_VAZIAS = new Set([
 
 const withoutAcento = (texto: string) => texto.normalize("NFD").replace(/\p{M}/gu, "");
 
-const isTermoUtil = (termo: string) => termo.length >= TAMANHO_MINIMO_DO_TERMO && !PALAVRAS_VAZIAS.has(termo);
+/** Chave de comparação: sem acento, sem caixa. */
+const buildChaveDoTermo = (termo: string) => withoutAcento(termo.toLowerCase());
 
-/** Os termos do texto, sem acento, sem repetição, na ordem em que foram escritos. */
+const isTermoUtil = (termo: string) =>
+  termo.length >= TAMANHO_MINIMO_DO_TERMO && !PALAVRAS_VAZIAS.has(buildChaveDoTermo(termo));
+
+/**
+ * Os termos do texto, em minúsculas e COM acento, sem repetição, na ordem em
+ * que foram escritos. O acento fica porque a busca da wiki da Quality o
+ * distingue ("emissao" não acha "emissão"); a repetição e as palavras vazias
+ * são comparadas sem ele.
+ */
 export const extractTermosDaWiki = (texto: string): string[] => {
-  const termos = withoutAcento(texto.toLowerCase())
+  const termos = texto
+    .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .filter(isTermoUtil);
-  return [...new Set(termos)].slice(0, LIMITE_DE_TERMOS_DA_WIKI);
+  const chaves = termos.map(buildChaveDoTermo);
+  return termos.filter((_, i) => chaves.indexOf(chaves[i]) === i).slice(0, LIMITE_DE_TERMOS_DA_WIKI);
 };
 
 /**
- * A consulta no formato do `websearch_to_tsquery`: os termos ligados por OU.
- * Com E, um relato de três frases não acharia página nenhuma; com OU, quem
- * casa mais termos sobe no `ts_rank`. Os termos só têm letras e números, então
- * nada do que a pessoa digitou vira operador.
+ * A consulta para `GET /api/wiki/search`: os termos ligados por OU. A busca da
+ * wiki da Quality liga palavras soltas por E, e um relato de três frases não
+ * acharia página nenhuma. Os termos só têm letras e números, então nada do que
+ * a pessoa digitou vira operador.
  */
 export const buildConsultaDaWiki = (texto: string): string => extractTermosDaWiki(texto).join(" or ");
 
-/**
- * Endereço de uma página na tela: a de sistema abre no sistema (o escolhido no
- * modal, quando ela está nele); a sem sistema é da wiki. Mesma regra do
- * `getPaginaPath` de `@plane/utils`.
- */
-export const buildEnderecoDaPagina = (args: {
-  slug: string;
-  pageId: string;
-  projectIds: string[];
-  projectIdPreferido: string | null;
-}): { project_id: string | null; url: string } => {
-  const { slug, pageId, projectIds, projectIdPreferido } = args;
-  const sistema = projectIds.find((id) => id === projectIdPreferido) ?? projectIds[0] ?? null;
-  if (!sistema) return { project_id: null, url: `/${slug}/wiki/${pageId}` };
-  return { project_id: sistema, url: `/${slug}/projects/${sistema}/pages/${pageId}` };
+// ── Resultado da busca ───────────────────────────────────────────────────────
+
+/** Uma página da wiki da Quality, como a busca da IA da Quality devolve. */
+export type PaginaDaIaDaQuality = { id: string; title: string; path: string; tags: string[]; summary: string };
+
+/** O que o modal recebe por página. */
+export type SugestaoDaWiki = { id: string; name: string; trecho: string; url: string; sistema: string };
+
+/** O sistema escolhido no modal, para dar prioridade às páginas dele. */
+export type SistemaDaBusca = { identifier: string; name: string };
+
+const readTextoSolto = (valor: unknown) => (typeof valor === "string" ? valor.trim() : "");
+
+const readId = (valor: unknown) => (typeof valor === "number" ? String(valor) : readTextoSolto(valor));
+
+const readTags = (valor: unknown): string[] =>
+  Array.isArray(valor) ? valor.filter((tag): tag is string => typeof tag === "string" && !!tag.trim()) : [];
+
+const readPagina = (bruto: unknown): PaginaDaIaDaQuality => {
+  const pagina = (bruto ?? {}) as Record<string, unknown>;
+  return {
+    id: readId(pagina.id),
+    title: readTextoSolto(pagina.title),
+    path: readTextoSolto(pagina.path),
+    tags: readTags(pagina.tags),
+    summary: readTextoSolto(pagina.summary),
+  };
 };
 
-/** Corta no fim de uma palavra, com reticências, para caber no aviso do modal. */
-export const limitSugestao = (texto: string): string => {
+const isPaginaCompleta = (pagina: PaginaDaIaDaQuality) => !!(pagina.id && pagina.title && pagina.path);
+
+/** O corpo de `/api/wiki/search`, conferido: o que não é página vira nada. */
+export const readPaginasDaBusca = (corpo: unknown): PaginaDaIaDaQuality[] => {
+  const resultados = (corpo as { results?: unknown } | null)?.results;
+  if (!Array.isArray(resultados)) return [];
+  return resultados.map(readPagina).filter(isPaginaCompleta);
+};
+
+const withoutBarrasNasPontas = (path: string) => path.replace(/^\/+|\/+$/g, "");
+
+/** Endereço público da página na wiki da Quality. */
+export const buildUrlDaWiki = (urlDaWiki: string, path: string): string =>
+  `${urlDaWiki}/${withoutBarrasNasPontas(path).split("/").map(encodeURIComponent).join("/")}`;
+
+/** O caminho começa pelo sistema: `siart/...`, `Planejar/...`, `web/...`. */
+export const readSistemaDoPath = (path: string): string => withoutBarrasNasPontas(path).split("/")[0];
+
+/** Rótulo comparável: sem acento, sem caixa, sublinhado e hífen como espaço. */
+const normalizeRotulo = (texto: string) =>
+  buildChaveDoTermo(texto)
+    .replace(/[\s_-]+/g, " ")
+    .trim();
+
+/**
+ * A página é do sistema quando um pedaço do caminho (`siart/...`,
+ * `web/SIART/...`), ou uma das tags, é o identificador ou o nome dele.
+ * Pedaço inteiro: `siartweb` não é `siart`.
+ */
+export const isPaginaDoSistema = (path: string, tags: string[], sistema: SistemaDaBusca): boolean => {
+  const nomesDoSistema = new Set([sistema.identifier, sistema.name].map(normalizeRotulo).filter(Boolean));
+  return [...path.split("/"), ...tags].map(normalizeRotulo).some((rotulo) => nomesDoSistema.has(rotulo));
+};
+
+/** As páginas do sistema escolhido primeiro; dentro de cada grupo, a ordem da busca. */
+export const prioritizePaginasDoSistema = (
+  paginas: PaginaDaIaDaQuality[],
+  sistema: SistemaDaBusca | null
+): PaginaDaIaDaQuality[] => {
+  if (!sistema) return paginas;
+  const isDoSistema = (pagina: PaginaDaIaDaQuality) => isPaginaDoSistema(pagina.path, pagina.tags, sistema);
+  return [...paginas.filter(isDoSistema), ...paginas.filter((pagina) => !isDoSistema(pagina))];
+};
+
+/** Corta no fim de uma palavra, com reticências. */
+const limitTexto = (texto: string, limite: number): string => {
   const limpo = texto.trim();
-  if (limpo.length <= LIMITE_DA_SUGESTAO) return limpo;
-  const recorte = limpo.slice(0, LIMITE_DA_SUGESTAO - 1);
+  if (limpo.length <= limite) return limpo;
+  const recorte = limpo.slice(0, limite - 1);
   const fimDaPalavra = recorte.lastIndexOf(" ");
   return `${(fimDaPalavra > 0 ? recorte.slice(0, fimDaPalavra) : recorte).trimEnd()}…`;
 };
 
+const ENTIDADES: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+};
+
+/**
+ * O começo do texto da página, em texto puro: sem os títulos (o primeiro
+ * repete o nome da página), sem marcas e sem entidades.
+ */
+export const buildTrechoDoConteudo = (html: string): string =>
+  limitTexto(
+    html
+      .replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;|&amp;|&lt;|&gt;|&quot;|&#39;/g, (entidade) => ENTIDADES[entidade])
+      .replace(/\s+/g, " "),
+    LIMITE_DO_TRECHO
+  );
+
+/**
+ * Uma página como o modal mostra. O trecho é o resumo da busca; sem ele, o
+ * começo do conteúdo; sem conteúdo, as tags.
+ */
+export const mapSugestaoDaWiki = (pagina: PaginaDaIaDaQuality, urlDaWiki: string, conteudo = ""): SugestaoDaWiki => ({
+  id: pagina.id,
+  name: pagina.title,
+  trecho: limitTexto(pagina.summary, LIMITE_DO_TRECHO) || buildTrechoDoConteudo(conteudo) || pagina.tags.join(", "),
+  url: buildUrlDaWiki(urlDaWiki, pagina.path),
+  sistema: readSistemaDoPath(pagina.path),
+});
+
+// ── Sugestão de solução ──────────────────────────────────────────────────────
+
+/** Corta a resposta da IA no tamanho do aviso do modal. */
+export const limitSugestao = (texto: string): string => limitTexto(texto, LIMITE_DA_SUGESTAO);
+
 export type PedidoDeResolucao = { texto: string; paginaIds: string[] };
 
-const readTexto = (valor: unknown) => (typeof valor === "string" ? valor.trim() : "");
+/** Id de página da wiki da Quality: número. Nada que mude o caminho da chamada. */
+const isIdDaWiki = (id: string) => /^\d{1,12}$/.test(id);
 
-/** Só ids de verdade: o que não é uuid quebraria o `::uuid[]` da consulta. */
 const readPaginaIds = (valor: unknown): string[] => {
   if (!Array.isArray(valor)) return [];
-  return [...new Set(valor.filter(isUuid))].slice(0, LIMITE_DE_PAGINAS_DA_WIKI);
+  return [...new Set(valor.map(readId).filter(isIdDaWiki))].slice(0, LIMITE_DE_PAGINAS_DA_WIKI);
 };
 
 /** O corpo de `POST .../wiki/sugestoes/resolver/`, conferido campo a campo. */
 export const readPedidoDeResolucao = (corpo: unknown): PedidoDeResolucao => {
   const bruto = (corpo ?? {}) as { texto?: unknown; paginas?: unknown };
   return {
-    texto: readTexto(bruto.texto).slice(0, LIMITE_DO_TEXTO_DO_PROBLEMA),
+    texto: readTextoSolto(bruto.texto).slice(0, LIMITE_DO_TEXTO_DO_PROBLEMA),
     paginaIds: readPaginaIds(bruto.paginas),
   };
+};
+
+/**
+ * A pergunta para `POST /api/ai/query`. A IA da Quality busca sozinha na base
+ * de conhecimento; os títulos das páginas que o modal já achou ajudam essa
+ * busca a cair no mesmo assunto.
+ */
+export const buildPerguntaDeResolucao = (texto: string, titulos: string[]): string =>
+  [
+    "Sou do atendimento de suporte e o cliente relatou o problema abaixo.",
+    "O que devo fazer para resolver? Responda em português, em poucas frases, com o passo a passo da wiki.",
+    "",
+    `Problema: ${texto}`,
+    ...(titulos.length ? ["", `Páginas da wiki que podem ajudar: ${titulos.join("; ")}.`] : []),
+  ].join("\n");
+
+export type PaginaConsultada = { name: string; url: string };
+
+export type RespostaDaIa = { sugestao: string; paginas_consultadas: PaginaConsultada[] };
+
+/** As páginas que a IA usou, sem repetir (ela devolve um item por trecho achado). */
+const readPaginasConsultadas = (valor: unknown, urlDaWiki: string): PaginaConsultada[] => {
+  const paginas = Array.isArray(valor) ? valor.map(readPagina) : [];
+  const unicas = new Map(paginas.filter((p) => p.title && p.path).map((p) => [p.path, p]));
+  return [...unicas.values()].map((p) => ({ name: p.title, url: buildUrlDaWiki(urlDaWiki, p.path) }));
+};
+
+/**
+ * A resposta de `/api/ai/query`, ou `null` quando não há o que mostrar. O
+ * serviço devolve o próprio erro com status 200 (`source_info.source = "Error"`
+ * e um pedido de desculpas em `response`): isso não é sugestão.
+ */
+export const readRespostaDaIa = (corpo: unknown, urlDaWiki: string): RespostaDaIa | null => {
+  const bruto = (corpo ?? {}) as { response?: unknown; source_info?: { source?: unknown; pages_consulted?: unknown } };
+  const sugestao = limitSugestao(readTextoSolto(bruto.response));
+  if (!sugestao || bruto.source_info?.source === "Error") return null;
+  return { sugestao, paginas_consultadas: readPaginasConsultadas(bruto.source_info?.pages_consulted, urlDaWiki) };
 };
 
 /**
@@ -233,7 +381,5 @@ export const readPedidoDeResolucao = (corpo: unknown): PedidoDeResolucao => {
  */
 export const MOTIVO_DA_SUGESTAO = {
   semTexto: "Descreva o problema para receber uma sugestão.",
-  semPaginas: "Nada parecido na wiki.",
-  semIa: "Sugestão automática indisponível. Consulte as páginas da wiki.",
-  falhou: "Não foi possível sugerir agora. Consulte as páginas da wiki.",
+  semIa: "A IA da Quality não respondeu agora.",
 } as const;

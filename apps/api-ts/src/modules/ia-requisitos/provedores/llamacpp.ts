@@ -7,8 +7,6 @@
 
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {
-  buildInstrucaoDeResolucaoSistema,
-  buildInstrucaoDeResolucaoUsuario,
   instrucaoDeAnaliseSistema,
   instrucaoDeAnaliseUsuario,
   instrucaoDeMelhoriaSistema,
@@ -18,14 +16,12 @@ import {
   interpretarAnaliseDoModelo,
   interpretarMelhoriaDoModelo,
   interpretarTextoDoModelo,
-  parseResolucaoDoModelo,
   postarJson,
 } from "@modules/ia-requisitos/provedores/comum";
 import type {
   PedidoAnalise,
   PedidoIa,
   PedidoMelhoria,
-  PedidoResolucao,
   ProvedorDeIa,
   RespostaAnalise,
   RespostaIa,
@@ -38,8 +34,6 @@ const MAX_TOKENS_SUGESTAO = 320;
 const MAX_TOKENS_ANALISE = 900;
 /** A melhoria devolve o texto inteiro reescrito: precisa caber o chamado todo. */
 const MAX_TOKENS_MELHORIA = 2048;
-/** A sugestão de solução cabe num aviso de até ~600 caracteres. */
-const MAX_TOKENS_RESOLUCAO = 320;
 
 export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
   async function completar(
@@ -87,15 +81,6 @@ export function criarProvedorLlamacpp(cfg: ConfigIaRequisitos): ProvedorDeIa {
         cfg.tempoLimiteMelhoriaMs,
       );
       return interpretarMelhoriaDoModelo(texto, pedido.texto);
-    },
-    async resolve(pedido: PedidoResolucao): Promise<string> {
-      const texto = await completar(
-        buildInstrucaoDeResolucaoSistema(),
-        buildInstrucaoDeResolucaoUsuario(pedido),
-        MAX_TOKENS_RESOLUCAO,
-        cfg.tempoLimiteMelhoriaMs,
-      );
-      return parseResolucaoDoModelo(texto);
     },
   };
 }

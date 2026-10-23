@@ -41,9 +41,10 @@ apps/web/core/
   components/solicitacao/modal-de-solicitacao.tsx  sistema, título, módulo, entidade, complemento
                                              rico, cliente parado; o mesmo modal pela conversa
                                              (from-chat) e pelo botão "Nova solicitação" (avulsa)
-  components/solicitacao/bloco-da-wiki.tsx   "Na wiki" abaixo do complemento: páginas parecidas
-                                             com título + complemento (600 ms, 3+ palavras) e o
-                                             botão "Sugerir solução" (IA); ver nota abaixo
+  components/solicitacao/bloco-da-wiki.tsx   "Na wiki" abaixo do complemento: páginas da wiki da
+                                             Quality parecidas com título + complemento (600 ms,
+                                             3+ palavras) e o botão "Sugerir solução" (IA da
+                                             Quality); ver nota abaixo
   components/chat/acoes-da-conversa.tsx      Chamado / link do chamado, Pausar/Retomar, FalhaDeEnvio
   components/chat/relatorios-de-atendimento.tsx  relatórios + registros + impressão (no painel)
   components/chat/aba-de-encerramento.tsx    config: motivos, pergunta 1/99, fim do dia
@@ -126,21 +127,29 @@ a mostrar o link. Arquivo do WhatsApp (`ext:`) só por https; arquivo do chat ve
 `CHAT_INTERNAL_URL` (padrão `http://chat-backend:8002`). Arquivo que falha é pulado e contado.
 A tela NÃO redireciona mais para a triagem: o atendente segue na conversa.
 
-**Wiki no modal de solicitação** (W48, pedido de 23/10/2026): enquanto o atendente descreve o
-problema, `useSugestoesDaWiki` chama `GET /workspaces/:slug/wiki/sugestoes/?q=&project_id=`
-(módulo `apps/api-ts/src/modules/wiki-sugestoes/`, `intake.create`): o texto perde as palavras
-vazias (`wiki-sugestoes.rules.ts`), vira OU de até 8 termos no `websearch_to_tsquery` sobre o
-mesmo documento do `idx_pages_fts`, e voltam até 5 páginas, as do sistema escolhido primeiro,
-com trecho (`ts_headline`) e `url`. **Recorte próprio** (`recorteDaSolicitacao` no DAO, não o
-`findPaginas` da navegação): o Atendimento quase nunca participa de sistema e é a wiki de cada
-sistema que responde ao cliente, então entra a página PÚBLICA de qualquer sistema do espaço,
-sem vínculo; privada só para o dono; arquivada e excluída nunca; página sem sistema segue
-`wiki.view`. A prioridade do `project_id` vale para quem não participa de sistema nenhum. "Sugerir solução" chama
-`POST .../wiki/sugestoes/resolver/ {texto, paginas}`: a IA de requisitos (`ProvedorDeIa.resolve`)
-responde em até 600 caracteres; sem IA, sem página visível ou com erro vem
-`{sugestao: null, motivo}` e o bloco mostra só as páginas. O botão some quando
-`/ia/configuracao/` diz `ia_disponivel: false`. Nada disso bloqueia o envio. O formato nativo
-(`aviao`) precisa da rota `/resolver` no serviço (Parte 4 de `CONTRATO_IA_REQUISITOS.md`).
+**Wiki no modal de solicitação** (W48, fonte corrigida no W49 em 23/10/2026): a wiki é a **wiki da
+Quality** (Wiki.js, `https://wiki.qualitysistemas.inf.br`), consultada pelo serviço **IA da Quality**
+(`https://ia.qualitysistemas.inf.br`, repositório InteligenciaArtificial; o SIART usa o mesmo serviço).
+NÃO são as páginas do Plane. Enquanto o atendente descreve o problema, `useSugestoesDaWiki` chama
+`GET /workspaces/:slug/wiki/sugestoes/?q=&project_id=` (módulo `apps/api-ts/src/modules/wiki-sugestoes/`,
+`intake.create`): o texto perde as palavras vazias (`wiki-sugestoes.rules.ts`), vira OU de até 8 termos
+COM acento (a busca da wiki distingue "emissão" de "emissao"; palavras soltas são ligadas por E e um relato
+longo não acharia nada) e vai para `GET /api/wiki/search` do serviço. Voltam até 5 páginas
+`{id, name, trecho, url, sistema}`: `url` é a página pública na wiki da Quality (abre em nova aba),
+`sistema` é o primeiro pedaço do `path` (`siart/...`, `Planejar/...`, `web/...`), e o trecho é o `summary`
+ou, como ele quase sempre vem vazio, o começo do conteúdo (`GET /api/wiki/document/:id`, ~300 caracteres
+de texto puro), ou as tags. Páginas em que algum pedaço do `path` (`siart/...`, `web/SIART/...`) ou alguma
+tag é o identificador ou o nome do sistema escolhido sobem (`isPaginaDoSistema`, sem acento e caixa,
+sublinhado vale espaço). "Sugerir solução" (sempre visível)
+chama `POST .../wiki/sugestoes/resolver/ {texto, paginas}`, que pergunta a `POST /api/ai/query` (a IA da
+Quality responde com a base de conhecimento da wiki) citando os títulos das páginas; volta
+`{sugestao (até 600 caracteres), paginas_consultadas}`. Cliente HTTP em `clientes/ia-da-quality.ts`
+(`IA_DA_QUALITY_URL`, `WIKI_DA_QUALITY_URL`, tetos de 6 s na busca e 30 s na resposta): fora do ar, erro,
+tempo estourado ou o erro que o serviço devolve com 200 (`source_info.source = "Error"`) viram `[]` ou
+`{sugestao: null, motivo}`; a tela diz "A IA da Quality não respondeu agora." Nada disso bloqueia o envio.
+Trilha LGPD só no `resolver/` (o relato inteiro sai para a IA): `entity=page`, `action=export`,
+`metadata.servico="wiki-sugestoes"`, `operacao="resolucao"`, tamanho do texto e ids das páginas, nunca o
+conteúdo. A busca não grava: saem só até 8 termos, e cada pausa na digitação é uma busca.
 
 **Relatórios** (`chat.relatorios`): período padrão = últimos 7 dias; filtros entidade, sistema,
 motivo, atendente. Agregação em memória (uma passada), sem `_count` de relação.

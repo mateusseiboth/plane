@@ -1,13 +1,16 @@
 /**
- * Sugestões da wiki ao abrir solicitação pelo atendimento.
+ * Sugestões da wiki da Quality ao abrir solicitação pelo atendimento. A fonte
+ * é o serviço "IA da Quality" (`IA_DA_QUALITY_URL`), não as páginas do Plane.
  *
  * `GET  /workspaces/:slug/wiki/sugestoes/?q=<texto>&project_id=<opcional>`
- *   Até 5 páginas parecidas com o problema: `{ id, name, project_id, trecho, url }`.
+ *   Até 5 páginas parecidas com o problema: `{ id, name, trecho, url, sistema }`,
+ *   as do sistema escolhido primeiro. Serviço fora do ar: `[]`.
  * `POST /workspaces/:slug/wiki/sugestoes/resolver/` `{ texto, paginas: [ids] }`
- *   `{ sugestao }` escrita pela IA a partir das páginas, ou `{ sugestao: null, motivo }`.
+ *   `{ sugestao, paginas_consultadas }` respondido pela IA da Quality, ou
+ *   `{ sugestao: null, motivo }`.
  *
  * Quem pode: qualquer membro do espaço com `intake.create` (o mesmo que abre a
- * solicitação). As páginas devolvidas são só as que a pessoa enxerga.
+ * solicitação).
  */
 import { Elysia } from "elysia";
 import { authPlugin } from "@middleware/auth";
@@ -27,12 +30,11 @@ export const wikiSugestoesModule = new Elysia({ prefix: "/workspaces/:slug/wiki/
       await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTAKE_CREATE);
       return findSugestoesDaWiki({
         espaco: ws,
-        userId: user.id,
         texto: readParametro(query.q),
-        projectId: readParametro(query.project_id) || null,
+        projectId: readParametro(query.project_id),
       });
     },
-    { detail: { tags: ["Wiki"], summary: "Páginas da wiki parecidas com o problema descrito" } }
+    { detail: { tags: ["Wiki"], summary: "Páginas da wiki da Quality parecidas com o problema descrito" } }
   )
   .post(
     "/resolver/",
@@ -41,5 +43,5 @@ export const wikiSugestoesModule = new Elysia({ prefix: "/workspaces/:slug/wiki/
       await requireWorkspaceAction(ws.id, user.id, EProjectAction.INTAKE_CREATE);
       return resolveSugestaoDaWiki({ espaco: ws, user, headers, pedido: readPedidoDeResolucao(body) });
     },
-    { detail: { tags: ["Wiki"], summary: "O que fazer com o problema, sugerido pela IA a partir das páginas" } }
+    { detail: { tags: ["Wiki"], summary: "O que fazer com o problema, respondido pela IA da Quality" } }
   );
