@@ -7,6 +7,8 @@
 
 import type {ConfigIaRequisitos} from "@modules/ia-requisitos/config";
 import {
+  buildInstrucaoDeResolucaoSistema,
+  buildInstrucaoDeResolucaoUsuario,
   instrucaoDeAnaliseSistema,
   instrucaoDeAnaliseUsuario,
   instrucaoDeMelhoriaSistema,
@@ -16,12 +18,14 @@ import {
   interpretarAnaliseDoModelo,
   interpretarMelhoriaDoModelo,
   interpretarTextoDoModelo,
+  parseResolucaoDoModelo,
   postarJson,
 } from "@modules/ia-requisitos/provedores/comum";
 import type {
   PedidoAnalise,
   PedidoIa,
   PedidoMelhoria,
+  PedidoResolucao,
   ProvedorDeIa,
   RespostaAnalise,
   RespostaIa,
@@ -72,6 +76,14 @@ export function criarProvedorOllama(cfg: ConfigIaRequisitos): ProvedorDeIa {
         cfg.tempoLimiteMelhoriaMs
       );
       return interpretarMelhoriaDoModelo(texto, pedido.texto);
+    },
+    async resolve(pedido: PedidoResolucao): Promise<string> {
+      const texto = await conversar(
+        buildInstrucaoDeResolucaoSistema(),
+        buildInstrucaoDeResolucaoUsuario(pedido),
+        cfg.tempoLimiteMelhoriaMs
+      );
+      return parseResolucaoDoModelo(texto);
     },
   };
 }
