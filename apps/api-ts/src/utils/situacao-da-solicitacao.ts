@@ -49,3 +49,13 @@ const isConcluida = (status: number, grupoDaEtapa: string | null) =>
 export function readSituacao(status: number, grupoDaEtapa: string | null): string {
   return isConcluida(status, grupoDaEtapa) ? SITUACAO_CONCLUIDA : String(status);
 }
+
+/**
+ * Solicitação resolvida que ainda espera o "atendido": o chamado terminou, mas
+ * a solicitação não foi marcada como atendida (3). É o número que o menu
+ * Solicitação/Triagem mostra para quem abriu o pedido. Mesmo recorte da aba
+ * Concluído, menos as já atendidas.
+ */
+export const FILTRO_RESOLVIDA_PARA_ATENDER: Prisma.IntakeIssueWhereInput = {
+  AND: [buildFiltroDaSituacao([SITUACAO_CONCLUIDA]), { NOT: { status: ATENDIDA } }],
+};
