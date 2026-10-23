@@ -7,6 +7,8 @@ import {
   buildTextoDaBuscaNaWiki,
   extractTextoDoHtml,
   isHoraDeBuscarNaWiki,
+  MENSAGEM_SEM_IA,
+  readFontesDaSugestao,
   readMensagemDaSugestao,
 } from "@/components/solicitacao/sugestoes-da-wiki";
 
@@ -52,12 +54,30 @@ describe("isHoraDeBuscarNaWiki", () => {
   });
 });
 
+const FONTE = { name: "Emissão de guia", url: "https://wiki.qualitysistemas.inf.br/siart/guia" };
+
 describe("readMensagemDaSugestao", () => {
   it("devolve a sugestão quando houve", () => {
-    expect(readMensagemDaSugestao({ sugestao: "Reemita a guia." })).toBe("Reemita a guia.");
+    expect(readMensagemDaSugestao({ sugestao: "Reemita a guia.", paginas_consultadas: [] })).toBe("Reemita a guia.");
   });
 
   it("devolve o motivo quando não houve", () => {
-    expect(readMensagemDaSugestao({ sugestao: null, motivo: "Nada parecido na wiki." })).toBe("Nada parecido na wiki.");
+    expect(readMensagemDaSugestao({ sugestao: null, motivo: MENSAGEM_SEM_IA })).toBe(MENSAGEM_SEM_IA);
+  });
+
+  it("sem resposta, avisa que a IA da Quality não respondeu", () => {
+    expect(readMensagemDaSugestao(undefined)).toBe(MENSAGEM_SEM_IA);
+    expect(MENSAGEM_SEM_IA).not.toContain("—");
+  });
+});
+
+describe("readFontesDaSugestao", () => {
+  it("devolve as páginas que a IA consultou", () => {
+    expect(readFontesDaSugestao({ sugestao: "Reemita a guia.", paginas_consultadas: [FONTE] })).toEqual([FONTE]);
+  });
+
+  it("sem sugestão, não há fonte", () => {
+    expect(readFontesDaSugestao({ sugestao: null, motivo: MENSAGEM_SEM_IA })).toEqual([]);
+    expect(readFontesDaSugestao(undefined)).toEqual([]);
   });
 });

@@ -1,7 +1,8 @@
 /**
  * Regras do bloco "Na wiki" do modal de solicitação, sem React: o texto que
- * vai para a busca e quando vale buscar. A busca em si (palavras vazias,
- * ranqueamento) é do servidor: `GET /workspaces/:slug/wiki/sugestoes/`.
+ * vai para a busca, quando vale buscar e o que mostrar da resposta da IA. A
+ * busca em si é na wiki da Quality, pelo servidor:
+ * `GET /workspaces/:slug/wiki/sugestoes/`.
  */
 
 /** Espera depois da última tecla antes de buscar. */
@@ -10,15 +11,23 @@ export const ATRASO_DA_BUSCA_NA_WIKI_MS = 600;
 /** Com menos palavras que isto, o relato ainda não diz do que se trata. */
 export const MINIMO_DE_PALAVRAS_DA_WIKI = 3;
 
+/** Uma página da wiki da Quality: `url` é o endereço público dela, `sistema` o primeiro pedaço do caminho. */
 export type TSugestaoDaWiki = {
   id: string;
   name: string;
-  project_id: string | null;
   trecho: string;
   url: string;
+  sistema: string;
 };
 
-export type TSugestaoDeSolucao = { sugestao: string } | { sugestao: null; motivo: string };
+export type TPaginaConsultada = { name: string; url: string };
+
+export type TSugestaoDeSolucao =
+  | { sugestao: string; paginas_consultadas: TPaginaConsultada[] }
+  | { sugestao: null; motivo: string };
+
+/** Sem resposta da IA da Quality (fora do ar, erro de rede). */
+export const MENSAGEM_SEM_IA = "A IA da Quality não respondeu agora.";
 
 const ENTIDADES: Record<string, string> = {
   "&nbsp;": " ",
@@ -45,6 +54,10 @@ export const buildTextoDaBuscaNaWiki = (titulo: string, complementoHtml: string)
 export const isHoraDeBuscarNaWiki = (texto: string): boolean =>
   (texto.match(/[\p{L}\p{N}]+/gu) ?? []).length >= MINIMO_DE_PALAVRAS_DA_WIKI;
 
-/** A sugestão da IA, ou o motivo de não haver uma. */
-export const readMensagemDaSugestao = (resposta: TSugestaoDeSolucao): string =>
-  "motivo" in resposta ? resposta.motivo : resposta.sugestao;
+/** A sugestão da IA, o motivo de não haver uma, ou o aviso de que ela não respondeu. */
+export const readMensagemDaSugestao = (resposta: TSugestaoDeSolucao | undefined): string =>
+  resposta?.sugestao ?? (resposta && "motivo" in resposta ? resposta.motivo : MENSAGEM_SEM_IA);
+
+/** As páginas da wiki que a IA usou para responder. */
+export const readFontesDaSugestao = (resposta: TSugestaoDeSolucao | undefined): TPaginaConsultada[] =>
+  resposta && "paginas_consultadas" in resposta ? resposta.paginas_consultadas : [];

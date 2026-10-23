@@ -1,8 +1,8 @@
 /**
- * Sugestões da wiki para o modal de solicitação.
+ * Sugestões da wiki da Quality para o modal de solicitação.
  *
  * `GET  /api/workspaces/:slug/wiki/sugestoes/?q=&project_id=`  páginas parecidas
- * `POST /api/workspaces/:slug/wiki/sugestoes/resolver/`        o que fazer, pela IA
+ * `POST /api/workspaces/:slug/wiki/sugestoes/resolver/`        o que fazer, pela IA da Quality
  */
 import { API_BASE_URL } from "@plane/constants";
 import type { TSugestaoDaWiki, TSugestaoDeSolucao } from "@/components/solicitacao/sugestoes-da-wiki";
