@@ -4,12 +4,12 @@
     "label_lowercase": "tipos de chamado",
     "settings": {
       "description": "Personalize e adicione suas próprias propriedades para adaptar às necessidades da sua equipe.",
-      "cant_delete_default_message": "Não é possível excluir este tipo de chamado, pois ele está definido como o tipo padrão para este projeto.",
+      "cant_delete_default_message": "Não é possível excluir este tipo de chamado, pois ele está definido como o tipo padrão para este sistema.",
       "set_as_default": "Definir como padrão",
       "cant_set_default_inactive_message": "Ative este tipo antes de defini-lo como padrão",
       "set_default_confirmation": {
         "title": "Definir como tipo de chamado padrão",
-        "description": "Definir {name} como padrão irá importá-lo para todos os projetos neste espaço de trabalho. Todos os novos chamados usarão este tipo por padrão.",
+        "description": "Definir {name} como padrão irá importá-lo para todos os sistemas neste espaço de trabalho. Todos os novos chamados usarão este tipo por padrão.",
         "confirm_button": "Definir como padrão"
       },
       "properties": {
@@ -195,7 +195,7 @@
           "validation_success_with_refs": "A fórmula é válida! Retorna {resultType} ({count} campo(s) referenciado(s))",
           "error": {
             "empty": "Por favor, insira uma fórmula",
-            "missing_context": "Contexto de espaço de trabalho, projeto ou tipo de chamado ausente",
+            "missing_context": "Contexto de espaço de trabalho, sistema ou tipo de chamado ausente",
             "validation_failed": "Falha na validação"
           },
           "picker": {
@@ -235,7 +235,7 @@
         "title": "Tipos",
         "description": "Crie e personalize tipos de chamados com propriedades.",
         "sort_options": {
-          "project_count": "Número de projetos dos quais faz parte"
+          "project_count": "Número de sistemas dos quais faz parte"
         },
         "filter_options": {
           "show_active": "Mostrar ativos",
@@ -361,13 +361,13 @@
     "empty_state": {
       "enable": {
         "title": "Ativar Tipos de chamado",
-        "description": "Molde chamados para seu trabalho com Tipos de chamado. Personalize com ícones, planos de fundo e propriedades e configure-os para este projeto.",
+        "description": "Molde chamados para seu trabalho com Tipos de chamado. Personalize com ícones, planos de fundo e propriedades e configure-os para este sistema.",
         "primary_button": {
           "text": "Ativar"
         },
         "confirmation": {
           "title": "Uma vez ativados, os Tipos de chamado não podem ser desativados.",
-          "description": "O tipo \"Chamado\" do Avião se tornará o tipo padrão deste projeto e aparecerá com seu ícone e plano de fundo neste projeto.",
+          "description": "O tipo \"Chamado\" do Avião se tornará o tipo padrão deste sistema e aparecerá com seu ícone e plano de fundo neste sistema.",
           "button": {
             "default": "Ativar",
             "loading": "Configurando"
@@ -376,14 +376,14 @@
       },
       "get_pro": {
         "title": "Obtenha Pro para ativar Tipos de chamado.",
-        "description": "Molde chamados para seu trabalho com Tipos de chamado. Personalize com ícones, planos de fundo e propriedades e configure-os para este projeto.",
+        "description": "Molde chamados para seu trabalho com Tipos de chamado. Personalize com ícones, planos de fundo e propriedades e configure-os para este sistema.",
         "primary_button": {
           "text": "Obter Pro"
         }
       },
       "upgrade": {
         "title": "Faça upgrade para ativar Tipos de chamado.",
-        "description": "Molde chamados para seu trabalho com Tipos de chamado. Personalize com ícones, planos de fundo e propriedades e configure-os para este projeto.",
+        "description": "Molde chamados para seu trabalho com Tipos de chamado. Personalize com ícones, planos de fundo e propriedades e configure-os para este sistema.",
         "primary_button": {
           "text": "Fazer upgrade"
         }

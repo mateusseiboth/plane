@@ -26,6 +26,7 @@ import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useUser } from "@/hooks/store/user";
 import { useWorkspaceNavigationPreferences } from "@/hooks/use-navigation-preferences";
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { readRotuloDoItemDaBarra } from "@/components/workspace/sidebar/rotulo-do-item-da-barra";
 import { isRequiredActionAllowed } from "@/lib/permissoes/acao-efetiva";
 // local imports
 import { UpgradeBadge } from "../upgrade-badge";
@@ -196,7 +197,7 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
           <Link href={itemHref} onClick={() => handleLinkClick()} className="group flex-grow">
             <div className="flex items-center gap-1.5 py-[1px]">
               {icon}
-              <p className="text-13 leading-5 font-medium">{t(item.labelTranslationKey)}</p>
+              <p className="text-13 leading-5 font-medium">{t(readRotuloDoItemDaBarra(item, can))}</p>
             </div>
           </Link>
           <div className="flex items-center gap-2">

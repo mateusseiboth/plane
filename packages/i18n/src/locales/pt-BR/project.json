@@ -103,7 +103,7 @@
     "empty_state": {
       "general": {
         "title": "Agrupe e defina prazos para seu trabalho em Ciclos.",
-        "description": "Divida o trabalho em partes com prazos definidos, trabalhe de trás para frente a partir do prazo do seu projeto para definir datas e faça um progresso tangível como equipe.",
+        "description": "Divida o trabalho em partes com prazos definidos, trabalhe de trás para frente a partir do prazo do seu sistema para definir datas e faça um progresso tangível como equipe.",
         "primary_button": {
           "text": "Defina seu primeiro ciclo",
           "comic": {
@@ -132,15 +132,15 @@
       },
       "archived": {
         "title": "Nenhum ciclo arquivado ainda",
-        "description": "Para organizar seu projeto, arquive os ciclos concluídos. Encontre-os aqui quando forem arquivados."
+        "description": "Para organizar seu sistema, arquive os ciclos concluídos. Encontre-os aqui quando forem arquivados."
       }
     }
   },
   "project_views": {
     "empty_state": {
       "general": {
-        "title": "Salve visualizações filtradas para o seu projeto. Crie quantas precisar",
-        "description": "As visualizações são um conjunto de filtros salvos que você usa com frequência ou deseja acesso fácil. Todos os seus colegas em um projeto podem ver as visualizações de todos e escolher o que melhor se adapta às suas necessidades.",
+        "title": "Salve visualizações filtradas para o seu sistema. Crie quantas precisar",
+        "description": "As visualizações são um conjunto de filtros salvos que você usa com frequência ou deseja acesso fácil. Todos os seus colegas em um sistema podem ver as visualizações de todos e escolher o que melhor se adapta às suas necessidades.",
         "primary_button": {
           "text": "Crie sua primeira visualização",
           "comic": {
@@ -168,7 +168,7 @@
       },
       "public": {
         "title": "Ainda não há páginas públicas",
-        "description": "Veja aqui as páginas compartilhadas com todos do seu projeto.",
+        "description": "Veja aqui as páginas compartilhadas com todos do seu sistema.",
         "primary_button": {
           "text": "Crie sua primeira página"
         }
@@ -191,7 +191,7 @@
     "empty_state": {
       "no_issues": {
         "title": "Crie um chamado e atribua-o a alguém, mesmo a você mesmo",
-        "description": "Pense nos chamados como tarefas, trabalhos ou JTBD. O que nós gostamos. Um chamado e seus subchamados são geralmente acionáveis ​​baseados no tempo atribuídos aos membros de sua equipe. Sua equipe cria, atribui e conclui chamados para mover seu projeto em direção à sua meta.",
+        "description": "Pense nos chamados como tarefas, trabalhos ou JTBD. O que nós gostamos. Um chamado e seus subchamados são geralmente acionáveis ​​baseados no tempo atribuídos aos membros de sua equipe. Sua equipe cria, atribui e conclui chamados para mover seu sistema em direção à sua meta.",
         "primary_button": {
           "text": "Crie seu primeiro chamado",
           "comic": {
@@ -224,8 +224,8 @@
     "delete_module": "Excluir módulo",
     "empty_state": {
       "general": {
-        "title": "Mapeie os marcos do seu projeto para Módulos e rastreie o trabalho agregado facilmente.",
-        "description": "Um grupo de chamados que pertencem a um pai lógico e hierárquico forma um módulo. Pense neles como uma forma de rastrear o trabalho por marcos do projeto. Eles têm seus próprios períodos e prazos, bem como análises para ajudá-lo a ver o quão perto ou longe você está de um marco.",
+        "title": "Mapeie os marcos do seu sistema para Módulos e rastreie o trabalho agregado facilmente.",
+        "description": "Um grupo de chamados que pertencem a um pai lógico e hierárquico forma um módulo. Pense neles como uma forma de rastrear o trabalho por marcos do sistema. Eles têm seus próprios períodos e prazos, bem como análises para ajudá-lo a ver o quão perto ou longe você está de um marco.",
         "primary_button": {
           "text": "Construa seu primeiro módulo",
           "comic": {
@@ -246,7 +246,7 @@
       },
       "archived": {
         "title": "Nenhum Módulo arquivado ainda",
-        "description": "Para organizar seu projeto, arquive os módulos concluídos ou cancelados. Encontre-os aqui quando forem arquivados."
+        "description": "Para organizar seu sistema, arquive os módulos concluídos ou cancelados. Encontre-os aqui quando forem arquivados."
       },
       "sidebar": {
         "in_active": "Este módulo ainda não está ativo.",
@@ -272,7 +272,7 @@
     "empty_state": {
       "general": {
         "title": "Escreva uma nota, um documento ou uma base de conhecimento completa. Peça a Galileo, o assistente de IA do Avião, para ajudá-lo a começar",
-        "description": "As páginas são espaço para registrar pensamentos no Avião. Anote notas de reunião, formate-as facilmente, incorpore chamados, organize-os usando uma biblioteca de componentes e mantenha-os todos no contexto do seu projeto. Para facilitar qualquer documento, invoque Galileo, a IA do Avião, com um atalho ou o clique de um botão.",
+        "description": "As páginas são espaço para registrar pensamentos no Avião. Anote notas de reunião, formate-as facilmente, incorpore chamados, organize-os usando uma biblioteca de componentes e mantenha-os todos no contexto do seu sistema. Para facilitar qualquer documento, invoque Galileo, a IA do Avião, com um atalho ou o clique de um botão.",
         "primary_button": {
           "text": "Crie sua primeira página"
         }
@@ -286,7 +286,7 @@
       },
       "public": {
         "title": "Nenhuma página pública ainda",
-        "description": "Veja as páginas compartilhadas com todos em seu projeto aqui mesmo.",
+        "description": "Veja as páginas compartilhadas com todos em seu sistema aqui mesmo.",
         "primary_button": {
           "text": "Crie sua primeira página"
         }
@@ -300,36 +300,36 @@
   "disabled_project": {
     "empty_state": {
       "inbox": {
-        "title": "As Solicitações não estão habilitadas para o projeto.",
-        "description": "As Solicitações ajudam você a gerenciar os pedidos recebidos no seu projeto e a adicioná-los como chamados no seu fluxo de trabalho. Habilite as Solicitações nas configurações do projeto para gerenciá-las.",
+        "title": "As Solicitações não estão habilitadas para o sistema.",
+        "description": "As Solicitações ajudam você a gerenciar os pedidos recebidos no seu sistema e a adicioná-los como chamados no seu fluxo de trabalho. Habilite as Solicitações nas configurações do sistema para gerenciá-las.",
         "primary_button": {
           "text": "Gerenciar funcionalidades"
         }
       },
       "cycle": {
-        "title": "Os ciclos não estão habilitados para este projeto.",
-        "description": "Divida o trabalho em partes com prazos definidos, trabalhe de trás para frente a partir do prazo do seu projeto para definir datas e faça um progresso tangível como equipe. Habilite o recurso de ciclos para o seu projeto para começar a usá-los.",
+        "title": "Os ciclos não estão habilitados para este sistema.",
+        "description": "Divida o trabalho em partes com prazos definidos, trabalhe de trás para frente a partir do prazo do seu sistema para definir datas e faça um progresso tangível como equipe. Habilite o recurso de ciclos para o seu sistema para começar a usá-los.",
         "primary_button": {
           "text": "Gerenciar funcionalidades"
         }
       },
       "module": {
-        "title": "Os módulos não estão habilitados para o projeto.",
-        "description": "Os módulos são os blocos de construção do seu projeto. Habilite os módulos nas configurações do projeto para começar a usá-los.",
+        "title": "Os módulos não estão habilitados para o sistema.",
+        "description": "Os módulos são os blocos de construção do seu sistema. Habilite os módulos nas configurações do sistema para começar a usá-los.",
         "primary_button": {
           "text": "Gerenciar funcionalidades"
         }
       },
       "page": {
-        "title": "As páginas não estão habilitadas para o projeto.",
-        "description": "As páginas são os blocos de construção do seu projeto. Habilite as páginas nas configurações do projeto para começar a usá-las.",
+        "title": "As páginas não estão habilitadas para o sistema.",
+        "description": "As páginas são os blocos de construção do seu sistema. Habilite as páginas nas configurações do sistema para começar a usá-las.",
         "primary_button": {
           "text": "Gerenciar funcionalidades"
         }
       },
       "view": {
-        "title": "As visualizações não estão habilitadas para o projeto.",
-        "description": "As visualizações são os blocos de construção do seu projeto. Habilite as visualizações nas configurações do projeto para começar a usá-las.",
+        "title": "As visualizações não estão habilitadas para o sistema.",
+        "description": "As visualizações são os blocos de construção do seu sistema. Habilite as visualizações nas configurações do sistema para começar a usá-las.",
         "primary_button": {
           "text": "Gerenciar funcionalidades"
         }
@@ -392,7 +392,7 @@
           "complete": "Importação concluída"
         },
         "message": {
-          "success": "{count} membr{plural} importad{plural} com sucesso para o projeto.",
+          "success": "{count} membr{plural} importad{plural} com sucesso para o sistema.",
           "no_imports": "Nenhum novo membro foi importado do arquivo CSV."
         },
         "stats": {

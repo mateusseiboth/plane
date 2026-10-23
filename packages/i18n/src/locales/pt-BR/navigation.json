@@ -9,7 +9,7 @@
   "sidebar": {
     "stickies": "Notas rápidas",
     "your_work": "Seu trabalho",
-    "projects": "Projetos",
+    "projects": "Sistemas",
     "pages": "Páginas",
     "new_work_item": "Novo chamado",
     "home": "Início",
@@ -31,7 +31,8 @@
     "plane_pro": "Avião Pro",
     "business": "Business",
     "all_work_items": "Todos os chamados",
-    "global_intake": "Solicitações globais",
+    "global_intake": "Triagem",
+    "global_intake_requester": "Solicitação",
     "technical_visits": "Visitas Técnicas",
     "reports": "Relatórios",
     "chat": "Atendimento",

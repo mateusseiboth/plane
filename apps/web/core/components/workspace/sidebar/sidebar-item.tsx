@@ -14,6 +14,7 @@ import { useTranslation } from "@plane/i18n";
 import { joinUrlPath } from "@plane/utils";
 // components
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
+import { readRotuloDoItemDaBarra } from "@/components/workspace/sidebar/rotulo-do-item-da-barra";
 import { SidebarBadge } from "@/components/workspace/sidebar/sidebar-badge";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
@@ -60,7 +61,7 @@ export const SidebarItemBase = observer(function SidebarItemBase({ item, additio
       <SidebarNavItem isActive={item.highlight(pathname, itemHref)}>
         <div className="flex items-center gap-1.5 py-[1px]">
           {icon}
-          <p className="text-13 leading-5 font-medium">{t(item.labelTranslationKey)}</p>
+          <p className="text-13 leading-5 font-medium">{t(readRotuloDoItemDaBarra(item, can))}</p>
           <SidebarBadge itemKey={item.key} slug={slug} />
         </div>
         {additionalRender?.(item.key, slug)}

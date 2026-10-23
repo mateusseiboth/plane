@@ -123,7 +123,7 @@
     "table": {
       "title": "Título da automação",
       "scope": "Escopo",
-      "projects": "Projetos",
+      "projects": "Sistemas",
       "last_run_on": "Última execução em",
       "created_on": "Criado em",
       "last_updated_on": "Última atualização em",
@@ -207,7 +207,7 @@
       "delete": {
         "success": {
           "title": "Automação excluída",
-          "message": "{name}, a automação, foi excluída do seu projeto."
+          "message": "{name}, a automação, foi excluída do seu sistema."
         },
         "error": {
           "title": "Não foi possível excluir essa automação desta vez.",
@@ -236,21 +236,21 @@
       },
       "upgrade": {
         "title": "Automações",
-        "description": "Automações são uma forma de automatizar tarefas no seu projeto.",
+        "description": "Automações são uma forma de automatizar tarefas no seu sistema.",
         "sub_description": "Recupere 80% do seu tempo administrativo quando usar Automações."
       }
     },
     "global_automations": {
       "project_select": {
-        "label": "Selecione os projetos nos quais esta automação será executada",
+        "label": "Selecione os sistemas nos quais esta automação será executada",
         "all_projects": {
-          "label": "Todos os projetos",
-          "description": "A automação será executada para todos os projetos do espaço de trabalho."
+          "label": "Todos os sistemas",
+          "description": "A automação será executada para todos os sistemas do espaço de trabalho."
         },
         "select_projects": {
-          "label": "Selecionar projetos",
-          "description": "A automação será executada para os projetos selecionados do espaço de trabalho.",
-          "placeholder": "Selecionar projetos"
+          "label": "Selecionar sistemas",
+          "description": "A automação será executada para os sistemas selecionados do espaço de trabalho.",
+          "placeholder": "Selecionar sistemas"
         }
       },
       "settings": {
@@ -262,7 +262,7 @@
         "scope": {
           "global": "Global",
           "project": {
-            "label": "Projeto",
+            "label": "Sistema",
             "multiple": "Múltiplos",
             "all": "Todos"
           }

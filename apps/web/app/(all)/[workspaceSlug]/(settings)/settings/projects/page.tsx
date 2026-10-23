@@ -23,18 +23,17 @@ function ProjectSettingsPage() {
   const resolvedPath = resolvedTheme === "dark" ? ProjectDarkEmptyState : ProjectLightEmptyState;
   return (
     <div className="mx-auto flex h-full max-w-[480px] flex-col items-center justify-center gap-4">
-      <img src={resolvedPath} alt="Nenhum projeto ainda" />
-      <div className="text-16 font-semibold text-tertiary">Nenhum projeto ainda</div>
+      <img src={resolvedPath} alt="Nenhum sistema ainda" />
+      <div className="text-16 font-semibold text-tertiary">Nenhum sistema ainda</div>
       <div className="text-center text-13 text-tertiary">
-        Os projetos são a base do trabalho orientado a metas. Com eles você gerencia suas equipes, tarefas e tudo o
-        que for necessário para concluir as entregas.
+        Os sistemas reúnem os chamados, as equipes e tudo o que for necessário para concluir as entregas.
       </div>
       <div className="flex gap-2">
         <Button
           onClick={() => toggleCreateProjectModal(true)}
           data-ph-element={PROJECT_TRACKER_ELEMENTS.EMPTY_STATE_CREATE_PROJECT_BUTTON}
         >
-          Comece seu primeiro projeto
+          Comece seu primeiro sistema
         </Button>
       </div>
     </div>

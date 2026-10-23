@@ -2,13 +2,13 @@
   "templates": {
     "settings": {
       "title": "Modelos",
-      "description": "Economize 80% do tempo gasto na criação de projetos, chamados e páginas quando você usa modelos.",
-      "new_project_template": "Novo modelo de projeto",
+      "description": "Economize 80% do tempo gasto na criação de sistemas, chamados e páginas quando você usa modelos.",
+      "new_project_template": "Novo modelo de sistema",
       "new_work_item_template": "Novo modelo de chamado",
       "new_page_template": "Novo modelo de página",
       "options": {
         "project": {
-          "label": "Modelos de projeto"
+          "label": "Modelos de sistema"
         },
         "work_item": {
           "label": "Modelos de chamado"
@@ -20,7 +20,7 @@
       "create_template": {
         "label": "Criar modelo",
         "no_permission": {
-          "project": "Entre em contato com o administrador do projeto para criar modelos",
+          "project": "Entre em contato com o administrador do sistema para criar modelos",
           "workspace": "Entre em contato com o administrador do workspace para criar modelos"
         }
       },
@@ -35,14 +35,14 @@
           "info": "Derivado do workspace"
         },
         "project": {
-          "info": "Derivado do projeto"
+          "info": "Derivado do sistema"
         }
       },
       "form": {
         "project": {
           "template": {
             "name": {
-              "placeholder": "Nomeie seu modelo de projeto.",
+              "placeholder": "Nomeie seu modelo de sistema.",
               "validation": {
                 "required": "Nome do modelo é obrigatório",
                 "maxLength": "Nome do modelo deve ter menos de 255 caracteres"
@@ -53,18 +53,18 @@
             }
           },
           "name": {
-            "placeholder": "Nomeie seu projeto.",
+            "placeholder": "Nomeie seu sistema.",
             "validation": {
-              "required": "Título do projeto é obrigatório",
-              "maxLength": "Título do projeto deve ter menos de 255 caracteres"
+              "required": "Título do sistema é obrigatório",
+              "maxLength": "Título do sistema deve ter menos de 255 caracteres"
             }
           },
           "description": {
-            "placeholder": "Descreva o propósito e objetivos deste projeto."
+            "placeholder": "Descreva o propósito e objetivos deste sistema."
           },
           "button": {
-            "create": "Criar modelo de projeto",
-            "update": "Atualizar modelo de projeto"
+            "create": "Criar modelo de sistema",
+            "update": "Atualizar modelo de sistema"
           }
         },
         "work_item": {
@@ -227,14 +227,14 @@
     "empty_state": {
       "upgrade": {
         "title": "Modelos",
-        "description": "Com modelos de projeto, chamado e página no Avião, você não precisa criar um projeto do zero ou definir propriedades de chamado manualmente.",
+        "description": "Com modelos de sistema, chamado e página no Avião, você não precisa criar um sistema do zero ou definir propriedades de chamado manualmente.",
         "sub_description": "Recupere 80% do seu tempo administrativo quando você usa Modelos."
       },
       "no_templates": {
         "button": "Crie seu primeiro modelo"
       },
       "no_labels": {
-        "description": " Ainda não há etiquetas. Crie etiquetas para ajudar a organizar e filtrar chamados em seu projeto."
+        "description": " Ainda não há etiquetas. Crie etiquetas para ajudar a organizar e filtrar chamados em seu sistema."
       },
       "no_modules": {
         "description": "Ainda não há módulos. Organize o trabalho em subprojetos com líderes e responsáveis dedicados."
@@ -318,7 +318,7 @@
         "project": "Adicionar novo modelo"
       },
       "label": {
-        "project": "Escolher um modelo de projeto",
+        "project": "Escolher um modelo de sistema",
         "page": "Escolher a partir do modelo"
       },
       "tooltip": {
