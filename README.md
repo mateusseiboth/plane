@@ -121,6 +121,11 @@ apps/
   entity, technical-visit, asset, invite, analytics, reports, webhook, notification, ai,
   premium, intake-work-item, work-item, widget / widget-sdk-gateway / custom-widget, plugin,
   and integrations (Git, Slack).
+- **Wiki suggestions while opening a request:** `GET /api/v1/workspaces/:slug/wiki/sugestoes/?q=&project_id=`
+  returns up to 5 wiki pages similar to the problem being described (full-text, the chosen
+  system's pages first, snippet and screen URL); `POST /api/v1/workspaces/:slug/wiki/sugestoes/resolver/`
+  `{texto, paginas}` asks the requirements AI what to do based on those pages (`{sugestao}` or
+  `{sugestao: null, motivo}`). Both need `intake.create`. See `.claude/chat-ciclo-de-vida.md`.
 - **E-mail:** SMTP config lives on the instance (`configurations.smtp`, edited in
   *Settings → E-mail*); when absent, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
   `SMTP_FROM`, `SMTP_FROM_NAME` and `SMTP_SECURITY` (`none` | `starttls` | `ssl`) are used.
