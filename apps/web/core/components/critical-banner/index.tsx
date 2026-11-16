@@ -1,6 +1,6 @@
 "use client";
 
-import { isEventoDaFaixaDeUrgentes } from "@/components/critical-banner/helpers";
+import { buildOndeEstaNaFaixa, isEventoDaFaixaDeUrgentes } from "@/components/critical-banner/helpers";
 import { useRealtimeRefetch } from "@/hooks/use-realtime";
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL } from "@plane/constants";
@@ -121,14 +121,14 @@ export function CriticalIssuesBanner() {
                   </span>
                 )}
                 <span className="max-w-[200px] truncate">{issue.name}</span>
-                {issue.state && (
+                {(issue.state || issue.setor) && (
                   <span
                     className={cn(
                       "shrink-0 text-11 font-medium",
-                      STATE_GROUP_COLOR[issue.state.group] ?? "text-secondary"
+                      STATE_GROUP_COLOR[issue.state?.group] ?? "text-secondary"
                     )}
                   >
-                    · {issue.state.name}
+                    · {buildOndeEstaNaFaixa(issue)}
                   </span>
                 )}
               </Link>

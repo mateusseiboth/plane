@@ -3,7 +3,7 @@
  * buscar a lista de novo. Rodar com `bun test core/components/critical-banner`.
  */
 import { describe, expect, it } from "bun:test";
-import { isEventoDaFaixaDeUrgentes } from "@/components/critical-banner/helpers";
+import { buildOndeEstaNaFaixa, isEventoDaFaixaDeUrgentes } from "@/components/critical-banner/helpers";
 
 const naFaixa = ["urgente-1"];
 
@@ -57,5 +57,16 @@ describe("isEventoDaFaixaDeUrgentes", () => {
       isEventoDaFaixaDeUrgentes({ entity: "comment", action: "create", id: "c1", issue_id: "urgente-1" }, naFaixa)
     ).toBe(false);
     expect(isEventoDaFaixaDeUrgentes({ entity: "mural", action: "update" }, naFaixa)).toBe(false);
+  });
+});
+
+describe("buildOndeEstaNaFaixa", () => {
+  it("mostra a etapa e o setor em que o chamado está", () => {
+    expect(buildOndeEstaNaFaixa({ state: { name: "Em Análise" }, setor: "Qualidade" })).toBe("Em Análise · Qualidade");
+  });
+
+  it("sem setor, só a etapa; sem etapa, só o setor", () => {
+    expect(buildOndeEstaNaFaixa({ state: { name: "Triagem" }, setor: null })).toBe("Triagem");
+    expect(buildOndeEstaNaFaixa({ state: null, setor: "TI" })).toBe("TI");
   });
 });

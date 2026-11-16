@@ -34,6 +34,7 @@ import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
 import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 import {syncParticipacaoEmTodoSistema} from "@modules/project/participacao-em-todo-sistema.service";
+import {listUrgentes} from "@modules/urgentes/urgentes.service";
 
 type QuickLinkRecord = {
   id: string;
@@ -2314,33 +2315,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   .get("/:slug/urgent-issues/", async ({params: {slug}, user}) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const issues = await prisma.issue.findMany({
-      where: {
-        workspaceId: ws.id,
-        priority: "urgent",
-        deletedAt: null,
-        isDraft: false,
-        state: {group: {notIn: ["completed", "cancelled"]}},
-      },
-      include: {
-        state: {select: {name: true, group: true, color: true}},
-        project: {select: {id: true, identifier: true, name: true}},
-        assignees: {where: {deletedAt: null}, select: {assigneeId: true}},
-      },
-      orderBy: {updatedAt: "desc"},
-      take: 50,
-    });
-    return issues.map((i: any) => ({
-      id: i.id,
-      name: i.name,
-      priority: i.priority,
-      sequence_id: i.sequenceId,
-      legacy_ticket_number: i.legacyTicketNumber ?? null,
-      state: i.state ? {name: i.state.name, group: i.state.group, color: i.state.color} : null,
-      project: i.project ? {id: i.project.id, identifier: i.project.identifier, name: i.project.name} : null,
-      assignee_ids: i.assignees.map((a: any) => a.assigneeId),
-      updated_at: i.updatedAt?.toISOString(),
-    }));
+    return listUrgentes(ws.id);
   })
 
   // ── Global intake: pending intakes across all projects ────────────────────
