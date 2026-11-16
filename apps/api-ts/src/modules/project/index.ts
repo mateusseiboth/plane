@@ -18,6 +18,8 @@ import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-d
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
+import { isDecisaoDaTriagem, isRecusa, readMotivoDaRecusa } from "@modules/solicitacao/recusa-da-solicitacao.rules";
+import { saveRecusaDaSolicitacao } from "@modules/solicitacao/recusa-da-solicitacao.service";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -624,6 +626,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const b = body as any;
     const issuePatch = b.issue ?? {};
 
+    // Decidir o destino do pedido é de quem tria; recusar exige o motivo, que
+    // vai para quem abriu (ver modules/solicitacao/recusa-da-solicitacao).
+    if (isDecisaoDaTriagem(b)) await requireProjectAction(ws.id, project_id, user.id, EProjectAction.INTAKE_REVIEW);
+    const motivoDaRecusa = isRecusa(b) ? readMotivoDaRecusa(b) : null;
+
     const antes = await prisma.issue.findFirst({
       where: {id: inbox_id, deletedAt: null},
       include: {state: {select: {group: true, name: true}}},
@@ -752,6 +759,15 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         priority: (issue as any).priority,
       },
     };
+    if (motivoDaRecusa) {
+      await saveRecusaDaSolicitacao({
+        workspaceId: ws.id,
+        projectId: project_id,
+        issueId: inbox_id,
+        actorId: user.id,
+        motivo: motivoDaRecusa,
+      });
+    }
     publishRealtime(ws.id, {entity: "intake", action: "update", project_id, id: inbox_id, issue_id: inbox_id, actor: user.id});
     publishRealtime(ws.id, {entity: "issue", action: "update", project_id, id: inbox_id, actor: user.id});
     // LGPD: triagem da solicitação (aceite/recusa/snooze) muda o destino do pedido.

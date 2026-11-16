@@ -90,7 +90,7 @@ describe("atividade da solicitação", () => {
   it("recusar na triagem também registra a mudança de etapa", async () => {
     const res = await admin.post(`${base}/inbox-issues/`, { name: "Pedido recusado" });
     const recusada = ((await res.json()) as any).id;
-    await admin.patch(`${base}/inbox-issues/${recusada}/`, { status: -1 });
+    await admin.patch(`${base}/inbox-issues/${recusada}/`, { status: -1, motivo: "Pedido fora do escopo do sistema." });
     const cancelada = await readEtapa(recusada);
     expect(cancelada).toBe("Cancelado");
     const atividades = (await (await admin.get(`${base}/issues/${recusada}/history/`)).json()) as Atividade[];

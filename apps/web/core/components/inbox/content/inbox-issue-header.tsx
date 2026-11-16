@@ -42,7 +42,7 @@ import { useAppRouter } from "@/hooks/use-app-router";
 import type { IInboxIssueStore } from "@/store/inbox/inbox-issue.store";
 // local imports
 import { InboxIssueStatus } from "../inbox-issue-status";
-import { DeclineIssueModal } from "../modals/decline-issue-modal";
+import { DeclineIssueModal } from "@/components/inbox/modals/decline-issue-modal";
 import { DeleteInboxIssueModal } from "../modals/delete-issue-modal";
 import { SelectDuplicateInboxIssueModal } from "../modals/select-duplicate";
 import { InboxIssueSnoozeModal } from "../modals/snooze-issue-modal";
@@ -148,9 +148,11 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
     handleRedirection(nextOrPreviousIssueId);
   };
 
-  const handleInboxIssueDecline = async () => {
+  // A recusa do servidor (motivo curto, função sem permissão) sobe para o modal
+  // mostrar no campo; só a recusa aceita fecha e segue para a próxima.
+  const handleInboxIssueDecline = async (motivo: string) => {
     const nextOrPreviousIssueId = redirectIssue();
-    await inboxIssue?.updateInboxIssueStatus(EInboxIssueStatus.DECLINED);
+    await inboxIssue?.declineInboxIssue(motivo);
     setDeclineIssueModal(false);
     handleRedirection(nextOrPreviousIssueId);
   };
@@ -159,10 +161,18 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
   const handleMarkFulfilled = async () => {
     try {
       await inboxIssue?.updateInboxIssueStatus(EInboxIssueStatus.FULFILLED);
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Solicitação atendida", message: "A solicitação foi marcada como atendida." });
+      setToast({
+        type: TOAST_TYPE.SUCCESS,
+        title: "Solicitação atendida",
+        message: "A solicitação foi marcada como atendida.",
+      });
     } catch (err: unknown) {
       const error = err as { detail?: string };
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: error?.detail || "Não foi possível marcar como atendido." });
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Erro",
+        message: error?.detail || "Não foi possível marcar como atendido.",
+      });
     }
   };
 
@@ -177,7 +187,11 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
       setToast({ type: TOAST_TYPE.SUCCESS, title: "Devolvido", message: "Chamado devolvido para Em Teste." });
     } catch (err: unknown) {
       const error = err as { detail?: string };
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: error?.detail || "Não foi possível devolver para Em Teste." });
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Erro",
+        message: error?.detail || "Não foi possível devolver para Em Teste.",
+      });
     }
   };
 

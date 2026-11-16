@@ -179,6 +179,37 @@ export async function notifyStateChange(opts: {
 }
 
 /**
+ * Avisa quem abriu a solicitação que ela foi recusada, com o motivo: é o que o
+ * atendimento repassa ao cliente.
+ */
+export async function notifyRecusaDaSolicitacao(opts: {
+  workspaceId: string;
+  projectId: string;
+  issueId: string;
+  actorId: string;
+  receiverId: string;
+  issueName: string;
+  motivo: string;
+}): Promise<void> {
+  await prisma.notification.create({
+    data: {
+      workspaceId: opts.workspaceId,
+      projectId: opts.projectId,
+      issueId: opts.issueId,
+      receiverId: opts.receiverId,
+      actorId: opts.actorId,
+      title: "Solicitação recusada",
+      message: `${opts.issueName}: ${opts.motivo}`.slice(0, 200),
+      entity: "intake",
+      entityId: opts.issueId,
+      data: {type: "intake_declined"},
+      triggered: "intake",
+    },
+  });
+  avisarSino(opts.workspaceId, [opts.receiverId]);
+}
+
+/**
  * Avisa no sino todo membro ativo do espaço que um recado saiu no mural.
  *
  * O sino nasceu para chamado e solicitação: a notificação do mural vai com
