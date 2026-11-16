@@ -233,13 +233,14 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
             </div>
 
             <div>
-              <p className={ROTULO}>Módulo</p>
+              {/* O "caminho do menu" do legado: em que parte do sistema o problema acontece. */}
+              <p className={ROTULO}>Módulo (menu do sistema onde acontece)</p>
               <SelectPesquisavel
                 value={formulario.moduloId}
                 onChange={(moduloId) => change({ moduloId })}
                 opcoes={modulos}
                 opcaoVazia={{ value: "", label: "Nenhum" }}
-                placeholder="Opcional"
+                placeholder="Escolha o menu"
                 searchPlaceholder="Buscar módulo"
                 disabled={!formulario.projectId}
               />
