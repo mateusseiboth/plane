@@ -15,7 +15,7 @@ import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
  */
 function serializeNotification(n: any, chamado?: any) {
   const autor = n.actor;
-  const conteudo = (n.data ?? {}) as {type?: string; from?: string; to?: string};
+  const conteudo = (n.data ?? {}) as {type?: string; from?: string; to?: string; urgente?: boolean};
   return {
     id: n.id,
     title: n.title,
@@ -45,6 +45,8 @@ function serializeNotification(n: any, chamado?: any) {
         old_value: conteudo.from ?? undefined,
         new_value: conteudo.to ?? undefined,
       },
+      // Cliente parado: a tela mostra o aviso como alerta.
+      urgente: conteudo.urgente === true,
     },
     entity_identifier: n.entityId ?? undefined,
     entity_name: n.entity ?? undefined,

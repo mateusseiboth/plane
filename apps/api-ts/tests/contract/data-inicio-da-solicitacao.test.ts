@@ -11,13 +11,21 @@ import { beforeAll, describe, expect, it } from "bun:test";
 import prisma from "@db";
 import { dataLocal, inicioDoDia } from "@utils/prazo";
 import { cleanDb } from "@tests/helpers/setup";
-import { apiClient, createApiToken, createProject, createUser, createWorkspace } from "@tests/helpers/factory";
+import {
+  apiClient,
+  buildPedidoDeSolicitacao,
+  createApiToken,
+  createProject,
+  createUser,
+  createWorkspace,
+} from "@tests/helpers/factory";
 
 let admin: ReturnType<typeof apiClient>;
 let base: string;
+let wsId: string;
 
 const openSolicitacao = async (name: string): Promise<string> => {
-  const res = await admin.post(`${base}/inbox-issues/`, { name });
+  const res = await admin.post(`${base}/inbox-issues/`, await buildPedidoDeSolicitacao(wsId, { name }));
   expect(res.status).toBe(201);
   return ((await res.json()) as any).issue.id;
 };
@@ -30,6 +38,7 @@ beforeAll(async () => {
   const dono = await createUser();
   admin = apiClient((await createApiToken(dono.id)).token);
   const ws = await createWorkspace(dono.id);
+  wsId = ws.id;
   const projeto = await createProject(ws.id, dono.id);
   base = `/workspaces/${ws.slug}/projects/${projeto.id}`;
 });

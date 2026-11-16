@@ -141,6 +141,7 @@ export async function abrirSolicitacao(
     issueId: chamado.id,
     actorId: null,
     issueName: chamado.name,
+    priority: chamado.priority,
   });
   publishRealtime(sistema.workspaceId, {
     entity: "intake",

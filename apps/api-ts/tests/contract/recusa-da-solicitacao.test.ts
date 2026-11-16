@@ -14,6 +14,7 @@ import { seedWorkflowRoles } from "@utils/permissions";
 import { cleanDb } from "@tests/helpers/setup";
 import {
   apiClient,
+  buildPedidoDeSolicitacao,
   createApiToken,
   createProject,
   createState,
@@ -25,6 +26,8 @@ let base: string;
 let qualidade: ReturnType<typeof apiClient>;
 let atendimento: ReturnType<typeof apiClient>;
 let atendenteId: string;
+let wsId: string;
+let wsSlug: string;
 
 const createPessoa = async (wsId: string, projectId: string, key: string) => {
   const user = await createUser();
@@ -39,7 +42,11 @@ const createPessoa = async (wsId: string, projectId: string, key: string) => {
 };
 
 const openSolicitacao = async (name: string) =>
-  ((await (await atendimento.post(`${base}/inbox-issues/`, { name })).json()) as { id: string }).id;
+  (
+    (await (
+      await atendimento.post(`${base}/inbox-issues/`, await buildPedidoDeSolicitacao(wsId, { name }))
+    ).json()) as { id: string }
+  ).id;
 
 const readEtapa = async (id: string) =>
   (await prisma.issue.findUniqueOrThrow({ where: { id }, include: { state: true } })).state?.name ?? null;
@@ -48,6 +55,8 @@ beforeAll(async () => {
   await cleanDb();
   const dono = await createUser();
   const ws = await createWorkspace(dono.id);
+  wsId = ws.id;
+  wsSlug = ws.slug;
   await seedWorkflowRoles(prisma, ws.id);
   const sistema = await createProject(ws.id, dono.id);
   await createState(sistema.id, ws.id, { name: "Cancelado", group: "cancelled" });
@@ -89,6 +98,24 @@ describe("recusa da solicitação", () => {
     expect(avisos).toHaveLength(1);
     expect(avisos[0].title).toBe("Solicitação recusada");
     expect(avisos[0].message).toContain(motivo.slice(0, 40));
+  });
+
+  it("solicitação de cliente parado chega no sino da Qualidade marcada como urgente", async () => {
+    const id = (
+      (await (
+        await atendimento.post(
+          `${base}/inbox-issues/`,
+          await buildPedidoDeSolicitacao(wsId, { name: "Folha não fecha", priority: "urgent" })
+        )
+      ).json()) as { id: string }
+    ).id;
+    const res = await qualidade.get(`/workspaces/${wsSlug}/users/notifications/?type=all&read=false`);
+    expect(res.status).toBe(200);
+    const corpo = (await res.json()) as { results: any[] };
+    const aviso = corpo.results.find((n) => n.entity_identifier === id);
+    expect(aviso?.title).toBe("Cliente parado: nova solicitação");
+    expect(aviso?.message_html).toBe("Folha não fecha");
+    expect(aviso?.data?.urgente).toBe(true);
   });
 
   it("o motivo é escapado: não vira marcação no comentário", async () => {

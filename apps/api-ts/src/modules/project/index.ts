@@ -9,6 +9,7 @@ import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requ
 import {EProjectAction, requireProjectAction, requireWorkspaceAction, resolveMemberRole, roleCan} from "@utils/permission-checks";
 import {
   createSolicitacao,
+  findCamposQueFaltamNaSolicitacao,
   findErrosDaSolicitacao,
   findOrCreateIntake,
   findTriageState,
@@ -20,6 +21,7 @@ import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange 
 import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
 import { isDecisaoDaTriagem, isRecusa, readMotivoDaRecusa } from "@modules/solicitacao/recusa-da-solicitacao.rules";
 import { saveRecusaDaSolicitacao } from "@modules/solicitacao/recusa-da-solicitacao.service";
+import {createFieldError} from "@utils/field-error";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -556,7 +558,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await requireSistemaDoEspaco(project_id, ws.id);
     const b = (body as any).issue ?? body as any;
     const referencias = {projectId: project_id, workspaceId: ws.id, moduleId: b.module_id || null, entityId: b.entity_id || null};
-    const erros = await findErrosDaSolicitacao(referencias);
+    const erros = [
+      ...findCamposQueFaltamNaSolicitacao({...referencias, descriptionHtml: b.description_html, exigeDescricao: true}),
+      ...(await findErrosDaSolicitacao(referencias)),
+    ];
     if (erros.length) {
       set.status = 422;
       return {detail: erros[0]!.message, errors: erros};
@@ -573,11 +578,21 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       assigneeIds: b.assignee_ids ?? b.assignees ?? [],
       headers,
     });
+    const sistema = await prisma.project.findUniqueOrThrow({where: {id: project_id}, select: {identifier: true}});
     set.status = 201;
     return {
       id: issue.id, status: -2, snoozed_till: null, duplicate_to: undefined,
       source: "IN_APP", created_by: user.id,
-      issue: {id: issue.id, name: issue.name, state_id: issue.stateId, project_id: issue.projectId, sequence_id: issue.sequenceId},
+      // O número que o atendimento passa ao cliente (N-AAAA) e o do sistema.
+      issue: {
+        id: issue.id,
+        name: issue.name,
+        state_id: issue.stateId,
+        project_id: issue.projectId,
+        sequence_id: issue.sequenceId,
+        ticket_number: formatNumeroDoChamado(issue),
+        label: `${sistema.identifier}-${issue.sequenceId}`,
+      },
     };
   })
 
@@ -586,7 +601,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await getProjectOrFail(ws.id, project_id, user.id);
     const issue = await prisma.issue.findFirst({
       where: {id: inbox_id, projectId: project_id, deletedAt: null},
-      include: {state: {select: {group: true}}},
+      include: {state: {select: {group: true}}, entity: {select: {id: true, name: true}}},
     });
     if (!issue) { set.status = 404; return {detail: "Não encontrado."}; }
     const ii = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}}) as any;
@@ -615,6 +630,9 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         workspace_id: issue.workspaceId, sequence_id: issue.sequenceId,
         ticket_number: formatNumeroDoChamado(issue),
         description_html: issue.descriptionHtml ?? "<p></p>",
+        // A triagem mostra (e corrige) de que entidade é o pedido.
+        entity_id: issue.entityId,
+        entity: issue.entity ? {id: issue.entity.id, name: issue.entity.name} : null,
         created_at: issue.createdAt?.toISOString(), updated_at: issue.updatedAt?.toISOString(),
       },
     };
@@ -660,6 +678,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     if (issuePatch.name !== undefined) issueData.name = issuePatch.name;
     if (issuePatch.state_id !== undefined) issueData.stateId = issuePatch.state_id;
     if (issuePatch.priority !== undefined) issueData.priority = issuePatch.priority;
+    if (issuePatch.entity_id) {
+      const [erro] = await findErrosDaSolicitacao({projectId: project_id, workspaceId: ws.id, entityId: issuePatch.entity_id});
+      if (erro) throw createFieldError(erro.path, erro.message);
+      issueData.entityId = issuePatch.entity_id;
+    }
     if (issuePatch.description_html !== undefined) {
       issueData.descriptionHtml = issuePatch.description_html;
       issueData.descriptionStripped = (issuePatch.description_html ?? "").replace(/<[^>]+>/g, "");

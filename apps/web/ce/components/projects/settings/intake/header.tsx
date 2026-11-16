@@ -14,7 +14,7 @@ import { Button } from "@plane/propel/button";
 import { Breadcrumbs, Header } from "@plane/ui";
 // components
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
-import { InboxIssueCreateModalRoot } from "@/components/inbox/modals/create-modal";
+import { ModalDeSolicitacaoAvulsa } from "@/components/solicitacao/modal-de-solicitacao-avulsa";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectInbox } from "@/hooks/store/use-project-inbox";
@@ -68,14 +68,15 @@ export const ProjectInboxHeader = observer(function ProjectInboxHeader() {
       <Header.RightItem>
         {currentProjectDetails?.inbox_view && workspaceSlug && projectId && isAuthorized ? (
           <div className="flex items-center gap-2">
-            <InboxIssueCreateModalRoot
+            {/* O mesmo modal de toda abertura de solicitação: entidade, descrição e o número no fim. */}
+            <ModalDeSolicitacaoAvulsa
               workspaceSlug={workspaceSlug.toString()}
-              projectId={projectId.toString()}
-              modalState={createIssueModal}
-              handleModalClose={() => setCreateIssueModal(false)}
+              isOpen={createIssueModal}
+              onClose={() => setCreateIssueModal(false)}
+              projectIdInicial={projectId.toString()}
             />
             <Button variant="primary" size="lg" onClick={() => setCreateIssueModal(true)}>
-              {t("add_work_item")}
+              Nova solicitação
             </Button>
           </div>
         ) : (

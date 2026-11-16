@@ -1,29 +1,12 @@
 /**
  * A faixa de URGENTES do topo: todo urgente em aberto do espaço, com o setor em
- * que está (ver setor-do-chamado.rules). O setor é o que diz ao atendimento com
- * quem está o pedido do cliente.
+ * que está (ver setor-do-chamado.service). O setor é o que diz ao atendimento
+ * com quem está o pedido do cliente.
  */
-import {
-  findFuncaoDosMembros,
-  findFuncoesDoEspaco,
-  findTransicoesPermitidas,
-  findUrgentesAbertos,
-} from "@modules/urgentes/urgentes.dao";
-import {
-  buildDonosPorEtapa,
-  buildSetorDoChamado,
-  findSetorDaTriagem,
-  type ContextoDoSetor,
-  type FuncaoDoEspaco,
-} from "@modules/urgentes/setor-do-chamado.rules";
+import { findUrgentesAbertos } from "@modules/urgentes/urgentes.dao";
+import { findSetoresDosChamados } from "@modules/urgentes/setor-do-chamado.service";
 
 type Urgente = Awaited<ReturnType<typeof findUrgentesAbertos>>[number];
-
-const readPermissoes = (valor: unknown): string[] =>
-  Array.isArray(valor) ? valor.filter((p): p is string => typeof p === "string") : [];
-
-const buildSetoresDosResponsaveis = (urgente: Urgente, setorPorPessoa: Map<string, string>) =>
-  urgente.assignees.map((a) => setorPorPessoa.get(a.assigneeId)).filter((setor): setor is string => !!setor);
 
 const serializeUrgente = (urgente: Urgente, setor: string | null) => ({
   id: urgente.id,
@@ -41,35 +24,10 @@ const serializeUrgente = (urgente: Urgente, setor: string | null) => ({
 });
 
 export async function listUrgentes(workspaceId: string) {
-  const [urgentes, funcoesBrutas, transicoes] = await Promise.all([
-    findUrgentesAbertos(workspaceId),
-    findFuncoesDoEspaco(workspaceId),
-    findTransicoesPermitidas(workspaceId),
-  ]);
-  const funcoes: FuncaoDoEspaco[] = funcoesBrutas.map((f) => ({ ...f, permissions: readPermissoes(f.permissions) }));
-  const nomeDaFuncao = new Map(funcoes.map((f) => [f.id, f.name]));
-  const pessoas = [...new Set(urgentes.flatMap((u) => u.assignees.map((a) => a.assigneeId)))];
-  const setorPorPessoa = new Map(
-    (await findFuncaoDosMembros(workspaceId, pessoas)).map((m) => [
-      m.memberId,
-      nomeDaFuncao.get(m.workflowRoleId!) ?? "",
-    ])
+  const urgentes = await findUrgentesAbertos(workspaceId);
+  const setores = await findSetoresDosChamados(
+    workspaceId,
+    urgentes.map((u) => ({ id: u.id, state: u.state, assigneeIds: u.assignees.map((a) => a.assigneeId) }))
   );
-  const contexto: ContextoDoSetor = {
-    donosPorEtapa: buildDonosPorEtapa(transicoes, funcoes),
-    setorDaTriagem: findSetorDaTriagem(funcoes),
-  };
-  return urgentes.map((urgente) =>
-    serializeUrgente(
-      urgente,
-      buildSetorDoChamado(
-        {
-          etapa: urgente.state?.name ?? "",
-          grupo: urgente.state?.group ?? "",
-          setoresDosResponsaveis: buildSetoresDosResponsaveis(urgente, setorPorPessoa),
-        },
-        contexto
-      )
-    )
-  );
+  return urgentes.map((urgente) => serializeUrgente(urgente, setores.get(urgente.id) ?? null));
 }

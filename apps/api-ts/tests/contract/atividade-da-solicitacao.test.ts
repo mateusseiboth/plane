@@ -10,6 +10,7 @@ import prisma from "@db";
 import { cleanDb } from "@tests/helpers/setup";
 import {
   apiClient,
+  buildPedidoDeSolicitacao,
   createApiToken,
   createProject,
   createState,
@@ -20,6 +21,7 @@ import {
 let admin: ReturnType<typeof apiClient>;
 let base: string;
 let issueId: string;
+let wsId: string;
 
 type Atividade = { field: string | null; verb: string; old_value: string | null; new_value: string | null };
 
@@ -39,11 +41,15 @@ beforeAll(async () => {
   const dono = await createUser();
   admin = apiClient((await createApiToken(dono.id)).token);
   const ws = await createWorkspace(dono.id);
+  wsId = ws.id;
   const projeto = await createProject(ws.id, dono.id);
   base = `/workspaces/${ws.slug}/projects/${projeto.id}`;
   // Recusar leva à etapa "Cancelado" (a dos sistemas de verdade).
   await createState(projeto.id, ws.id, { name: "Cancelado", group: "cancelled" });
-  const res = await admin.post(`${base}/inbox-issues/`, { name: "Guia não emite" });
+  const res = await admin.post(
+    `${base}/inbox-issues/`,
+    await buildPedidoDeSolicitacao(wsId, { name: "Guia não emite" })
+  );
   issueId = ((await res.json()) as any).id;
 });
 
@@ -88,7 +94,10 @@ describe("atividade da solicitação", () => {
   });
 
   it("recusar na triagem também registra a mudança de etapa", async () => {
-    const res = await admin.post(`${base}/inbox-issues/`, { name: "Pedido recusado" });
+    const res = await admin.post(
+      `${base}/inbox-issues/`,
+      await buildPedidoDeSolicitacao(wsId, { name: "Pedido recusado" })
+    );
     const recusada = ((await res.json()) as any).id;
     await admin.patch(`${base}/inbox-issues/${recusada}/`, { status: -1, motivo: "Pedido fora do escopo do sistema." });
     const cancelada = await readEtapa(recusada);

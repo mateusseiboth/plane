@@ -30,7 +30,13 @@ export type PedidoDeSolicitacao = { projectId: string; dados: DadosDaSolicitacao
 
 export type ErroDoCampo = { path: string; message: string };
 
-const isComplementoVazio = (html: string) => !html.replace(/<[^>]+>/g, "").trim();
+/** Imagem colada no editor sai como `<image-component>`: conta como descrição. */
+const isComplementoVazio = (html: string) =>
+  !/<(img|image-component)\b/i.test(html) &&
+  !html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .trim();
 
 export const buildPedidoDaSolicitacao = (formulario: FormularioDaSolicitacao): PedidoDeSolicitacao => ({
   projectId: formulario.projectId,
@@ -44,14 +50,29 @@ export const buildPedidoDaSolicitacao = (formulario: FormularioDaSolicitacao): P
   assetIds: formulario.assetIds,
 });
 
-const PENDENCIAS: Array<[(formulario: FormularioDaSolicitacao) => boolean, string]> = [
+export type RegrasDaSolicitacao = {
+  /** Na avulsa a descrição é obrigatória; pela conversa ela é a transcrição. */
+  isDescricaoObrigatoria: boolean;
+};
+
+type Pendencia = [(formulario: FormularioDaSolicitacao, regras: RegrasDaSolicitacao) => boolean, string];
+
+// A mesma ordem e as mesmas regras do servidor (`findCamposQueFaltamNaSolicitacao`).
+const PENDENCIAS: Pendencia[] = [
   [(f) => !f.projectId, "Escolha o sistema."],
   [(f) => !f.titulo.trim(), "Informe o título."],
+  [(f) => !f.entidadeId, "Escolha a entidade."],
+  [
+    (f, regras) => regras.isDescricaoObrigatoria && isComplementoVazio(f.complementoHtml),
+    "Descreva o problema do cliente.",
+  ],
 ];
 
 /** A primeira coisa que falta para enviar, ou `undefined` quando nada falta. */
-export const findPendenciaDaSolicitacao = (formulario: FormularioDaSolicitacao): string | undefined =>
-  PENDENCIAS.find(([isFaltando]) => isFaltando(formulario))?.[1];
+export const findPendenciaDaSolicitacao = (
+  formulario: FormularioDaSolicitacao,
+  regras: RegrasDaSolicitacao
+): string | undefined => PENDENCIAS.find(([isFaltando]) => isFaltando(formulario, regras))?.[1];
 
 /** A mensagem que a API devolveu para um campo (`errors: [{ path, message }]`). */
 export const readErroDoCampoDaSolicitacao = (erros: ErroDoCampo[], path: string): string | undefined =>

@@ -12,6 +12,11 @@ import useSWR from "swr";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
 import { bindArquivosDaSolicitacao } from "@/components/solicitacao/arquivos-da-solicitacao";
+import {
+  buildConfirmacaoDaSolicitacao,
+  type ConfirmacaoDaSolicitacao,
+  type SolicitacaoAberta,
+} from "@/components/solicitacao/confirmacao-da-solicitacao";
 import type { ErroDoCampo, PedidoDeSolicitacao } from "@/components/solicitacao/formulario-da-solicitacao";
 import { ModalDeSolicitacao } from "@/components/solicitacao/modal-de-solicitacao";
 // hooks
@@ -34,6 +39,7 @@ type Props = {
 export function ModalDeSolicitacaoAvulsa({ workspaceSlug, isOpen, onClose, projectIdInicial }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [erros, setErros] = useState<ErroDoCampo[]>([]);
+  const [confirmacao, setConfirmacao] = useState<ConfirmacaoDaSolicitacao | null>(null);
   const { can } = useMyWorkspaceActions(workspaceSlug);
   const { data: sistemas } = useSWR(
     isOpen && can("intake.create") ? `SISTEMAS_PARA_SOLICITACAO_${workspaceSlug}` : null,
@@ -45,6 +51,7 @@ export function ModalDeSolicitacaoAvulsa({ workspaceSlug, isOpen, onClose, proje
 
   const close = () => {
     setErros([]);
+    setConfirmacao(null);
     onClose();
   };
 
@@ -54,8 +61,9 @@ export function ModalDeSolicitacaoAvulsa({ workspaceSlug, isOpen, onClose, proje
     try {
       const criada = await inboxIssueService.create(workspaceSlug, projectId, dados);
       await bindArquivosDaSolicitacao(workspaceSlug, projectId, criada.issue.id, assetIds);
-      close();
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Solicitação aberta", message: "Ela está na triagem do sistema." });
+      // O modal fica aberto com o número: o atendimento copia e passa ao cliente.
+      const aberta = criada.issue as SolicitacaoAberta;
+      setConfirmacao(buildConfirmacaoDaSolicitacao(aberta, dados.priority === "urgent"));
     } catch (e) {
       const recusa = e as Recusa;
       setErros(recusa?.errors ?? []);
@@ -80,6 +88,7 @@ export function ModalDeSolicitacaoAvulsa({ workspaceSlug, isOpen, onClose, proje
       inicial={{ projectId }}
       erros={erros}
       enviando={enviando}
+      confirmacao={confirmacao}
       onConfirmar={(pedido) => void createSolicitacao(pedido)}
       onCancelar={close}
     />

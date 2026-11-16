@@ -54,6 +54,7 @@ import { DuplicateModalRoot } from "@/plane-web/components/de-dupe/duplicate-mod
 import { IssueTypeSelect, WorkItemTemplateSelect } from "@/plane-web/components/issues/issue-modal";
 import { WorkItemModalAdditionalProperties } from "@/plane-web/components/issues/issue-modal/modal-additional-properties";
 import { useDebouncedDuplicateIssues } from "@/plane-web/hooks/use-debounced-duplicate-issues";
+import { ORIENTACAO_DA_ABERTURA } from "@/components/solicitacao/orientacao-da-abertura";
 
 export interface IssueFormProps {
   data?: Partial<TIssue>;
@@ -435,6 +436,9 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
           >
             <div className="rounded-t-lg bg-surface-1 p-5">
               <h3 className="pb-2 text-h4-medium text-secondary">{modalTitle}</h3>
+              {!data?.id && (
+                <p className="mb-2 rounded-md bg-layer-1 px-3 py-2 text-12 text-secondary">{ORIENTACAO_DA_ABERTURA}</p>
+              )}
               <div className="flex items-center justify-between pt-2 pb-4">
                 <div className="flex items-center gap-x-1">
                   <IssueProjectSelect

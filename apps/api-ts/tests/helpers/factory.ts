@@ -397,3 +397,17 @@ export function apiClient(token: string, baseUrl = `${TEST_API_BASE_URL}/api/v1`
     },
   };
 }
+
+/**
+ * O corpo mínimo da abertura de solicitação pela API: título, entidade e a
+ * descrição do problema, as duas obrigatórias desde 16/11/2026.
+ */
+export async function buildPedidoDeSolicitacao(workspaceId: string, extra: Record<string, unknown> = {}) {
+  const entidade = await createEntity(workspaceId, { name: `Entidade ${randomUUID().slice(0, 6)}` });
+  return {
+    name: "Pedido",
+    entity_id: entidade.id,
+    description_html: "<p>Cliente relata o problema.</p>",
+    ...extra,
+  };
+}

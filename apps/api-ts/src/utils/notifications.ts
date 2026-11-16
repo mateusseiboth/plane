@@ -15,8 +15,11 @@ export async function notifyQualityOfIntake(opts: {
   /** `null` quando a abertura veio do portal do cliente: não há ator do time. */
   actorId: string | null;
   issueName: string;
+  /** Cliente parado (urgente) muda o título: é o que a Qualidade precisa ver primeiro. */
+  priority?: string | null;
 }): Promise<void> {
   const receivers = (await findQualidadeDoProjeto(opts.projectId)).filter((id) => id !== opts.actorId);
+  const urgente = opts.priority === "urgent";
 
   if (!receivers.length) return;
 
@@ -28,11 +31,11 @@ export async function notifyQualityOfIntake(opts: {
       issueId: opts.issueId,
       receiverId,
       actorId: opts.actorId,
-      title: "Novo intake aberto",
+      title: urgente ? "Cliente parado: nova solicitação" : "Nova solicitação",
       message: opts.issueName,
       entity: "intake",
       entityId: opts.issueId,
-      data: {type: "intake_opened"},
+      data: {type: "intake_opened", urgente},
       triggered: "intake",
     })),
   });

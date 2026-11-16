@@ -12,12 +12,14 @@ import {
   DueDatePropertyIcon,
   LabelPropertyIcon,
   DuplicatePropertyIcon,
+  UserCirclePropertyIcon,
 } from "@plane/propel/icons";
 import { Tooltip } from "@plane/propel/tooltip";
 import type { TInboxDuplicateIssueDetails, TIssue } from "@plane/types";
 import { ControlLink } from "@plane/ui";
 import { getDate, renderFormattedPayloadDateTime, generateWorkItemLink } from "@plane/utils";
 // components
+import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { DateDropdown } from "@/components/dropdowns/date";
 import { IntakeStateDropdown } from "@/components/dropdowns/intake-state/dropdown";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
@@ -28,6 +30,7 @@ import { IssueLabel } from "@/components/issues/issue-detail/label";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { useEntities } from "@/hooks/use-entities";
 import { useProjectRolePermissions } from "@/hooks/use-project-role-permissions";
 
 type Props = {
@@ -47,6 +50,8 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
   const { canChangePriority } = useProjectRolePermissions(projectId);
 
   const router = useAppRouter();
+  const { entities } = useEntities(workspaceSlug);
+  const entidadeId = (issue as Partial<TIssue> & { entity_id?: string | null }).entity_id ?? "";
   // store hooks
   const { currentProjectDetails } = useProject();
 
@@ -117,6 +122,26 @@ export const InboxIssueContentProperties = observer(function InboxIssueContentPr
                 dropdownArrow
                 dropdownArrowClassName="h-3.5 w-3.5 hidden group-hover:inline"
               />
+            </div>
+            {/* Entidade: de quem é o pedido (testes da nova intranet, item 3) */}
+            <div className="flex h-8 items-center gap-2">
+              <div className="flex w-2/5 flex-shrink-0 items-center gap-1 text-13 text-tertiary">
+                <UserCirclePropertyIcon className="h-4 w-4 flex-shrink-0" />
+                <span>Entidade</span>
+              </div>
+              <div className="w-3/5 flex-grow">
+                <SelectPesquisavel
+                  value={entidadeId}
+                  onChange={(entity_id) =>
+                    issue?.id &&
+                    issueOperations.update(workspaceSlug, projectId, issue.id, { entity_id } as Partial<TIssue>)
+                  }
+                  opcoes={(entities ?? []).map((e) => ({ value: e.id, label: e.name }))}
+                  placeholder="Sem entidade"
+                  searchPlaceholder="Buscar entidade"
+                  disabled={!isEditable}
+                />
+              </div>
             </div>
             {/* Priority */}
             <div className="flex h-8 items-center gap-2">

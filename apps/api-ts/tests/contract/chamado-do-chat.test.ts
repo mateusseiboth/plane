@@ -36,6 +36,7 @@ let projetoId: string;
 let moduloId: string;
 let entidadeId: string;
 
+/** A conversa nasce com a entidade de teste: abrir solicitação exige entidade. `entityId: null` tira. */
 async function createConversa(slug: string, dados: Record<string, unknown> = {}) {
   const id = crypto.randomUUID();
   await prisma.$executeRawUnsafe(
@@ -44,7 +45,7 @@ async function createConversa(slug: string, dados: Record<string, unknown> = {})
     id,
     `P-${id.slice(0, 8)}`,
     slug,
-    (dados.entityId as string | undefined) ?? null
+    "entityId" in dados ? (dados.entityId as string | null) : entidadeId
   );
   const mensagens: Array<[string, string | null, string | null, string | null, string | null]> = [
     ["client", "O sistema não emite a guia.", null, null, null],
@@ -167,6 +168,19 @@ describe("POST .../inbox-issues/from-chat/", () => {
     expect(((await res.json()) as any).errors).toEqual([
       { path: "entity_id", message: "A entidade não foi encontrada neste espaço." },
     ]);
+  });
+
+  it("sem entidade na conversa nem no modal: 422 no campo entity_id", async () => {
+    const res = await admin.post(url(), { session_id: await createConversa(wsSlug, { entityId: null }) });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as any).errors).toEqual([{ path: "entity_id", message: "Informe a entidade." }]);
+  });
+
+  it("pela conversa a descrição é a transcrição: o complemento não é exigido", async () => {
+    const res = await admin.post(url(), { session_id: await createConversa(wsSlug) });
+    expect(res.status).toBe(201);
+    // O número que o atendente passa ao cliente.
+    expect(((await res.json()) as any).issue.ticket_number).toMatch(/^\d+-\d{4}$/);
   });
 
   it("o complemento em texto rico entra na descrição como veio, antes da conversa", async () => {

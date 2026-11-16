@@ -12,6 +12,10 @@ import { AlertCircle } from "lucide-react";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
 import { bindArquivosDaSolicitacao } from "@/components/solicitacao/arquivos-da-solicitacao";
+import {
+  buildConfirmacaoDaSolicitacao,
+  type ConfirmacaoDaSolicitacao,
+} from "@/components/solicitacao/confirmacao-da-solicitacao";
 import type { ErroDoCampo, PedidoDeSolicitacao } from "@/components/solicitacao/formulario-da-solicitacao";
 import { ModalDeSolicitacao } from "@/components/solicitacao/modal-de-solicitacao";
 // services
@@ -45,6 +49,7 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
   const [abrindoChamado, setAbrindoChamado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erros, setErros] = useState<ErroDoCampo[]>([]);
+  const [confirmacao, setConfirmacao] = useState<ConfirmacaoDaSolicitacao | null>(null);
   const api = chatApi(apiUrl);
   const pausa = PAUSA_DO_STATUS[sessao.status] ?? "pause";
 
@@ -61,14 +66,15 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
       });
       await bindArquivosDaSolicitacao(slug, projectId, chamado.issue.id, assetIds);
       onAtualizada(await api.linkChamado(slug, sessao.id, chamado.issue.id));
-      setAbrindoChamado(false);
-      setToast({
-        type: TOAST_TYPE.SUCCESS,
-        title: `Chamado ${chamado.issue.label} aberto`,
-        message: chamado.anexos_falharam
-          ? `${chamado.anexos_falharam} arquivo(s) não foram anexados. A conversa está na descrição.`
-          : "A conversa e os arquivos foram anexados.",
-      });
+      // O modal fica aberto com o número: o atendente copia e passa ao cliente.
+      setConfirmacao(buildConfirmacaoDaSolicitacao(chamado.issue, dados.priority === "urgent"));
+      if (chamado.anexos_falharam) {
+        setToast({
+          type: TOAST_TYPE.WARNING,
+          title: `${chamado.anexos_falharam} arquivo(s) não foram anexados`,
+          message: "A conversa está na descrição do chamado.",
+        });
+      }
     } catch (e) {
       setErros(readErros(e));
       setToast({ type: TOAST_TYPE.ERROR, title: "Chamado não aberto", message: mensagemDoErro(e, "Tente de novo.") });
@@ -79,6 +85,7 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
 
   const closeModal = () => {
     setErros([]);
+    setConfirmacao(null);
     setAbrindoChamado(false);
   };
 
@@ -103,6 +110,8 @@ export function useAcoesDaConversa({ sessao, slug, apiUrl, projetos, chatUrl, on
         entidadeId: sessao.entity_id ?? "",
       }}
       erros={erros}
+      isDescricaoObrigatoria={false}
+      confirmacao={confirmacao}
       onConfirmar={(pedido) => void createChamado(pedido)}
       onCancelar={closeModal}
       enviando={enviando}

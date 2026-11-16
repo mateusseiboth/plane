@@ -34,7 +34,9 @@ import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
 import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
 import {syncParticipacaoEmTodoSistema} from "@modules/project/participacao-em-todo-sistema.service";
+import {formatNumeroDoChamado} from "@utils/numero-do-chamado";
 import {listUrgentes} from "@modules/urgentes/urgentes.service";
+import {findSetoresDosChamados} from "@modules/urgentes/setor-do-chamado.service";
 
 type QuickLinkRecord = {
   id: string;
@@ -2351,9 +2353,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
               priority: true,
               projectId: true,
               sequenceId: true,
+              ticketSequence: true,
+              ticketYear: true,
               createdAt: true,
               updatedAt: true,
-              state: {select: {group: true}},
+              state: {select: {group: true, name: true}},
+              entity: {select: {id: true, name: true}},
+              assignees: {where: {deletedAt: null}, select: {assigneeId: true}},
             },
           },
         },
@@ -2368,6 +2374,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       ? await prisma.project.findMany({where: {id: {in: projectIds as string[]}}, select: {id: true, identifier: true, name: true}})
       : [];
     const projectMap = Object.fromEntries(projects.map((p: any) => [p.id, p]));
+    // Onde o pedido está e com quem: a dúvida de quem abriu (testes da nova intranet).
+    const setores = await findSetoresDosChamados(
+      ws.id,
+      intakeIssues
+        .filter((ii: any) => ii.issue)
+        .map((ii: any) => ({id: ii.issue.id, state: ii.issue.state, assigneeIds: ii.issue.assignees.map((a: any) => a.assigneeId)})),
+    );
 
     const hasNext = intakeIssues.length > perPage;
     return {
@@ -2386,6 +2399,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           source: ii.source ?? "IN_APP",
           created_at: ii.createdAt?.toISOString(),
           project: proj ? {id: proj.id, identifier: proj.identifier, name: proj.name} : null,
+          entity: ii.issue?.entity ? {id: ii.issue.entity.id, name: ii.issue.entity.name} : null,
+          setor: ii.issue ? (setores.get(ii.issue.id) ?? null) : null,
           issue: ii.issue
             ? {
                 id: ii.issue.id,
@@ -2393,6 +2408,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
                 priority: ii.issue.priority,
                 project_id: ii.issue.projectId,
                 sequence_id: ii.issue.sequenceId,
+                ticket_number: formatNumeroDoChamado(ii.issue),
+                state_name: ii.issue.state?.name ?? null,
                 created_at: ii.issue.createdAt?.toISOString(),
                 updated_at: ii.issue.updatedAt?.toISOString(),
               }
