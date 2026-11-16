@@ -6,6 +6,7 @@ import prisma from "@db";
 import { MIN_PASSWORD_LENGTH } from "@modules/auth/password-reset";
 import { createFieldError } from "@utils/field-error";
 import { DEFAULT_ROLES } from "@utils/permissions";
+import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,60}$/;
@@ -102,7 +103,7 @@ export async function createMemberAccount(workspaceId: string, input: NewMemberI
   const password = await Bun.password.hash(input.password, BCRYPT);
   const workflowRoleId = funcao?.id ?? null;
 
-  return prisma.$transaction(async (tx) => {
+  const criado = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         email: input.email,
@@ -140,4 +141,7 @@ export async function createMemberAccount(workspaceId: string, input: NewMemberI
       project_ids: input.projectIds,
     };
   });
+  // Os sistemas marcados entram com o resto: todo membro participa de todo sistema.
+  await syncParticipacaoEmTodoSistema(workspaceId);
+  return criado;
 }

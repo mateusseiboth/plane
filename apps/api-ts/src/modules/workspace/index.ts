@@ -33,6 +33,7 @@ import {findMemberProjectIds, getWorkspaceOrFail, requireWorkspaceMember} from "
 import {randomBytes, randomUUID} from "crypto";
 import Elysia from "elysia";
 import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
+import {syncParticipacaoEmTodoSistema} from "@modules/project/participacao-em-todo-sistema.service";
 
 type QuickLinkRecord = {
   id: string;
@@ -855,6 +856,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         });
       }
     });
+    await syncParticipacaoEmTodoSistema(ws.id);
     recordAudit({
       workspaceId: ws.id,
       entity: AUDIT_ENTITIES.MEMBER,

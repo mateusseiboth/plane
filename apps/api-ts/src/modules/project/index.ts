@@ -17,6 +17,7 @@ import {
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
+import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -174,6 +175,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
       return p;
     });
+    // Sistema novo nasce com todo o time (participacao-em-todo-sistema).
+    await syncParticipacaoEmTodoSistema(ws.id);
 
     set.status = 201;
     return formatProject(project, 20);
@@ -856,60 +859,19 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     return { status: !taken };
   })
 
-  // ── Backfill: add all workspace members to all workspace projects ─────────────
-  // Fixes projects created via migration that have no projectMember records.
-  // Only workspace admins can trigger this.
+  // ── Todo membro ativo em todo sistema (participacao-em-todo-sistema) ──────────
+  // Refaz o que faltar: membro que entrou por um caminho que não sincroniza,
+  // dado importado. Idempotente.
 
-  .post("/sync-members/", async ({ params: { slug }, user, set }) => {
+  .post("/sync-members/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
-
-    const [wsMembers, projects] = await Promise.all([
-      prisma.workspaceMember.findMany({
-        // permissao-estrutural: seleção de quem entra nos sistemas, não checagem de acesso.
-        where: { workspaceId: ws.id, isActive: true, deletedAt: null, role: { gte: 10 } },
-        select: { memberId: true, role: true },
-      }),
-      prisma.project.findMany({
-        where: { workspaceId: ws.id, deletedAt: null },
-        select: { id: true },
-      }),
+    const [criados, membros, sistemas] = await Promise.all([
+      syncParticipacaoEmTodoSistema(ws.id),
+      prisma.workspaceMember.count({ where: { workspaceId: ws.id, isActive: true, deletedAt: null } }),
+      prisma.project.count({ where: { workspaceId: ws.id, deletedAt: null } }),
     ]);
-
-    // Get all existing project member records (to avoid duplicates)
-    const existingSet = new Set(
-      (await prisma.projectMember.findMany({
-        where: { workspaceId: ws.id, deletedAt: null },
-        select: { projectId: true, memberId: true },
-      })).map(m => `${m.projectId}:${m.memberId}`)
-    );
-
-    const toCreate: any[] = [];
-    for (const project of projects) {
-      for (const wsMember of wsMembers) {
-        const key = `${project.id}:${wsMember.memberId}`;
-        if (!existingSet.has(key)) {
-          toCreate.push({
-            projectId: project.id,
-            workspaceId: ws.id,
-            memberId: wsMember.memberId,
-            role: Math.min(wsMember.role, 15),
-            isActive: true,
-          });
-        }
-      }
-    }
-
-    let added = 0;
-    // Batch insert in chunks to avoid timeout
-    const CHUNK = 500;
-    for (let i = 0; i < toCreate.length; i += CHUNK) {
-      const chunk = toCreate.slice(i, i + CHUNK);
-      const result = await prisma.projectMember.createMany({ data: chunk, skipDuplicates: true });
-      added += result.count;
-    }
-
-    return { synced_projects: projects.length, synced_members: wsMembers.length, records_created: added };
+    return { synced_projects: sistemas, synced_members: membros, records_created: criados };
   })
 
   // ── Backfill: add Avaliando + Em Teste states to existing projects ────────────
