@@ -27,6 +27,7 @@ import { JANELA_DE_SESSAO_MS } from "@utils/versoes-da-descricao";
 import { cleanDb } from "@tests/helpers/setup";
 import {
   apiClient,
+  buildPedidoDeSolicitacao,
   createApiToken,
   createIssue,
   createMemberWithToken,
@@ -386,7 +387,7 @@ describe("Versões da descrição do chamado", () => {
     /** Solicitação aberta pelo autor na caixa de entrada. */
     async function solicitacaoDoAutor(nome: string) {
       const res = await doAutor.post(inboxUrl(), {
-        issue: { name: nome, description_html: DESCRICAO_ORIGINAL },
+        issue: await buildPedidoDeSolicitacao(wsId, { name: nome, description_html: DESCRICAO_ORIGINAL }),
       });
       expect(res.status).toBe(201);
       return (await res.json()) as any;
