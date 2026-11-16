@@ -18,8 +18,10 @@
 export type ConfigDaIaDaQuality = {
   /** Endereço base do serviço, sem barra final. */
   urlDaIa: string;
-  /** Endereço público da wiki, onde a pessoa abre a página. */
+  /** Endereço público da wiki: só para a página que o informe não sabe abrir. */
   urlDaWiki: string;
+  /** Endereço do informe da Quality, onde a pessoa abre o documento pelo id. */
+  urlDoInforme: string;
   /** Teto da busca e da leitura de página: chamadas que rodam enquanto a pessoa digita. */
   tempoLimiteMs: number;
   /**
@@ -31,6 +33,7 @@ export type ConfigDaIaDaQuality = {
 
 const URL_DA_IA_PADRAO = "https://ia.qualitysistemas.inf.br";
 const URL_DA_WIKI_PADRAO = "https://wiki.qualitysistemas.inf.br";
+const URL_DO_INFORME_PADRAO = "https://informe.qualitysistemas.inf.br";
 const TEMPO_LIMITE_PADRAO_MS = 6000;
 const TEMPO_LIMITE_DA_RESPOSTA_PADRAO_MS = 30000;
 
@@ -46,6 +49,7 @@ const readMs = (valor: string | undefined, padrao: number) => {
 export const readConfigDaIaDaQuality = (env: Ambiente = process.env): ConfigDaIaDaQuality => ({
   urlDaIa: readUrl(env.IA_DA_QUALITY_URL, URL_DA_IA_PADRAO),
   urlDaWiki: readUrl(env.WIKI_DA_QUALITY_URL, URL_DA_WIKI_PADRAO),
+  urlDoInforme: readUrl(env.INFORME_DA_QUALITY_URL, URL_DO_INFORME_PADRAO),
   tempoLimiteMs: readMs(env.IA_DA_QUALITY_TIMEOUT_MS, TEMPO_LIMITE_PADRAO_MS),
   tempoLimiteDaRespostaMs: readMs(env.IA_DA_QUALITY_RESPOSTA_TIMEOUT_MS, TEMPO_LIMITE_DA_RESPOSTA_PADRAO_MS),
 });
@@ -87,6 +91,10 @@ export const findDocumentoDaWiki = async (
     content: typeof documento.content === "string" ? documento.content : "",
   };
 };
+
+/** `GET /api/wiki/documents`: a lista de páginas (id e caminho), o corpo cru. */
+export const listDocumentosDaWiki = (config: ConfigDaIaDaQuality) =>
+  fetchJson(`${config.urlDaIa}/api/wiki/documents`, {}, config.tempoLimiteMs);
 
 /** `POST /api/ai/query {question}`: o corpo cru da resposta da IA, para as regras lerem. */
 export const askIaDaQuality = (config: ConfigDaIaDaQuality, question: string) =>

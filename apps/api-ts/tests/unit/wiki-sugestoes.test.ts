@@ -11,7 +11,9 @@ import {
   buildConsultaDaWiki,
   buildPerguntaDeResolucao,
   buildTrechoDoConteudo,
+  buildReadUrlDaPagina,
   buildUrlDaWiki,
+  buildUrlDoInforme,
   isPaginaDoSistema,
   LIMITE_DA_SUGESTAO,
   LIMITE_DE_TERMOS_DA_WIKI,
@@ -19,6 +21,7 @@ import {
   limitSugestao,
   mapSugestaoDaWiki,
   prioritizePaginasDoSistema,
+  readIdsPorCaminho,
   readPaginasDaBusca,
   readPedidoDeResolucao,
   readRespostaDaIa,
@@ -27,6 +30,7 @@ import {
 } from "@modules/wiki-sugestoes/wiki-sugestoes.rules";
 
 const WIKI = "https://wiki.qualitysistemas.inf.br";
+const INFORME = "https://informe.qualitysistemas.inf.br";
 
 const pagina = (extra: Partial<PaginaDaIaDaQuality> = {}): PaginaDaIaDaQuality => ({
   id: "1",
@@ -113,6 +117,41 @@ describe("buildUrlDaWiki", () => {
   });
 });
 
+describe("buildUrlDoInforme", () => {
+  it("abre o documento pelo id no informe, não pelo caminho na wiki", () => {
+    expect(buildUrlDoInforme(INFORME, "349")).toBe(`${INFORME}/document/349`);
+  });
+});
+
+describe("readIdsPorCaminho", () => {
+  it("lê o id de cada caminho da lista de documentos, sem barras nas pontas", () => {
+    const corpo = { documents: [{ id: 349, path: "/web/Sancoes/" }, { id: "12", path: "siart/guia" }, { path: "x" }] };
+    expect(readIdsPorCaminho(corpo)).toEqual(
+      new Map([
+        ["web/Sancoes", "349"],
+        ["siart/guia", "12"],
+      ])
+    );
+  });
+
+  it("corpo fora da forma vira mapa vazio", () => {
+    expect(readIdsPorCaminho(null).size).toBe(0);
+    expect(readIdsPorCaminho({ documents: "x" }).size).toBe(0);
+  });
+});
+
+describe("buildReadUrlDaPagina", () => {
+  const readUrl = buildReadUrlDaPagina({ urlDoInforme: INFORME, urlDaWiki: WIKI }, new Map([["siart/guia", "12"]]));
+
+  it("caminho com id conhecido abre no informe", () => {
+    expect(readUrl("/siart/guia")).toBe(`${INFORME}/document/12`);
+  });
+
+  it("caminho sem id conhecido abre na wiki, para o link não quebrar", () => {
+    expect(readUrl("web/boleto")).toBe(`${WIKI}/web/boleto`);
+  });
+});
+
 describe("readSistemaDoPath", () => {
   it("é o primeiro pedaço do caminho", () => {
     expect(readSistemaDoPath("siart/ConfigParametros")).toBe("siart");
@@ -186,26 +225,26 @@ describe("buildTrechoDoConteudo", () => {
 });
 
 describe("mapSugestaoDaWiki", () => {
-  it("devolve id, título, trecho do resumo, endereço na wiki e o sistema", () => {
+  it("devolve id, título, trecho do resumo, endereço no informe e o sistema", () => {
     const resultado = mapSugestaoDaWiki(
       pagina({ id: "348", title: "Simples Nacional", path: "siart/Config", tags: ["siart"], summary: "Resumo" }),
-      WIKI
+      INFORME
     );
     expect(resultado).toEqual({
       id: "348",
       name: "Simples Nacional",
       trecho: "Resumo",
-      url: `${WIKI}/siart/Config`,
+      url: `${INFORME}/document/348`,
       sistema: "siart",
     });
   });
 
   it("sem resumo, o trecho sai do conteúdo da página", () => {
-    expect(mapSugestaoDaWiki(pagina({ tags: ["a"] }), WIKI, "<p>Abra Tributos.</p>").trecho).toBe("Abra Tributos.");
+    expect(mapSugestaoDaWiki(pagina({ tags: ["a"] }), INFORME, "<p>Abra Tributos.</p>").trecho).toBe("Abra Tributos.");
   });
 
   it("sem resumo nem conteúdo, o trecho são as tags", () => {
-    expect(mapSugestaoDaWiki(pagina({ tags: ["nota", "fiscal"] }), WIKI).trecho).toBe("nota, fiscal");
+    expect(mapSugestaoDaWiki(pagina({ tags: ["nota", "fiscal"] }), INFORME).trecho).toBe("nota, fiscal");
   });
 });
 
@@ -265,24 +304,26 @@ const resposta = (extra: Record<string, unknown> = {}) => ({
 });
 
 describe("readRespostaDaIa", () => {
-  it("devolve a sugestão e as páginas consultadas, sem repetir, com o endereço na wiki", () => {
-    expect(readRespostaDaIa(resposta(), WIKI)).toEqual({
+  const URL = buildReadUrlDaPagina({ urlDoInforme: INFORME, urlDaWiki: WIKI }, new Map([["siart/guia", "12"]]));
+
+  it("devolve a sugestão e as páginas consultadas, sem repetir, com o endereço de cada uma", () => {
+    expect(readRespostaDaIa(resposta(), URL)).toEqual({
       sugestao: "Reemita a guia pelo menu Tributos.",
       paginas_consultadas: [
-        { name: "Emissão de guia", url: `${WIKI}/siart/guia` },
+        { name: "Emissão de guia", url: `${INFORME}/document/12` },
         { name: "Boleto", url: `${WIKI}/web/boleto` },
       ],
     });
   });
 
   it("resposta longa chega cortada no tamanho do aviso", () => {
-    const lida = readRespostaDaIa(resposta({ response: "Faça assim. ".repeat(120) }), WIKI);
+    const lida = readRespostaDaIa(resposta({ response: "Faça assim. ".repeat(120) }), URL);
     expect(lida?.sugestao.length).toBeLessThanOrEqual(LIMITE_DA_SUGESTAO);
     expect(lida?.sugestao.endsWith("…")).toBe(true);
   });
 
   it("sem páginas consultadas, a lista vem vazia", () => {
-    expect(readRespostaDaIa({ response: "Faça assim." }, WIKI)).toEqual({
+    expect(readRespostaDaIa({ response: "Faça assim." }, URL)).toEqual({
       sugestao: "Faça assim.",
       paginas_consultadas: [],
     });
@@ -290,21 +331,22 @@ describe("readRespostaDaIa", () => {
 
   it("o erro que a IA devolve com status 200 não vira sugestão", () => {
     const erro = { response: "Desculpe, ocorreu um erro ao processar", source_info: { source: "Error" } };
-    expect(readRespostaDaIa(erro, WIKI)).toBeNull();
+    expect(readRespostaDaIa(erro, URL)).toBeNull();
   });
 
   it("resposta vazia ou fora da forma não vira sugestão", () => {
-    expect(readRespostaDaIa(null, WIKI)).toBeNull();
-    expect(readRespostaDaIa({ response: "   " }, WIKI)).toBeNull();
-    expect(readRespostaDaIa({ error: "Erro na consulta à IA" }, WIKI)).toBeNull();
+    expect(readRespostaDaIa(null, URL)).toBeNull();
+    expect(readRespostaDaIa({ response: "   " }, URL)).toBeNull();
+    expect(readRespostaDaIa({ error: "Erro na consulta à IA" }, URL)).toBeNull();
   });
 });
 
 describe("readConfigDaIaDaQuality", () => {
-  it("sem variável, aponta para a IA e a wiki da Quality em produção", () => {
+  it("sem variável, aponta para a IA, a wiki e o informe da Quality em produção", () => {
     expect(readConfigDaIaDaQuality({})).toMatchObject({
       urlDaIa: "https://ia.qualitysistemas.inf.br",
       urlDaWiki: "https://wiki.qualitysistemas.inf.br",
+      urlDoInforme: "https://informe.qualitysistemas.inf.br",
       tempoLimiteMs: 6000,
     });
   });
@@ -313,7 +355,12 @@ describe("readConfigDaIaDaQuality", () => {
     const config = readConfigDaIaDaQuality({
       IA_DA_QUALITY_URL: "http://localhost:9999/",
       WIKI_DA_QUALITY_URL: " http://wiki.local// ",
+      INFORME_DA_QUALITY_URL: "http://informe.local/",
     });
-    expect(config).toMatchObject({ urlDaIa: "http://localhost:9999", urlDaWiki: "http://wiki.local" });
+    expect(config).toMatchObject({
+      urlDaIa: "http://localhost:9999",
+      urlDaWiki: "http://wiki.local",
+      urlDoInforme: "http://informe.local",
+    });
   });
 });

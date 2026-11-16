@@ -27,6 +27,7 @@ import { apiClient, createMemberWithToken, createProject, createUser, createWork
 type Sugestao = { id: string; name: string; trecho: string; url: string; sistema: string };
 
 const WIKI = "http://wiki.quality.teste";
+const INFORME = "http://informe.quality.teste";
 const RESPOSTA_DA_IA = "Reemita a nota pelo menu Tributos, opção Notas emitidas, e confira o certificado digital.";
 
 // ── IA da Quality falsa ───────────────────────────────────────────────────────
@@ -86,6 +87,7 @@ function startIaDaQualityFalsa() {
             pages_consulted: [
               { id: "web/Nota_Fiscal/informativo", title: "Informativo NFS-e", path: "web/Nota_Fiscal/informativo" },
               { id: "web/Nota_Fiscal/informativo", title: "Informativo NFS-e", path: "web/Nota_Fiscal/informativo" },
+              { id: "web/sem-id", title: "Página fora da lista", path: "web/sem-id" },
             ],
           },
         });
@@ -100,6 +102,9 @@ function startIaDaQualityFalsa() {
       if (url.pathname === "/api/wiki/search") {
         buscas.push(url.searchParams.get("q") ?? "");
         return Response.json({ success: true, results: RESULTADOS, total: RESULTADOS.length, query: "" });
+      }
+      if (url.pathname === "/api/wiki/documents") {
+        return Response.json({ success: true, documents: RESULTADOS, total: RESULTADOS.length });
       }
       const documento = url.pathname.match(/^\/api\/wiki\/document\/([^/]+)$/);
       if (documento) return findDocumento(documento[1]);
@@ -167,7 +172,12 @@ describe("sugestões da wiki da Quality ao abrir solicitação", () => {
     const portaFechada = await findPortaLivre();
     const tempos = { IA_DA_QUALITY_TIMEOUT_MS: "800", IA_DA_QUALITY_RESPOSTA_TIMEOUT_MS: "800" };
     const [ok, foraDoAr] = await Promise.all([
-      startApiDeTeste("wiki-quality-ok", { ...tempos, IA_DA_QUALITY_URL: ia.base, WIKI_DA_QUALITY_URL: `${WIKI}/` }),
+      startApiDeTeste("wiki-quality-ok", {
+        ...tempos,
+        IA_DA_QUALITY_URL: ia.base,
+        WIKI_DA_QUALITY_URL: `${WIKI}/`,
+        INFORME_DA_QUALITY_URL: `${INFORME}/`,
+      }),
       startApiDeTeste("wiki-quality-fora", { ...tempos, IA_DA_QUALITY_URL: `http://localhost:${portaFechada}` }),
     ]);
     apis.ok = ok;
@@ -189,14 +199,14 @@ describe("sugestões da wiki da Quality ao abrir solicitação", () => {
     expect(ia.buscas).toEqual(["emitir or nota or fiscal or eletrônica"]);
   });
 
-  it("devolve até 5 páginas com id, título, trecho, endereço na wiki da Quality e sistema", async () => {
+  it("devolve até 5 páginas com id, título, trecho, endereço no informe da Quality e sistema", async () => {
     const lista = await readSugestoes("ok", "emitir nota fiscal eletrônica");
     expect(lista).toHaveLength(5);
     expect(lista[0]).toEqual({
       id: "101",
       name: "Informativo NFS-e",
       trecho: "Para emitir a nota, abra Tributos e escolha Notas emitidas.",
-      url: `${WIKI}/web/Nota_Fiscal/informativo`,
+      url: `${INFORME}/document/101`,
       sistema: "web",
     });
   });
@@ -259,7 +269,11 @@ describe("sugestões da wiki da Quality ao abrir solicitação", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       sugestao: RESPOSTA_DA_IA,
-      paginas_consultadas: [{ name: "Informativo NFS-e", url: `${WIKI}/web/Nota_Fiscal/informativo` }],
+      // A IA cita pelo caminho: o informe abre pelo id; o que não está na lista abre na wiki.
+      paginas_consultadas: [
+        { name: "Informativo NFS-e", url: `${INFORME}/document/101` },
+        { name: "Página fora da lista", url: `${WIKI}/web/sem-id` },
+      ],
     });
     expect(ia.perguntas).toHaveLength(1);
     expect(ia.perguntas[0]).toContain("não consegue emitir a nota fiscal eletrônica");
