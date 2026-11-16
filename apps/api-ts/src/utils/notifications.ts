@@ -15,8 +15,11 @@ export async function notifyQualityOfIntake(opts: {
   /** `null` quando a abertura veio do portal do cliente: não há ator do time. */
   actorId: string | null;
   issueName: string;
+  /** Cliente parado (urgente) muda o título: é o que a Qualidade precisa ver primeiro. */
+  priority?: string | null;
 }): Promise<void> {
   const receivers = (await findQualidadeDoProjeto(opts.projectId)).filter((id) => id !== opts.actorId);
+  const urgente = opts.priority === "urgent";
 
   if (!receivers.length) return;
 
@@ -28,11 +31,11 @@ export async function notifyQualityOfIntake(opts: {
       issueId: opts.issueId,
       receiverId,
       actorId: opts.actorId,
-      title: "Novo intake aberto",
+      title: urgente ? "Cliente parado: nova solicitação" : "Nova solicitação",
       message: opts.issueName,
       entity: "intake",
       entityId: opts.issueId,
-      data: {type: "intake_opened"},
+      data: {type: "intake_opened", urgente},
       triggered: "intake",
     })),
   });
@@ -176,6 +179,37 @@ export async function notifyStateChange(opts: {
       triggered: "state",
     })),
   });
+}
+
+/**
+ * Avisa quem abriu a solicitação que ela foi recusada, com o motivo: é o que o
+ * atendimento repassa ao cliente.
+ */
+export async function notifyRecusaDaSolicitacao(opts: {
+  workspaceId: string;
+  projectId: string;
+  issueId: string;
+  actorId: string;
+  receiverId: string;
+  issueName: string;
+  motivo: string;
+}): Promise<void> {
+  await prisma.notification.create({
+    data: {
+      workspaceId: opts.workspaceId,
+      projectId: opts.projectId,
+      issueId: opts.issueId,
+      receiverId: opts.receiverId,
+      actorId: opts.actorId,
+      title: "Solicitação recusada",
+      message: `${opts.issueName}: ${opts.motivo}`.slice(0, 200),
+      entity: "intake",
+      entityId: opts.issueId,
+      data: {type: "intake_declined"},
+      triggered: "intake",
+    },
+  });
+  avisarSino(opts.workspaceId, [opts.receiverId]);
 }
 
 /**

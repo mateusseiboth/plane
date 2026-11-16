@@ -9,6 +9,7 @@ import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requ
 import {EProjectAction, requireProjectAction, requireWorkspaceAction, resolveMemberRole, roleCan} from "@utils/permission-checks";
 import {
   createSolicitacao,
+  findCamposQueFaltamNaSolicitacao,
   findErrosDaSolicitacao,
   findOrCreateIntake,
   findTriageState,
@@ -17,6 +18,10 @@ import {
 import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
+import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
+import { isDecisaoDaTriagem, isRecusa, readMotivoDaRecusa } from "@modules/solicitacao/recusa-da-solicitacao.rules";
+import { saveRecusaDaSolicitacao } from "@modules/solicitacao/recusa-da-solicitacao.service";
+import {createFieldError} from "@utils/field-error";
 
 // Keep in sync with DEFAULT_STATES in scripts/migrate-sac.ts (pt-BR workflow).
 const DEFAULT_STATES = [
@@ -174,6 +179,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
 
       return p;
     });
+    // Sistema novo nasce com todo o time (participacao-em-todo-sistema).
+    await syncParticipacaoEmTodoSistema(ws.id);
 
     set.status = 201;
     return formatProject(project, 20);
@@ -551,7 +558,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await requireSistemaDoEspaco(project_id, ws.id);
     const b = (body as any).issue ?? body as any;
     const referencias = {projectId: project_id, workspaceId: ws.id, moduleId: b.module_id || null, entityId: b.entity_id || null};
-    const erros = await findErrosDaSolicitacao(referencias);
+    const erros = [
+      ...findCamposQueFaltamNaSolicitacao({...referencias, descriptionHtml: b.description_html, exigeDescricao: true}),
+      ...(await findErrosDaSolicitacao(referencias)),
+    ];
     if (erros.length) {
       set.status = 422;
       return {detail: erros[0]!.message, errors: erros};
@@ -568,11 +578,21 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       assigneeIds: b.assignee_ids ?? b.assignees ?? [],
       headers,
     });
+    const sistema = await prisma.project.findUniqueOrThrow({where: {id: project_id}, select: {identifier: true}});
     set.status = 201;
     return {
       id: issue.id, status: -2, snoozed_till: null, duplicate_to: undefined,
       source: "IN_APP", created_by: user.id,
-      issue: {id: issue.id, name: issue.name, state_id: issue.stateId, project_id: issue.projectId, sequence_id: issue.sequenceId},
+      // O número que o atendimento passa ao cliente (N-AAAA) e o do sistema.
+      issue: {
+        id: issue.id,
+        name: issue.name,
+        state_id: issue.stateId,
+        project_id: issue.projectId,
+        sequence_id: issue.sequenceId,
+        ticket_number: formatNumeroDoChamado(issue),
+        label: `${sistema.identifier}-${issue.sequenceId}`,
+      },
     };
   })
 
@@ -581,7 +601,7 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     await getProjectOrFail(ws.id, project_id, user.id);
     const issue = await prisma.issue.findFirst({
       where: {id: inbox_id, projectId: project_id, deletedAt: null},
-      include: {state: {select: {group: true}}},
+      include: {state: {select: {group: true}}, entity: {select: {id: true, name: true}}},
     });
     if (!issue) { set.status = 404; return {detail: "Não encontrado."}; }
     const ii = await prisma.intakeIssue.findFirst({where: {issueId: inbox_id, deletedAt: null}}) as any;
@@ -610,6 +630,9 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         workspace_id: issue.workspaceId, sequence_id: issue.sequenceId,
         ticket_number: formatNumeroDoChamado(issue),
         description_html: issue.descriptionHtml ?? "<p></p>",
+        // A triagem mostra (e corrige) de que entidade é o pedido.
+        entity_id: issue.entityId,
+        entity: issue.entity ? {id: issue.entity.id, name: issue.entity.name} : null,
         created_at: issue.createdAt?.toISOString(), updated_at: issue.updatedAt?.toISOString(),
       },
     };
@@ -620,6 +643,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const {member: callerMember} = await getProjectOrFail(ws.id, project_id, user.id);
     const b = body as any;
     const issuePatch = b.issue ?? {};
+
+    // Decidir o destino do pedido é de quem tria; recusar exige o motivo, que
+    // vai para quem abriu (ver modules/solicitacao/recusa-da-solicitacao).
+    if (isDecisaoDaTriagem(b)) await requireProjectAction(ws.id, project_id, user.id, EProjectAction.INTAKE_REVIEW);
+    const motivoDaRecusa = isRecusa(b) ? readMotivoDaRecusa(b) : null;
 
     const antes = await prisma.issue.findFirst({
       where: {id: inbox_id, deletedAt: null},
@@ -650,6 +678,11 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     if (issuePatch.name !== undefined) issueData.name = issuePatch.name;
     if (issuePatch.state_id !== undefined) issueData.stateId = issuePatch.state_id;
     if (issuePatch.priority !== undefined) issueData.priority = issuePatch.priority;
+    if (issuePatch.entity_id) {
+      const [erro] = await findErrosDaSolicitacao({projectId: project_id, workspaceId: ws.id, entityId: issuePatch.entity_id});
+      if (erro) throw createFieldError(erro.path, erro.message);
+      issueData.entityId = issuePatch.entity_id;
+    }
     if (issuePatch.description_html !== undefined) {
       issueData.descriptionHtml = issuePatch.description_html;
       issueData.descriptionStripped = (issuePatch.description_html ?? "").replace(/<[^>]+>/g, "");
@@ -749,6 +782,15 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         priority: (issue as any).priority,
       },
     };
+    if (motivoDaRecusa) {
+      await saveRecusaDaSolicitacao({
+        workspaceId: ws.id,
+        projectId: project_id,
+        issueId: inbox_id,
+        actorId: user.id,
+        motivo: motivoDaRecusa,
+      });
+    }
     publishRealtime(ws.id, {entity: "intake", action: "update", project_id, id: inbox_id, issue_id: inbox_id, actor: user.id});
     publishRealtime(ws.id, {entity: "issue", action: "update", project_id, id: inbox_id, actor: user.id});
     // LGPD: triagem da solicitação (aceite/recusa/snooze) muda o destino do pedido.
@@ -856,60 +898,19 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     return { status: !taken };
   })
 
-  // ── Backfill: add all workspace members to all workspace projects ─────────────
-  // Fixes projects created via migration that have no projectMember records.
-  // Only workspace admins can trigger this.
+  // ── Todo membro ativo em todo sistema (participacao-em-todo-sistema) ──────────
+  // Refaz o que faltar: membro que entrou por um caminho que não sincroniza,
+  // dado importado. Idempotente.
 
-  .post("/sync-members/", async ({ params: { slug }, user, set }) => {
+  .post("/sync-members/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
-
-    const [wsMembers, projects] = await Promise.all([
-      prisma.workspaceMember.findMany({
-        // permissao-estrutural: seleção de quem entra nos sistemas, não checagem de acesso.
-        where: { workspaceId: ws.id, isActive: true, deletedAt: null, role: { gte: 10 } },
-        select: { memberId: true, role: true },
-      }),
-      prisma.project.findMany({
-        where: { workspaceId: ws.id, deletedAt: null },
-        select: { id: true },
-      }),
+    const [criados, membros, sistemas] = await Promise.all([
+      syncParticipacaoEmTodoSistema(ws.id),
+      prisma.workspaceMember.count({ where: { workspaceId: ws.id, isActive: true, deletedAt: null } }),
+      prisma.project.count({ where: { workspaceId: ws.id, deletedAt: null } }),
     ]);
-
-    // Get all existing project member records (to avoid duplicates)
-    const existingSet = new Set(
-      (await prisma.projectMember.findMany({
-        where: { workspaceId: ws.id, deletedAt: null },
-        select: { projectId: true, memberId: true },
-      })).map(m => `${m.projectId}:${m.memberId}`)
-    );
-
-    const toCreate: any[] = [];
-    for (const project of projects) {
-      for (const wsMember of wsMembers) {
-        const key = `${project.id}:${wsMember.memberId}`;
-        if (!existingSet.has(key)) {
-          toCreate.push({
-            projectId: project.id,
-            workspaceId: ws.id,
-            memberId: wsMember.memberId,
-            role: Math.min(wsMember.role, 15),
-            isActive: true,
-          });
-        }
-      }
-    }
-
-    let added = 0;
-    // Batch insert in chunks to avoid timeout
-    const CHUNK = 500;
-    for (let i = 0; i < toCreate.length; i += CHUNK) {
-      const chunk = toCreate.slice(i, i + CHUNK);
-      const result = await prisma.projectMember.createMany({ data: chunk, skipDuplicates: true });
-      added += result.count;
-    }
-
-    return { synced_projects: projects.length, synced_members: wsMembers.length, records_created: added };
+    return { synced_projects: sistemas, synced_members: membros, records_created: criados };
   })
 
   // ── Backfill: add Avaliando + Em Teste states to existing projects ────────────

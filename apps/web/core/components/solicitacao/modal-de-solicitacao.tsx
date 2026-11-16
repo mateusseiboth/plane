@@ -10,12 +10,16 @@ import { useRef, useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
 import type { EditorRefApi } from "@plane/editor";
+import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { EFileAssetType } from "@plane/types";
 import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
+import { copyTextToClipboard } from "@plane/utils";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { RichTextEditor } from "@/components/editor/rich-text/editor";
 import { BlocoDaWiki } from "@/components/solicitacao/bloco-da-wiki";
+import type { ConfirmacaoDaSolicitacao } from "@/components/solicitacao/confirmacao-da-solicitacao";
+import { ORIENTACAO_DA_ABERTURA } from "@/components/solicitacao/orientacao-da-abertura";
 import { buildTextoDaBuscaNaWiki } from "@/components/solicitacao/sugestoes-da-wiki";
 import {
   buildPedidoDaSolicitacao,
@@ -45,6 +49,10 @@ type Props = {
   /** Campos recusados pela API (`errors: [{ path, message }]`). */
   erros?: ErroDoCampo[];
   enviando?: boolean;
+  /** Na avulsa a descrição é obrigatória; pela conversa ela é a transcrição. */
+  isDescricaoObrigatoria?: boolean;
+  /** Depois de aberta: o modal mostra o número para o atendimento copiar. */
+  confirmacao?: ConfirmacaoDaSolicitacao | null;
   onConfirmar: (pedido: PedidoDeSolicitacao) => void;
   onCancelar: () => void;
 };
@@ -67,6 +75,51 @@ function ErroDoCampoDaTela({ mensagem }: { mensagem?: string }) {
   return <span className="mt-1 block text-11 text-danger-primary">{mensagem}</span>;
 }
 
+const copyNumero = async (numero: string) => {
+  await copyTextToClipboard(numero);
+  setToast({ type: TOAST_TYPE.SUCCESS, title: "Número copiado", message: numero });
+};
+
+/** A solicitação aberta: o número grande, para copiar e passar ao cliente. */
+function ConfirmacaoDaAbertura(props: {
+  confirmacao: ConfirmacaoDaSolicitacao;
+  isClienteParado: boolean;
+  onFechar: () => void;
+}) {
+  const { confirmacao, isClienteParado, onFechar } = props;
+  return (
+    <div className="space-y-4 p-5">
+      <h2 className="text-15 font-semibold text-primary">Solicitação aberta</h2>
+      <div className="rounded-md border border-subtle bg-surface-2 p-4">
+        <p className="text-12 text-secondary">Número para o cliente</p>
+        <div className="mt-1 flex items-center gap-3">
+          <span className="font-mono text-24 font-semibold text-primary select-all">
+            {confirmacao.numeroParaOCliente}
+          </span>
+          <button
+            type="button"
+            onClick={() => void copyNumero(confirmacao.numeroParaOCliente)}
+            className="rounded-md border border-subtle px-2.5 py-1 text-12 text-secondary hover:bg-layer-1"
+          >
+            Copiar
+          </button>
+        </div>
+        {confirmacao.numeroNoSistema && (
+          <p className="mt-2 text-12 text-tertiary">No sistema: {confirmacao.numeroNoSistema}</p>
+        )}
+      </div>
+      <p className={isClienteParado ? "text-13 font-medium text-danger-primary" : "text-13 text-secondary"}>
+        {confirmacao.aviso}
+      </p>
+      <div className="flex justify-end">
+        <button onClick={onFechar} className="rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color">
+          Fechar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * O modal de abrir solicitação: o mesmo pela conversa do chat e pelo botão
  * "Nova solicitação" de quem só abre solicitação. Sistema, título, módulo,
@@ -84,6 +137,8 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
     inicial = {},
     erros = [],
     enviando = false,
+    isDescricaoObrigatoria = true,
+    confirmacao = null,
     onConfirmar,
     onCancelar,
   } = props;
@@ -136,121 +191,132 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
   const { entities } = useEntities(workspaceSlug);
 
   const change = (mudanca: Partial<FormularioDaSolicitacao>) => setFormulario((atual) => ({ ...atual, ...mudanca }));
-  const pendencia = findPendenciaDaSolicitacao(formulario);
+  const pendencia = findPendenciaDaSolicitacao(formulario, { isDescricaoObrigatoria });
   const erroDe = (path: string) => readErroDoCampoDaSolicitacao(erros, path);
 
   return (
     // ModalCore abre num portal, fora da barra lateral: um `fixed` montado
     // dentro dela ficava preso ao painel, encolhido embaixo do botão.
     <ModalCore isOpen handleClose={onCancelar} position={EModalPosition.CENTER} width={EModalWidth.LG}>
-      <div className="p-5" onKeyDown={(e) => e.key === "Escape" && onCancelar()}>
-        <h2 className="text-15 font-semibold text-primary">{titulo}</h2>
-        {aviso && <p className="mt-1 text-12 text-secondary">{aviso}</p>}
+      {confirmacao ? (
+        <ConfirmacaoDaAbertura
+          confirmacao={confirmacao}
+          isClienteParado={formulario.clienteParado}
+          onFechar={onCancelar}
+        />
+      ) : (
+        <div className="p-5" onKeyDown={(e) => e.key === "Escape" && onCancelar()}>
+          <h2 className="text-15 font-semibold text-primary">{titulo}</h2>
+          {aviso && <p className="mt-1 text-12 text-secondary">{aviso}</p>}
+          <p className="mt-2 rounded-md bg-layer-1 px-3 py-2 text-12 text-secondary">{ORIENTACAO_DA_ABERTURA}</p>
 
-        <div className="mt-4 space-y-4">
-          <div>
-            <p className={ROTULO}>Sistema</p>
-            <SelectPesquisavel
-              value={formulario.projectId}
-              onChange={(projectId) => change({ projectId, moduloId: "" })}
-              opcoes={projetos}
-              placeholder="Selecione o sistema"
-              searchPlaceholder="Buscar sistema"
-            />
-          </div>
+          <div className="mt-4 space-y-4">
+            <div>
+              <p className={ROTULO}>Sistema</p>
+              <SelectPesquisavel
+                value={formulario.projectId}
+                onChange={(projectId) => change({ projectId, moduloId: "" })}
+                opcoes={projetos}
+                placeholder="Selecione o sistema"
+                searchPlaceholder="Buscar sistema"
+              />
+            </div>
 
-          <div>
-            <p className={ROTULO}>Título</p>
-            <input
-              value={formulario.titulo}
-              onChange={(e) => change({ titulo: e.target.value })}
-              maxLength={250}
-              className={CAIXA}
-            />
-          </div>
+            <div>
+              <p className={ROTULO}>Título</p>
+              <input
+                value={formulario.titulo}
+                onChange={(e) => change({ titulo: e.target.value })}
+                maxLength={250}
+                className={CAIXA}
+              />
+            </div>
 
-          <div>
-            <p className={ROTULO}>Módulo</p>
-            <SelectPesquisavel
-              value={formulario.moduloId}
-              onChange={(moduloId) => change({ moduloId })}
-              opcoes={modulos}
-              opcaoVazia={{ value: "", label: "Nenhum" }}
-              placeholder="Opcional"
-              searchPlaceholder="Buscar módulo"
-              disabled={!formulario.projectId}
-            />
-            <ErroDoCampoDaTela mensagem={erroDe("module_id")} />
-          </div>
+            <div>
+              {/* O "caminho do menu" do legado: em que parte do sistema o problema acontece. */}
+              <p className={ROTULO}>Módulo (menu do sistema onde acontece)</p>
+              <SelectPesquisavel
+                value={formulario.moduloId}
+                onChange={(moduloId) => change({ moduloId })}
+                opcoes={modulos}
+                opcaoVazia={{ value: "", label: "Nenhum" }}
+                placeholder="Escolha o menu"
+                searchPlaceholder="Buscar módulo"
+                disabled={!formulario.projectId}
+              />
+              <ErroDoCampoDaTela mensagem={erroDe("module_id")} />
+            </div>
 
-          <div>
-            <p className={ROTULO}>Entidade</p>
-            <SelectPesquisavel
-              value={formulario.entidadeId}
-              onChange={(entidadeId) => change({ entidadeId })}
-              opcoes={(entities ?? []).map((e) => ({ value: e.id, label: e.name }))}
-              opcaoVazia={{ value: "", label: "Sem entidade" }}
-              searchPlaceholder="Buscar entidade"
-            />
-            <ErroDoCampoDaTela mensagem={erroDe("entity_id")} />
-          </div>
+            <div>
+              <p className={ROTULO}>Entidade</p>
+              <SelectPesquisavel
+                value={formulario.entidadeId}
+                onChange={(entidadeId) => change({ entidadeId })}
+                opcoes={(entities ?? []).map((e) => ({ value: e.id, label: e.name }))}
+                placeholder="Selecione a entidade"
+                searchPlaceholder="Buscar entidade"
+              />
+              <ErroDoCampoDaTela mensagem={erroDe("entity_id")} />
+            </div>
 
-          <div>
-            <p className={ROTULO}>Complemento</p>
-            <RichTextEditor
-              editable
-              id="complemento-da-solicitacao"
-              ref={editorRef}
-              initialValue="<p></p>"
+            <div>
+              <p className={ROTULO}>{isDescricaoObrigatoria ? "Descrição do problema" : "Complemento"}</p>
+              <RichTextEditor
+                editable
+                id="complemento-da-solicitacao"
+                ref={editorRef}
+                initialValue="<p></p>"
+                workspaceSlug={workspaceSlug}
+                workspaceId={currentWorkspace?.id ?? ""}
+                projectId={formulario.projectId || undefined}
+                dragDropEnabled={false}
+                disabledExtensions={[...EXTENSOES_SEM_ARQUIVO]}
+                onChange={(_json: object, html: string) => change({ complementoHtml: html })}
+                placeholder={isDescricaoObrigatoria ? "O que o cliente fez e a mensagem de erro" : "Opcional"}
+                searchMentionCallback={async (payload) =>
+                  await workspaceService.searchEntity(workspaceSlug, { ...payload, project_id: formulario.projectId })
+                }
+                uploadFile={uploadImagem}
+                duplicateFile={duplicateImagem}
+                containerClassName="min-h-[96px] rounded-md border border-subtle bg-surface-2"
+              />
+              <ErroDoCampoDaTela mensagem={erroDe("description_html")} />
+            </div>
+
+            <BlocoDaWiki
               workspaceSlug={workspaceSlug}
-              workspaceId={currentWorkspace?.id ?? ""}
+              texto={buildTextoDaBuscaNaWiki(formulario.titulo, formulario.complementoHtml)}
               projectId={formulario.projectId || undefined}
-              dragDropEnabled={false}
-              disabledExtensions={[...EXTENSOES_SEM_ARQUIVO]}
-              onChange={(_json: object, html: string) => change({ complementoHtml: html })}
-              placeholder="Opcional"
-              searchMentionCallback={async (payload) =>
-                await workspaceService.searchEntity(workspaceSlug, { ...payload, project_id: formulario.projectId })
-              }
-              uploadFile={uploadImagem}
-              duplicateFile={duplicateImagem}
-              containerClassName="min-h-[96px] rounded-md border border-subtle bg-surface-2"
             />
+
+            <label className="flex items-center gap-2 text-13 text-primary">
+              <input
+                type="checkbox"
+                checked={formulario.clienteParado}
+                onChange={(e) => change({ clienteParado: e.target.checked })}
+              />
+              Cliente parado (prioridade urgente)
+            </label>
           </div>
 
-          <BlocoDaWiki
-            workspaceSlug={workspaceSlug}
-            texto={buildTextoDaBuscaNaWiki(formulario.titulo, formulario.complementoHtml)}
-            projectId={formulario.projectId || undefined}
-          />
-
-          <label className="flex items-center gap-2 text-13 text-primary">
-            <input
-              type="checkbox"
-              checked={formulario.clienteParado}
-              onChange={(e) => change({ clienteParado: e.target.checked })}
-            />
-            Cliente parado (prioridade urgente)
-          </label>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={onCancelar}
+              className="rounded-md border border-subtle px-3 py-1.5 text-13 text-secondary hover:bg-layer-1"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => onConfirmar(buildPedidoDaSolicitacao(formulario))}
+              disabled={Boolean(pendencia) || enviando}
+              title={pendencia ?? rotuloDoEnvio}
+              className="rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {enviando ? "Enviando…" : rotuloDoEnvio}
+            </button>
+          </div>
         </div>
-
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            onClick={onCancelar}
-            className="rounded-md border border-subtle px-3 py-1.5 text-13 text-secondary hover:bg-layer-1"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={() => onConfirmar(buildPedidoDaSolicitacao(formulario))}
-            disabled={Boolean(pendencia) || enviando}
-            title={pendencia ?? rotuloDoEnvio}
-            className="rounded-md bg-accent-primary px-3 py-1.5 text-13 text-on-color disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {enviando ? "Enviando…" : rotuloDoEnvio}
-          </button>
-        </div>
-      </div>
+      )}
     </ModalCore>
   );
 });

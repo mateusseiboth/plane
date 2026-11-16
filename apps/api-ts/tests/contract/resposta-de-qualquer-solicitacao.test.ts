@@ -15,6 +15,7 @@ import { describe, it, expect, beforeAll } from "bun:test";
 import { cleanDb } from "@tests/helpers/setup";
 import {
   apiClient,
+  buildPedidoDeSolicitacao,
   createApiToken,
   createIntakeIssue,
   createProject,
@@ -164,7 +165,7 @@ describe("Responder qualquer solicitação ao concluir", () => {
 
   it("solicitação aberta pela triagem sabe quem pediu, e a fila mostra o nome", async () => {
     const res = await admin.post(`/workspaces/${wsSlug}/projects/${projetoId}/inbox-issues/`, {
-      issue: { name: "Pedido do atendimento por telefone" },
+      issue: await buildPedidoDeSolicitacao(wsId, { name: "Pedido do atendimento por telefone" }),
     });
     expect(res.status).toBe(201);
     const corpo = (await res.json()) as any;

@@ -241,6 +241,35 @@ const withoutBarrasNasPontas = (path: string) => path.replace(/^\/+|\/+$/g, "");
 export const buildUrlDaWiki = (urlDaWiki: string, path: string): string =>
   `${urlDaWiki}/${withoutBarrasNasPontas(path).split("/").map(encodeURIComponent).join("/")}`;
 
+/**
+ * Endereço do documento no informe da Quality: é lá que o atendimento lê a
+ * página (pedido de 16/11/2026). O informe abre qualquer documento da wiki
+ * pelo id, não pelo caminho.
+ */
+export const buildUrlDoInforme = (urlDoInforme: string, id: string): string =>
+  `${urlDoInforme}/document/${encodeURIComponent(id)}`;
+
+/** O corpo de `/api/wiki/documents`: o id de cada caminho, para achar no informe a página citada pela IA. */
+export const readIdsPorCaminho = (corpo: unknown): Map<string, string> => {
+  const documentos = (corpo as { documents?: unknown } | null)?.documents;
+  if (!Array.isArray(documentos)) return new Map();
+  const paginas = documentos.map(readPagina).filter((pagina) => pagina.id && pagina.path);
+  return new Map(paginas.map((pagina) => [withoutBarrasNasPontas(pagina.path), pagina.id]));
+};
+
+export type EnderecosDaWiki = { urlDoInforme: string; urlDaWiki: string };
+
+/**
+ * O endereço de uma página citada só pelo caminho (a IA não devolve o id): no
+ * informe quando o id é conhecido; senão na wiki, para o link não quebrar.
+ */
+export const buildReadUrlDaPagina =
+  (enderecos: EnderecosDaWiki, idsPorCaminho: Map<string, string>) =>
+  (path: string): string => {
+    const id = idsPorCaminho.get(withoutBarrasNasPontas(path));
+    return id ? buildUrlDoInforme(enderecos.urlDoInforme, id) : buildUrlDaWiki(enderecos.urlDaWiki, path);
+  };
+
 /** O caminho começa pelo sistema: `siart/...`, `Planejar/...`, `web/...`. */
 export const readSistemaDoPath = (path: string): string => withoutBarrasNasPontas(path).split("/")[0];
 
@@ -306,11 +335,15 @@ export const buildTrechoDoConteudo = (html: string): string =>
  * Uma página como o modal mostra. O trecho é o resumo da busca; sem ele, o
  * começo do conteúdo; sem conteúdo, as tags.
  */
-export const mapSugestaoDaWiki = (pagina: PaginaDaIaDaQuality, urlDaWiki: string, conteudo = ""): SugestaoDaWiki => ({
+export const mapSugestaoDaWiki = (
+  pagina: PaginaDaIaDaQuality,
+  urlDoInforme: string,
+  conteudo = ""
+): SugestaoDaWiki => ({
   id: pagina.id,
   name: pagina.title,
   trecho: limitTexto(pagina.summary, LIMITE_DO_TRECHO) || buildTrechoDoConteudo(conteudo) || pagina.tags.join(", "),
-  url: buildUrlDaWiki(urlDaWiki, pagina.path),
+  url: buildUrlDoInforme(urlDoInforme, pagina.id),
   sistema: readSistemaDoPath(pagina.path),
 });
 
@@ -357,10 +390,10 @@ export type PaginaConsultada = { name: string; url: string };
 export type RespostaDaIa = { sugestao: string; paginas_consultadas: PaginaConsultada[] };
 
 /** As páginas que a IA usou, sem repetir (ela devolve um item por trecho achado). */
-const readPaginasConsultadas = (valor: unknown, urlDaWiki: string): PaginaConsultada[] => {
+const readPaginasConsultadas = (valor: unknown, readUrl: (path: string) => string): PaginaConsultada[] => {
   const paginas = Array.isArray(valor) ? valor.map(readPagina) : [];
   const unicas = new Map(paginas.filter((p) => p.title && p.path).map((p) => [p.path, p]));
-  return [...unicas.values()].map((p) => ({ name: p.title, url: buildUrlDaWiki(urlDaWiki, p.path) }));
+  return [...unicas.values()].map((p) => ({ name: p.title, url: readUrl(p.path) }));
 };
 
 /**
@@ -368,11 +401,11 @@ const readPaginasConsultadas = (valor: unknown, urlDaWiki: string): PaginaConsul
  * serviço devolve o próprio erro com status 200 (`source_info.source = "Error"`
  * e um pedido de desculpas em `response`): isso não é sugestão.
  */
-export const readRespostaDaIa = (corpo: unknown, urlDaWiki: string): RespostaDaIa | null => {
+export const readRespostaDaIa = (corpo: unknown, readUrl: (path: string) => string): RespostaDaIa | null => {
   const bruto = (corpo ?? {}) as { response?: unknown; source_info?: { source?: unknown; pages_consulted?: unknown } };
   const sugestao = limitSugestao(readTextoSolto(bruto.response));
   if (!sugestao || bruto.source_info?.source === "Error") return null;
-  return { sugestao, paginas_consultadas: readPaginasConsultadas(bruto.source_info?.pages_consulted, urlDaWiki) };
+  return { sugestao, paginas_consultadas: readPaginasConsultadas(bruto.source_info?.pages_consulted, readUrl) };
 };
 
 /**

@@ -6,6 +6,7 @@ import {getWorkspaceOrFail} from "@utils/workspace";
 import {randomUUID} from "crypto";
 import Elysia from "elysia";
 import {EProjectAction, requireProjectAction, requireWorkspaceAction, resolveProjectMember, roleCan} from "@utils/permission-checks";
+import {syncParticipacaoEmTodoSistema} from "@modules/project/participacao-em-todo-sistema.service";
 
 export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
   .use(authPlugin)
@@ -118,6 +119,7 @@ export const inviteModule = new Elysia({prefix: "/workspaces/:slug"})
         await prisma.workspaceMember.create({
           data: {workspaceId: ws.id, memberId: user.id, role: invite.role, isActive: true},
         });
+        await syncParticipacaoEmTodoSistema(ws.id);
         recordAudit({
           workspaceId: ws.id,
           entity: AUDIT_ENTITIES.MEMBER,

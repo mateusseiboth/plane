@@ -27,3 +27,9 @@ const isChamadoUrgente = (event: RealtimeEvent) => event.priority === PRIORIDADE
 export const isEventoDaFaixaDeUrgentes = (event: RealtimeEvent, idsNaFaixa: readonly string[]) =>
   isEventoDeChamado(event) &&
   (isChamadoNaFaixa(event, idsNaFaixa) || isPrioridadeDesconhecida(event) || isChamadoUrgente(event));
+
+type UrgenteNaFaixa = { state: { name: string } | null; setor: string | null };
+
+/** Onde o chamado está: a etapa e o setor, para quem abriu saber com quem está o pedido. */
+export const buildOndeEstaNaFaixa = (urgente: UrgenteNaFaixa): string =>
+  [urgente.state?.name, urgente.setor].filter(Boolean).join(" · ");

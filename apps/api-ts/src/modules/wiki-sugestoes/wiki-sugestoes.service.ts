@@ -10,6 +10,7 @@
 import {
   askIaDaQuality,
   findDocumentoDaWiki,
+  listDocumentosDaWiki,
   readConfigDaIaDaQuality,
   readDestino,
   searchWiki,
@@ -19,10 +20,12 @@ import { findSistemaDaBusca } from "@modules/wiki-sugestoes/sistema-da-busca.dao
 import {
   buildConsultaDaWiki,
   buildPerguntaDeResolucao,
+  buildReadUrlDaPagina,
   LIMITE_DE_PAGINAS_DA_WIKI,
   mapSugestaoDaWiki,
   MOTIVO_DA_SUGESTAO,
   prioritizePaginasDoSistema,
+  readIdsPorCaminho,
   readPaginasDaBusca,
   readRespostaDaIa,
   type PaginaDaIaDaQuality,
@@ -81,7 +84,7 @@ export async function findSugestoesDaWiki(args: {
   const [corpo, sistema] = await Promise.all([searchWiki(config, consulta), readSistema(args.espaco, args.projectId)]);
   const paginas = prioritizePaginasDoSistema(readPaginasDaBusca(corpo), sistema).slice(0, LIMITE_DE_PAGINAS_DA_WIKI);
   const conteudos = await Promise.all(paginas.map((pagina) => readConteudo(config, pagina)));
-  return paginas.map((pagina, i) => mapSugestaoDaWiki(pagina, config.urlDaWiki, conteudos[i]));
+  return paginas.map((pagina, i) => mapSugestaoDaWiki(pagina, config.urlDoInforme, conteudos[i]));
 }
 
 const withoutSugestao = (motivo: string): SugestaoDeSolucao => ({ sugestao: null, motivo });
@@ -114,9 +117,11 @@ export async function resolveSugestaoDaWiki(args: {
       paginas_enviadas: pedido.paginaIds,
     },
   });
-  const resposta = readRespostaDaIa(
-    await askIaDaQuality(config, buildPerguntaDeResolucao(pedido.texto, titulos)),
-    config.urlDaWiki
-  );
+  // A IA cita as páginas só pelo caminho; a lista de documentos dá o id que o informe abre.
+  const [corpo, documentos] = await Promise.all([
+    askIaDaQuality(config, buildPerguntaDeResolucao(pedido.texto, titulos)),
+    listDocumentosDaWiki(config),
+  ]);
+  const resposta = readRespostaDaIa(corpo, buildReadUrlDaPagina(config, readIdsPorCaminho(documentos)));
   return resposta ?? withoutSugestao(MOTIVO_DA_SUGESTAO.semIa);
 }

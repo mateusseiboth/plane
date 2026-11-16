@@ -4,6 +4,7 @@ import prisma from "@db";
 import { findParticipanteDeTodoSistema } from "@utils/workspace";
 import { paginate } from "@utils/pagination";
 import { buildProfileDto, readProfileData } from "@modules/user/profile";
+import {syncParticipacaoEmTodoSistema} from "@modules/project/participacao-em-todo-sistema.service";
 
 function userDto(u: any, lastWorkspaceId?: string | null) {
   return {
@@ -438,6 +439,7 @@ export const userModule = new Elysia({ prefix: "/users" })
         });
       }
     });
+    await syncParticipacaoEmTodoSistema(invite.workspaceId);
     return { detail: "Convite aceito." };
   })
 

@@ -124,13 +124,16 @@ apps/
 - **Wiki suggestions while opening a request:** the source is the Quality wiki (Wiki.js), reached
   through the "IA da Quality" service, not Plane pages.
   `GET /api/v1/workspaces/:slug/wiki/sugestoes/?q=&project_id=` sends the problem's key terms to
-  `/api/wiki/search` and returns up to 5 pages `{id, name, trecho, url, sistema}` (public Quality
-  wiki URL; pages with a path segment or tag matching the chosen system come first);
+  `/api/wiki/search` and returns up to 5 pages `{id, name, trecho, url, sistema}` (`url` opens the
+  document on the Quality "informe" by id, `/document/<id>`; pages with a path segment or tag
+  matching the chosen system come first);
   `POST /api/v1/workspaces/:slug/wiki/sugestoes/resolver/` `{texto, paginas}` asks `/api/ai/query`
   what to do and returns `{sugestao, paginas_consultadas}` or `{sugestao: null, motivo}`. Both need
   `intake.create`; service down, slow or failing means `[]` / `sugestao: null`, never 500. Env:
-  `IA_DA_QUALITY_URL` (default `https://ia.qualitysistemas.inf.br`), `WIKI_DA_QUALITY_URL`
-  (default `https://wiki.qualitysistemas.inf.br`), `IA_DA_QUALITY_TIMEOUT_MS` (6000) and
+  `IA_DA_QUALITY_URL` (default `https://ia.qualitysistemas.inf.br`), `INFORME_DA_QUALITY_URL`
+  (default `https://informe.qualitysistemas.inf.br`), `WIKI_DA_QUALITY_URL` (default
+  `https://wiki.qualitysistemas.inf.br`, only for a cited page whose id is unknown),
+  `IA_DA_QUALITY_TIMEOUT_MS` (6000) and
   `IA_DA_QUALITY_RESPOSTA_TIMEOUT_MS` (30000). See `.claude/chat-ciclo-de-vida.md`.
 - **E-mail:** SMTP config lives on the instance (`configurations.smtp`, edited in
   *Settings → E-mail*); when absent, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,

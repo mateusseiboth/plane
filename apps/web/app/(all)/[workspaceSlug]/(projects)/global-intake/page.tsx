@@ -31,6 +31,7 @@ import {
 } from "@/components/inbox/global/abas-da-triagem-global";
 import { readRotuloDaTriagem } from "@/components/inbox/global/rotulo-da-triagem";
 import { EInboxIssueCurrentTab } from "@plane/types";
+import { buildLinhaDaSolicitacao } from "@/components/inbox/global/linha-da-solicitacao";
 
 const ABA_DA_TRIAGEM_DO_SISTEMA: Record<string, EInboxIssueCurrentTab> = {
   open: EInboxIssueCurrentTab.OPEN,
@@ -206,26 +207,30 @@ function GlobalIntakePage() {
                   <p className="text-sm">Nenhuma solicitação com status "{readAba(statusFilter)?.rotulo}".</p>
                 </div>
               )}
-              {!loadingAll && allIntakes.map((intake: any) => (
+              {!loadingAll && allIntakes.map((intake: any) => {
+                const linha = buildLinhaDaSolicitacao(intake);
+                return (
                 <Link
                   key={intake.id}
                   href={`/${workspaceSlug}/global-intake/?projectId=${intake.project?.id}&inboxIssueId=${intake.issue?.id}&currentTab=${readAbaDaTriagemDoSistema(intake.status)}`}
                   className="flex items-center gap-3 border-b border-subtle px-6 py-3 hover:bg-surface-2 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-10 font-medium", readAbaDaSolicitacao(intake)?.cor ?? "bg-surface-2 text-secondary")}>
                         {readAbaDaSolicitacao(intake)?.rotulo ?? "?"}
                       </span>
-                      {intake.project && (
-                        <span className="text-11 text-tertiary shrink-0">{intake.project.identifier}</span>
-                      )}
+                      {linha.numero && <span className="shrink-0 font-mono text-11 font-semibold text-primary">{linha.numero}</span>}
+                      {linha.noSistema && <span className="shrink-0 text-11 text-tertiary">{linha.noSistema}</span>}
+                      {linha.entidade && <span className="truncate text-11 text-secondary">{linha.entidade}</span>}
                     </div>
                     <p className="mt-1 truncate text-13">{intake.issue?.name ?? "Sem título"}</p>
+                    {linha.ondeEsta && <p className="mt-0.5 text-11 text-tertiary">{linha.ondeEsta}</p>}
                   </div>
                   <span className="shrink-0 text-11 text-tertiary">{calculateTimeAgo(intake.created_at)}</span>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

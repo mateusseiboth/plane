@@ -157,7 +157,7 @@ export type NovoChamadoDoChat = {
 
 export type ChamadoDoChat = {
   id: string;
-  issue: { id: string; name: string; project_id: string; sequence_id: number; label: string };
+  issue: { id: string; name: string; project_id: string; sequence_id: number; label: string; ticket_number?: string | null };
   anexos: number;
   anexos_falharam: number;
 };

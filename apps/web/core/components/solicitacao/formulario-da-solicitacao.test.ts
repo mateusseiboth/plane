@@ -62,16 +62,42 @@ describe("buildPedidoDaSolicitacao", () => {
 });
 
 describe("findPendenciaDaSolicitacao", () => {
+  const COMPLETO = { ...FORMULARIO, entidadeId: "e1", complementoHtml: "<p>Erro ao emitir.</p>" };
+  const AVULSA = { isDescricaoObrigatoria: true };
+  const PELO_CHAT = { isDescricaoObrigatoria: false };
+
   it("sem sistema pede o sistema", () => {
-    expect(findPendenciaDaSolicitacao({ ...FORMULARIO, projectId: "" })).toBe("Escolha o sistema.");
+    expect(findPendenciaDaSolicitacao({ ...COMPLETO, projectId: "" }, AVULSA)).toBe("Escolha o sistema.");
   });
 
   it("sem título pede o título", () => {
-    expect(findPendenciaDaSolicitacao({ ...FORMULARIO, titulo: "  " })).toBe("Informe o título.");
+    expect(findPendenciaDaSolicitacao({ ...COMPLETO, titulo: "  " }, AVULSA)).toBe("Informe o título.");
   });
 
-  it("com sistema e título, nada falta", () => {
-    expect(findPendenciaDaSolicitacao(FORMULARIO)).toBeUndefined();
+  it("sem entidade pede a entidade, pela conversa também", () => {
+    expect(findPendenciaDaSolicitacao({ ...COMPLETO, entidadeId: "" }, AVULSA)).toBe("Escolha a entidade.");
+    expect(findPendenciaDaSolicitacao({ ...COMPLETO, entidadeId: "" }, PELO_CHAT)).toBe("Escolha a entidade.");
+  });
+
+  it("na avulsa, descrição vazia pede o problema do cliente", () => {
+    for (const vazia of ["<p></p>", "<p> </p><p><br></p>", "<p>&nbsp;</p>"]) {
+      expect(findPendenciaDaSolicitacao({ ...COMPLETO, complementoHtml: vazia }, AVULSA)).toBe(
+        "Descreva o problema do cliente."
+      );
+    }
+  });
+
+  it("imagem colada conta como descrição", () => {
+    const comImagem = { ...COMPLETO, complementoHtml: '<image-component src="a1"></image-component>' };
+    expect(findPendenciaDaSolicitacao(comImagem, AVULSA)).toBeUndefined();
+  });
+
+  it("pela conversa a descrição é a transcrição: não é exigida", () => {
+    expect(findPendenciaDaSolicitacao({ ...COMPLETO, complementoHtml: "<p></p>" }, PELO_CHAT)).toBeUndefined();
+  });
+
+  it("com tudo preenchido, nada falta", () => {
+    expect(findPendenciaDaSolicitacao(COMPLETO, AVULSA)).toBeUndefined();
   });
 });
 

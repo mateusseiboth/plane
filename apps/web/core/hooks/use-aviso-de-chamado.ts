@@ -12,12 +12,38 @@
  * notificação — o servidor já filtra por destinatário.
  */
 import { useEffect, useRef } from "react";
+import { TOAST_TYPE, setToast } from "@plane/propel/toast";
+import { buildAvisoNaTela, type AvisoNaTela } from "@/components/workspace-notifications/aviso-na-tela";
 import { useRealtimeRefetch } from "@/hooks/use-realtime";
 import { useUser } from "@/hooks/store/user";
 import { useWorkspaceNotifications } from "@/hooks/store/notifications";
 import { WorkspaceNotificationService } from "@/services/workspace-notification.service";
 
 const servico = new WorkspaceNotificationService();
+
+type NotificacaoNova = { id: string; title?: string; message_html?: string; data?: { urgente?: boolean } | null };
+
+const TIPO_DO_TOAST: Record<AvisoNaTela["tipo"], TOAST_TYPE> = {
+  alerta: TOAST_TYPE.ERROR,
+  informacao: TOAST_TYPE.INFO,
+};
+
+/** Na tela sempre: o aviso do sistema operacional depende de permissão e HTTPS. */
+const showNaTela = (aviso: AvisoNaTela) =>
+  setToast({ type: TIPO_DO_TOAST[aviso.tipo], title: aviso.titulo, message: aviso.mensagem });
+
+const showNoSistema = (nova: NotificacaoNova, aviso: AvisoNaTela) => {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  const noSistema = new Notification(aviso.titulo, {
+    body: aviso.mensagem,
+    icon: "/favicon.ico",
+    tag: `plane-chamado-${nova.id}`,
+  });
+  noSistema.addEventListener("click", () => {
+    window.focus();
+    noSistema.close();
+  });
+};
 
 export function useAvisoDeChamado(workspaceSlug: string | undefined) {
   const { data: currentUser } = useUser();
@@ -42,25 +68,18 @@ export function useAvisoDeChamado(workspaceSlug: string | undefined) {
       if (!workspaceSlug) return;
       void getUnreadNotificationsCount(workspaceSlug);
       void (async () => {
-        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         try {
           const dados = await servico.fetchNotifications(workspaceSlug, {
             type: "all",
             read: false,
             per_page: 1,
           } as never);
-          const nova = (dados?.results ?? [])[0] as { id: string; title?: string; message?: string } | undefined;
+          const nova = (dados?.results ?? [])[0] as NotificacaoNova | undefined;
           if (!nova || nova.id === ultimaAvisada.current) return;
           ultimaAvisada.current = nova.id;
-          const aviso = new Notification(nova.title || "Novidade no chamado", {
-            body: nova.message || "",
-            icon: "/favicon.ico",
-            tag: `plane-chamado-${nova.id}`,
-          });
-          aviso.onclick = () => {
-            window.focus();
-            aviso.close();
-          };
+          const aviso = buildAvisoNaTela(nova);
+          showNaTela(aviso);
+          showNoSistema(nova, aviso);
         } catch {
           // aviso é conveniência: falhar aqui não pode atrapalhar a tela
         }

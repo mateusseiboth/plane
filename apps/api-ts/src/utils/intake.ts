@@ -105,6 +105,37 @@ export async function findErrosDaSolicitacao({
   ];
 }
 
+/** Sem texto e sem imagem: `<p></p>`, `<p><br></p>`, `&nbsp;` e espaço não descrevem nada. */
+export const isDescricaoVazia = (html: string | null | undefined): boolean =>
+  !/<(img|image-component)\b/i.test(html ?? "") &&
+  !(html ?? "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+
+type CamposDaAbertura = {
+  entityId?: string | null;
+  descriptionHtml?: string | null;
+  /** Pela conversa do chat a descrição é a transcrição; só a avulsa exige o texto. */
+  exigeDescricao: boolean;
+};
+
+/**
+ * O que a abertura não pode deixar em branco (testes da nova intranet,
+ * 16/11/2026: gravava sem entidade e sem o problema do cliente). Cada falta
+ * volta para o campo dela.
+ */
+export const findCamposQueFaltamNaSolicitacao = ({
+  entityId,
+  descriptionHtml,
+  exigeDescricao,
+}: CamposDaAbertura): FieldErrorItem[] => [
+  ...(entityId ? [] : [{ path: "entity_id", message: "Informe a entidade." }]),
+  ...(exigeDescricao && isDescricaoVazia(descriptionHtml)
+    ? [{ path: "description_html", message: "Descreva o problema do cliente." }]
+    : []),
+];
+
 /**
  * O início do chamado é o dia em que a solicitação foi aberta (pedido do
  * cliente, 23/10/2026): o prazo conta da abertura pelo Atendimento, não do
@@ -187,7 +218,14 @@ export async function createSolicitacao(dados: NovaSolicitacaoDoTime) {
     skipDuplicates: true,
   });
   await markChamadoNaoLido({ issueId: issue.id, actorId: user.id });
-  await notifyQualityOfIntake({ workspaceId, projectId, issueId: issue.id, actorId: user.id, issueName: issue.name });
+  await notifyQualityOfIntake({
+    workspaceId,
+    projectId,
+    issueId: issue.id,
+    actorId: user.id,
+    issueName: issue.name,
+    priority: issue.priority,
+  });
   publishRealtime(workspaceId, {
     entity: "intake",
     action: "create",

@@ -134,6 +134,7 @@ services:
       # fica vazio e a solicitação segue. Detalhes em .claude/DEPLOY.md.
       IA_DA_QUALITY_URL: ${IA_DA_QUALITY_URL:-https://ia.qualitysistemas.inf.br}
       WIKI_DA_QUALITY_URL: ${WIKI_DA_QUALITY_URL:-https://wiki.qualitysistemas.inf.br}
+      INFORME_DA_QUALITY_URL: ${INFORME_DA_QUALITY_URL:-https://informe.qualitysistemas.inf.br}
       IA_DA_QUALITY_TIMEOUT_MS: ${IA_DA_QUALITY_TIMEOUT_MS:-6000}
       IA_DA_QUALITY_RESPOSTA_TIMEOUT_MS: ${IA_DA_QUALITY_RESPOSTA_TIMEOUT_MS:-30000}
       # Segredo da ponte entre a plataforma e o backend dos plugins. Sem ele o

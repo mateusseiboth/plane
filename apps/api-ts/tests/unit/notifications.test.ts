@@ -65,13 +65,21 @@ describe("notifyQualityOfIntake", () => {
     const issue = await createIssue(projectId, workspaceId, {name: "Impressora parada"});
     await notifyQualityOfIntake({workspaceId, projectId, issueId: issue.id, actorId, issueName: issue.name});
     const n = await prisma.notification.findFirstOrThrow({where: {issueId: issue.id}});
-    expect(n.title).toBe("Novo intake aberto");
+    expect(n.title).toBe("Nova solicitação");
     expect(n.message).toBe("Impressora parada");
     expect(n.entity).toBe("intake");
     expect(n.entityId).toBe(issue.id);
     expect(n.triggered).toBe("intake");
-    expect(n.data).toEqual({type: "intake_opened"});
+    expect(n.data).toEqual({type: "intake_opened", urgente: false});
     expect(n.isRead).toBe(false);
+  });
+
+  it("cliente parado chega com o título que chama atenção", async () => {
+    const issue = await createIssue(projectId, workspaceId, {name: "Folha não fecha", priority: "urgent"});
+    await notifyQualityOfIntake({workspaceId, projectId, issueId: issue.id, actorId, issueName: issue.name, priority: "urgent"});
+    const n = await prisma.notification.findFirstOrThrow({where: {issueId: issue.id}});
+    expect(n.title).toBe("Cliente parado: nova solicitação");
+    expect(n.data).toEqual({type: "intake_opened", urgente: true});
   });
 
   it("não cria nada quando o projeto não tem ninguém da Qualidade", async () => {

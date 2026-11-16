@@ -20,7 +20,12 @@
 import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
-import { createSolicitacao, findErrosDaSolicitacao, requireSistemaDoEspaco } from "@utils/intake";
+import {
+  createSolicitacao,
+  findCamposQueFaltamNaSolicitacao,
+  findErrosDaSolicitacao,
+  requireSistemaDoEspaco,
+} from "@utils/intake";
 import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { getWorkspaceOrFail } from "@utils/workspace";
 import { copyAnexosDaConversa } from "@modules/chat-chamado/anexos";
@@ -30,6 +35,7 @@ import {
   type MensagemDoChat,
   type SessaoDoChat,
 } from "@modules/chat-chamado/transcricao";
+import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
 
 const PRIORIDADES = new Set(["urgent", "high", "medium", "low", "none"]);
 const ORIGEM = "chat";
@@ -124,7 +130,11 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
     if (existente) return refuse(set, 409, "Esta conversa já tem chamado.", { issue_id: existente.id });
     if (!PRIORIDADES.has(prioridade)) return refuse(set, 422, "Prioridade inválida.");
     const entityId = readEntidade(corpo, sessao);
-    const erros = await findErrosDaSolicitacao({ projectId: project_id, workspaceId: ws.id, moduleId, entityId });
+    // A descrição é a transcrição da conversa: aqui só a entidade é exigida.
+    const erros = [
+      ...findCamposQueFaltamNaSolicitacao({ entityId, exigeDescricao: false }),
+      ...(await findErrosDaSolicitacao({ projectId: project_id, workspaceId: ws.id, moduleId, entityId })),
+    ];
     if (erros.length) return refuse(set, 422, erros[0]!.message, { errors: erros });
 
     const mensagens = await readMensagens(sessao.id);
@@ -161,6 +171,8 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
         project_id,
         sequence_id: issue.sequenceId,
         label: `${projeto.identifier}-${issue.sequenceId}`,
+        // O número que o atendente passa ao cliente (N-AAAA).
+        ticket_number: formatNumeroDoChamado(issue),
       },
       anexos: anexos.copiados,
       anexos_falharam: anexos.falharam,

@@ -33,6 +33,8 @@ export interface IInboxIssueStore {
   duplicate_issue_detail: TInboxDuplicateIssueDetails | undefined;
   // actions
   updateInboxIssueStatus: (status: TInboxIssueStatus) => Promise<void>; // accept, decline
+  /** Recusa com o motivo, que vai para quem abriu. Repassa a recusa do servidor para a tela mostrar no campo. */
+  declineInboxIssue: (motivo: string) => Promise<void>;
   updateInboxIssueDuplicateTo: (issueId: string) => Promise<void>; // connecting the inbox issue to the project existing issue
   updateInboxIssueSnoozeTill: (date: Date | undefined) => Promise<void>; // snooze the issue
   updateIssue: (issue: Partial<TIssue>) => Promise<void>; // updating the issue
@@ -88,6 +90,7 @@ export class InboxIssueStore implements IInboxIssueStore {
       source: observable,
       // actions
       updateInboxIssueStatus: action,
+      declineInboxIssue: action,
       updateInboxIssueDuplicateTo: action,
       updateInboxIssueSnoozeTill: action,
       updateIssue: action,
@@ -140,6 +143,23 @@ export class InboxIssueStore implements IInboxIssueStore {
     } catch {
       runInAction(() => set(this, "status", previousData.status));
     }
+  };
+
+  declineInboxIssue = async (motivo: string) => {
+    if (!this.issue.id) return;
+    const wasPending = this.status === EInboxIssueStatus.PENDING;
+    const recusada = await this.inboxIssueService.update(this.workspaceSlug, this.projectId, this.issue.id, {
+      status: EInboxIssueStatus.DECLINED,
+      motivo,
+    } as Partial<TInboxIssue> & { motivo: string });
+    runInAction(() => {
+      set(this, "status", recusada?.status);
+      if (!wasPending) return;
+      const currentCount = this.store.projectRoot.project.projectMap[this.projectId]?.intake_count ?? 0;
+      set(this.store.projectRoot.project.projectMap, [this.projectId, "intake_count"], Math.max(0, currentCount - 1));
+      const total = this.store.projectInbox.inboxIssuePaginationInfo?.total_results ?? 0;
+      set(this.store.projectInbox, ["inboxIssuePaginationInfo", "total_results"], Math.max(0, total - 1));
+    });
   };
 
   updateInboxIssueDuplicateTo = async (issueId: string) => {
