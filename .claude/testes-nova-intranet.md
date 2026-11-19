@@ -63,3 +63,16 @@ com `status = 1`: não há coluna de ativo; o critério é a lista fixa de
 **Armadilha de cor:** classes da paleta padrão do Tailwind (`red-300`, `gray-500`,
 `yellow-100`) não existem neste tema. Use os tokens (`danger-*`, `priority-urgent`,
 `text-secondary`…) de `packages/tailwind-config/variables.css`.
+
+## Rodada de 19/11/2026 (depois do teste 3)
+
+| Pedido | Como ficou |
+|---|---|
+| Resposta ao concluir em texto rico | `EditorDeResposta` (RichTextEditor sem mídia); `POST portal-answers` aceita `resposta_html`, limpo por `limparTextoDoCliente` |
+| Imagem colada no modal de solicitação não entrava | O editor guarda o `uploadFile` da 1ª renderização (deps só `[editable]`); `buildImagensDaSolicitacao` lê o sistema por ref na hora do upload e avisa sem sistema |
+| Atendido / Não atendido | Concluir deixa a solicitação ACEITA (aba Concluído); Atendido = status 3 com desfecho; Não atendido (`POST .../nao-atendido/`, motivo ≥ 10) volta para Triagem pendente e avisa a Qualidade. Pode quem abriu, `intake.create` ou `intake.review`. O cliente encerrando pelo portal continua fechando como atendida |
+| Portal vira solicitação para o Atendimento | Status **-3 No atendimento**: avisa o setor Atendimento; `POST .../encaminhar/` (-3 → -2, avisa a Qualidade) ou `.../encerrar-no-atendimento/` (`resposta_html` ≥ 10, vai ao cliente, "Resolvida no atendimento", fica na etapa Triagem e fora do quadro) |
+| Ouvidoria cria solicitação | Ação `ouvidoria.criar_solicitacao` (padrão: quem lê a ouvidoria); `POST /ouvidoria/:id/solicitacao/` nasce -3 atribuída ao atendente (`GET /atendentes/` = quem tem `intake.create`); `ouvidorias.solicitacao_issue_id`; a lista mostra situação e processo |
+| `/banco` no editor | Nó `<banco-anexo data-envio>` (packages/editor) no rico e no comentário (`slashCommandAdditionalOptions`, o comentário ganha "/" só com o item). Busca e download pelo Plane (`modules/banco-anexo`), com as permissões do plugin `backup-manager` enviadas pelo servidor: quem vê o chamado baixa, mas só backup anexado num texto do sistema. Link novo a cada clique (o token do servidor de backups troca de hora em hora) |
+
+**Armadilha do `/banco`:** precisa de `PLUGIN_BRIDGE_SECRET` no api-ts e do plugin `backup-manager` ativo com `allowDownload`. O plugin grava `log_download_bkp` com usuário 0 para todo download vindo do Plane.

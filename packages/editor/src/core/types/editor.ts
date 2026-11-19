@@ -31,6 +31,7 @@ import type {
   TFileHandler,
   TMentionHandler,
   TRealtimeConfig,
+  TSlashCommandExtraOption,
   TServerHandler,
   TUserDetails,
   TExtendedEditorRefApi,
@@ -67,6 +68,7 @@ export type TEditorCommands =
   | "emoji"
   | "external-embed"
   | "chat-link"
+  | "banco-anexo"
   | TExtendedEditorCommands;
 
 export type TCommandExtraProps = {
@@ -183,6 +185,11 @@ export type IEditorProps = {
   value?: string | null;
   extendedEditorProps: IEditorPropsExtended;
   workItemIdentifier?: string | null;
+  /**
+   * Itens a mais no menu "/" (ex.: "Banco"). No editor rico entram junto dos
+   * itens de sempre; no editor de comentário, que não tinha "/", são os únicos.
+   */
+  slashCommandAdditionalOptions?: TSlashCommandExtraOption[];
 };
 
 export type ILiteTextEditorProps = IEditorProps;

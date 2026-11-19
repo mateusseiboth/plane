@@ -3,7 +3,7 @@ import { swagger } from "@elysiajs/swagger";
 import { createHmac, createHash, randomUUID } from "crypto";
 import { authPlugin } from "@middleware/auth";
 import prisma from "@db";
-import { readBridgeSecret } from "@modules/plugin-sdk-gateway/bridge-secret";
+import { sendAoBackendDoPlugin } from "@modules/plugin-sdk-gateway/backend-do-plugin";
 import { buildProxyResponseHeaders, isRespostaEmFluxo } from "@utils/proxy-response";
 import { EProjectAction, hasWorkspaceAction } from "@utils/permission-checks";
 import {
@@ -380,30 +380,11 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
   //  bodies are fully supported; large multipart streaming is refined in a later
   //  phase (or via the verifiable-token path).
   .all("/backend/*", async ({ plugin, user, params, query, body, request, set }) => {
-    const backend = manifestOf(plugin).backend;
-    if (!backend?.baseUrl) {
-      set.status = 400;
-      return { detail: "O plugin não possui backend configurado." };
-    }
-
     // Workspace alheio é 403: sem isso o proxy assinaria X-Plugin-Workspace de
     // um workspace de que o usuário não participa, e o backend confiaria nele.
     const workspaceId = await resolveOptionalWorkspaceId(query, user.id);
-
-    const bridgeSecret = readBridgeSecret();
-    if (!bridgeSecret) {
-      console.error(
-        "[plugin-sdk] PLUGIN_BRIDGE_SECRET não configurado: o proxy para o backend do plugin está desligado."
-      );
-      set.status = 503;
-      return { detail: "A integração deste plugin está indisponível. Avise o administrador do sistema." };
-    }
-
     const subPath = "/" + String((params as any)["*"] ?? "").replace(/^\/+/, "");
     const perms = await resolvePluginPermissions(plugin, user, workspaceId);
-
-    const url = new URL(backend.baseUrl + subPath);
-    for (const [k, v] of Object.entries((query as any) ?? {})) if (v != null) url.searchParams.set(k, String(v));
 
     const method = request.method.toUpperCase();
     let bodyBuf: Buffer | undefined;
@@ -419,40 +400,23 @@ export const pluginSdkGatewayModule = new Elysia({ prefix: "/plugin-sdk" })
       }
     }
 
-    const ts = Date.now().toString();
-    const bodyHash = createHash("sha256")
-      .update(bodyBuf ?? Buffer.alloc(0))
-      .digest("hex");
-    const pluginKey = createHmac("sha256", bridgeSecret).update(plugin.id).digest("hex");
-    const sigBase = [method, subPath, user.id, workspaceId ?? "", ts, bodyHash].join("|");
-    const signature = createHmac("sha256", pluginKey).update(sigBase).digest("hex");
-    const correlationId = request.headers.get("x-correlation-id") ?? randomUUID();
-
-    const fwdHeaders: Record<string, string> = {
-      "X-Plugin-Id": plugin.id,
-      "X-Plugin-User": user.id,
-      "X-Plugin-User-Name": user.displayName ?? "",
-      "X-Plugin-User-Email": user.email ?? "",
-      "X-Plugin-Workspace": workspaceId ?? "",
-      "X-Plugin-Perms": perms.join(","),
-      "X-Plugin-Timestamp": ts,
-      "X-Plugin-Signature": signature,
-      "X-Correlation-Id": correlationId,
-    };
-    const contentType = request.headers.get("content-type");
-    if (contentType && bodyBuf) fwdHeaders["content-type"] = contentType;
-
-    let resp: Response;
-    try {
-      resp = await fetch(url.toString(), {
-        method,
-        headers: fwdHeaders,
-        body: bodyBuf ? new Uint8Array(bodyBuf) : undefined,
-      });
-    } catch {
-      set.status = 502;
-      return { detail: "Backend do plugin inacessível." };
+    const envio = await sendAoBackendDoPlugin({
+      plugin,
+      user,
+      workspaceId,
+      method,
+      subPath,
+      query: (query as Record<string, unknown>) ?? {},
+      body: bodyBuf,
+      contentType: request.headers.get("content-type"),
+      perms,
+      correlationId: request.headers.get("x-correlation-id"),
+    });
+    if (!envio.ok) {
+      set.status = envio.status;
+      return { detail: envio.detail };
     }
+    const { resposta: resp, correlationId } = envio;
 
     const outHeaders = buildProxyResponseHeaders(resp.headers, correlationId);
     // SSE segue em fluxo; o resto vai com tamanho conhecido (ver utils/proxy-response).

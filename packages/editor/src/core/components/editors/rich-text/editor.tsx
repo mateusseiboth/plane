@@ -25,6 +25,7 @@ function RichTextEditor(props: IRichTextEditorProps) {
     flaggedExtensions,
     extendedEditorProps,
     workItemIdentifier,
+    slashCommandAdditionalOptions,
   } = props;
 
   const getExtensions = useCallback(() => {
@@ -39,11 +40,20 @@ function RichTextEditor(props: IRichTextEditorProps) {
         fileHandler,
         flaggedExtensions,
         extendedEditorProps,
+        slashCommandAdditionalOptions,
       }),
     ];
 
     return extensions;
-  }, [dragDropEnabled, disabledExtensions, externalExtensions, fileHandler, flaggedExtensions, extendedEditorProps]);
+  }, [
+    dragDropEnabled,
+    disabledExtensions,
+    externalExtensions,
+    fileHandler,
+    flaggedExtensions,
+    extendedEditorProps,
+    slashCommandAdditionalOptions,
+  ]);
 
   return (
     <EditorWrapper {...props} extensions={getExtensions()}>

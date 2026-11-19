@@ -29,3 +29,10 @@ export * from "@/types";
 export { TrailingNode } from "./core/extensions/trailing-node";
 export { createGhostTextExtension, GhostTextExtension, GHOST_TEXT_EXTENSION_NAME } from "./core/extensions/ghost-text";
 export type { TGhostTextSource } from "./core/extensions/ghost-text";
+export {
+  BANCO_ANEXO_NODE,
+  BANCO_ANEXO_TAG,
+  createBancoAnexoExtension,
+  insertBancoAnexo,
+} from "./core/extensions/banco-anexo/extension";
+export type { TBancoAnexoAttrs, TBancoAnexoRender } from "./core/extensions/banco-anexo/extension";
