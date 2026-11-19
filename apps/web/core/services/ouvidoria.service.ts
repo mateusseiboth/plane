@@ -22,6 +22,8 @@ export type TPagina<T> = {
   prev_page_results: boolean;
 };
 
+import type { TSolicitacaoDaOuvidoria } from "@/components/ouvidoria/solicitacao-da-ouvidoria";
+
 export type TOuvidoria = {
   id: string;
   created_at: string;
@@ -37,7 +39,13 @@ export type TOuvidoria = {
   is_read: boolean;
   read_at: string | null;
   read_by: TPessoaResumo | null;
+  /** A solicitação criada a partir deste registro, com o processo. */
+  solicitacao: TSolicitacaoDaOuvidoria | null;
 };
+
+export type TNovaSolicitacaoDaOuvidoria = { project_id: string; atendente_id: string; titulo?: string };
+
+export type TAtendente = { id: string; display_name: string };
 
 export type TDenuncia = {
   id: string;
@@ -117,6 +125,19 @@ export class OuvidoriaService extends APIService {
   markOuvidoriaLida(slug: string, id: string): Promise<TOuvidoria> {
     return this.post(`${this.ws(slug)}/ouvidoria/${id}/read/`, {})
       .then(dataOf<TOuvidoria>)
+      .catch(rethrow);
+  }
+
+  createSolicitacaoDaOuvidoria(slug: string, id: string, data: TNovaSolicitacaoDaOuvidoria) {
+    return this.post(`${this.ws(slug)}/ouvidoria/${id}/solicitacao/`, data)
+      .then(dataOf<{ issue_id: string; ouvidoria: TOuvidoria }>)
+      .catch(rethrow);
+  }
+
+  /** Quem pode receber uma solicitação (o Atendimento). */
+  listAtendentes(slug: string): Promise<TAtendente[]> {
+    return this.get(`${this.ws(slug)}/atendentes/`)
+      .then(dataOf<TAtendente[]>)
       .catch(rethrow);
   }
 

@@ -12,7 +12,7 @@ import { recordActivities } from "@utils/activity";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { markChamadoNaoLido } from "@utils/chamado-nao-lido";
 import type { FieldErrorItem } from "@utils/field-error";
-import { notifyQualityOfIntake } from "@utils/notifications";
+import { notifyAtendenteDaSolicitacao, notifyQualityOfIntake } from "@utils/notifications";
 import { inicioDeHoje } from "@utils/prazo";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
@@ -160,6 +160,49 @@ export type NovaSolicitacaoDoTime = {
   externalId?: string;
   headers?: Record<string, string | undefined>;
   auditMetadata?: Record<string, unknown>;
+  /**
+   * Nasce com o Atendimento (status -3), atribuída a este atendente, e só ele é
+   * avisado; a Qualidade fica sabendo quando ele encaminhar. Sem isto, nasce na
+   * triagem e avisa a Qualidade.
+   */
+  atendenteId?: string;
+};
+
+type EntradaDaSolicitacao = {
+  status: number;
+  responsaveis: (dados: NovaSolicitacaoDoTime) => string[];
+  avisar: (dados: NovaSolicitacaoDoTime, issue: { id: string; name: string; priority: string | null }) => Promise<void>;
+};
+
+/** Onde a solicitação nasce: na triagem da Qualidade ou com um atendente. */
+const ENTRADAS_DA_SOLICITACAO: Record<"triagem" | "atendimento", EntradaDaSolicitacao> = {
+  triagem: {
+    status: -2,
+    // Quem abriu fica atribuído (mais os responsáveis informados), como na criação do chamado.
+    responsaveis: (dados) => [dados.user.id, ...(dados.assigneeIds ?? [])],
+    avisar: (dados, issue) =>
+      notifyQualityOfIntake({
+        workspaceId: dados.workspaceId,
+        projectId: dados.projectId,
+        issueId: issue.id,
+        actorId: dados.user.id,
+        issueName: issue.name,
+        priority: issue.priority,
+      }),
+  },
+  atendimento: {
+    status: -3,
+    responsaveis: (dados) => [dados.atendenteId as string],
+    avisar: (dados, issue) =>
+      notifyAtendenteDaSolicitacao({
+        workspaceId: dados.workspaceId,
+        projectId: dados.projectId,
+        issueId: issue.id,
+        actorId: dados.user.id,
+        receiverId: dados.atendenteId as string,
+        issueName: issue.name,
+      }),
+  },
 };
 
 /**
@@ -171,6 +214,7 @@ export type NovaSolicitacaoDoTime = {
  */
 export async function createSolicitacao(dados: NovaSolicitacaoDoTime) {
   const { workspaceId, projectId, user } = dados;
+  const entrada = ENTRADAS_DA_SOLICITACAO[dados.atendenteId ? "atendimento" : "triagem"];
   const triageState = await findTriageState(projectId);
   const issue = await prisma.issue.create({
     data: {
@@ -206,26 +250,18 @@ export async function createSolicitacao(dados: NovaSolicitacaoDoTime) {
       issueId: issue.id,
       workspaceId,
       projectId,
-      status: -2,
+      status: entrada.status,
       source: "in-app",
       createdById: user.id,
     },
   });
-  // Quem abriu fica atribuído (mais os responsáveis informados), como na criação do chamado.
-  const assigneeSet = new Set<string>([user.id, ...(dados.assigneeIds ?? [])]);
+  const assigneeSet = new Set<string>(entrada.responsaveis(dados));
   await prisma.issueAssignee.createMany({
     data: Array.from(assigneeSet).map((uid) => ({ issueId: issue.id, assigneeId: uid, workspaceId, projectId })),
     skipDuplicates: true,
   });
   await markChamadoNaoLido({ issueId: issue.id, actorId: user.id });
-  await notifyQualityOfIntake({
-    workspaceId,
-    projectId,
-    issueId: issue.id,
-    actorId: user.id,
-    issueName: issue.name,
-    priority: issue.priority,
-  });
+  await entrada.avisar(dados, issue);
   publishRealtime(workspaceId, {
     entity: "intake",
     action: "create",

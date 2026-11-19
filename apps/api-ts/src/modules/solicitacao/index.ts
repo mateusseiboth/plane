@@ -21,6 +21,12 @@
  * leva para a triagem da Qualidade; encerrar exige `resposta_html`, que vai
  * para quem pediu. Regras em ./no-atendimento.rules.
  *
+ * `GET /workspaces/:slug/atendentes/`
+ *
+ * Quem pode receber uma solicitação (ação `intake.create`, o Atendimento): é a
+ * lista do seletor de atendente da ouvidoria, pela mesma regra que o servidor
+ * confere ao criar.
+ *
  * `GET /workspaces/:slug/global-intake-issues/resumo/` e
  * `POST /workspaces/:slug/global-intake-issues/:issue_id/visto/`
  *
@@ -32,10 +38,9 @@
 import { Elysia } from "elysia";
 import prisma from "@db";
 import { authPlugin } from "@middleware/auth";
-import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { markVistoPeloSolicitante, readResumoDaTriagem } from "@modules/solicitacao/visto-da-solicitacao.service";
 import { getProjectOrFail, getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
-import { resolveMemberRole } from "@utils/permission-checks";
+import { EProjectAction, requireWorkspaceAction, resolveMemberRole, roleCan } from "@utils/permission-checks";
 import {
   MENSAGEM_NAO_CONCLUIDO,
   MENSAGEM_SEM_PERMISSAO,
@@ -127,6 +132,22 @@ export const solicitacaoModule = new Elysia({ prefix: "/workspaces/:slug" })
       return { id: issue_id, status: -2 };
     }
   )
+  .get("/atendentes/", async ({ params: { slug }, user }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceMember(ws.id, user.id);
+    const membros = await prisma.workspaceMember.findMany({
+      where: { workspaceId: ws.id, isActive: true, deletedAt: null },
+      include: { member: { select: { id: true, displayName: true, firstName: true, lastName: true } } },
+    });
+    const papeis = await Promise.all(membros.map((m) => resolveMemberRole(ws.id, m as any)));
+    return membros
+      .filter((_, i) => roleCan(papeis[i], EProjectAction.INTAKE_CREATE))
+      .map((m) => ({
+        id: m.member.id,
+        display_name: m.member.displayName || `${m.member.firstName} ${m.member.lastName}`.trim(),
+      }))
+      .toSorted((a, b) => a.display_name.localeCompare(b.display_name, "pt-BR"));
+  })
   .post("/projects/:project_id/inbox-issues/:issue_id/encaminhar/", async ({ params, user, set }) => {
     const achado = await findDecisaoNoAtendimento(params, user, set);
     if ("erro" in achado) {

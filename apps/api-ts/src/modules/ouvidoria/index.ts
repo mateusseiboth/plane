@@ -11,6 +11,7 @@ import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
 import { publishRealtime } from "@utils/realtime";
 import { getWorkspaceOrFail } from "@utils/workspace";
+import { createSolicitacaoDaOuvidoria } from "@modules/ouvidoria/solicitacao-da-ouvidoria.service";
 
 export const ouvidoriaService = createOuvidoriaService({
   dao: ouvidoriaDao,
@@ -35,6 +36,21 @@ export const ouvidoriaModule = new Elysia({ prefix: "/workspaces/:slug/ouvidoria
   .get("/unread-count/", async ({ params: { slug }, user }) => {
     const ws = await readerWorkspace(slug, user.id);
     return ouvidoriaService.countUnread(ws.id);
+  })
+
+  // Cria a solicitação a partir da ouvidoria, No atendimento, atribuída ao atendente escolhido.
+  .post("/:ouvidoria_id/solicitacao/", async ({ params: { slug, ouvidoria_id }, body, user, headers, set }) => {
+    const ws = await getWorkspaceOrFail(slug);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.OUVIDORIA_CRIAR_SOLICITACAO);
+    const criada = await createSolicitacaoDaOuvidoria({
+      workspaceId: ws.id,
+      ouvidoriaId: ouvidoria_id,
+      user,
+      corpo: (body ?? {}) as Record<string, unknown>,
+      headers,
+    });
+    set.status = 201;
+    return { ...criada, ouvidoria: await ouvidoriaService.readOne(ws.id, ouvidoria_id) };
   })
 
   .post("/:ouvidoria_id/read/", async ({ params: { slug, ouvidoria_id }, user, headers }) => {

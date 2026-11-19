@@ -7,7 +7,6 @@
  * Atendimento abre pedido para qualquer sistema, como pela conversa do chat.
  */
 import { useState } from "react";
-import useSWR from "swr";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 // components
@@ -21,6 +20,7 @@ import type { ErroDoCampo, PedidoDeSolicitacao } from "@/components/solicitacao/
 import { ModalDeSolicitacao } from "@/components/solicitacao/modal-de-solicitacao";
 // hooks
 import { useMyWorkspaceActions } from "@/hooks/use-workflow-role";
+import { useSistemasParaSolicitacao } from "@/hooks/use-sistemas-para-solicitacao";
 // services
 import { InboxIssueService } from "@/services/inbox";
 
@@ -41,13 +41,9 @@ export function ModalDeSolicitacaoAvulsa({ workspaceSlug, isOpen, onClose, proje
   const [erros, setErros] = useState<ErroDoCampo[]>([]);
   const [confirmacao, setConfirmacao] = useState<ConfirmacaoDaSolicitacao | null>(null);
   const { can } = useMyWorkspaceActions(workspaceSlug);
-  const { data: sistemas } = useSWR(
-    isOpen && can("intake.create") ? `SISTEMAS_PARA_SOLICITACAO_${workspaceSlug}` : null,
-    () => inboxIssueService.listSistemasParaSolicitacao(workspaceSlug),
-    { revalidateOnFocus: false }
-  );
+  const { data: sistemas } = useSistemasParaSolicitacao(workspaceSlug, isOpen && can("intake.create"));
 
-  const projetos = (sistemas ?? []).map((sistema) => ({ value: sistema.id, label: sistema.name }));
+  const projetos = sistemas.map((sistema) => ({ value: sistema.id, label: sistema.name }));
 
   const close = () => {
     setErros([]);

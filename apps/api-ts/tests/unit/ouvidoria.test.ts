@@ -89,6 +89,8 @@ const makeService = (over: Record<string, unknown> = {}) => {
     markRead: mock(async (_id: string, data: any) => linha(data)),
     findEntidades: mock(async () => [{ id: "e1", name: "Prefeitura" }]),
     findUsuarios: mock(async () => [{ id: "u1", displayName: "Ana" }]),
+    findSolicitacoes: mock(async () => []),
+    linkSolicitacao: mock(async () => ({})),
     ...over,
   } as unknown as OuvidoriaDeps["dao"];
   const publish = mock(() => undefined);

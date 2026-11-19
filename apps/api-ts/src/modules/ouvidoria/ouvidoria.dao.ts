@@ -36,6 +36,30 @@ export const ouvidoriaDao = {
   findEntidades: (ids: string[]) => prisma.entity.findMany({ where: { id: { in: ids } }, select: SELECT_ENTIDADE }),
 
   findUsuarios: (ids: string[]) => prisma.user.findMany({ where: { id: { in: ids } }, select: SELECT_PESSOA }),
+
+  /** As solicitações criadas a partir das ouvidorias, com o que o processo precisa. */
+  findSolicitacoes: (ids: string[]) =>
+    prisma.issue.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        projectId: true,
+        sequenceId: true,
+        project: { select: { identifier: true, name: true } },
+        state: { select: { group: true, name: true } },
+        assignees: { where: { deletedAt: null }, select: { assigneeId: true }, orderBy: { createdAt: "asc" } },
+        intakeIssues: { where: { deletedAt: null }, select: { status: true }, take: 1 },
+        activities: {
+          where: { deletedAt: null },
+          select: { field: true, newValue: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    }),
+
+  linkSolicitacao: (id: string, issueId: string) =>
+    prisma.ouvidoria.update({ where: { id }, data: { solicitacaoIssueId: issueId } }),
 };
 
 export type OuvidoriaDao = typeof ouvidoriaDao;

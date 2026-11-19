@@ -18,6 +18,7 @@ import {
   botaoSecundario,
   campoFiltro,
 } from "@/components/ouvidoria/comum";
+import { BlocoDaSolicitacao } from "@/components/ouvidoria/bloco-da-solicitacao";
 import { buildPaginaCursor, formatDataHora } from "@/components/ouvidoria/helpers";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
@@ -59,11 +60,11 @@ function OuvidoriaPage() {
   const { workspaceSlug } = useParams();
   const slug = workspaceSlug?.toString() ?? "";
   const { currentWorkspace } = useWorkspace();
-  const { canReadOuvidoria, isLoading: isLoadingPermissoes } = useOuvidoriaPermissoes(slug);
+  const { canReadOuvidoria, canCriarSolicitacao, isLoading: isLoadingPermissoes } = useOuvidoriaPermissoes(slug);
   const [kind, setKind] = useState("");
   const [read, setRead] = useState("");
   const [pagina, setPagina] = useState(0);
-  const { data, error, isLoading, markLida } = useOuvidoria(
+  const { data, error, isLoading, markLida, createSolicitacao } = useOuvidoria(
     slug,
     { kind, read, cursor: buildPaginaCursor(POR_PAGINA, pagina) },
     canReadOuvidoria
@@ -154,6 +155,12 @@ function OuvidoriaPage() {
                   <SituacaoDeLeitura item={item} onMarkLida={onMarkLida} />
                 </div>
                 <p className="mt-2 text-13 whitespace-pre-wrap">{item.message}</p>
+                <BlocoDaSolicitacao
+                  slug={slug}
+                  item={item}
+                  canCriar={canCriarSolicitacao}
+                  onCriar={createSolicitacao}
+                />
               </div>
             ))}
             <Paginacao

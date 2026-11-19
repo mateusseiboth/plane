@@ -11,6 +11,10 @@ import {
   validateOuvidoriaInput,
   type OuvidoriaKind,
 } from "@modules/ouvidoria/ouvidoria.rules";
+import {
+  serializeSolicitacaoDaOuvidoria,
+  type SolicitacaoDaOuvidoria,
+} from "@modules/ouvidoria/solicitacao-da-ouvidoria.rules";
 import { FieldValidationError, NotFoundError, requireNoFieldErrors } from "@utils/erro-de-dominio";
 import { paginate } from "@utils/pagination";
 import type { RealtimeEvent } from "@utils/realtime";
@@ -28,7 +32,12 @@ type Pessoa = { id: string; displayName: string };
 
 const POR_PAGINA = 20;
 
-export const serializeOuvidoria = (o: OuvidoriaRow, entidade?: Nomeado, leitor?: Pessoa) => ({
+export const serializeOuvidoria = (
+  o: OuvidoriaRow,
+  entidade?: Nomeado,
+  leitor?: Pessoa,
+  solicitacao?: SolicitacaoDaOuvidoria
+) => ({
   id: o.id,
   created_at: o.createdAt.toISOString(),
   kind: o.kind,
@@ -43,6 +52,7 @@ export const serializeOuvidoria = (o: OuvidoriaRow, entidade?: Nomeado, leitor?:
   is_read: !!o.readAt,
   read_at: o.readAt?.toISOString() ?? null,
   read_by: leitor ? { id: leitor.id, display_name: leitor.displayName } : null,
+  solicitacao: solicitacao ? serializeSolicitacaoDaOuvidoria(solicitacao) : null,
 });
 
 export type OuvidoriaDto = ReturnType<typeof serializeOuvidoria>;
@@ -52,17 +62,20 @@ const idsOf = (valores: Array<string | null>) => [...new Set(valores.filter((v):
 
 export function createOuvidoriaService({ dao, publish, now }: OuvidoriaDeps) {
   const hydrate = async (linhas: OuvidoriaRow[]): Promise<OuvidoriaDto[]> => {
-    const [entidades, leitores] = await Promise.all([
+    const [entidades, leitores, solicitacoes] = await Promise.all([
       dao.findEntidades(idsOf(linhas.map((l) => l.entityId))),
       dao.findUsuarios(idsOf(linhas.map((l) => l.readById))),
+      dao.findSolicitacoes(idsOf(linhas.map((l) => l.solicitacaoIssueId))),
     ]);
     const entidadePorId = byId(entidades);
     const leitorPorId = byId(leitores);
+    const solicitacaoPorId = byId(solicitacoes);
     return linhas.map((l) =>
       serializeOuvidoria(
         l,
         l.entityId ? entidadePorId.get(l.entityId) : undefined,
-        l.readById ? leitorPorId.get(l.readById) : undefined
+        l.readById ? leitorPorId.get(l.readById) : undefined,
+        l.solicitacaoIssueId ? solicitacaoPorId.get(l.solicitacaoIssueId) : undefined
       )
     );
   };
@@ -102,6 +115,13 @@ export function createOuvidoriaService({ dao, publish, now }: OuvidoriaDeps) {
     async countUnread(workspaceId: string) {
       return { count: await dao.count({ workspaceId, readAt: null }) };
     },
+
+    /** O registro já com a solicitação e o processo, para a resposta da criação. */
+    async readOne(workspaceId: string, id: string) {
+      return (await hydrate([await findOrFail(workspaceId, id)]))[0];
+    },
+
+    findOrFail,
 
     /** A primeira leitura fica: marcar de novo não troca quem leu. */
     async markRead(ctx: OuvidoriaContext, id: string) {

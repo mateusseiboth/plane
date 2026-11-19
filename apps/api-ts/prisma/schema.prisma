@@ -470,6 +470,7 @@ model Issue {
   versions            IssueVersion[]
   gitLinks            GitIssueLink[]
   portalRequest       PortalRequest?
+  ouvidoria           Ouvidoria?          @relation("OuvidoriaSolicitacao")
   portalEvaluations   PortalEvaluation[]
   unreads             IssueUnread[]
   posAtendimento      PosAtendimento?
@@ -2242,6 +2243,9 @@ model Ouvidoria {
   protocol      String?   @db.VarChar(30)
   readAt        DateTime? @map("read_at")
   readById      String?   @map("read_by_id") @db.Uuid
+  /// Solicitação criada a partir desta ouvidoria (uma só): a ouvidoria mostra o processo dela.
+  solicitacaoIssue   Issue?  @relation("OuvidoriaSolicitacao", fields: [solicitacaoIssueId], references: [id], onDelete: SetNull)
+  solicitacaoIssueId String? @unique @map("solicitacao_issue_id") @db.Uuid
 
   @@index([workspaceId, readAt])
   @@index([workspaceId, createdAt])

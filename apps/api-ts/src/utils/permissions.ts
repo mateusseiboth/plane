@@ -129,6 +129,7 @@ export const ACTION_CATALOG = {
   EXTENSION_UPLOAD: {key: "extension.upload", label: "Enviar plugins e widgets", group: G.CADASTROS, scope: "workspace", roles: ["ti"]},
   CONTATO_EXPORT: {key: "contato.export", label: "Gerar e exportar a lista de e-mails dos responsáveis", group: G.CADASTROS, scope: "workspace", roles: GESTOR},
   OUVIDORIA_READ: {key: "ouvidoria.read", label: "Ler a ouvidoria", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
+  OUVIDORIA_CRIAR_SOLICITACAO: {key: "ouvidoria.criar_solicitacao", label: "Criar solicitação a partir da ouvidoria", description: "Cria a solicitação e atribui alguém do Atendimento; a ouvidoria mostra o processo.", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
   DENUNCIA_READ: {key: "denuncia.read", label: "Ler as denúncias", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
   CURRICULO_READ: {key: "curriculo.read", label: "Ver e gerenciar currículos", group: G.OUVIDORIA, scope: "workspace", roles: GESTOR},
   WIKI_VIEW: {key: "wiki.view", label: "Ler a wiki", group: G.WIKI, scope: "workspace", roles: TODOS},

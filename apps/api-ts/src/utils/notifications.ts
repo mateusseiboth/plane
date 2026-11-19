@@ -105,6 +105,34 @@ export async function notifyAtendimentoDeNovaSolicitacao(opts: {
   });
 }
 
+/** A solicitação foi atribuída a um atendente (ouvidoria): só ele é avisado. */
+export async function notifyAtendenteDaSolicitacao(opts: {
+  workspaceId: string;
+  projectId: string;
+  issueId: string;
+  actorId: string;
+  receiverId: string;
+  issueName: string;
+}): Promise<void> {
+  if (opts.receiverId === opts.actorId) return;
+  await prisma.notification.create({
+    data: {
+      workspaceId: opts.workspaceId,
+      projectId: opts.projectId,
+      issueId: opts.issueId,
+      receiverId: opts.receiverId,
+      actorId: opts.actorId,
+      title: "Nova solicitação no atendimento",
+      message: opts.issueName,
+      entity: "intake",
+      entityId: opts.issueId,
+      data: { type: "intake_in_service" },
+      triggered: "intake",
+    },
+  });
+  avisarSino(opts.workspaceId, [opts.receiverId]);
+}
+
 /** Quem é de um setor no projeto, pela chave da função (permissao-estrutural: escolhe QUEM é avisado). */
 async function findSetorDoProjeto(projectId: string, chave: string): Promise<string[]> {
   const members = await prisma.projectMember.findMany({
