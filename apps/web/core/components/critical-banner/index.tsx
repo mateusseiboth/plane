@@ -111,7 +111,7 @@ export function CriticalIssuesBanner() {
                   projectId: issue.project?.id,
                   issueId: issue.id,
                 })}
-                className="flex items-center gap-1.5 rounded-full border-2 border-danger-strong bg-surface-1 px-3 py-1 text-12 text-danger-primary transition-colors hover:bg-danger-subtle-hover"
+                className="flex items-center gap-1.5 rounded-full border border-subtle bg-surface-1 px-3 py-1 text-12 text-danger-primary transition-colors hover:bg-danger-subtle-hover"
               >
                 {issue.legacy_ticket_number && (
                   <span className="font-mono rounded bg-danger-subtle px-1 font-semibold text-danger-primary">

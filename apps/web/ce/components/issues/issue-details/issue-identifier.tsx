@@ -36,12 +36,17 @@ export const IssueIdentifier = observer(function IssueIdentifier(props: TIssueId
   const pathname = usePathname();
   const isVisaoDoEspaco = pathname?.includes("/workspace-views/") ?? false;
   const logoDoSistema = isVisaoDoEspaco ? getProjectById(projectId)?.logo_props : undefined;
+  // A sigla é gerada na importação ("RECUR1") e sozinha não diz qual é o sistema.
+  const nomeDoSistema = getProjectById(projectId)?.name;
 
   if (!shouldRenderIssueID) return null;
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
       {logoDoSistema?.in_use && <Logo logo={logoDoSistema} size={16} />}
+      {nomeDoSistema && (
+        <span className="max-w-40 truncate text-caption-sm-regular text-tertiary">{nomeDoSistema} ·</span>
+      )}
       <IdentifierText
         identifier={`${projectIdentifier}-${issueSequenceId}`}
         enableClickToCopyIdentifier={enableClickToCopyIdentifier}
