@@ -59,6 +59,7 @@ import { buildErrorBody, type HttpError } from "@utils/field-error";
 import { muralModule } from "@modules/mural";
 import { posAtendimentoModule } from "@modules/pos-atendimento";
 import { ouvidoriaModule } from "@modules/ouvidoria";
+import { bancoAnexoModule } from "@modules/banco-anexo";
 import { denunciaModule } from "@modules/denuncia";
 import { curriculoModule, scheduleExpurgoDeCurriculos } from "@modules/curriculo";
 import { contatoEmailModule } from "@modules/contato-email";
@@ -255,6 +256,7 @@ const apiApp = new Elysia({ prefix: "/api/v1" })
   .use(posAtendimentoModule)
   // Ouvidoria, denúncia interna, currículos e lista de e-mails (W15).
   .use(ouvidoriaModule)
+  .use(bancoAnexoModule)
   .use(denunciaModule)
   .use(curriculoModule)
   .use(contatoEmailModule)

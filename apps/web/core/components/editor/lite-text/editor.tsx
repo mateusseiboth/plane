@@ -18,6 +18,7 @@ import { EditorMentionsRoot } from "@/components/editor/embeds/mentions";
 import { IssueCommentToolbar } from "@/components/editor/lite-text/toolbar";
 // hooks
 import { useEditorConfig, useEditorMention } from "@/hooks/editor";
+import { useBancoNoEditor } from "@/hooks/use-banco-no-editor";
 import { useMember } from "@/hooks/store/use-member";
 import { useParseEditorContent } from "@/hooks/use-parse-editor-content";
 // plane web hooks
@@ -113,6 +114,8 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
   });
   // editor config
   const { getEditorFileHandlers } = useEditorConfig();
+  // "/banco" e o bloco do banco anexado
+  const banco = useBancoNoEditor({ workspaceSlug, projectId });
   function isMutableRefObject<T>(ref: React.ForwardedRef<T>): ref is React.MutableRefObject<T | null> {
     return !!ref && typeof ref === "object" && "current" in ref;
   }
@@ -172,6 +175,8 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
             extendedEditorProps={{}}
             editorClassName={editorClassName}
             {...rest}
+            extensions={[...(rest.extensions ?? []), ...banco.extensions]}
+            slashCommandAdditionalOptions={banco.slashCommandAdditionalOptions}
           />
         </div>
 

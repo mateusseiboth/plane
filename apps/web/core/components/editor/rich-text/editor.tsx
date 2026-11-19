@@ -14,6 +14,7 @@ import { cn } from "@plane/utils";
 import { EditorMentionsRoot } from "@/components/editor/embeds/mentions";
 // hooks
 import { useEditorConfig, useEditorMention } from "@/hooks/editor";
+import { useBancoNoEditor } from "@/hooks/use-banco-no-editor";
 import { useMember } from "@/hooks/store/use-member";
 import { useParseEditorContent } from "@/hooks/use-parse-editor-content";
 // plane web hooks
@@ -65,6 +66,8 @@ export const RichTextEditor = forwardRef(function RichTextEditor(
   });
   // editor config
   const { getEditorFileHandlers } = useEditorConfig();
+  // "/banco" e o bloco do banco anexado
+  const banco = useBancoNoEditor({ workspaceSlug, projectId });
   // parse content
   const { getEditorMetaData } = useParseEditorContent({
     projectId,
@@ -98,6 +101,8 @@ export const RichTextEditor = forwardRef(function RichTextEditor(
       }}
       extendedEditorProps={{}}
       {...rest}
+      extensions={[...(rest.extensions ?? []), ...banco.extensions]}
+      slashCommandAdditionalOptions={banco.slashCommandAdditionalOptions}
       containerClassName={cn("relative pb-3 pl-3", containerClassName)}
     />
   );

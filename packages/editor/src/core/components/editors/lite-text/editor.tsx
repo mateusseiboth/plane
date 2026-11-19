@@ -9,21 +9,48 @@ import { forwardRef, useMemo } from "react";
 import { EditorWrapper } from "@/components/editors/editor-wrapper";
 // extensions
 import { EnterKeyExtension } from "@/extensions";
+import { SlashCommands } from "@/extensions/slash-commands/root";
 // types
 import type { EditorRefApi, ILiteTextEditorProps } from "@/types";
 
 function LiteTextEditor(props: ILiteTextEditorProps) {
-  const { onEnterKeyPress, disabledExtensions, extensions: externalExtensions = [] } = props;
+  const {
+    onEnterKeyPress,
+    disabledExtensions,
+    flaggedExtensions,
+    editable,
+    extensions: externalExtensions = [],
+    slashCommandAdditionalOptions,
+  } = props;
 
   const extensions = useMemo(() => {
     const resolvedExtensions = [...externalExtensions];
+
+    // O comentário não tem "/" de formatação: ele aparece só para os itens a mais.
+    if (editable && slashCommandAdditionalOptions?.length) {
+      resolvedExtensions.push(
+        SlashCommands({
+          disabledExtensions,
+          flaggedExtensions,
+          additionalOptions: slashCommandAdditionalOptions,
+          onlyAdditional: true,
+        })
+      );
+    }
 
     if (!disabledExtensions?.includes("enter-key")) {
       resolvedExtensions.push(EnterKeyExtension(onEnterKeyPress));
     }
 
     return resolvedExtensions;
-  }, [externalExtensions, disabledExtensions, onEnterKeyPress]);
+  }, [
+    externalExtensions,
+    disabledExtensions,
+    flaggedExtensions,
+    editable,
+    slashCommandAdditionalOptions,
+    onEnterKeyPress,
+  ]);
 
   return <EditorWrapper {...props} extensions={extensions} />;
 }

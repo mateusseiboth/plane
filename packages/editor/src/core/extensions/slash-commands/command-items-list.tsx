@@ -57,7 +57,12 @@ export type TSlashCommandSection = {
 export const getSlashCommandFilteredSections =
   (args: TExtensionProps) =>
   ({ query }: { query: string }): TSlashCommandSection[] => {
-    const { additionalOptions: externalAdditionalOptions, disabledExtensions, flaggedExtensions } = args;
+    const {
+      additionalOptions: externalAdditionalOptions,
+      disabledExtensions,
+      flaggedExtensions,
+      onlyAdditional,
+    } = args;
     const SLASH_COMMAND_SECTIONS: TSlashCommandSection[] = [
       {
         key: "general",
@@ -315,8 +320,11 @@ export const getSlashCommandFilteredSections =
       },
     ];
 
+    // Editor de comentário: o "/" só existe para os itens a mais.
+    if (onlyAdditional) SLASH_COMMAND_SECTIONS.splice(0, SLASH_COMMAND_SECTIONS.length, { key: "general", items: [] });
+
     const internalAdditionalOptions: TSlashCommandAdditionalOption[] = [];
-    if (!disabledExtensions?.includes("image")) {
+    if (!onlyAdditional && !disabledExtensions?.includes("image")) {
       internalAdditionalOptions.push({
         commandKey: "image",
         key: "image",
@@ -333,10 +341,12 @@ export const getSlashCommandFilteredSections =
     [
       ...internalAdditionalOptions,
       ...(externalAdditionalOptions ?? []),
-      ...coreEditorAdditionalSlashCommandOptions({
-        disabledExtensions,
-        flaggedExtensions,
-      }),
+      ...(onlyAdditional
+        ? []
+        : coreEditorAdditionalSlashCommandOptions({
+            disabledExtensions,
+            flaggedExtensions,
+          })),
     ]?.forEach((item) => {
       const sectionToPushTo = SLASH_COMMAND_SECTIONS.find((s) => s.key === item.section) ?? SLASH_COMMAND_SECTIONS[0];
       const itemIndexToPushAfter = sectionToPushTo.items.findIndex((i) => i.commandKey === item.pushAfter);

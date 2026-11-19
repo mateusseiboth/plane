@@ -26,3 +26,9 @@ export type ISlashCommandItem = {
   command: ({ editor, range }: CommandProps) => void;
   badge?: React.ReactNode;
 };
+
+/** Item a mais no menu "/", com a seção e o item depois do qual entra. */
+export type TSlashCommandExtraOption = ISlashCommandItem & {
+  section: TSlashCommandSectionKeys;
+  pushAfter: TEditorCommands;
+};

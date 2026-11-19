@@ -12,7 +12,7 @@ import type { IEditorProps, TExtensions } from "@/types";
 
 export type TRichTextEditorAdditionalExtensionsProps = Pick<
   IEditorProps,
-  "disabledExtensions" | "flaggedExtensions" | "fileHandler" | "extendedEditorProps"
+  "disabledExtensions" | "flaggedExtensions" | "fileHandler" | "extendedEditorProps" | "slashCommandAdditionalOptions"
 >;
 
 /**
@@ -28,10 +28,11 @@ export type TRichTextEditorAdditionalExtensionsRegistry = {
 const extensionRegistry: TRichTextEditorAdditionalExtensionsRegistry[] = [
   {
     isEnabled: (disabledExtensions) => !disabledExtensions.includes("slash-commands"),
-    getExtension: ({ disabledExtensions, flaggedExtensions }) =>
+    getExtension: ({ disabledExtensions, flaggedExtensions, slashCommandAdditionalOptions }) =>
       SlashCommands({
         disabledExtensions,
         flaggedExtensions,
+        additionalOptions: slashCommandAdditionalOptions,
       }),
   },
 ];
