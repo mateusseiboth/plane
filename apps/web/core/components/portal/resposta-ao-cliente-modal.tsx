@@ -23,9 +23,17 @@ import { useParams } from "next/navigation";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { EModalWidth, ModalCore } from "@plane/ui";
+import { isCommentEmpty } from "@plane/utils";
+import { RichTextEditor } from "@/components/editor/rich-text/editor";
+import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useRespostaAoCliente } from "@/hooks/use-resposta-ao-cliente";
 
-const LIMITE = 20000;
+/** Imagem e anexo ficam de fora: o portal só mostra texto formatado. */
+const EXTENSOES_SEM_MIDIA = ["image", "attachment"] as const;
+
+const semMidia = async (): Promise<string> => {
+  throw new Error("A resposta ao cliente não leva imagem nem anexo.");
+};
 
 /**
  * O que a janela promete depende de onde veio a solicitação.
@@ -44,12 +52,13 @@ function ondeVaiAparecer(atual: { cliente?: string; origem?: string }): string {
 export function RespostaAoClienteModal() {
   const { workspaceSlug } = useParams();
   const { atual, adiar, resolver } = useRespostaAoCliente(workspaceSlug?.toString());
-  const [texto, setTexto] = useState("");
+  const { currentWorkspace } = useWorkspace();
+  const [html, setHtml] = useState("<p></p>");
   const [enviando, setEnviando] = useState(false);
 
   // Cada chamado começa com a caixa em branco: texto que sobrou do anterior iria
-  // para o cliente errado.
-  useEffect(() => setTexto(""), [atual?.issue_id]);
+  // para o cliente errado (o editor também é recriado pela `key`).
+  useEffect(() => setHtml("<p></p>"), [atual?.issue_id]);
 
   if (!atual) return null;
 
@@ -84,12 +93,21 @@ export function RespostaAoClienteModal() {
           <p className="mt-2 text-13 text-secondary">{ondeVaiAparecer(atual)}</p>
         </div>
 
-        <textarea
-          value={texto}
-          maxLength={LIMITE}
-          onChange={(e) => setTexto(e.target.value)}
+        <RichTextEditor
+          key={atual.issue_id}
+          editable
+          id={`resposta-ao-cliente-${atual.issue_id}`}
+          initialValue="<p></p>"
+          workspaceSlug={workspaceSlug?.toString() ?? ""}
+          workspaceId={currentWorkspace?.id ?? ""}
+          dragDropEnabled={false}
+          disabledExtensions={[...EXTENSOES_SEM_MIDIA]}
+          onChange={(_json: object, novo: string) => setHtml(novo)}
           placeholder="Conte o que foi feito, em uma linguagem que quem pediu entenda."
-          className="focus:border-accent-primary min-h-40 w-full resize-y rounded-md border border-strong bg-layer-1 p-3 text-13 text-primary outline-none"
+          searchMentionCallback={async () => ({})}
+          uploadFile={semMidia}
+          duplicateFile={semMidia}
+          containerClassName="min-h-40 rounded-md border border-strong bg-layer-1"
         />
 
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -109,8 +127,8 @@ export function RespostaAoClienteModal() {
               variant="primary"
               size="lg"
               loading={enviando}
-              disabled={enviando || !texto.trim()}
-              onClick={() => void executar(texto.trim(), "Resposta enviada ao cliente")}
+              disabled={enviando || isCommentEmpty(html)}
+              onClick={() => void executar(html, "Resposta enviada ao cliente")}
             >
               Enviar resposta
             </Button>

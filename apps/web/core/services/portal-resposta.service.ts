@@ -40,9 +40,12 @@ export class PortalRespostaService extends APIService {
       .catch(() => []);
   }
 
-  /** Envia a resposta: o portal mostra na conta do cliente, as demais avisam quem abriu. */
-  async responder(workspaceSlug: string, issueId: string, resposta: string): Promise<void> {
-    return this.post(`/api/workspaces/${workspaceSlug}/portal-answers/${issueId}/`, { resposta })
+  /**
+   * Envia a resposta, escrita no editor rico: o portal mostra na conta do cliente,
+   * as demais avisam quem abriu. O servidor limpa o HTML pela lista de permissão.
+   */
+  async responder(workspaceSlug: string, issueId: string, respostaHtml: string): Promise<void> {
+    return this.post(`/api/workspaces/${workspaceSlug}/portal-answers/${issueId}/`, { resposta_html: respostaHtml })
       .then(() => undefined)
       .catch((err) => {
         throw err?.response?.data ?? err;

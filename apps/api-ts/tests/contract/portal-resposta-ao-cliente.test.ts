@@ -193,6 +193,28 @@ describe("Resposta ao cliente do portal", () => {
     expect(comentarios[0].comment_html).toContain("Resolvido no servidor.");
   });
 
+  it("resposta em texto rico: a formatação fica e o que não é texto sai", async () => {
+    const chamado = await abrirPeloPortal("Resposta rica");
+    await concluir(chamado);
+    const html =
+      '<p><strong>Corrigimos</strong> o cadastro.</p><ul><li>Emita de novo</li></ul><script>alert(1)</script><img src="x" onerror="y">';
+    expect((await responder(chamado, { resposta_html: html })).status).toBe(201);
+
+    const res = await admin.get(`/workspaces/${wsSlug}/projects/${projetoId}/issues/${chamado}/comments/`);
+    const [comentario] = ((await res.json()) as any).results;
+    expect(comentario.comment_html).toContain("<strong>Corrigimos</strong>");
+    expect(comentario.comment_html).toContain("<li>Emita de novo</li>");
+    expect(comentario.comment_html).not.toContain("script");
+    expect(comentario.comment_html).not.toContain("onerror");
+    expect((await solicitacaoDoCliente(chamado)).resposta.texto).toBe("Corrigimos o cadastro. Emita de novo");
+  });
+
+  it("resposta rica sem texto (só parágrafo vazio) é recusada", async () => {
+    const chamado = await abrirPeloPortal("Rica vazia");
+    await concluir(chamado);
+    expect((await responder(chamado, { resposta_html: "<p></p><p> </p>" })).status).toBe(400);
+  });
+
   it("a resposta é opcional: dá para concluir sem responder, e isso fica registrado", async () => {
     const chamado = await abrirPeloPortal("Duplicado do outro");
     await concluir(chamado);
