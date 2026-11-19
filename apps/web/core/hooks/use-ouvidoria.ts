@@ -25,6 +25,7 @@ import ouvidoriaService, {
   type TCurriculoMarcacao,
   type TDenunciaPayload,
   type TListaDeEmails,
+  type TNovaSolicitacaoDaOuvidoria,
 } from "@/services/ouvidoria.service";
 
 const OPCOES = { revalidateOnFocus: false, keepPreviousData: true } as const;
@@ -38,6 +39,7 @@ export function useOuvidoriaPermissoes(slug: string | undefined) {
   return {
     isLoading,
     canReadOuvidoria: can(ACOES.OUVIDORIA_READ),
+    canCriarSolicitacao: can(ACOES.OUVIDORIA_CRIAR_SOLICITACAO),
     canReadDenuncias: can(ACOES.DENUNCIA_READ),
     canReadCurriculos: can(ACOES.CURRICULO_READ),
     canExportContatos: can(ACOES.CONTATO_EXPORT),
@@ -62,7 +64,23 @@ export function useOuvidoria(slug: string | undefined, filtros: TOuvidoriaFiltro
     await refreshPorPrefixo(OUVIDORIA);
     return lida;
   };
-  return { data, error, isLoading, isFetching: isValidating, refetch: mutate, markLida };
+  const createSolicitacao = async (id: string, dados: TNovaSolicitacaoDaOuvidoria) => {
+    const criada = await ouvidoriaService.createSolicitacaoDaOuvidoria(slug ?? "", id, dados);
+    await refreshPorPrefixo(OUVIDORIA);
+    return criada;
+  };
+  return { data, error, isLoading, isFetching: isValidating, refetch: mutate, markLida, createSolicitacao };
+}
+
+/** Quem pode receber uma solicitação: a lista do seletor de atendente. */
+export function useAtendentes(slug: string | undefined, enabled: boolean) {
+  const isPronto = !!slug && enabled;
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    isPronto ? `${OUVIDORIA}ATENDENTES_${slug}` : null,
+    isPronto ? () => ouvidoriaService.listAtendentes(slug) : null,
+    OPCOES
+  );
+  return { data: data ?? [], error, isLoading, isFetching: isValidating, refetch: mutate };
 }
 
 /** Contador do menu. Só pergunta à API quando a pessoa pode ler a ouvidoria. */

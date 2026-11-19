@@ -43,6 +43,10 @@ import type { IInboxIssueStore } from "@/store/inbox/inbox-issue.store";
 // local imports
 import { InboxIssueStatus } from "../inbox-issue-status";
 import { DeclineIssueModal } from "@/components/inbox/modals/decline-issue-modal";
+import { NaoAtendidoModal } from "@/components/inbox/modals/nao-atendido-modal";
+import { EncerrarNoAtendimentoModal } from "@/components/inbox/modals/encerrar-no-atendimento-modal";
+import { isDecisaoNoAtendimento } from "@/components/inbox/content/decisao-no-atendimento";
+import { isConfirmacaoDoAtendimento } from "@/components/inbox/content/confirmacao-do-atendimento";
 import { DeleteInboxIssueModal } from "../modals/delete-issue-modal";
 import { SelectDuplicateInboxIssueModal } from "../modals/select-duplicate";
 import { InboxIssueSnoozeModal } from "../modals/snooze-issue-modal";
@@ -75,6 +79,8 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
   const [selectDuplicateIssue, setSelectDuplicateIssue] = useState(false);
   const [acceptIssueModal, setAcceptIssueModal] = useState(false);
   const [declineIssueModal, setDeclineIssueModal] = useState(false);
+  const [naoAtendidoModal, setNaoAtendidoModal] = useState(false);
+  const [encerrarModal, setEncerrarModal] = useState(false);
   const [deleteIssueModal, setDeleteIssueModal] = useState(false);
   // store
   const { currentTab, deleteInboxIssue, filteredInboxIssueIds } = useProjectInbox();
@@ -104,17 +110,14 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
   // como rede para o caso de a configuração mudar com a tela aberta.
   const isProjectAdmin = podeTriar;
   const isAcceptedOrDeclined = inboxIssue?.status ? [-1, 1, 2, 3].includes(inboxIssue.status) : undefined;
-  // ── "Atendido" / "Devolver para Em Teste" (accepted chamados only) ──────────
-  const { getStateById, getProjectStates } = useProjectState();
-  // Quem tria também fecha ou devolve a solicitação aceita.
-  const isManager = can(ACAO_DE_TRIAGEM);
-  const isAccepted = inboxIssue?.status === EInboxIssueStatus.ACCEPTED;
-  const isWorkItemDone = getStateById(issue?.state_id)?.group === "completed";
-  // The creator (cliente/atendente) or a manager can close or return an accepted
-  // chamado; "atendido" only once the work item is Concluído.
-  const canManageAcceptedIntake = isAccepted && (isCreator || isManager);
-  const canMarkFulfilled = canManageAcceptedIntake && isWorkItemDone;
-  const emTesteStateId = getProjectStates(projectId)?.find((s) => s.name === "Em Teste")?.id;
+  // ── "Atendido" / "Não atendido": a Qualidade concluiu, o atendimento confirma ──
+  const { getStateById } = useProjectState();
+  const canConfirmarAtendimento = isConfirmacaoDoAtendimento({
+    status: inboxIssue?.status,
+    grupo: getStateById(issue?.state_id)?.group,
+    isQuemAbriu: isCreator,
+    can,
+  });
   // days left for snooze
   const numberOfDaysLeft = findHowManyDaysLeft(inboxIssue?.snoozed_till);
 
@@ -176,23 +179,36 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
     }
   };
 
-  // "Devolver para Em Teste": sends the work item back for rework; intake stays open.
-  const handleReturnToTest = async () => {
-    if (!emTesteStateId) {
-      setToast({ type: TOAST_TYPE.ERROR, title: "Erro", message: 'Estado "Em Teste" não encontrado neste projeto.' });
-      return;
-    }
+  // No atendimento (portal, ouvidoria): o Atendimento encaminha ou encerra.
+  const canDecidirNoAtendimento = isDecisaoNoAtendimento({ status: inboxIssue?.status, can });
+  const handleEncaminhar = async () => {
     try {
-      await inboxIssue?.updateIssue({ state_id: emTesteStateId });
-      setToast({ type: TOAST_TYPE.SUCCESS, title: "Devolvido", message: "Chamado devolvido para Em Teste." });
+      await inboxIssue?.sendParaATriagem();
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Encaminhada para a triagem", message: "A Qualidade foi avisada." });
     } catch (err: unknown) {
-      const error = err as { detail?: string };
       setToast({
         type: TOAST_TYPE.ERROR,
-        title: "Erro",
-        message: error?.detail || "Não foi possível devolver para Em Teste.",
+        title: "Não foi possível encaminhar",
+        message: (err as { detail?: string })?.detail ?? "Tente de novo.",
       });
     }
+  };
+  const handleEncerrar = async (respostaHtml: string) => {
+    await inboxIssue?.closeNoAtendimento(respostaHtml);
+    setEncerrarModal(false);
+    setToast({
+      type: TOAST_TYPE.SUCCESS,
+      title: "Encerrada no atendimento",
+      message: "Quem pediu recebeu a resposta.",
+    });
+  };
+
+  // "Não atendido": o chamado volta para a triagem com o motivo. A recusa do
+  // servidor sobe para o modal mostrar no campo.
+  const handleNaoAtendido = async (motivo: string) => {
+    await inboxIssue?.markNaoAtendido(motivo);
+    setNaoAtendidoModal(false);
+    setToast({ type: TOAST_TYPE.SUCCESS, title: "Devolvida para a triagem", message: "A Qualidade foi avisada." });
   };
 
   const handleInboxIssueSnooze = async (date: Date) => {
@@ -321,6 +337,18 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
           onClose={() => setDeclineIssueModal(false)}
           onSubmit={handleInboxIssueDecline}
         />
+        <EncerrarNoAtendimentoModal
+          data={inboxIssue?.issue || {}}
+          isOpen={encerrarModal}
+          onClose={() => setEncerrarModal(false)}
+          onSubmit={handleEncerrar}
+        />
+        <NaoAtendidoModal
+          data={inboxIssue?.issue || {}}
+          isOpen={naoAtendidoModal}
+          onClose={() => setNaoAtendidoModal(false)}
+          onSubmit={handleNaoAtendido}
+        />
         <DeleteInboxIssueModal
           data={inboxIssue?.issue}
           isOpen={deleteIssueModal}
@@ -410,16 +438,26 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
               </Button>
             )}
 
-            {canManageAcceptedIntake && (
+            {canDecidirNoAtendimento && (
               <div className="flex items-center gap-2">
-                {canMarkFulfilled && (
-                  <Button variant="primary" size="lg" onClick={handleMarkFulfilled}>
-                    <CheckCircleFilledIcon className="size-4 shrink-0" />
-                    Marcar como atendido
-                  </Button>
-                )}
-                <Button variant="secondary" size="lg" onClick={handleReturnToTest}>
-                  Devolver para Em Teste
+                <Button variant="primary" size="lg" onClick={() => void handleEncaminhar()}>
+                  Encaminhar para a triagem
+                </Button>
+                <Button variant="secondary" size="lg" onClick={() => setEncerrarModal(true)}>
+                  Encerrar no atendimento
+                </Button>
+              </div>
+            )}
+
+            {canConfirmarAtendimento && (
+              <div className="flex items-center gap-2">
+                <Button variant="primary" size="lg" onClick={handleMarkFulfilled}>
+                  <CheckCircleFilledIcon className="size-4 shrink-0" />
+                  Atendido
+                </Button>
+                <Button variant="secondary" size="lg" onClick={() => setNaoAtendidoModal(true)}>
+                  <CloseCircleFilledIcon className="size-4 shrink-0 text-danger-secondary" />
+                  Não atendido
                 </Button>
               </div>
             )}

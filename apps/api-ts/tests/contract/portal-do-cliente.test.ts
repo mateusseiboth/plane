@@ -113,7 +113,8 @@ describe("Portal do cliente", () => {
     expect(res.status).toBe(400);
   });
 
-  it("abre a solicitação na triagem e devolve o código do chamado", async () => {
+  // Desde 19/11/2026 o pedido do portal nasce com o Atendimento, antes da triagem.
+  it("abre a solicitação no atendimento e devolve o código do chamado", async () => {
     const res = await portalClient(token).post("/solicitacoes", {
       sistema_id: projetoId,
       titulo: "Não consigo emitir a segunda via",
@@ -121,7 +122,7 @@ describe("Portal do cliente", () => {
     });
     expect(res.status).toBe(201);
     const solicitacao = (await res.json()) as any;
-    expect(solicitacao.situacao).toBe("Em triagem");
+    expect(solicitacao.situacao).toBe("Em atendimento");
     expect(solicitacao.codigo).toStartWith("SIART-");
     expect(solicitacao.codigo).not.toBe("SIART-0");
   });

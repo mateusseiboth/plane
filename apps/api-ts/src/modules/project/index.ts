@@ -27,6 +27,12 @@ import {
   requireSistemaDoEspaco,
 } from "@utils/intake";
 import { addResponsavel, sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
+import { saveAtendimentoDaSolicitacao } from "@utils/atendimento-da-solicitacao";
+import {
+  MENSAGEM_NAO_CONCLUIDO,
+  MENSAGEM_SEM_PERMISSAO,
+  isQuemConfirmaAtendimento,
+} from "@modules/solicitacao/atendimento-da-solicitacao.rules";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
@@ -774,15 +780,14 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       // ou quem tria (`intake.review`, pela matriz de ações, como a tela decide), e
       // só depois que o chamado está concluído. Aceita (1) segue na aba Abertas.
       if (b.status === 3) {
-        const isCreator = antes?.createdById === user.id;
-        const isRevisor = roleCan(await resolveMemberRole(ws.id, callerMember as any), EProjectAction.INTAKE_REVIEW);
-        if (!isCreator && !isRevisor) {
+        const role = await resolveMemberRole(ws.id, callerMember as any);
+        if (!isQuemConfirmaAtendimento({ isQuemAbriu: antes?.createdById === user.id, role })) {
           set.status = 403;
-          return { detail: "Sua função não permite marcar como atendido." };
+          return { detail: MENSAGEM_SEM_PERMISSAO };
         }
         if (antes?.state?.group !== "completed") {
           set.status = 400;
-          return { detail: "O work item precisa estar Concluído antes de marcar o chamado como atendido." };
+          return { detail: MENSAGEM_NAO_CONCLUIDO };
         }
       }
 
@@ -884,6 +889,16 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         const existing = await prisma.intakeIssue.findFirst({ where: { issueId: inbox_id, deletedAt: null } });
         if (existing) {
           ii = await prisma.intakeIssue.update({ where: { id: existing.id }, data: iiData });
+          // Atendido: guarda o desfecho (o último comentário) junto da confirmação.
+          if (b.status === 3 && existing.status !== 3) {
+            await saveAtendimentoDaSolicitacao({
+              issueId: inbox_id,
+              autorId: user.id,
+              workspaceId: ws.id,
+              projectId: project_id,
+              statusAnterior: existing.status,
+            });
+          }
         } else {
           const intake = await findOrCreateIntake(project_id, ws.id);
           ii = await prisma.intakeIssue.create({

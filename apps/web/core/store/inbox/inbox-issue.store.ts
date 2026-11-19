@@ -35,6 +35,11 @@ export interface IInboxIssueStore {
   updateInboxIssueStatus: (status: TInboxIssueStatus) => Promise<void>; // accept, decline
   /** Recusa com o motivo, que vai para quem abriu. Repassa a recusa do servidor para a tela mostrar no campo. */
   declineInboxIssue: (motivo: string) => Promise<void>;
+  /** O atendimento diz que o cliente não foi atendido: volta para a triagem. */
+  markNaoAtendido: (motivo: string) => Promise<void>;
+  /** No atendimento: encaminha para a triagem ou encerra com a resposta. */
+  sendParaATriagem: () => Promise<void>;
+  closeNoAtendimento: (respostaHtml: string) => Promise<void>;
   updateInboxIssueDuplicateTo: (issueId: string) => Promise<void>; // connecting the inbox issue to the project existing issue
   updateInboxIssueSnoozeTill: (date: Date | undefined) => Promise<void>; // snooze the issue
   updateIssue: (issue: Partial<TIssue>) => Promise<void>; // updating the issue
@@ -91,6 +96,9 @@ export class InboxIssueStore implements IInboxIssueStore {
       // actions
       updateInboxIssueStatus: action,
       declineInboxIssue: action,
+      markNaoAtendido: action,
+      sendParaATriagem: action,
+      closeNoAtendimento: action,
       updateInboxIssueDuplicateTo: action,
       updateInboxIssueSnoozeTill: action,
       updateIssue: action,
@@ -160,6 +168,31 @@ export class InboxIssueStore implements IInboxIssueStore {
       const total = this.store.projectInbox.inboxIssuePaginationInfo?.total_results ?? 0;
       set(this.store.projectInbox, ["inboxIssuePaginationInfo", "total_results"], Math.max(0, total - 1));
     });
+  };
+
+  markNaoAtendido = async (motivo: string) => {
+    if (!this.issue.id) return;
+    await this.inboxIssueService.markNaoAtendido(this.workspaceSlug, this.projectId, this.issue.id, motivo);
+    await this.refetchDepoisDaDecisao();
+  };
+
+  /** Depois da decisão o servidor é quem sabe o status e a etapa: relê a solicitação. */
+  private refetchDepoisDaDecisao = async () => {
+    if (!this.issue.id) return;
+    await this.store.projectInbox.fetchInboxIssueById(this.workspaceSlug, this.projectId, this.issue.id);
+    this.fetchIssueActivity();
+  };
+
+  sendParaATriagem = async () => {
+    if (!this.issue.id) return;
+    await this.inboxIssueService.sendParaATriagem(this.workspaceSlug, this.projectId, this.issue.id);
+    await this.refetchDepoisDaDecisao();
+  };
+
+  closeNoAtendimento = async (respostaHtml: string) => {
+    if (!this.issue.id) return;
+    await this.inboxIssueService.closeNoAtendimento(this.workspaceSlug, this.projectId, this.issue.id, respostaHtml);
+    await this.refetchDepoisDaDecisao();
   };
 
   updateInboxIssueDuplicateTo = async (issueId: string) => {

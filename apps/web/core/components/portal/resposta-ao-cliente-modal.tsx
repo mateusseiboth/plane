@@ -23,9 +23,9 @@ import { useParams } from "next/navigation";
 import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { EModalWidth, ModalCore } from "@plane/ui";
+import { isCommentEmpty } from "@plane/utils";
+import { EditorDeResposta } from "@/components/portal/editor-de-resposta";
 import { useRespostaAoCliente } from "@/hooks/use-resposta-ao-cliente";
-
-const LIMITE = 20000;
 
 /**
  * O que a janela promete depende de onde veio a solicitação.
@@ -44,12 +44,12 @@ function ondeVaiAparecer(atual: { cliente?: string; origem?: string }): string {
 export function RespostaAoClienteModal() {
   const { workspaceSlug } = useParams();
   const { atual, adiar, resolver } = useRespostaAoCliente(workspaceSlug?.toString());
-  const [texto, setTexto] = useState("");
+  const [html, setHtml] = useState("<p></p>");
   const [enviando, setEnviando] = useState(false);
 
   // Cada chamado começa com a caixa em branco: texto que sobrou do anterior iria
-  // para o cliente errado.
-  useEffect(() => setTexto(""), [atual?.issue_id]);
+  // para o cliente errado (o editor também é recriado pela `key`).
+  useEffect(() => setHtml("<p></p>"), [atual?.issue_id]);
 
   if (!atual) return null;
 
@@ -84,13 +84,7 @@ export function RespostaAoClienteModal() {
           <p className="mt-2 text-13 text-secondary">{ondeVaiAparecer(atual)}</p>
         </div>
 
-        <textarea
-          value={texto}
-          maxLength={LIMITE}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder="Conte o que foi feito, em uma linguagem que quem pediu entenda."
-          className="focus:border-accent-primary min-h-40 w-full resize-y rounded-md border border-strong bg-layer-1 p-3 text-13 text-primary outline-none"
-        />
+        <EditorDeResposta id={atual.issue_id} onChange={setHtml} />
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button
@@ -109,8 +103,8 @@ export function RespostaAoClienteModal() {
               variant="primary"
               size="lg"
               loading={enviando}
-              disabled={enviando || !texto.trim()}
-              onClick={() => void executar(texto.trim(), "Resposta enviada ao cliente")}
+              disabled={enviando || isCommentEmpty(html)}
+              onClick={() => void executar(html, "Resposta enviada ao cliente")}
             >
               Enviar resposta
             </Button>

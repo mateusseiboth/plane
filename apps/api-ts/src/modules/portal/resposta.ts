@@ -36,6 +36,7 @@ import type { Prisma } from "@prisma/client";
 import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { publishRealtime } from "@utils/realtime";
+import { limparTextoDoCliente, textoSemMarcacao } from "@modules/portal/texto-rico";
 
 /** Marca que separa a resposta ao cliente de qualquer outro comentário do chamado. */
 export const MARCA_DA_RESPOSTA = "portal_resposta";
@@ -269,9 +270,27 @@ type Contexto = {
  * A resposta nasce como comentário EXTERNO do chamado: a equipe vê no histórico
  * o que foi dito para fora, e o cliente vê no portal a mesma coisa.
  */
-export async function registrarResposta(ctx: Contexto & { texto: string }) {
+/**
+ * A resposta como foi escrita: no editor rico (HTML) ou em texto puro. O HTML
+ * passa pela mesma lista de permissão do portal (`limparTextoDoCliente`): vai
+ * para fora, e nenhuma marcação de quem escreveu chega ao cliente sem peneira.
+ */
+export type RespostaEscrita = { texto: string; html: string };
+
+export function readRespostaEscrita(corpo: { resposta?: unknown; resposta_html?: unknown }): RespostaEscrita {
+  if (corpo.resposta_html !== undefined && corpo.resposta_html !== null) {
+    const html = limparTextoDoCliente(corpo.resposta_html);
+    return { html, texto: textoSemMarcacao(html).slice(0, LIMITE.resposta) };
+  }
+  const texto = String(corpo.resposta ?? "")
+    .trim()
+    .slice(0, LIMITE.resposta);
+  return { texto, html: paraHtml(texto) };
+}
+
+export async function registrarResposta(ctx: Contexto & { resposta: RespostaEscrita }) {
   const { pedido, autor, headers } = ctx;
-  const texto = ctx.texto.trim().slice(0, LIMITE.resposta);
+  const { texto, html } = ctx.resposta;
   const chamado = pedido.issue;
 
   const comentario = await prisma.issueComment.create({
@@ -281,8 +300,8 @@ export async function registrarResposta(ctx: Contexto & { texto: string }) {
       createdById: autor.id,
       workspaceId: chamado.workspaceId,
       projectId: chamado.projectId,
-      commentHtml: paraHtml(texto),
-      // O texto como foi digitado, com as quebras de linha: é ele que o portal mostra.
+      commentHtml: html,
+      // O texto puro (no texto puro, com as quebras de linha): é ele que o resumo do portal mostra.
       commentStripped: texto,
       access: "EXTERNAL",
       externalSource: MARCA_DA_RESPOSTA,

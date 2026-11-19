@@ -55,6 +55,7 @@ import {
   estaConcluido,
   jaResolvido,
   pedidoAResponder,
+  readRespostaEscrita,
   registrarResposta,
   respostasPendentes,
 } from "@modules/portal/resposta";
@@ -532,11 +533,11 @@ export const portalRespostaModule = new Elysia({ prefix: "/workspaces/:slug/port
       return dispensarResposta({ ...ctx, motivo: b.motivo });
     }
 
-    const texto = String(b.resposta ?? "").trim();
-    if (!texto) {
+    const resposta = readRespostaEscrita(b);
+    if (!resposta.texto) {
       set.status = 400;
       return { detail: "Escreva a resposta ao cliente ou marque que vai concluir sem responder." };
     }
     set.status = 201;
-    return { resposta: await registrarResposta({ ...ctx, texto }) };
+    return { resposta: await registrarResposta({ ...ctx, resposta }) };
   });

@@ -19,8 +19,9 @@ describe("abas da triagem global", () => {
     expect(readAbaPadraoDaTriagemGlobal((acao) => acao === "intake.review")).toBe("-2");
   });
 
-  it("tem as cinco abas de antes e mais Concluído", () => {
+  it("começa por No atendimento (portal e ouvidoria), depois as da triagem e Concluído", () => {
     expect(ABAS_DA_TRIAGEM_GLOBAL.map((aba) => aba.rotulo)).toEqual([
+      "No atendimento",
       "Pendente",
       "Recusado",
       "Adiado",

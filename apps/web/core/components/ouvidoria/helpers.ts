@@ -12,6 +12,7 @@
 /** Ações da matriz (`ACTION_CATALOG` do api-ts). Todas de Gestor e admin por padrão. */
 export const ACOES = {
   OUVIDORIA_READ: "ouvidoria.read",
+  OUVIDORIA_CRIAR_SOLICITACAO: "ouvidoria.criar_solicitacao",
   DENUNCIA_READ: "denuncia.read",
   CURRICULO_READ: "curriculo.read",
   CONTATO_EXPORT: "contato.export",

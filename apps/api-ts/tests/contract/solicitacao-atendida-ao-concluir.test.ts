@@ -1,5 +1,10 @@
 /**
- * A solicitação fecha sozinha quando o chamado dela é concluído.
+ * A solicitação acompanha o chamado, mas quem FECHA é o atendimento.
+ *
+ * Testes da nova intranet 3 (19/11/2026): concluir o chamado deixa a
+ * solicitação aceita, na aba Concluído, esperando o atendimento dizer se o
+ * cliente foi atendido (Atendido) ou não (Não atendido, volta para a triagem).
+ * Antes concluir já marcava como atendida.
  *
  * A triagem e o estado do chamado eram duas trilhas separadas: arrastar o cartão
  * até "Concluído" no quadro nunca tocava no status da solicitação, que ficava
@@ -64,38 +69,38 @@ describe("Solicitação atendida ao concluir o chamado", () => {
     emTeste = estados.find((e) => e.group === "started")!.id;
   });
 
-  it("concluir o chamado marca a solicitação como atendida", async () => {
+  it("concluir o chamado deixa a solicitação aceita, esperando o atendimento confirmar", async () => {
     const { issue, link } = await createIntakeIssue(projetoId, wsId, { status: PENDENTE, createdById: usuarioId });
     expect(await statusDa(link.id)).toBe(PENDENTE);
 
     const res = await mover(issue.id, concluido);
     expect(res.status).toBe(200);
-    expect(await statusDa(link.id)).toBe(ATENDIDA);
+    expect(await statusDa(link.id)).toBe(ACEITA);
   });
 
-  it("solicitação já aceita também fecha", async () => {
+  it("solicitação já aceita continua aceita ao concluir", async () => {
     const { issue, link } = await createIntakeIssue(projetoId, wsId, { status: ACEITA, createdById: usuarioId });
     await mover(issue.id, concluido);
-    expect(await statusDa(link.id)).toBe(ATENDIDA);
+    expect(await statusDa(link.id)).toBe(ACEITA);
   });
 
-  it("solicitação adiada fecha junto — o trabalho terminou", async () => {
+  it("solicitação adiada vira aceita ao concluir: o trabalho terminou", async () => {
     const { issue, link } = await createIntakeIssue(projetoId, wsId, { status: ADIADA, createdById: usuarioId });
     await mover(issue.id, concluido);
-    expect(await statusDa(link.id)).toBe(ATENDIDA);
+    expect(await statusDa(link.id)).toBe(ACEITA);
   });
 
   it("devolver para Em Teste reabre a solicitação como aceita, não como pendente", async () => {
     const { issue, link } = await createIntakeIssue(projetoId, wsId, { status: PENDENTE, createdById: usuarioId });
     await mover(issue.id, concluido);
-    expect(await statusDa(link.id)).toBe(ATENDIDA);
+    expect(await statusDa(link.id)).toBe(ACEITA);
 
     await mover(issue.id, emTeste);
     // Aceita, e não pendente: a triagem já aconteceu, o trabalho está em curso.
     expect(await statusDa(link.id)).toBe(ACEITA);
 
     await mover(issue.id, concluido);
-    expect(await statusDa(link.id)).toBe(ATENDIDA);
+    expect(await statusDa(link.id)).toBe(ACEITA);
   });
 
   it("cancelar o chamado NÃO marca como atendida — atendido é entrega, cancelado não é", async () => {
@@ -116,7 +121,7 @@ describe("Solicitação atendida ao concluir o chamado", () => {
     expect(await statusDa(link.id)).toBe(DUPLICADA);
   });
 
-  it("o atendimento fica registrado com quem concluiu e com o último comentário", async () => {
+  it("marcar Atendido fecha a solicitação e registra quem confirmou e o último comentário", async () => {
     const { issue, link } = await createIntakeIssue(projetoId, wsId, { status: ACEITA, createdById: usuarioId });
     await admin.post(`/workspaces/${wsSlug}/projects/${projetoId}/issues/${issue.id}/comments/`, {
       comment_html: "<p>Primeiro apontamento.</p>",
@@ -126,6 +131,11 @@ describe("Solicitação atendida ao concluir o chamado", () => {
     });
 
     await mover(issue.id, concluido);
+    expect(await statusDa(link.id)).toBe(ACEITA);
+    const atendido = await admin.patch(`/workspaces/${wsSlug}/projects/${projetoId}/inbox-issues/${issue.id}/`, {
+      status: ATENDIDA,
+    });
+    expect(atendido.status).toBe(200);
     expect(await statusDa(link.id)).toBe(ATENDIDA);
 
     const marca = await prisma.issueActivity.findFirst({
@@ -149,16 +159,16 @@ describe("Solicitação atendida ao concluir o chamado", () => {
     expect(await prisma.intakeIssue.count({ where: { issueId: id } })).toBe(0);
   });
 
-  it("concluir pela triagem fecha a solicitação igual a concluir pelo quadro", async () => {
+  it("concluir pela triagem faz o mesmo que concluir pelo quadro", async () => {
     const { issue, link } = await createIntakeIssue(projetoId, wsId, { status: ACEITA, createdById: usuarioId });
     const res = await admin.patch(`/workspaces/${wsSlug}/projects/${projetoId}/intake-work-items/${issue.id}/`, {
       state: concluido,
     });
     expect(res.status).toBe(200);
-    expect(await statusDa(link.id)).toBe(ATENDIDA);
+    expect(await statusDa(link.id)).toBe(ACEITA);
   });
 
-  it("concluir em massa fecha as solicitações dos chamados do lote", async () => {
+  it("concluir em massa deixa as solicitações do lote esperando o atendimento", async () => {
     const a = await createIntakeIssue(projetoId, wsId, { status: PENDENTE, createdById: usuarioId });
     const b = await createIntakeIssue(projetoId, wsId, { status: ACEITA, createdById: usuarioId });
     const res = await admin.post(`/workspaces/${wsSlug}/projects/${projetoId}/issues/bulk-update/`, {
@@ -166,8 +176,8 @@ describe("Solicitação atendida ao concluir o chamado", () => {
       state: concluido,
     });
     expect(res.status).toBe(200);
-    expect(await statusDa(a.link.id)).toBe(ATENDIDA);
-    expect(await statusDa(b.link.id)).toBe(ATENDIDA);
+    expect(await statusDa(a.link.id)).toBe(ACEITA);
+    expect(await statusDa(b.link.id)).toBe(ACEITA);
   });
 
   /**

@@ -94,6 +94,38 @@ export class InboxIssueService extends APIService {
       });
   }
 
+  /** "Não atendido": o chamado volta para a triagem com o motivo (mínimo de 10 caracteres). */
+  async markNaoAtendido(workspaceSlug: string, projectId: string, issueId: string, motivo: string): Promise<void> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/inbox-issues/${issueId}/nao-atendido/`, {
+      motivo,
+    })
+      .then(() => undefined)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  /** No atendimento: encaminha para a triagem da Qualidade. */
+  async sendParaATriagem(workspaceSlug: string, projectId: string, issueId: string): Promise<void> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/inbox-issues/${issueId}/encaminhar/`, {})
+      .then(() => undefined)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  /** No atendimento: encerra sem virar chamado, com a resposta para quem pediu. */
+  async closeNoAtendimento(workspaceSlug: string, projectId: string, issueId: string, respostaHtml: string) {
+    return this.post(
+      `/api/workspaces/${workspaceSlug}/projects/${projectId}/inbox-issues/${issueId}/encerrar-no-atendimento/`,
+      { resposta_html: respostaHtml }
+    )
+      .then(() => undefined)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async updateIssue(
     workspaceSlug: string,
     projectId: string,
