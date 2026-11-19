@@ -7,6 +7,8 @@ import { describe, expect, it } from "bun:test";
 import {
   NIVEIS_DA_BUSCA,
   addNomesDasEntidades,
+  filterMesesRecentes,
+  isMesPermitido,
   buildMarcaDoEnvio,
   pickParametros,
   readEnvio,
@@ -42,5 +44,27 @@ describe("banco anexado", () => {
         { entity_code: "88", arquivos: 1, entity_name: null },
       ],
     });
+  });
+});
+
+describe("só os bancos recentes", () => {
+  const novembro = new Date("2026-11-19T12:00:00-04:00");
+  const janeiro = new Date("2027-01-10T12:00:00-04:00");
+
+  it("vale o mês atual e o anterior, do mesmo ano", () => {
+    expect(isMesPermitido("2026-11", novembro)).toBe(true);
+    expect(isMesPermitido("2026-10", novembro)).toBe(true);
+    expect(isMesPermitido("2026-09", novembro)).toBe(false);
+    expect(isMesPermitido("2025-11", novembro)).toBe(false);
+  });
+
+  it("em janeiro, só janeiro: dezembro é de outro ano", () => {
+    expect(isMesPermitido("2027-01", janeiro)).toBe(true);
+    expect(isMesPermitido("2026-12", janeiro)).toBe(false);
+  });
+
+  it("a lista de meses do plugin fica só com os recentes", () => {
+    const corpo = { data: [{ mes: "2026-11" }, { mes: "2026-10" }, { mes: "2026-09" }, { mes: "2025-11" }] };
+    expect(filterMesesRecentes(corpo, novembro)).toEqual({ data: [{ mes: "2026-11" }, { mes: "2026-10" }] });
   });
 });
