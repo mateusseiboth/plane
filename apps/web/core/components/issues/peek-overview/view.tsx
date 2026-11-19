@@ -17,7 +17,10 @@ import { cn } from "@plane/utils";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import useKeypress from "@/hooks/use-keypress";
 import usePeekOverviewOutsideClickDetector from "@/hooks/use-peek-overview-outside-click";
-import { comentariosEmProcessamento } from "@/store/issue/issue-details/comentarios-em-processamento";
+import {
+  comentariosEmProcessamento,
+  type TAvisoDeSaida,
+} from "@/store/issue/issue-details/comentarios-em-processamento";
 // local imports
 import type { TIssueOperations } from "../issue-detail";
 import { IssueActivity } from "../issue-detail/issue-activity";
@@ -42,6 +45,22 @@ interface IIssueView {
   issueOperations: TIssueOperations;
 }
 
+const TEXTOS_DO_AVISO_DE_SAIDA: Record<TAvisoDeSaida, { titulo: string; texto: string; ficar: string; sair: string }> =
+  {
+    processando: {
+      titulo: "Comentário em processamento",
+      texto: "O comentário ainda não foi salvo. Aguarde para não perder o que foi escrito.",
+      ficar: "Aguardar",
+      sair: "Fechar assim mesmo",
+    },
+    rascunho: {
+      titulo: "Comentário não enviado",
+      texto: "O que você escreveu será perdido. Envie o comentário antes de fechar.",
+      ficar: "Continuar escrevendo",
+      sair: "Descartar e fechar",
+    },
+  };
+
 export const IssueView = observer(function IssueView(props: IIssueView) {
   const {
     workspaceSlug,
@@ -62,7 +81,8 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
   const [isArchiveIssueModalOpen, setIsArchiveIssueModalOpen] = useState(false);
   const [isDuplicateIssueModalOpen, setIsDuplicateIssueModalOpen] = useState(false);
   const [isEditIssueModalOpen, setIsEditIssueModalOpen] = useState(false);
-  const [isAvisoDeComentarioOpen, setIsAvisoDeComentarioOpen] = useState(false);
+  const [avisoDeSaida, setAvisoDeSaida] = useState<TAvisoDeSaida | null>(null);
+  const isAvisoDeComentarioOpen = avisoDeSaida !== null;
   // ref
   const issuePeekOverviewRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorRefApi>(null);
@@ -80,10 +100,11 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
     if (embedIssue && embedRemoveCurrentNotification) embedRemoveCurrentNotification();
   };
 
-  // Fechar no meio do envio do comentário perde o texto: avisa e deixa a pessoa esperar.
+  // Fechar com comentário não enviado, ou no meio do envio, perde o texto: avisa antes.
   const closePeek = () => {
-    if (comentariosEmProcessamento.isProcessando(issueId)) {
-      setIsAvisoDeComentarioOpen(true);
+    const aviso = comentariosEmProcessamento.readAvisoDeSaida(issueId);
+    if (aviso) {
+      setAvisoDeSaida(aviso);
       return;
     }
     removeRoutePeekId();
@@ -160,14 +181,14 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
       <AlertModalCore
         isOpen={isAvisoDeComentarioOpen}
         variant="primary"
-        title="Comentário em processamento"
-        content="O comentário ainda não foi salvo. Aguarde para não perder o que foi escrito."
-        secondaryButtonText="Aguardar"
-        primaryButtonText={{ default: "Fechar assim mesmo", loading: "Fechando" }}
+        title={TEXTOS_DO_AVISO_DE_SAIDA[avisoDeSaida ?? "rascunho"].titulo}
+        content={TEXTOS_DO_AVISO_DE_SAIDA[avisoDeSaida ?? "rascunho"].texto}
+        secondaryButtonText={TEXTOS_DO_AVISO_DE_SAIDA[avisoDeSaida ?? "rascunho"].ficar}
+        primaryButtonText={{ default: TEXTOS_DO_AVISO_DE_SAIDA[avisoDeSaida ?? "rascunho"].sair, loading: "Fechando" }}
         isSubmitting={false}
-        handleClose={() => setIsAvisoDeComentarioOpen(false)}
+        handleClose={() => setAvisoDeSaida(null)}
         handleSubmit={() => {
-          setIsAvisoDeComentarioOpen(false);
+          setAvisoDeSaida(null);
           removeRoutePeekId();
         }}
       />
