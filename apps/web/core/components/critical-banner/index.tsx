@@ -33,9 +33,9 @@ const STATE_GROUP_COLOR: Record<string, string> = {
   triage: "text-purple-600",
 };
 
-// Cores pelos tokens do tema (`danger-*`): o tema zera a paleta padrão do
-// Tailwind (`--color-*: initial`), então `border-red-300` e afins não existem e
-// a faixa saía com a borda preta.
+// Faixa NEUTRA, sem vermelho (pedido do dono do produto, 19/11/2026): o destaque
+// do urgente fica no card do quadro e na linha da lista. Cores só pelos tokens do
+// tema, que zera a paleta padrão do Tailwind (`--color-*: initial`).
 
 /**
  * CriticalIssuesBanner — shown at the top of all workspace pages whenever
@@ -76,16 +76,16 @@ export function CriticalIssuesBanner() {
   if (dismissed || issues.length === 0) return null;
 
   return (
-    <div className="w-full border-b border-danger-subtle bg-danger-subtle transition-all">
+    <div className="w-full border-b border-subtle bg-surface-2 transition-all">
       <div className="flex items-center gap-3 px-4 py-2">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-danger-primary" />
-        <span className="text-13 font-semibold text-danger-primary">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-secondary" />
+        <span className="text-13 font-semibold text-primary">
           {issues.length} chamado{issues.length !== 1 ? "s" : ""} URGENTE{issues.length !== 1 ? "S" : ""} em aberto
         </span>
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="flex items-center gap-1 rounded px-2 py-0.5 text-12 text-danger-primary hover:bg-danger-subtle-hover"
+            className="flex items-center gap-1 rounded px-2 py-0.5 text-12 text-secondary hover:bg-layer-1-hover"
           >
             {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
             {collapsed ? "Expandir" : "Recolher"}
@@ -93,7 +93,7 @@ export function CriticalIssuesBanner() {
           <button
             onClick={() => setDismissed(true)}
             title="Dispensar (reaparece após a próxima atualização)"
-            className="rounded p-0.5 text-danger-primary hover:bg-danger-subtle-hover"
+            className="rounded p-0.5 text-secondary hover:bg-layer-1-hover"
           >
             <X className="h-4 w-4" />
           </button>
@@ -101,7 +101,7 @@ export function CriticalIssuesBanner() {
       </div>
 
       {!collapsed && (
-        <div className="border-t border-danger-subtle">
+        <div className="border-t border-subtle">
           <div className="flex flex-wrap gap-2 px-4 py-2">
             {issues.slice(0, 8).map((issue) => (
               <Link
@@ -111,15 +111,15 @@ export function CriticalIssuesBanner() {
                   projectId: issue.project?.id,
                   issueId: issue.id,
                 })}
-                className="flex items-center gap-1.5 rounded-full border border-subtle bg-surface-1 px-3 py-1 text-12 text-danger-primary transition-colors hover:bg-danger-subtle-hover"
+                className="flex items-center gap-1.5 rounded-full border border-subtle bg-surface-1 px-3 py-1 text-12 text-primary transition-colors hover:bg-layer-1-hover"
               >
                 {issue.legacy_ticket_number && (
-                  <span className="font-mono rounded bg-danger-subtle px-1 font-semibold text-danger-primary">
+                  <span className="font-mono rounded bg-layer-1 px-1 font-semibold text-secondary">
                     #{issue.legacy_ticket_number}
                   </span>
                 )}
                 {issue.project?.identifier && (
-                  <span className="rounded bg-danger-subtle px-1 font-medium text-danger-primary">
+                  <span className="rounded bg-layer-1 px-1 font-medium text-secondary">
                     {formatNumeroNoSistema(issue.project, issue.sequence_id)}
                   </span>
                 )}
@@ -137,7 +137,7 @@ export function CriticalIssuesBanner() {
               </Link>
             ))}
             {issues.length > 8 && (
-              <span className="flex items-center px-2 text-12 text-danger-primary">+{issues.length - 8} mais</span>
+              <span className="flex items-center px-2 text-12 text-secondary">+{issues.length - 8} mais</span>
             )}
           </div>
         </div>
