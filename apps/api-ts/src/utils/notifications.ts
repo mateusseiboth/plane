@@ -1,7 +1,7 @@
 // Notification helpers (D3).
 
 import prisma from "@db";
-import {publishRealtime} from "@utils/realtime";
+import { publishRealtime } from "@utils/realtime";
 
 /**
  * Notify all Quality-team members of a project that a new intake was opened.
@@ -35,7 +35,7 @@ export async function notifyQualityOfIntake(opts: {
       message: opts.issueName,
       entity: "intake",
       entityId: opts.issueId,
-      data: {type: "intake_opened", urgente},
+      data: { type: "intake_opened", urgente },
       triggered: "intake",
     })),
   });
@@ -44,8 +44,8 @@ export async function notifyQualityOfIntake(opts: {
 /** Quem é do setor Qualidade no projeto: nível 8 legado ou função de chave "qualidade". */
 async function findQualidadeDoProjeto(projectId: string): Promise<string[]> {
   const members = await prisma.projectMember.findMany({
-    where: {projectId, isActive: true, deletedAt: null},
-    include: {workflowRole: {select: {key: true, level: true}}},
+    where: { projectId, isActive: true, deletedAt: null },
+    include: { workflowRole: { select: { key: true, level: true } } },
   });
   return (
     members
@@ -72,8 +72,8 @@ export async function notifyInteracaoDoCliente(opts: {
   tipo: string;
 }): Promise<void> {
   const responsaveis = await prisma.issueAssignee.findMany({
-    where: {issueId: opts.issueId, deletedAt: null, assignee: {isActive: true, deletedAt: null}},
-    select: {assigneeId: true},
+    where: { issueId: opts.issueId, deletedAt: null, assignee: { isActive: true, deletedAt: null } },
+    select: { assigneeId: true },
   });
   const receivers = responsaveis.length
     ? [...new Set(responsaveis.map((r) => r.assigneeId))]
@@ -91,7 +91,7 @@ export async function notifyInteracaoDoCliente(opts: {
       message: opts.message.slice(0, 200),
       entity: "issue",
       entityId: opts.issueId,
-      data: {type: "portal_cliente", tipo: opts.tipo},
+      data: { type: "portal_cliente", tipo: opts.tipo },
       triggered: "comment",
     })),
   });
@@ -128,14 +128,14 @@ export async function notifyStateChange(opts: {
   if (opts.fromState === opts.toState) return;
 
   const donos = await prisma.roleStateTransition.findMany({
-    where: {workspaceId: opts.workspaceId, allowed: true, fromStateName: opts.toState},
-    select: {roleId: true},
+    where: { workspaceId: opts.workspaceId, allowed: true, fromStateName: opts.toState },
+    select: { roleId: true },
   });
   const idsDosDonos = new Set(donos.map((d) => d.roleId));
 
   const membros = await prisma.projectMember.findMany({
-    where: {projectId: opts.projectId, isActive: true, deletedAt: null},
-    select: {memberId: true, workflowRoleId: true},
+    where: { projectId: opts.projectId, isActive: true, deletedAt: null },
+    select: { memberId: true, workflowRoleId: true },
   });
   const doSetorDaEtapa = new Set(
     membros.filter((m) => m.workflowRoleId && idsDosDonos.has(m.workflowRoleId)).map((m) => m.memberId)
@@ -143,8 +143,8 @@ export async function notifyStateChange(opts: {
 
   const responsaveis = (
     await prisma.issueAssignee.findMany({
-      where: {issueId: opts.issueId, deletedAt: null},
-      select: {assigneeId: true},
+      where: { issueId: opts.issueId, deletedAt: null },
+      select: { assigneeId: true },
     })
   ).map((a) => a.assigneeId);
 
@@ -158,14 +158,17 @@ export async function notifyStateChange(opts: {
   // responsáveis de chamados antigos: sem este filtro, gente que nem entra no
   // sistema acumulava notificação de trabalho alheio.
   const ativos = await prisma.user.findMany({
-    where: {id: {in: [...destinatarios]}, isActive: true, deletedAt: null},
-    select: {id: true},
+    where: { id: { in: [...destinatarios] }, isActive: true, deletedAt: null },
+    select: { id: true },
   });
   if (!ativos.length) return;
 
-  avisarSino(opts.workspaceId, ativos.map((a) => a.id));
+  avisarSino(
+    opts.workspaceId,
+    ativos.map((a) => a.id)
+  );
   await prisma.notification.createMany({
-    data: ativos.map(({id: receiverId}) => ({
+    data: ativos.map(({ id: receiverId }) => ({
       workspaceId: opts.workspaceId,
       projectId: opts.projectId,
       issueId: opts.issueId,
@@ -175,7 +178,7 @@ export async function notifyStateChange(opts: {
       message: opts.issueName,
       entity: "issue",
       entityId: opts.issueId,
-      data: {type: "state_changed", from: opts.fromState, to: opts.toState},
+      data: { type: "state_changed", from: opts.fromState, to: opts.toState },
       triggered: "state",
     })),
   });
@@ -205,7 +208,7 @@ export async function notifyRecusaDaSolicitacao(opts: {
       message: `${opts.issueName}: ${opts.motivo}`.slice(0, 200),
       entity: "intake",
       entityId: opts.issueId,
-      data: {type: "intake_declined"},
+      data: { type: "intake_declined" },
       triggered: "intake",
     },
   });
@@ -230,10 +233,10 @@ export async function notifyMuralPublished(opts: {
       workspaceId: opts.workspaceId,
       isActive: true,
       deletedAt: null,
-      memberId: {not: opts.actorId},
-      member: {isActive: true, deletedAt: null, isBotUser: false},
+      memberId: { not: opts.actorId },
+      member: { isActive: true, deletedAt: null, isBotUser: false },
     },
-    select: {memberId: true},
+    select: { memberId: true },
   });
   const receivers = membros.map((m) => m.memberId);
   if (!receivers.length) return;
@@ -247,7 +250,7 @@ export async function notifyMuralPublished(opts: {
       message: opts.title,
       entity: "mural",
       entityId: opts.recadoId,
-      data: {type: "mural_published"},
+      data: { type: "mural_published" },
       triggered: "mural",
     })),
   });
@@ -264,6 +267,6 @@ export async function notifyMuralPublished(opts: {
  */
 function avisarSino(workspaceId: string, receivers: string[]): void {
   for (const receiver of receivers) {
-    publishRealtime(workspaceId, {entity: "notification", action: "create", receiver});
+    publishRealtime(workspaceId, { entity: "notification", action: "create", receiver });
   }
 }
