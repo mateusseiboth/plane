@@ -7,9 +7,14 @@ import { buildConfirmacaoDaSolicitacao } from "@/components/solicitacao/confirma
 
 describe("buildConfirmacaoDaSolicitacao", () => {
   it("o número para o cliente é o anual; o do sistema vem junto", () => {
-    expect(buildConfirmacaoDaSolicitacao({ ticket_number: "12-2026", label: "RECURS-7590" }, false)).toEqual({
+    expect(
+      buildConfirmacaoDaSolicitacao(
+        { ticket_number: "12-2026", label: "RECURS-7590", project_name: "Recursos Humanos" },
+        false
+      )
+    ).toEqual({
       numeroParaOCliente: "12-2026",
-      numeroNoSistema: "RECURS-7590",
+      numeroNoSistema: "Recursos Humanos · RECURS-7590",
       aviso: "Ela está na triagem do sistema.",
     });
   });
@@ -21,9 +26,9 @@ describe("buildConfirmacaoDaSolicitacao", () => {
     });
   });
 
-  it("cliente parado avisa que a Qualidade foi chamada", () => {
+  it("cliente parado avisa que o Setor de Qualidade foi comunicado", () => {
     expect(buildConfirmacaoDaSolicitacao({ ticket_number: "12-2026", label: "RECURS-7590" }, true).aviso).toBe(
-      "Cliente parado: a Qualidade foi avisada com prioridade urgente."
+      "Cliente parado. O Setor de Qualidade foi comunicado sobre a situação, com prioridade urgente."
     );
   });
 });

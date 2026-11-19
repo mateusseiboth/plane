@@ -4,7 +4,7 @@ import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { publishRealtime } from "@utils/realtime";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
-import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
+import { buildNumerosDaSolicitacao, formatNumeroDoChamado } from "@utils/numero-do-chamado";
 import { getProjectOrFail, getWorkspaceOrFail, isParticipanteDeTodoSistema, requireWorkspaceMember } from "@utils/workspace";
 import {EProjectAction, requireProjectAction, requireWorkspaceAction, resolveMemberRole, roleCan} from "@utils/permission-checks";
 import {
@@ -578,21 +578,12 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       assigneeIds: b.assignee_ids ?? b.assignees ?? [],
       headers,
     });
-    const sistema = await prisma.project.findUniqueOrThrow({where: {id: project_id}, select: {identifier: true}});
+    const sistema = await prisma.project.findUniqueOrThrow({where: {id: project_id}, select: {identifier: true, name: true}});
     set.status = 201;
     return {
       id: issue.id, status: -2, snoozed_till: null, duplicate_to: undefined,
       source: "IN_APP", created_by: user.id,
-      // O número que o atendimento passa ao cliente (N-AAAA) e o do sistema.
-      issue: {
-        id: issue.id,
-        name: issue.name,
-        state_id: issue.stateId,
-        project_id: issue.projectId,
-        sequence_id: issue.sequenceId,
-        ticket_number: formatNumeroDoChamado(issue),
-        label: `${sistema.identifier}-${issue.sequenceId}`,
-      },
+      issue: buildNumerosDaSolicitacao(issue, sistema),
     };
   })
 

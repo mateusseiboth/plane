@@ -111,6 +111,8 @@ describe("POST .../inbox-issues/from-chat/", () => {
     const corpo = (await res.json()) as any;
     chamadoId = corpo.issue.id;
     expect(corpo.issue.label).toMatch(/-\d+$/);
+    const projeto = await prisma.project.findUniqueOrThrow({ where: { id: corpo.issue.project_id } });
+    expect(corpo.issue.project_name).toBe(projeto.name);
     expect(corpo.anexos).toBe(1);
 
     const chamado = await prisma.issue.findUniqueOrThrow({ where: { id: chamadoId } });

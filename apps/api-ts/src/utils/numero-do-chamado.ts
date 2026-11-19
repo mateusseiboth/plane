@@ -29,6 +29,33 @@ export function formatNumeroDoChamado({ ticketSequence, ticketYear }: ComNumero)
   return `${ticketSequence}-${ticketYear}`;
 }
 
+type SolicitacaoCriada = ComNumero & {
+  id: string;
+  name: string;
+  projectId: string;
+  stateId: string | null;
+  sequenceId: number;
+};
+
+/**
+ * O que a abertura de solicitação devolve (avulsa e pela conversa): o número
+ * anual que o atendimento passa ao cliente, o do sistema (`label`) e o NOME do
+ * sistema, porque a sigla gerada na importação ("RECUR1") não diz qual é.
+ */
+export const buildNumerosDaSolicitacao = (
+  issue: SolicitacaoCriada,
+  projeto: { identifier: string; name: string }
+) => ({
+  id: issue.id,
+  name: issue.name,
+  project_id: issue.projectId,
+  state_id: issue.stateId,
+  sequence_id: issue.sequenceId,
+  ticket_number: formatNumeroDoChamado(issue),
+  label: `${projeto.identifier}-${issue.sequenceId}`,
+  project_name: projeto.name,
+});
+
 const isAnoPlausivel = (ano: number) => ano >= ANO_MINIMO && ano <= ANO_MAXIMO;
 
 /** Grafias com separador: "12-2026", "12/2026", "12 2026", "12.2026". */

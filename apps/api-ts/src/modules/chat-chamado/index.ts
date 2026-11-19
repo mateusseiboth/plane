@@ -35,7 +35,7 @@ import {
   type MensagemDoChat,
   type SessaoDoChat,
 } from "@modules/chat-chamado/transcricao";
-import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
+import { buildNumerosDaSolicitacao } from "@utils/numero-do-chamado";
 
 const PRIORIDADES = new Set(["urgent", "high", "medium", "low", "none"]);
 const ORIGEM = "chat";
@@ -161,19 +161,14 @@ export const chatChamadoModule = new Elysia({ prefix: "/workspaces/:slug/project
       mensagens
     );
 
-    const projeto = await prisma.project.findUniqueOrThrow({ where: { id: project_id }, select: { identifier: true } });
+    const projeto = await prisma.project.findUniqueOrThrow({
+      where: { id: project_id },
+      select: { identifier: true, name: true },
+    });
     set.status = 201;
     return {
       id: issue.id,
-      issue: {
-        id: issue.id,
-        name: issue.name,
-        project_id,
-        sequence_id: issue.sequenceId,
-        label: `${projeto.identifier}-${issue.sequenceId}`,
-        // O número que o atendente passa ao cliente (N-AAAA).
-        ticket_number: formatNumeroDoChamado(issue),
-      },
+      issue: buildNumerosDaSolicitacao(issue, projeto),
       anexos: anexos.copiados,
       anexos_falharam: anexos.falharam,
     };

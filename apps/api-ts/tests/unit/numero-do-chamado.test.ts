@@ -8,7 +8,12 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import prisma from "@db";
 import { cleanDb } from "@tests/helpers/setup";
 import { createIssue, createProject, createUser, createWorkspace } from "@tests/helpers/factory";
-import { backfillNumerosDosChamados, formatNumeroDoChamado, parseNumeroDoChamado } from "@utils/numero-do-chamado";
+import {
+  backfillNumerosDosChamados,
+  buildNumerosDaSolicitacao,
+  formatNumeroDoChamado,
+  parseNumeroDoChamado,
+} from "@utils/numero-do-chamado";
 import { serializeIssue } from "@utils/serialize";
 
 const ANO_ATUAL = Number(
@@ -23,6 +28,22 @@ describe("formatNumeroDoChamado", () => {
   it("devolve null enquanto o chamado não tem número", () => {
     expect(formatNumeroDoChamado({ ticketSequence: null, ticketYear: null })).toBeNull();
     expect(formatNumeroDoChamado({})).toBeNull();
+  });
+});
+
+describe("buildNumerosDaSolicitacao", () => {
+  it("junta o número anual, o do sistema e o nome do sistema", () => {
+    const issue = { id: "c1", name: "Guia", projectId: "p1", stateId: "s1", sequenceId: 7, ticketSequence: 12, ticketYear: 2026 };
+    expect(buildNumerosDaSolicitacao(issue, { identifier: "RECUR1", name: "Recursos Humanos" })).toEqual({
+      id: "c1",
+      name: "Guia",
+      project_id: "p1",
+      state_id: "s1",
+      sequence_id: 7,
+      ticket_number: "12-2026",
+      label: "RECUR1-7",
+      project_name: "Recursos Humanos",
+    });
   });
 });
 

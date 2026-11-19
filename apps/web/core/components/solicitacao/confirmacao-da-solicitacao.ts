@@ -4,7 +4,13 @@
  * Antes o aviso era um toast pequeno, sem número, igual para cliente parado.
  */
 
-export type SolicitacaoAberta = { ticket_number?: string | null; label?: string | null };
+import { formatNumeroNoSistema } from "@/helpers/numero-no-sistema.helper";
+
+export type SolicitacaoAberta = {
+  ticket_number?: string | null;
+  label?: string | null;
+  project_name?: string | null;
+};
 
 export type ConfirmacaoDaSolicitacao = {
   numeroParaOCliente: string;
@@ -13,13 +19,13 @@ export type ConfirmacaoDaSolicitacao = {
 };
 
 const AVISO_NORMAL = "Ela está na triagem do sistema.";
-const AVISO_CLIENTE_PARADO = "Cliente parado: a Qualidade foi avisada com prioridade urgente.";
+const AVISO_CLIENTE_PARADO = "Cliente parado. O Setor de Qualidade foi comunicado sobre a situação, com prioridade urgente.";
 
 export const buildConfirmacaoDaSolicitacao = (
   aberta: SolicitacaoAberta,
   isClienteParado: boolean
 ): ConfirmacaoDaSolicitacao => ({
   numeroParaOCliente: aberta.ticket_number || aberta.label || "",
-  numeroNoSistema: aberta.ticket_number ? (aberta.label ?? null) : null,
+  numeroNoSistema: aberta.ticket_number ? formatNumeroNoSistema({ name: aberta.project_name }, aberta.label) : null,
   aviso: isClienteParado ? AVISO_CLIENTE_PARADO : AVISO_NORMAL,
 });
