@@ -22,6 +22,7 @@ describe("ações da matriz", () => {
   it("as chaves são as do catálogo do api-ts", () => {
     expect(ACOES).toEqual({
       OUVIDORIA_READ: "ouvidoria.read",
+      OUVIDORIA_CRIAR_SOLICITACAO: "ouvidoria.criar_solicitacao",
       DENUNCIA_READ: "denuncia.read",
       CURRICULO_READ: "curriculo.read",
       CONTATO_EXPORT: "contato.export",
