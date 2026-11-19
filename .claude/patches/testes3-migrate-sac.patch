@@ -1,0 +1,45 @@
+--- a/apps/api-ts/scripts/migrate-sac.ts
++++ b/apps/api-ts/scripts/migrate-sac.ts
+@@ -34,6 +34,7 @@
+ import {seedWorkflowRoles} from "../src/utils/permissions";
+ import {DEFAULT_STATES, ensureProjectDefaults} from "../src/utils/project-defaults";
+ import {LEGACY_VISITA_STATUS_SQL, mapLegacyVisitStatus} from "@modules/technical-visit/legacy-visit-status";
++import {buildAjusteDoSistema, buildNomeDoSistema, isSistemaInativoNoLegado} from "@modules/project/sistema-do-legado.rules";
+ import {syncParticipacaoEmTodoSistema} from "@modules/project/participacao-em-todo-sistema.service";
+ 
+ // ── Config ────────────────────────────────────────────────────────────────────
+@@ -487,7 +488,7 @@
+   // ── 3. sistemas → projects (one project per sistema) ────────────────────────
+   log("\n📁  Migrating sistemas → projects (1 project per sistema)");
+   const [sistemas] = await conn.query<any[]>(`
+-    SELECT sistemas_id, sistemas_nome, sistemas_apelido, sistemas_descricao FROM sistemas WHERE status = 1`);
++    SELECT sistemas_id, sistemas_nome, sistemas_apelido, sistemas_descricao, categoria FROM sistemas WHERE status = 1`);
+   log(`  Found ${sistemas.length} systems`);
+ 
+   if (!DRY_RUN) {
+@@ -496,11 +497,15 @@
+         where: {workspaceId: workspace.id, externalSource: "sac_migration", externalId: String(s.sistemas_id), deletedAt: null},
+       });
+       if (existing) {
++        // Reimportação: nome web e arquivamento valem também para o que já existe.
++        const ajuste = buildAjusteDoSistema(existing, {...s, categoria: Number(s.categoria ?? 0)}, new Date());
++        if (ajuste.name || ajuste.archivedAt) await prisma.project.update({where: {id: existing.id}, data: ajuste});
+         sistemaMap.set(s.sistemas_id, existing.id);
+         continue;
+       }
+ 
+-      const name = (s.sistemas_apelido || s.sistemas_nome || `Sistema ${s.sistemas_id}`).slice(0, 255);
++      // Web (categoria 3) leva "Web" no nome: o legado tem "Licitação" desktop e web.
++      const name = buildNomeDoSistema({...s, categoria: Number(s.categoria ?? 0)});
+       const rawId =
+         name
+           .toUpperCase()
+@@ -529,6 +534,8 @@
+             intakeView: true, // intake habilitado em todos os projetos (B2)
+             externalSource: "sac_migration",
+             externalId: String(s.sistemas_id),
++            // Inativos (lista fixa que a intranet esconde) entram arquivados.
++            ...(isSistemaInativoNoLegado(Number(s.sistemas_id)) ? {archivedAt: new Date()} : {}),
+           },
+         });
+         await tx.state.createMany({

@@ -14,6 +14,7 @@ import { AlertTriangle } from "lucide-react";
 import { Logo } from "@plane/propel/emoji-icon-picker";
 import type { TLogoProps } from "@plane/types";
 import { corDaColuna, COR_DA_PRIORIDADE, FUNDO_DO_CARTAO, ROTULO_DA_PRIORIDADE, STATUS } from "../cores";
+import { isPrioridadeUrgente } from "@/helpers/prioridade.helper";
 import { buildOrigemDoChamado, readUrgenteDaVez } from "../painel-helpers";
 import { useRolagemAutomatica, useRotacao } from "../use-painel-tv";
 
@@ -52,7 +53,7 @@ export type TQuadroDaTv = {
   urgentes: TChamadoDoPainel[];
 };
 
-const isUrgente = (chamado: TChamadoDoPainel) => chamado.priority === "urgent";
+const isUrgente = (chamado: TChamadoDoPainel) => isPrioridadeUrgente(chamado.priority);
 
 function IconeDoSistema({ chamado }: { chamado: TChamadoDoPainel }) {
   if (chamado.project_logo?.in_use) {

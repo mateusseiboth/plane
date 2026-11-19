@@ -144,13 +144,14 @@ describe("POST .../inbox-issues/ (solicitação avulsa)", () => {
     for (const corpo of corpos) expect(corpo.errors.map((e) => e.path)).toEqual(["description_html"]);
   });
 
-  it("devolve o número para o cliente (N-AAAA) e o do sistema", async () => {
+  it("devolve o número para o cliente (N-AAAA), o do sistema e o nome do sistema", async () => {
     const res = await admin.post(url(), pedido());
     expect(res.status).toBe(201);
     const { issue } = (await res.json()) as any;
     const projeto = await prisma.project.findUniqueOrThrow({ where: { id: projetoId } });
     expect(issue.ticket_number).toMatch(/^\d+-\d{4}$/);
     expect(issue.label).toBe(`${projeto.identifier}-${issue.sequence_id}`);
+    expect(issue.project_name).toBe(projeto.name);
   });
 });
 

@@ -6,16 +6,16 @@ import { describe, expect, it } from "bun:test";
 import { buildLinhaDaSolicitacao } from "@/components/inbox/global/linha-da-solicitacao";
 
 describe("buildLinhaDaSolicitacao", () => {
-  it("número anual, número no sistema, entidade e etapa com setor", () => {
+  it("número anual, nome do sistema com o número, entidade e etapa com setor", () => {
     const linha = buildLinhaDaSolicitacao({
-      project: { identifier: "ALMOXA" },
+      project: { identifier: "ALMOXA", name: "Almoxarifado" },
       issue: { sequence_id: 11, ticket_number: "12-2026", state_name: "Em Análise" },
       entity: { name: "Prefeitura de Teste" },
       setor: "Qualidade",
     });
     expect(linha).toEqual({
       numero: "12-2026",
-      noSistema: "ALMOXA-11",
+      noSistema: "Almoxarifado · ALMOXA-11",
       entidade: "Prefeitura de Teste",
       ondeEsta: "Em Análise · Qualidade",
     });

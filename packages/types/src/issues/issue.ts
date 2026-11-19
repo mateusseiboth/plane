@@ -85,6 +85,9 @@ export type TBaseIssue = {
   /** Chamado antigo de que este veio (só no GET de um chamado). */
   moved_from_issue?: TChamadoMovido | null;
   solicitacao?: TSolicitacaoDoChamado | null;
+  /** Entidade (cliente) do chamado. */
+  entity_id?: string | null;
+  entity?: { id: string; name: string; entity_type: number | null } | null;
   name: string;
   sort_order: number;
 

@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
+import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 import { EntityDropdown } from "@/components/dropdowns/entity";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { SeletorDeContatos } from "@/components/entity-contacts";
@@ -82,8 +83,10 @@ export const CreateVisitModal = observer(function CreateVisitModal(props: Props)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="shadow-xl w-full max-w-md rounded-lg bg-surface-1 p-6">
+    // ModalCore (z-30) e não uma div z-50: os seletores abrem num portal z-30 e
+    // ficavam atrás da modal.
+    <ModalCore isOpen handleClose={onClose} position={EModalPosition.CENTER} width={EModalWidth.MD}>
+      <div className="p-6">
         <h2 className="text-base mb-1 font-semibold">Nova visita técnica</h2>
         {sourceIssue && (
           <p className="mb-3 text-12 text-secondary">
@@ -176,6 +179,6 @@ export const CreateVisitModal = observer(function CreateVisitModal(props: Props)
           </div>
         </form>
       </div>
-    </div>
+    </ModalCore>
   );
 });

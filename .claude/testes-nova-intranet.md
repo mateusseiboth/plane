@@ -33,3 +33,33 @@ mensagem ou responsabilidade no sistema. Em homologação faltavam 144 pares par
 no RECURS) só tinha vínculo com COMPRA. No legado ninguém ficava preso a um
 sistema. Agora `syncParticipacaoEmTodoSistema` roda ao criar sistema, ao entrar
 membro e na rota `sync-members`; vínculo desativado não é recriado.
+
+# Testes nova intranet 3 (18/11/2026)
+
+| Item | O que era | O que ficou |
+|---|---|---|
+| Sistemas repetidos | Dois "Licitação", dois "Recursos Humanos"... (desktop e web) iguais no seletor; inativos apareciam | Web (`categoria = 3` no legado) leva "Web" no nome ("Licitação Web", "GED Web (descontinuado)"); os 10 da lista fixa que a intranet esconde ficam arquivados (`modules/project/sistema-do-legado.rules.ts`) |
+| Aviso de cliente parado | "Cliente parado: a Qualidade foi avisada…" | "Cliente parado. O Setor de Qualidade foi comunicado sobre a situação, com prioridade urgente." |
+| Entidade some no chamado | Aberto pela faixa de urgentes ou por link mostrava "Adicionar entidade" | O recorte do detalhe no store (`buildIssueDoDetalhe`) não levava `entity_id`/`entity` |
+| Só a sigla do sistema | "No sistema: RECUR1-7" | "Recursos Humanos · RECUR1-7" (`formatNumeroNoSistema` em `apps/web/helpers`): confirmação, faixa de urgentes, lista de solicitações, notificações, busca global, chamados da visita. A abertura devolve `project_name`; notificação `data.issue.project_name`; paleta `project__name` |
+| Aceitar sem responsável | Em Análise só com o atendente | Quem aceita entra nos responsáveis (o atendente fica). `addResponsavel` em `@utils/vinculos-do-chamado` é a regra "quem move de etapa vira responsável", agora também no aceite; a resposta traz `assignee_ids` |
+| Como mandar para o desenvolvimento | Só arrastando aparecia "comente antes de mover" | "Comentar e movimentar" ao lado de Comentário (`components/comments/movimentacao`): grava o comentário e só então muda a etapa. Fora da triagem |
+| Selects da visita técnica | Abriam atrás da modal (div z-50, portal z-30) | `ModalCore` do `@plane/ui` |
+| Etapa longe do comentário | Primeira propriedade | Última, logo acima da atividade (detalhe e peek) |
+| IA demora e perde o texto | Fechar o peek no meio perdia o comentário; erro também apagava | Registro `comentariosEmProcessamento` (MobX): a caixa mostra "Processando o comentário…", o peek pergunta antes de fechar, o navegador avisa ao sair; o texto só sai do editor quando gravou |
+| Card urgente | Faixa com `border-red-300`, classe que não existe (o tema zera a paleta: `--color-*: initial`) | Tokens `danger-*`, borda de 2px; card do quadro com `border-priority-urgent` (`isPrioridadeUrgente`) |
+| Triagem | Abria em Concluído para todos | Quem tem `intake.review` abre em Pendente (`readAbaPadraoDaTriagemGlobal`) |
+
+## Sistemas do legado em homologação
+
+Já importados: `LEGACY_INTRANET_DB_URL=mysql://... DRY_RUN=1 bun run scripts/ajustar-sistemas-do-legado.ts`
+mostra o plano; sem `DRY_RUN` aplica. Só renomeia quem ainda tem o nome da importação (o
+legado tem espaço no fim, "Licitação ", e a importação antiga não tirava) e nunca desarquiva.
+Importação nova: aplicar `.claude/patches/testes3-migrate-sac.patch` no `migrate-sac.ts`
+(gitignored). No legado de produção (192.168.100.250, `quality_site`) os 118 sistemas estão
+com `status = 1`: não há coluna de ativo; o critério é a lista fixa de
+`funcoesAjaxTickets.php`.
+
+**Armadilha de cor:** classes da paleta padrão do Tailwind (`red-300`, `gray-500`,
+`yellow-100`) não existem neste tema. Use os tokens (`danger-*`, `priority-urgent`,
+`text-secondary`…) de `packages/tailwind-config/variables.css`.

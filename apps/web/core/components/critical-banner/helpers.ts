@@ -4,9 +4,8 @@
  * See the LICENSE file for details.
  */
 
+import { isPrioridadeUrgente } from "@/helpers/prioridade.helper";
 import type { RealtimeEvent } from "@/hooks/use-realtime";
-
-const PRIORIDADE_URGENTE = "urgent";
 
 const isEventoDeChamado = (event: RealtimeEvent) => event.entity === "issue";
 
@@ -17,7 +16,7 @@ const isChamadoNaFaixa = (event: RealtimeEvent, idsNaFaixa: readonly string[]) =
 // é urgente; na dúvida a faixa busca de novo, que é barato.
 const isPrioridadeDesconhecida = (event: RealtimeEvent) => event.priority === undefined || event.priority === null;
 
-const isChamadoUrgente = (event: RealtimeEvent) => event.priority === PRIORIDADE_URGENTE;
+const isChamadoUrgente = (event: RealtimeEvent) => isPrioridadeUrgente(event.priority);
 
 /**
  * O evento pode mudar a faixa de urgentes? Chamado que já está na faixa pode ter

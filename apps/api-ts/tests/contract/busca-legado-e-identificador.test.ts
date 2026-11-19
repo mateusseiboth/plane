@@ -8,6 +8,7 @@
  *     portanto, de todo link de notificação.
  */
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import prisma from "@db";
 import { cleanDb } from "@tests/helpers/setup";
 import {
   apiClient,
@@ -141,6 +142,14 @@ describe("BuscaPorNumeroLegadoEIdentificador", () => {
   it("a busca global e a da paleta concordam sobre a chave composta", async () => {
     const termo = `${projectIdentifier}-150`;
     expect(await idsDaPaleta(termo)).toEqual(await idsDaBusca(termo));
+  });
+
+  it("a paleta traz o nome do sistema junto da sigla", async () => {
+    const res = await client.get(`/workspaces/${wsSlug}/search/?search=${projectIdentifier}-150`);
+    const data = (await res.json()) as any;
+    const achado = data.results.issue.find((i: any) => i.id === chamadoLegadoId);
+    const projeto = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+    expect(achado.project__name).toBe(projeto.name);
   });
 
   it("o resultado carrega o número legado, para a interface poder exibi-lo", async () => {

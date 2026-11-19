@@ -100,18 +100,6 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
         <div className="h-full w-full overflow-y-auto px-6">
           <h5 className="mt-5 text-body-xs-medium">{t("common.properties")}</h5>
           <div className={`mt-4 mb-2 space-y-2.5 truncate ${!isEditable ? "opacity-60" : ""}`}>
-            <SidebarPropertyListItem icon={StatePropertyIcon} label={t("common.state")}>
-              <IssueStateField
-                workspaceSlug={workspaceSlug}
-                projectId={projectId?.toString() ?? ""}
-                issueId={issueId}
-                value={issue?.state_id}
-                issueOperations={issueOperations}
-                disabled={!isEditable}
-                buttonClassName="text-body-xs-regular"
-              />
-            </SidebarPropertyListItem>
-
             <SidebarPropertyListItem icon={MembersPropertyIcon} label={t("common.assignees")}>
               <MemberDropdown
                 value={issue?.assignee_ids ?? undefined}
@@ -288,6 +276,19 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                 solicitacao={issue.solicitacao}
               />
             )}
+
+            {/* Etapa por último, perto da atividade: quem comenta lembra de mover. */}
+            <SidebarPropertyListItem icon={StatePropertyIcon} label={t("common.state")}>
+              <IssueStateField
+                workspaceSlug={workspaceSlug}
+                projectId={projectId?.toString() ?? ""}
+                issueId={issueId}
+                value={issue?.state_id}
+                issueOperations={issueOperations}
+                disabled={!isEditable}
+                buttonClassName="text-body-xs-regular"
+              />
+            </SidebarPropertyListItem>
 
             <IssueWorklogProperty
               workspaceSlug={workspaceSlug}
