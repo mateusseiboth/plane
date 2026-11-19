@@ -169,13 +169,19 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
       );
     })();
 
-  // Fechar a aba no meio do envio perde o comentário: o navegador pergunta antes.
+  // O peek pergunta antes de fechar com texto não enviado (ver comentariosEmProcessamento).
   useEffect(() => {
-    if (!isSubmitting) return;
+    comentariosEmProcessamento.setRascunho(entityId, !isEmpty);
+  }, [entityId, isEmpty]);
+  useEffect(() => () => comentariosEmProcessamento.setRascunho(entityId, false), [entityId]);
+
+  // Fechar a aba com texto não enviado ou no meio do envio perde o comentário: o navegador pergunta antes.
+  useEffect(() => {
+    if (isEmpty && !isSubmitting) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [isSubmitting]);
+  }, [isEmpty, isSubmitting]);
 
   return (
     <div

@@ -198,7 +198,10 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
         <div
           className={cn(
             "origin-top overflow-hidden transition-all duration-300 ease-out",
-            isFocused ? "mt-3 max-h-[200px] scale-y-100 opacity-100" : "invisible max-h-0 scale-y-0 opacity-0"
+            // Aberto, SEM transformação (scale-none): um scale, mesmo de 100%, prende
+            // os menus `fixed` do toolbar (o seletor de etapa do "Comentar e
+            // movimentar") nesta div de 200px com overflow-hidden, e eles somem.
+            isFocused ? "mt-3 max-h-[200px] scale-none opacity-100" : "invisible max-h-0 scale-y-0 opacity-0"
           )}
         >
           <IssueCommentToolbar

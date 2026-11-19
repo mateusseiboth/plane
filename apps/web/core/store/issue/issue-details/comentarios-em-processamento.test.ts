@@ -41,3 +41,31 @@ describe("ComentariosEmProcessamento", () => {
     expect(registro.hasAlgumProcessando).toBe(true);
   });
 });
+
+describe("rascunho de comentário", () => {
+  it("texto escrito e não enviado fica marcado até ser enviado ou apagado", () => {
+    const registro = new ComentariosEmProcessamento();
+    registro.setRascunho("c1", true);
+    expect(registro.readAvisoDeSaida("c1")).toBe("rascunho");
+    registro.setRascunho("c1", false);
+    expect(registro.readAvisoDeSaida("c1")).toBeNull();
+  });
+
+  it("em processamento vence o rascunho: o aviso é para esperar", () => {
+    const registro = new ComentariosEmProcessamento();
+    registro.setRascunho("c1", true);
+    registro.start("c1");
+    expect(registro.readAvisoDeSaida("c1")).toBe("processando");
+  });
+
+  it("sem texto e sem envio, sai sem aviso", () => {
+    expect(new ComentariosEmProcessamento().readAvisoDeSaida("c1")).toBeNull();
+  });
+
+  it("rascunho conta para o aviso ao sair da página", () => {
+    const registro = new ComentariosEmProcessamento();
+    registro.setRascunho("c1", true);
+    expect(registro.hasAlgumProcessando).toBe(false);
+    expect(registro.hasAlgoParaPerder).toBe(true);
+  });
+});
