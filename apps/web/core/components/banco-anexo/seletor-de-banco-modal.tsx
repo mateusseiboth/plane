@@ -7,7 +7,7 @@ import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { buildAttrsDoBanco, readRotuloDoBanco } from "@/components/banco-anexo/banco-anexo";
 import { bancoAnexoService } from "@/services/banco-anexo.service";
-import { seletorDeBanco } from "@/store/seletor-de-banco.store";
+import type { SeletorDeBanco } from "@/store/seletor-de-banco.store";
 
 const OPCOES = { revalidateOnFocus: false } as const;
 
@@ -15,7 +15,11 @@ const OPCOES = { revalidateOnFocus: false } as const;
  * "/banco": escolhe mês, sistema e entidade (a ordem das pastas do servidor de
  * backups) e o arquivo; o bloco entra no texto no lugar do comando.
  */
-export const SeletorDeBancoModal = observer(function SeletorDeBancoModal() {
+export const SeletorDeBancoModal = observer(function SeletorDeBancoModal({
+  seletor: seletorDeBanco,
+}: {
+  seletor: SeletorDeBanco;
+}) {
   const { workspaceSlug } = useParams();
   const slug = workspaceSlug?.toString() ?? "";
   const [mes, setMes] = useState("");

@@ -17,6 +17,7 @@ import { cn } from "@plane/utils";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import useKeypress from "@/hooks/use-keypress";
 import usePeekOverviewOutsideClickDetector from "@/hooks/use-peek-overview-outside-click";
+import { seletoresDeBancoAbertos } from "@/store/seletor-de-banco.store";
 import {
   comentariosEmProcessamento,
   type TAvisoDeSaida,
@@ -127,6 +128,8 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
     () => {
       const isAnyDropbarOpen = editorRef.current?.isAnyDropbarOpen();
       if (!embedIssue) {
+        // O seletor do "/banco" abre fora do peek: clicar nele não é sair do chamado.
+        if (seletoresDeBancoAbertos.hasAlgum) return;
         if (!isAnyModalOpen && !isAnyEpicModalOpen && !isAnyLocalModalOpen && !isAnyDropbarOpen) {
           closePeek();
         }
@@ -143,6 +146,7 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
     if (
       !isAnyModalOpen &&
       !isAvisoDeComentarioOpen &&
+      !seletoresDeBancoAbertos.hasAlgum &&
       !dropdownElement &&
       !isAnyDropbarOpen &&
       !editorImageFullScreenModalElement
