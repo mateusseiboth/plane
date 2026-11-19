@@ -18,7 +18,7 @@ import {nextSequenceId} from "@utils/sequence";
 import {markChamadoLido, markChamadoNaoLido, whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
 import {computeTargetDate} from "@utils/sla";
 import {inicioRecebido, vencimentoRecebido} from "@utils/prazo";
-import {sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-chamado";
+import {addResponsavel, sincronizarEtiquetas, sincronizarResponsaveis} from "@utils/vinculos-do-chamado";
 import {getProjectOrFail, getWorkspaceOrFail} from "@utils/workspace";
 import Elysia from "elysia";
 import {isPriorityChange} from "@utils/prioridade";
@@ -418,18 +418,9 @@ export const issueModule = new Elysia({prefix: "/workspaces/:slug/projects/:proj
     if (newAssignees !== undefined) await sincronizarResponsaveis(escopoDoVinculo, newAssignees);
     if (newLabels !== undefined) await sincronizarEtiquetas(escopoDoVinculo, newLabels);
 
-    // Whoever moves the card (changes its state) is auto-added as an assignee, so
-    // the person who advanced the work item is recorded as responsible for it.
+    // Quem move o chamado de etapa vira responsável (ver addResponsavel).
     if (newStateId !== undefined && before && before.stateId !== newStateId) {
-      const already = await prisma.issueAssignee.findFirst({
-        where: {issueId: issue_id, assigneeId: user.id, deletedAt: null},
-        select: {id: true},
-      });
-      if (!already) {
-        await prisma.issueAssignee.create({
-          data: {issueId: issue_id, assigneeId: user.id, workspaceId: ws.id, projectId: project_id},
-        });
-      }
+      await addResponsavel(escopoDoVinculo, user.id);
     }
 
     // Etapa ou responsáveis mudaram: acende a marca de não lido de quem não fez a mudança.

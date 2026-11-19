@@ -15,7 +15,7 @@ import {
   findTriageState,
   requireSistemaDoEspaco,
 } from "@utils/intake";
-import { sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
+import { addResponsavel, sincronizarEtiquetas, sincronizarResponsaveis } from "@utils/vinculos-do-chamado";
 import { registrarVersaoDaDescricao } from "@utils/versoes-da-descricao";
 import { buildMudancaDeEtapa, diffChange, recordActivities, type ActivityChange } from "@utils/activity";
 import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
@@ -741,6 +741,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
     const escopoDoVinculo = {issueId: inbox_id, workspaceId: ws.id, projectId: project_id};
     if (labelIds !== undefined) await sincronizarEtiquetas(escopoDoVinculo, labelIds);
     if (assigneeIds !== undefined) await sincronizarResponsaveis(escopoDoVinculo, assigneeIds);
+    // Aceitar leva o chamado para Em Análise: quem aceitou passa a responder por ele.
+    if (b.status === 1) await addResponsavel(escopoDoVinculo, user.id);
 
     // Update or create IntakeIssue to persist status, snoozeTill, duplicateOf
     const iiData: any = {};
@@ -761,6 +763,10 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
       }
     }
 
+    const responsaveis = await prisma.issueAssignee.findMany({
+      where: {issueId: inbox_id, deletedAt: null},
+      select: {assigneeId: true},
+    });
     const result = {
       id: issue!.id, status: ii?.status ?? b.status ?? -2,
       snoozed_till: ii?.snoozeTill ?? null,
@@ -771,6 +777,8 @@ export const projectModule = new Elysia({ prefix: "/workspaces/:slug/projects" }
         id: issue!.id, name: (issue as any).name, state_id: (issue as any).stateId, project_id: (issue as any).projectId,
         description_html: (issue as any).descriptionHtml ?? "<p></p>",
         priority: (issue as any).priority,
+        // O aceite inclui quem aceitou: a tela atualiza o chamado com esta lista.
+        assignee_ids: responsaveis.map((r) => r.assigneeId),
       },
     };
     if (motivoDaRecusa) {

@@ -154,3 +154,23 @@ export function sincronizarEtiquetas(escopo: EscopoDoVinculo, etiquetas: string[
 export function sincronizarResponsaveis(escopo: EscopoDoVinculo, responsaveis: string[], cliente: ClienteDeVinculos = prisma) {
   return sincronizar(ESTRATEGIAS.responsavel, escopo, responsaveis, cliente);
 }
+
+/**
+ * Quem move o chamado de etapa passa a ser responsável por ele, sem tirar
+ * ninguém: vale para o quadro (PATCH do chamado) e para o aceite da triagem,
+ * que leva o chamado para Em Análise. Sem isso o chamado aceito ficava só com
+ * o atendente que abriu, e não se sabia quem da Qualidade estava analisando.
+ */
+export async function addResponsavel(
+  escopo: EscopoDoVinculo,
+  responsavelId: string,
+  cliente: ClienteDeVinculos = prisma,
+) {
+  const vivos = await cliente.issueAssignee.findMany({
+    where: {issueId: escopo.issueId, deletedAt: null},
+    select: {assigneeId: true},
+  });
+  const atuais = vivos.map((v) => v.assigneeId);
+  if (atuais.includes(responsavelId)) return;
+  await sincronizarResponsaveis(escopo, [...atuais, responsavelId], cliente);
+}
