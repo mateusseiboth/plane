@@ -7,6 +7,10 @@
 import { describe, expect, it, mock } from "bun:test";
 import { sendComentarioEMovimentacao } from "@/components/comments/movimentacao/comentar-e-movimentar";
 
+const mover = async () => {
+  throw new Error("Sua função não permite esta transição de etapa.");
+};
+
 describe("sendComentarioEMovimentacao", () => {
   it("comenta primeiro e depois move para a etapa escolhida", async () => {
     const ordem: string[] = [];
@@ -14,24 +18,21 @@ describe("sendComentarioEMovimentacao", () => {
       ordem.push("comentar");
       return true;
     });
-    const mover = mock(async (etapa: string) => {
+    const moverParaEtapa = mock(async (etapa: string) => {
       ordem.push(`mover:${etapa}`);
     });
-    expect(await sendComentarioEMovimentacao({ comentar, mover }, "dev")).toBe(true);
+    expect(await sendComentarioEMovimentacao({ comentar, mover: moverParaEtapa }, "dev")).toBe(true);
     expect(ordem).toEqual(["comentar", "mover:dev"]);
   });
 
   it("comentário que não entrou (painel da IA, erro) não move o chamado", async () => {
-    const mover = mock(async () => undefined);
-    expect(await sendComentarioEMovimentacao({ comentar: async () => false, mover }, "dev")).toBe(false);
-    expect(mover).not.toHaveBeenCalled();
+    const naoMover = mock(async () => undefined);
+    expect(await sendComentarioEMovimentacao({ comentar: async () => false, mover: naoMover }, "dev")).toBe(false);
+    expect(naoMover).not.toHaveBeenCalled();
   });
 
   it("recusa da mudança de etapa devolve falso, com o comentário já gravado", async () => {
     const comentar = mock(async () => true);
-    const mover = async () => {
-      throw new Error("Sua função não permite esta transição de etapa.");
-    };
     expect(await sendComentarioEMovimentacao({ comentar, mover }, "dev")).toBe(false);
     expect(comentar).toHaveBeenCalledTimes(1);
   });
