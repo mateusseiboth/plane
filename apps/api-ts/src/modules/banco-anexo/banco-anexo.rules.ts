@@ -29,6 +29,36 @@ export const NIVEIS_DA_BUSCA: Record<string, { caminho: string; parametros: read
 export const pickParametros = (nivel: { parametros: readonly string[] }, query: Record<string, unknown>) =>
   Object.fromEntries(nivel.parametros.filter((p) => query[p] != null && query[p] !== "").map((p) => [p, query[p]]));
 
+/**
+ * Só os bancos recentes (pedido de 19/11/2026): o mês atual e o anterior, no
+ * mesmo ano. Em janeiro, só janeiro. Ninguém precisa anexar o histórico todo.
+ */
+const FUSO = process.env.TZ_PADRAO ?? "America/Campo_Grande";
+
+const readAnoMes = (data: Date): { ano: number; mes: number } => {
+  const [ano, mes] = new Intl.DateTimeFormat("en-CA", { timeZone: FUSO, year: "numeric", month: "2-digit" })
+    .format(data)
+    .split("-")
+    .map(Number);
+  return { ano, mes };
+};
+
+const formatAnoMes = (ano: number, mes: number) => `${ano}-${String(mes).padStart(2, "0")}`;
+
+export const readMesesPermitidos = (hoje: Date): string[] => {
+  const { ano, mes } = readAnoMes(hoje);
+  return mes > 1 ? [formatAnoMes(ano, mes), formatAnoMes(ano, mes - 1)] : [formatAnoMes(ano, mes)];
+};
+
+export const isMesPermitido = (mes: string, hoje: Date): boolean => readMesesPermitidos(hoje).includes(mes);
+
+export const MENSAGEM_MES_ANTIGO = "Só dá para anexar bancos deste mês e do anterior.";
+
+export const filterMesesRecentes = <T extends { mes?: unknown }>(corpo: { data?: T[] }, hoje: Date) => ({
+  ...corpo,
+  data: (corpo.data ?? []).filter((linha) => isMesPermitido(String(linha.mes), hoje)),
+});
+
 type CorpoDasEntidades = { data?: Array<{ entity_code?: string | number | null } & Record<string, unknown>> };
 
 /** O plugin só sabe o código do SAC; o nome que a tela mostra é o do cadastro do Plane. */

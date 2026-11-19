@@ -98,7 +98,14 @@ describe("Banco anexado no texto", () => {
 
   it("a busca de backups para anexar passa pelo Plane, para membros do espaço", async () => {
     expect((await membro.get(`/workspaces/${wsSlug}/bancos/meses/`)).status).toBe(503);
-    expect((await membro.get(`/workspaces/${wsSlug}/bancos/arquivos/?mes=2026-11`)).status).toBe(503);
+    const mesAtual = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Campo_Grande",
+      year: "numeric",
+      month: "2-digit",
+    }).format(new Date());
+    expect((await membro.get(`/workspaces/${wsSlug}/bancos/arquivos/?mes=${mesAtual}`)).status).toBe(503);
+    // Mês antigo não chega ao plugin: só os bancos deste mês e do anterior.
+    expect((await membro.get(`/workspaces/${wsSlug}/bancos/arquivos/?mes=2020-01`)).status).toBe(400);
     expect([403, 404]).toContain((await estranho.get(`/workspaces/${wsSlug}/bancos/meses/`)).status);
     expect((await membro.get(`/workspaces/${wsSlug}/bancos/qualquer/`)).status).toBe(404);
   });

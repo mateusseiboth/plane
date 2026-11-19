@@ -82,6 +82,15 @@ export const createBancoAnexoExtension = ({ render }: { render: TBancoAnexoRende
     },
   });
 
-/** Troca o "/banco" digitado pelo bloco do banco escolhido. */
+/**
+ * Troca o "/banco" digitado pelo bloco do banco escolhido, com um parágrafo
+ * logo depois e o cursor nele: o bloco é atômico e, sozinho no fim do texto,
+ * não deixava escrever mais nada.
+ */
 export const insertBancoAnexo = (editor: Editor, range: Range, attrs: TBancoAnexoAttrs) =>
-  editor.chain().focus().deleteRange(range).insertContent({ type: BANCO_ANEXO_NODE, attrs }).run();
+  editor
+    .chain()
+    .focus()
+    .deleteRange(range)
+    .insertContent([{ type: BANCO_ANEXO_NODE, attrs }, { type: "paragraph" }])
+    .run();

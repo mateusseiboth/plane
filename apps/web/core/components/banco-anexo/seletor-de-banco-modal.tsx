@@ -59,7 +59,9 @@ export const SeletorDeBancoModal = observer(function SeletorDeBancoModal({
     <ModalCore isOpen={isOpen} handleClose={close} position={EModalPosition.CENTER} width={EModalWidth.XXL}>
       <div className="space-y-3 p-5">
         <h3 className="text-16 font-medium">Anexar banco</h3>
-        <p className="text-13 text-secondary">Quem abrir o texto baixa o banco com um clique, sem link que expira.</p>
+        <p className="text-13 text-secondary">
+          Bancos deste mês e do anterior. Quem abrir o texto baixa com um clique, sem link que expira.
+        </p>
         {erro && <p className="text-13 text-danger-primary">{erro.detail ?? "Não foi possível buscar os backups."}</p>}
         <div className="grid gap-3 sm:grid-cols-3">
           <SelectPesquisavel

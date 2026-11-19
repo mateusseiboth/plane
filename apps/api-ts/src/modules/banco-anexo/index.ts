@@ -15,7 +15,10 @@ import {
   MENSAGEM_NAO_ANEXADO,
   MENSAGEM_SEM_PLUGIN,
   NIVEIS_DA_BUSCA,
+  MENSAGEM_MES_ANTIGO,
   addNomesDasEntidades,
+  filterMesesRecentes,
+  isMesPermitido,
   pickParametros,
   readEnvio,
 } from "@modules/banco-anexo/banco-anexo.rules";
@@ -28,6 +31,7 @@ import {
   sendPreparacao,
 } from "@modules/banco-anexo/banco-anexo.service";
 import type { RespostaDoPlugin } from "@modules/plugin-sdk-gateway/backend-do-plugin";
+import { createFieldError } from "@utils/field-error";
 import { getProjectOrFail, getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 
 const responder = async (envio: RespostaDoPlugin, set: { status?: number | string }) => {
@@ -59,11 +63,16 @@ const buscaModule = new Elysia({ prefix: "/workspaces/:slug/bancos" })
       return { detail: MENSAGEM_SEM_PLUGIN };
     }
     const parametros = pickParametros(definicao, (query ?? {}) as Record<string, unknown>);
+    // Fora dos meses recentes não se busca nada: a regra vale também para quem chamar a rota direto.
+    if (nivel !== "meses" && !isMesPermitido(String(parametros.mes ?? ""), new Date()))
+      throw createFieldError("mes", MENSAGEM_MES_ANTIGO);
     const corpo = await responder(
       await readBusca({ plugin, user, workspaceId: ws.id }, definicao.caminho, parametros),
       set
     );
-    if (nivel !== "entidades" || set.status !== 200) return corpo;
+    if (set.status !== 200) return corpo;
+    if (nivel === "meses") return filterMesesRecentes(corpo, new Date());
+    if (nivel !== "entidades") return corpo;
     return addNomesDasEntidades(corpo, await findNomesPorCodigoDoSac(ws.id));
   });
 

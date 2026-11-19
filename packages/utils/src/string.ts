@@ -278,7 +278,8 @@ export const isCommentEmpty = (comment: Content | undefined): boolean => {
     return (
       comment.trim() === "" ||
       comment === "<p></p>" ||
-      isEmptyHtmlString(comment, ["img", "mention-component", "image-component"])
+      // O banco anexado pelo "/banco" é conteúdo, como imagem e menção.
+      isEmptyHtmlString(comment, ["img", "mention-component", "image-component", "banco-anexo"])
     );
   }
 
