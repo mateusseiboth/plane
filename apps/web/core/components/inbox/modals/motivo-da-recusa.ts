@@ -1,21 +1,12 @@
 /**
- * O motivo da recusa da solicitação, sem React. O servidor exige o mesmo
- * mínimo (`modules/solicitacao/recusa-da-solicitacao.rules.ts`) e manda o
- * motivo para quem abriu.
+ * O motivo da recusa da solicitação. O servidor exige o mesmo mínimo
+ * (`modules/solicitacao/recusa-da-solicitacao.rules.ts`) e manda o motivo para
+ * quem abriu. As regras saem da fábrica comum (`regras-do-motivo`).
  */
+import { REGRAS_DA_RECUSA } from "@/components/inbox/modals/regras-do-motivo";
 
-export const MINIMO_DO_MOTIVO = 10;
+export { MINIMO_DO_MOTIVO } from "@/components/inbox/modals/regras-do-motivo";
 
-const MENSAGEM_SEM_MOTIVO = `Escreva o motivo da recusa com pelo menos ${MINIMO_DO_MOTIVO} caracteres.`;
+export const findPendenciaDoMotivo = REGRAS_DA_RECUSA.findPendencia;
 
-const MENSAGEM_DE_FALHA = "Não foi possível recusar. Tente de novo.";
-
-type RecusaDoServidor = { detail?: string; errors?: { path: string; message: string }[] } | undefined;
-
-/** O que falta no motivo, ou `undefined` quando ele já serve. */
-export const findPendenciaDoMotivo = (motivo: string): string | undefined =>
-  motivo.trim().length < MINIMO_DO_MOTIVO ? MENSAGEM_SEM_MOTIVO : undefined;
-
-/** A mensagem que a tela põe no campo quando o servidor recusa. */
-export const readErroDoMotivo = (erro: RecusaDoServidor): string =>
-  erro?.errors?.find((e) => e.path === "motivo")?.message ?? erro?.detail ?? MENSAGEM_DE_FALHA;
+export const readErroDoMotivo = REGRAS_DA_RECUSA.readErro;

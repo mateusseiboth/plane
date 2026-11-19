@@ -16,7 +16,7 @@
 
 import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
-import { acompanharSolicitacao } from "@utils/atendimento-da-solicitacao";
+import { acompanharSolicitacao, markAtendidaPorQuemPediu } from "@utils/atendimento-da-solicitacao";
 import type { HttpError } from "@utils/field-error";
 import { notifyInteracaoDoCliente } from "@utils/notifications";
 import { publishRealtime } from "@utils/realtime";
@@ -180,7 +180,7 @@ async function findEstadosDoProjeto(projectId: string): Promise<EstadoDoProjeto[
 
 /**
  * Leva o chamado ao estado escolhido para a ação do cliente, com a trilha e a
- * solicitação acompanhando (atendida ao concluir, aceita ao reabrir).
+ * solicitação acompanhando (atendida quando o cliente encerra, aceita ao reabrir).
  */
 async function moveChamado(chamado: Chamado, destino: EstadoDoProjeto, comentario: string) {
   const concluiu = destino.group === "completed";
@@ -211,6 +211,14 @@ async function moveChamado(chamado: Chamado, destino: EstadoDoProjeto, comentari
     workspaceId: chamado.workspaceId,
     projectId: chamado.projectId,
   });
+  // Encerrar é o próprio cliente dizendo que foi atendido: fecha a solicitação.
+  if (concluiu) {
+    await markAtendidaPorQuemPediu({
+      issueId: chamado.id,
+      workspaceId: chamado.workspaceId,
+      projectId: chamado.projectId,
+    });
+  }
   publishRealtime(chamado.workspaceId, {
     entity: "issue",
     action: "update",

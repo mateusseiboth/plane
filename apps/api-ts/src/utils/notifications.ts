@@ -41,6 +41,38 @@ export async function notifyQualityOfIntake(opts: {
   });
 }
 
+/**
+ * O atendimento disse que o cliente NÃO foi atendido: o chamado voltou para a
+ * triagem e a Qualidade do projeto precisa ver o que faltou.
+ */
+export async function notifyQualityOfNaoAtendido(opts: {
+  workspaceId: string;
+  projectId: string;
+  issueId: string;
+  actorId: string;
+  issueName: string;
+  motivo: string;
+}): Promise<void> {
+  const receivers = (await findQualidadeDoProjeto(opts.projectId)).filter((id) => id !== opts.actorId);
+  if (!receivers.length) return;
+  avisarSino(opts.workspaceId, receivers);
+  await prisma.notification.createMany({
+    data: receivers.map((receiverId) => ({
+      workspaceId: opts.workspaceId,
+      projectId: opts.projectId,
+      issueId: opts.issueId,
+      receiverId,
+      actorId: opts.actorId,
+      title: "Não atendida: voltou para a triagem",
+      message: `${opts.issueName}: ${opts.motivo}`.slice(0, 200),
+      entity: "intake",
+      entityId: opts.issueId,
+      data: { type: "intake_not_fulfilled" },
+      triggered: "intake",
+    })),
+  });
+}
+
 /** Quem é do setor Qualidade no projeto: nível 8 legado ou função de chave "qualidade". */
 async function findQualidadeDoProjeto(projectId: string): Promise<string[]> {
   const members = await prisma.projectMember.findMany({

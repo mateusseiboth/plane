@@ -9,7 +9,11 @@
  * trabalho tinha acabado semanas antes. Quem abriu o chamado via "Pendente" para
  * sempre.
  *
- * Aqui as duas trilhas viram uma só: concluiu o chamado, atendeu a solicitação.
+ * Aqui as duas trilhas viram uma só: concluiu o chamado, a solicitação vai para
+ * a aba Concluído como ACEITA. Quem FECHA é o atendimento, que diz se o cliente
+ * foi atendido (status 3, `saveAtendimentoDaSolicitacao`) ou não (volta para a
+ * triagem). Até 19/11/2026 concluir já marcava como atendida; o dono do produto
+ * pediu que o atendimento confirme.
  *
  * ## O caminho de volta importa tanto quanto a ida
  *
@@ -60,7 +64,8 @@ const EM_ANDAMENTO: readonly number[] = [SITUACAO.pendente, SITUACAO.adiada, SIT
 
 /** Para onde a solicitação vai, dado o grupo em que o chamado entrou. */
 const DESTINO: Record<string, (atual: number) => number | null> = {
-  completed: (atual) => (EM_ANDAMENTO.includes(atual) ? SITUACAO.atendida : null),
+  // Pendente ou adiada viram aceita; a aceita fica como está, esperando o atendimento.
+  completed: (atual) => (EM_ANDAMENTO.includes(atual) && atual !== SITUACAO.aceita ? SITUACAO.aceita : null),
   // Qualquer grupo que não seja conclusão reabre o que tinha fechado sozinho.
   outro: (atual) => (atual === SITUACAO.atendida ? SITUACAO.aceita : null),
 };
@@ -99,32 +104,72 @@ type Entrada = {
  * Silenciosa quando não há solicitação, quando a situação não muda, ou quando
  * alguém já decidiu à mão o destino dela.
  */
-export async function acompanharSolicitacao({
-  issueId,
-  grupo,
-  autorId,
-  workspaceId,
-  projectId,
-}: Entrada): Promise<void> {
+export async function acompanharSolicitacao({ issueId, grupo }: Entrada): Promise<void> {
   const solicitacao = await prisma.intakeIssue.findFirst({
     where: { issueId, deletedAt: null },
     select: { id: true, status: true },
   });
   if (!solicitacao) return;
 
+  if (DECIDIDAS_A_MAO.includes(solicitacao.status)) return;
   const destino = destinoDe(grupo, solicitacao.status);
-  if (destino === null) return;
 
-  // Mudou a situação, o visto de quem abriu recomeça: reaberta não é "resolvida
+  // Mudou a etapa, o visto de quem abriu recomeça: reaberta não é "resolvida
   // vista", e a próxima conclusão volta a contar no menu Solicitação/Triagem.
+  // Vale mesmo sem mudar o status: concluída e reaberta são as duas "aceita".
   await prisma.intakeIssue.update({
     where: { id: solicitacao.id },
-    data: { status: destino, vistoPeloSolicitanteEm: null },
+    data: { ...(destino === null ? {} : { status: destino }), vistoPeloSolicitanteEm: null },
   });
-  if (destino !== SITUACAO.atendida) return;
+}
 
-  // Guarda COMO foi resolvido junto do atendimento: quem lê a solicitação
-  // fechada quer o desfecho, não só a data.
+/**
+ * Quem pediu confirmou o atendimento (o cliente encerrando pelo portal): a
+ * solicitação fecha como atendida, com o desfecho registrado.
+ */
+export async function markAtendidaPorQuemPediu({
+  issueId,
+  workspaceId,
+  projectId,
+}: {
+  issueId: string;
+  workspaceId: string;
+  projectId: string;
+}): Promise<void> {
+  const solicitacao = await prisma.intakeIssue.findFirst({
+    where: { issueId, deletedAt: null },
+    select: { id: true, status: true },
+  });
+  if (!solicitacao || !EM_ANDAMENTO.includes(solicitacao.status)) return;
+  await prisma.intakeIssue.update({ where: { id: solicitacao.id }, data: { status: SITUACAO.atendida } });
+  await saveAtendimentoDaSolicitacao({
+    issueId,
+    autorId: null,
+    workspaceId,
+    projectId,
+    statusAnterior: solicitacao.status,
+  });
+}
+
+/**
+ * O atendimento confirmou que o cliente foi atendido (status 3): guarda COMO foi
+ * resolvido junto do atendimento, porque quem lê a solicitação fechada quer o
+ * desfecho, não só a data.
+ */
+export async function saveAtendimentoDaSolicitacao({
+  issueId,
+  autorId,
+  workspaceId,
+  projectId,
+  statusAnterior,
+}: {
+  issueId: string;
+  /** `null` quando quem confirmou foi o cliente, pelo portal. */
+  autorId: string | null;
+  workspaceId: string;
+  projectId: string;
+  statusAnterior: number;
+}): Promise<void> {
   const desfecho = await ultimoComentario(issueId);
   await prisma.issueActivity.create({
     data: {
@@ -133,9 +178,9 @@ export async function acompanharSolicitacao({
       projectId,
       actorId: autorId,
       field: MARCA,
-      oldValue: String(solicitacao.status),
+      oldValue: String(statusAnterior),
       newValue: desfecho ?? "atendida sem comentário de desfecho",
-      comment: "atendeu a solicitação ao concluir o chamado",
+      comment: "confirmou que a solicitação foi atendida",
     },
   });
 }

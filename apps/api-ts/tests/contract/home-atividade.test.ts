@@ -76,14 +76,8 @@ describe("atividade da pessoa na home", () => {
 
   it("traz os eventos da pessoa, do mais novo para o mais antigo, com o tipo de cada um", async () => {
     const eventos = await readAtividade();
-    expect(eventos.map((e) => e.tipo)).toEqual([
-      "solicitacao_atendida",
-      "conclusao",
-      "comentario",
-      "conclusao",
-      "etapa",
-      "abertura",
-    ]);
+    // Concluir não marca mais a solicitação como atendida: quem confirma é o atendimento.
+    expect(eventos.map((e) => e.tipo)).toEqual(["conclusao", "comentario", "conclusao", "etapa", "abertura"]);
     const datas = eventos.map((e) => e.criado_em);
     expect(datas).toEqual(datas.toSorted().toReversed());
   });

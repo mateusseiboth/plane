@@ -94,6 +94,17 @@ export class InboxIssueService extends APIService {
       });
   }
 
+  /** "Não atendido": o chamado volta para a triagem com o motivo (mínimo de 10 caracteres). */
+  async markNaoAtendido(workspaceSlug: string, projectId: string, issueId: string, motivo: string): Promise<void> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/inbox-issues/${issueId}/nao-atendido/`, {
+      motivo,
+    })
+      .then(() => undefined)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async updateIssue(
     workspaceSlug: string,
     projectId: string,
