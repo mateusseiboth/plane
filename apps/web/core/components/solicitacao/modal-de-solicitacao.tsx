@@ -11,13 +11,13 @@ import { observer } from "mobx-react";
 // plane imports
 import type { EditorRefApi } from "@plane/editor";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import { EFileAssetType } from "@plane/types";
 import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 import { copyTextToClipboard } from "@plane/utils";
 // components
 import { SelectPesquisavel } from "@/components/common/select-pesquisavel";
 import { RichTextEditor } from "@/components/editor/rich-text/editor";
 import { BlocoDaWiki } from "@/components/solicitacao/bloco-da-wiki";
+import { buildImagensDaSolicitacao } from "@/components/solicitacao/imagens-da-solicitacao";
 import type { ConfirmacaoDaSolicitacao } from "@/components/solicitacao/confirmacao-da-solicitacao";
 import { ORIENTACAO_DA_ABERTURA } from "@/components/solicitacao/orientacao-da-abertura";
 import { buildTextoDaBuscaNaWiki } from "@/components/solicitacao/sugestoes-da-wiki";
@@ -68,7 +68,6 @@ const ROTULO = "mb-1 block text-12 font-medium text-secondary";
  */
 /** Anexo de arquivo fica para o chamado; imagem colada entra pelo editor. */
 const EXTENSOES_SEM_ARQUIVO = ["attachment"] as const;
-const ESCOLHA_O_SISTEMA_ANTES = "Escolha o sistema antes de colar a imagem.";
 
 function ErroDoCampoDaTela({ mensagem }: { mensagem?: string }) {
   if (!mensagem) return null;
@@ -154,38 +153,18 @@ export const ModalDeSolicitacao = observer(function ModalDeSolicitacao(props: Pr
   });
   const { uploadEditorAsset, duplicateEditorAsset } = useEditorAsset();
 
-  // Imagem colada (Ctrl+V) sobe como arquivo do sistema escolhido, igual ao
-  // modal de chamado; o vínculo com o chamado vem depois de criado.
-  const requireSistemaParaArquivo = () => {
-    if (!formulario.projectId) throw new Error(ESCOLHA_O_SISTEMA_ANTES);
-    return formulario.projectId;
-  };
-  const keepAsset = (assetId: string) =>
-    setFormulario((atual) => ({ ...atual, assetIds: [...atual.assetIds, assetId] }));
-  const uploadImagem = async (blockId: string, file: File): Promise<string> => {
-    const projectId = requireSistemaParaArquivo();
-    const { asset_id } = await uploadEditorAsset({
-      blockId,
-      data: { entity_identifier: "", entity_type: EFileAssetType.ISSUE_DESCRIPTION },
-      file,
-      projectId,
-      workspaceSlug,
-    });
-    keepAsset(asset_id);
-    return asset_id;
-  };
-  const duplicateImagem = async (assetId: string): Promise<string> => {
-    const projectId = requireSistemaParaArquivo();
-    const duplicado = await duplicateEditorAsset({
-      assetId,
-      entityId: undefined,
-      entityType: EFileAssetType.ISSUE_DESCRIPTION,
-      projectId,
-      workspaceSlug,
-    });
-    keepAsset(duplicado.asset_id);
-    return duplicado.asset_id;
-  };
+  // O editor guarda as funções da primeira renderização: o sistema vem do ref,
+  // sempre o atual (ver imagens-da-solicitacao).
+  const sistemaAtual = useRef(formulario.projectId);
+  sistemaAtual.current = formulario.projectId;
+  const { uploadImagem, duplicateImagem } = buildImagensDaSolicitacao({
+    workspaceSlug,
+    readProjectId: () => sistemaAtual.current,
+    upload: uploadEditorAsset,
+    duplicate: duplicateEditorAsset,
+    keepAsset: (assetId) => setFormulario((atual) => ({ ...atual, assetIds: [...atual.assetIds, assetId] })),
+    onSemSistema: (mensagem) => setToast({ type: TOAST_TYPE.WARNING, title: mensagem }),
+  });
   const { currentWorkspace } = useWorkspace();
   const { modulos } = useModulosDoSistema(workspaceSlug, formulario.projectId);
   const { entities } = useEntities(workspaceSlug);
