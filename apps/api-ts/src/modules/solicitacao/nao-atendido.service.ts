@@ -21,6 +21,7 @@ export async function saveNaoAtendido(pedido: NaoAtendido): Promise<void> {
     include: { state: { select: { group: true, name: true } } },
   });
   const triagem = await findTriageState(projectId);
+  if (!triagem) throw new Error("Sistema sem etapa de triagem.");
   const comentario = buildComentarioDoNaoAtendido(motivo);
 
   await prisma.$transaction([

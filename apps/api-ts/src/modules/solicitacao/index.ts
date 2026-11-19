@@ -58,28 +58,27 @@ import {
 } from "@modules/solicitacao/no-atendimento.rules";
 import { closeNoAtendimento, sendParaATriagem } from "@modules/solicitacao/no-atendimento.service";
 
-/**
- * A solicitação que está no atendimento, já conferindo quem decide. `null`
- * quando a rota já respondeu (404, 403 ou 400).
- */
+type DecisaoNoAtendimento =
+  | { erro: { status: number; detail: string } }
+  | { decisao: { workspaceId: string; projectId: string; issueId: string; autor: { id: string } } };
+
+/** A solicitação que está no atendimento, já conferindo quem decide; `erro` diz o que a rota responde. */
 const findDecisaoNoAtendimento = async (
   { slug, project_id, issue_id }: { slug: string; project_id: string; issue_id: string },
-  user: { id: string },
-  set: { status?: number | string }
-) => {
+  user: { id: string }
+): Promise<DecisaoNoAtendimento> => {
   const ws = await getWorkspaceOrFail(slug);
   const { member } = await getProjectOrFail(ws.id, project_id, user.id);
   const solicitacao = await prisma.intakeIssue.findFirst({
     where: { issueId: issue_id, projectId: project_id, deletedAt: null },
     select: { status: true },
   });
-  if (!solicitacao) return { erro: { status: 404, detail: "Solicitação não encontrada." } } as const;
+  if (!solicitacao) return { erro: { status: 404, detail: "Solicitação não encontrada." } };
   if (!isQuemDecideNoAtendimento(await resolveMemberRole(ws.id, member as any)))
-    return { erro: { status: 403, detail: SEM_PERMISSAO_NO_ATENDIMENTO } } as const;
+    return { erro: { status: 403, detail: SEM_PERMISSAO_NO_ATENDIMENTO } };
   if (solicitacao.status !== STATUS_NO_ATENDIMENTO)
-    return { erro: { status: 400, detail: MENSAGEM_FORA_DO_ATENDIMENTO } } as const;
-  void set;
-  return { decisao: { workspaceId: ws.id, projectId: project_id, issueId: issue_id, autor: user } } as const;
+    return { erro: { status: 400, detail: MENSAGEM_FORA_DO_ATENDIMENTO } };
+  return { decisao: { workspaceId: ws.id, projectId: project_id, issueId: issue_id, autor: user } };
 };
 
 export const solicitacaoModule = new Elysia({ prefix: "/workspaces/:slug" })
@@ -149,7 +148,7 @@ export const solicitacaoModule = new Elysia({ prefix: "/workspaces/:slug" })
       .toSorted((a, b) => a.display_name.localeCompare(b.display_name, "pt-BR"));
   })
   .post("/projects/:project_id/inbox-issues/:issue_id/encaminhar/", async ({ params, user, set }) => {
-    const achado = await findDecisaoNoAtendimento(params, user, set);
+    const achado = await findDecisaoNoAtendimento(params, user);
     if ("erro" in achado) {
       set.status = achado.erro.status;
       return { detail: achado.erro.detail };
@@ -160,7 +159,7 @@ export const solicitacaoModule = new Elysia({ prefix: "/workspaces/:slug" })
   .post(
     "/projects/:project_id/inbox-issues/:issue_id/encerrar-no-atendimento/",
     async ({ params, body, user, set, headers }) => {
-      const achado = await findDecisaoNoAtendimento(params, user, set);
+      const achado = await findDecisaoNoAtendimento(params, user);
       if ("erro" in achado) {
         set.status = achado.erro.status;
         return { detail: achado.erro.detail };
