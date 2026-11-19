@@ -24,8 +24,8 @@ import { APIService } from "@/services/api.service";
 import { API_BASE_URL } from "@plane/constants";
 import {
   ABAS_DA_TRIAGEM_GLOBAL,
-  ABA_PADRAO_DA_TRIAGEM_GLOBAL,
   readAba,
+  readAbaPadraoDaTriagemGlobal,
   readAbaDaSolicitacao,
   readAbaDaTriagemDoSistema,
 } from "@/components/inbox/global/abas-da-triagem-global";
@@ -58,7 +58,7 @@ function GlobalIntakePage() {
 
   const { joinedProjectIds, getProjectById } = useProject();
   const { currentWorkspace } = useWorkspace();
-  const { can } = useMyWorkspaceActions(workspaceSlug?.toString());
+  const { can, isLoading: isAcoesLoading } = useMyWorkspaceActions(workspaceSlug?.toString());
   const { t } = useTranslation();
 
   // A lista da barra lateral é longa (um item por sistema): sem busca, achar um
@@ -80,17 +80,20 @@ function GlobalIntakePage() {
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - ${rotulo}` : rotulo;
 
   // ── Global list state (when no project is selected) ──────────────────────
-  const [statusFilter, setStatusFilter] = useState<string>(ABA_PADRAO_DA_TRIAGEM_GLOBAL);
+  // Até a pessoa trocar de aba, vale a aba padrão da função dela.
+  const [abaEscolhida, setStatusFilter] = useState<string | null>(null);
+  const statusFilter = abaEscolhida ?? readAbaPadraoDaTriagemGlobal(can);
   const [allIntakes, setAllIntakes] = useState<any[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
 
   useEffect(() => {
-    if (activeProject || !workspaceSlug) return;
+    // Sem a função carregada a aba padrão ainda não é conhecida.
+    if (activeProject || !workspaceSlug || isAcoesLoading) return;
     setLoadingAll(true);
     globalIntakeService.list(workspaceSlug.toString(), statusFilter)
       .then(setAllIntakes)
       .finally(() => setLoadingAll(false));
-  }, [workspaceSlug, activeProject, statusFilter]);
+  }, [workspaceSlug, activeProject, statusFilter, isAcoesLoading]);
 
   return (
     <div className="flex h-full w-full overflow-hidden">

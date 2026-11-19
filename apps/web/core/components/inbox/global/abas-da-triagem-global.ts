@@ -19,11 +19,15 @@ export const ABAS_DA_TRIAGEM_GLOBAL: readonly AbaDaTriagemGlobal[] = [
   { chave: "2", rotulo: "Duplicado", cor: "bg-blue-100 text-blue-800" },
 ];
 
+type TCan = (action: string) => boolean;
+
 /**
- * A aba que abre com a tela. Pedido do dono do produto (16/10/2026): abrir em
- * Concluído. Para voltar a abrir em Pendente, troque aqui por "-2".
+ * A aba que abre com a tela, pela função de quem entra. Quem tria
+ * (`intake.review`, a Qualidade) tem trabalho nos Pendentes; quem só abre
+ * pedidos (Atendimento) quer ver o que já foi resolvido (pedido de 16/10/2026,
+ * e o número no menu conta exatamente essas). Testes de 18/11/2026.
  */
-export const ABA_PADRAO_DA_TRIAGEM_GLOBAL = "concluido";
+export const readAbaPadraoDaTriagemGlobal = (can: TCan): string => (can("intake.review") ? "-2" : "concluido");
 
 const ABA_POR_CHAVE = new Map(ABAS_DA_TRIAGEM_GLOBAL.map((aba) => [aba.chave, aba]));
 
