@@ -27,6 +27,7 @@ import { HIGHLIGHT_CLASS, getIssueBlockId } from "@/components/issues/issue-layo
 import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
 // helpers
 // hooks
+import { isPrioridadeUrgente } from "@/helpers/prioridade.helper";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useKanbanView } from "@/hooks/store/use-kanban-view";
 import { useProject } from "@/hooks/store/use-project";
@@ -290,6 +291,8 @@ export const KanbanIssueBlock = observer(function KanbanIssueBlock(props: IssueB
           className={cn(
             "block w-full rounded-lg border border-subtle bg-layer-2 p-3 text-13 shadow-raised-100 outline-[0.5px] outline-transparent transition-all hover:border-strong hover:shadow-raised-200",
             { "hover:cursor-pointer": isDragAllowed },
+            // Cliente parado: o card se destaca no quadro (testes da nova intranet 3).
+            { "border-2 border-priority-urgent hover:border-priority-urgent": isPrioridadeUrgente(issue.priority) },
             { "border border-accent-strong hover:border-accent-strong": getIsIssuePeeked(issue.id) },
             { "z-[100] bg-layer-1": isCurrentBlockDragging }
           )}
