@@ -116,6 +116,8 @@ describe("recusa da solicitação", () => {
     expect(aviso?.title).toBe("Cliente parado: nova solicitação");
     expect(aviso?.message_html).toBe("Folha não fecha");
     expect(aviso?.data?.urgente).toBe(true);
+    const projeto = await prisma.project.findFirstOrThrow({ where: { workspaceId: wsId, deletedAt: null } });
+    expect(aviso?.data?.issue?.project_name).toBe(projeto.name);
   });
 
   it("o motivo é escapado: não vira marcação no comentário", async () => {

@@ -135,6 +135,8 @@ export interface IWorkspaceIssueSearchResult {
   id: string;
   name: string;
   project__identifier: string;
+  /** Nome do sistema: a sigla sozinha não diz qual é. */
+  project__name?: string | null;
   project_id: string;
   sequence_id: number;
   workspace__slug: string;

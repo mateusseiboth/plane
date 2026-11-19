@@ -10,6 +10,7 @@ import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { cn } from "@plane/utils";
 import useDebounce from "@/hooks/use-debounce";
 import { technicalVisitService } from "@/services/technical-visit.service";
+import { formatNumeroNoSistema } from "@/helpers/numero-no-sistema.helper";
 import { WorkspaceService } from "@/services/workspace.service";
 import type { TTechnicalVisit, TVisitApiError } from "./types";
 import { INPUT_CLASS, VisitFieldError } from "./visit-display";
@@ -121,7 +122,10 @@ export function VisitLinkedIssues({ workspaceSlug, visit, editable, error, onCha
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-13 hover:bg-surface-2"
                     >
                       <span className="shrink-0 font-medium">
-                        {issue.project__identifier}-{issue.sequence_id}
+                        {formatNumeroNoSistema(
+                          { name: issue.project__name, identifier: issue.project__identifier },
+                          issue.sequence_id
+                        )}
                       </span>
                       <span className="truncate">{issue.name}</span>
                     </button>

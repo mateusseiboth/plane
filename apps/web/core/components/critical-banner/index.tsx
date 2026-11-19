@@ -2,6 +2,7 @@
 
 import { buildOndeEstaNaFaixa, isEventoDaFaixaDeUrgentes } from "@/components/critical-banner/helpers";
 import { useRealtimeRefetch } from "@/hooks/use-realtime";
+import { formatNumeroNoSistema } from "@/helpers/numero-no-sistema.helper";
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL } from "@plane/constants";
 import { cn, generateIssueDetailLink } from "@plane/utils";
@@ -117,7 +118,7 @@ export function CriticalIssuesBanner() {
                 )}
                 {issue.project?.identifier && (
                   <span className="bg-red-100/70 text-red-600 dark:bg-red-900/40 dark:text-red-300 rounded px-1 font-medium">
-                    {issue.project.identifier}-{issue.sequence_id}
+                    {formatNumeroNoSistema(issue.project, issue.sequence_id)}
                   </span>
                 )}
                 <span className="max-w-[200px] truncate">{issue.name}</span>

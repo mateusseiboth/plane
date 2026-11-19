@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Search, X, FileText, Inbox, ArrowUpRight } from "lucide-react";
 import { cn, getPaginaPath } from "@plane/utils";
 import { NumerosDoChamado } from "@/components/issues/numeros-do-chamado";
+import { formatNumeroNoSistema } from "@/helpers/numero-no-sistema.helper";
 import { WorkspaceService } from "@/services/workspace.service";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -191,7 +192,7 @@ export function GlobalSearchModal({ isOpen, onClose }: Props) {
                               {/* Work item identifier (e.g. SIARTW-32) */}
                               {item.project?.identifier && item.sequence_id != null && (
                                 <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-10 font-mono font-semibold text-secondary">
-                                  {item.project.identifier}-{item.sequence_id}
+                                  {formatNumeroNoSistema(item.project, item.sequence_id)}
                                 </span>
                               )}
 

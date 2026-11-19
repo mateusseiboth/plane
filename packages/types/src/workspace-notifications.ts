@@ -22,6 +22,8 @@ export type TNotificationIssueLite = {
   id: string | undefined;
   sequence_id: number | undefined;
   identifier: string | undefined;
+  /** Nome do sistema: a sigla sozinha não diz qual é. */
+  project_name?: string;
   name: string | undefined;
   state_name: string | undefined;
   state_group: string | undefined;

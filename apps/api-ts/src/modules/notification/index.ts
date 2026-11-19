@@ -31,6 +31,8 @@ function serializeNotification(n: any, chamado?: any) {
             id: chamado.id,
             name: chamado.name,
             identifier: chamado.project?.identifier ?? "",
+            // A sigla da importação ("RECUR1") não diz qual é o sistema.
+            project_name: chamado.project?.name ?? "",
             sequence_id: chamado.sequenceId,
             state_name: chamado.state?.name ?? "",
             state_group: chamado.state?.group ?? "",
@@ -117,7 +119,7 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
         const chamados = ids.length
           ? await prisma.issue.findMany({
               where: {id: {in: ids}},
-              select: {id: true, name: true, sequenceId: true, project: {select: {identifier: true}}, state: {select: {name: true, group: true}}},
+              select: {id: true, name: true, sequenceId: true, project: {select: {identifier: true, name: true}}, state: {select: {name: true, group: true}}},
             })
           : [];
         const porId = new Map(chamados.map((c) => [c.id, c]));

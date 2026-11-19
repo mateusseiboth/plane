@@ -16,6 +16,7 @@ import { useNotification } from "@/hooks/store/notifications/use-notification";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useWorkspace } from "@/hooks/store/use-workspace";
 // local imports
+import { formatNumeroNoSistema } from "@/helpers/numero-no-sistema.helper";
 import { NotificationContent } from "./content";
 import { NotificationMuralItem } from "./mural-item";
 import { NotificationOption } from "./options";
@@ -127,7 +128,14 @@ export const NotificationItem = observer(function NotificationItem(props: TNotif
 
           <div className="relative flex items-center gap-3 text-caption-sm-regular text-secondary">
             <div className="line-clamp-1 w-full truncate overflow-hidden break-words whitespace-normal">
-              {notification?.data?.issue?.identifier}-{notification?.data?.issue?.sequence_id}&nbsp;
+              {formatNumeroNoSistema(
+                {
+                  name: notification?.data?.issue?.project_name,
+                  identifier: notification?.data?.issue?.identifier,
+                },
+                notification?.data?.issue?.sequence_id
+              )}
+              &nbsp;
               {notification?.data?.issue?.name}
             </div>
             <div className="flex-shrink-0">

@@ -697,6 +697,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           sequence_id: c.sequence_id,
           project_id: c.project_id,
           project__identifier: c.project_identifier,
+          project__name: c.project_name,
           workspace__slug: ws.slug,
           legacy_ticket_number: c.legacy_ticket_number,
           ticket_number: c.ticket_number,
