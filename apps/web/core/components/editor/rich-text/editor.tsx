@@ -75,36 +75,39 @@ export const RichTextEditor = forwardRef(function RichTextEditor(
   });
 
   return (
-    <RichTextEditorWithRef
-      ref={ref}
-      disabledExtensions={[...richTextEditorExtensions.disabled, ...(additionalDisabledExtensions ?? [])]}
-      editable={editable}
-      flaggedExtensions={richTextEditorExtensions.flagged}
-      fileHandler={getEditorFileHandlers({
-        projectId,
-        uploadFile: editable ? props.uploadFile : async () => "",
-        duplicateFile: editable ? props.duplicateFile : async () => "",
-        workspaceId,
-        workspaceSlug,
-      })}
-      getEditorMetaData={getEditorMetaData}
-      mentionHandler={{
-        searchCallback: async (query) => {
-          const res = await fetchMentions(query);
-          if (!res) throw new Error("Failed in fetching mentions");
-          return res;
-        },
-        renderComponent: EditorMentionsRoot,
-        getMentionedEntityDetails: (id) => ({
-          display_name: getUserDetails(id)?.display_name ?? "",
-        }),
-      }}
-      extendedEditorProps={{}}
-      {...rest}
-      extensions={[...(rest.extensions ?? []), ...banco.extensions]}
-      slashCommandAdditionalOptions={banco.slashCommandAdditionalOptions}
-      containerClassName={cn("relative pb-3 pl-3", containerClassName)}
-    />
+    <>
+      <RichTextEditorWithRef
+        ref={ref}
+        disabledExtensions={[...richTextEditorExtensions.disabled, ...(additionalDisabledExtensions ?? [])]}
+        editable={editable}
+        flaggedExtensions={richTextEditorExtensions.flagged}
+        fileHandler={getEditorFileHandlers({
+          projectId,
+          uploadFile: editable ? props.uploadFile : async () => "",
+          duplicateFile: editable ? props.duplicateFile : async () => "",
+          workspaceId,
+          workspaceSlug,
+        })}
+        getEditorMetaData={getEditorMetaData}
+        mentionHandler={{
+          searchCallback: async (query) => {
+            const res = await fetchMentions(query);
+            if (!res) throw new Error("Failed in fetching mentions");
+            return res;
+          },
+          renderComponent: EditorMentionsRoot,
+          getMentionedEntityDetails: (id) => ({
+            display_name: getUserDetails(id)?.display_name ?? "",
+          }),
+        }}
+        extendedEditorProps={{}}
+        {...rest}
+        extensions={[...(rest.extensions ?? []), ...banco.extensions]}
+        slashCommandAdditionalOptions={banco.slashCommandAdditionalOptions}
+        containerClassName={cn("relative pb-3 pl-3", containerClassName)}
+      />
+      {editable && banco.seletorModal}
+    </>
   );
 });
 

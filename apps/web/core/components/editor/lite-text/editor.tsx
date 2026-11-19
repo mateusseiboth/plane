@@ -231,6 +231,7 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
           />
         </div>
       )}
+      {editable && banco.seletorModal}
     </div>
   );
 });

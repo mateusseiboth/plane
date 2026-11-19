@@ -45,7 +45,6 @@ import {useAvisoDeChamado} from "@/hooks/use-aviso-de-chamado";
 import {usePresencaDoAtendente} from "@/hooks/use-presenca-do-atendente";
 // components
 import {RespostaAoClienteModal} from "@/components/portal/resposta-ao-cliente-modal";
-import {SeletorDeBancoModal} from "@/components/banco-anexo/seletor-de-banco-modal";
 import {MuralAvisoObrigatorio} from "@/components/mural/aviso-obrigatorio";
 
 interface IWorkspaceAuthWrapper {
@@ -264,7 +263,6 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
     <>
       {children}
       <RespostaAoClienteModal />
-      <SeletorDeBancoModal />
       <MuralAvisoObrigatorio workspaceSlug={workspaceSlug?.toString()} />
     </>
   );
