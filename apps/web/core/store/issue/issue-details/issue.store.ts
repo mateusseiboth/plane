@@ -11,6 +11,7 @@ import type { TIssue, TIssueServiceType } from "@plane/types";
 import { EIssueServiceType } from "@plane/types";
 // services
 import { IssueArchiveService, WorkspaceDraftService, IssueService } from "@/services/issue";
+import { buildIssueDoDetalhe } from "@/store/issue/issue-details/issue-do-detalhe";
 // types
 import type { IIssueDetail } from "./root.store";
 
@@ -149,45 +150,7 @@ export class IssueStore implements IIssueStore {
   };
 
   addIssueToStore = (issue: TIssue) => {
-    const issuePayload: TIssue = {
-      id: issue?.id,
-      sequence_id: issue?.sequence_id,
-      name: issue?.name,
-      description_html: issue?.description_html,
-      sort_order: issue?.sort_order,
-      state_id: issue?.state_id,
-      priority: issue?.priority,
-      label_ids: issue?.label_ids,
-      assignee_ids: issue?.assignee_ids,
-      estimate_point: issue?.estimate_point,
-      sub_issues_count: issue?.sub_issues_count,
-      attachment_count: issue?.attachment_count,
-      link_count: issue?.link_count,
-      project_id: issue?.project_id,
-      parent_id: issue?.parent_id,
-      cycle_id: issue?.cycle_id,
-      module_ids: issue?.module_ids,
-      type_id: issue?.type_id,
-      created_at: issue?.created_at,
-      updated_at: issue?.updated_at,
-      start_date: issue?.start_date,
-      target_date: issue?.target_date,
-      completed_at: issue?.completed_at,
-      archived_at: issue?.archived_at,
-      created_by: issue?.created_by,
-      updated_by: issue?.updated_by,
-      is_draft: issue?.is_draft,
-      is_subscribed: issue?.is_subscribed,
-      is_epic: issue?.is_epic,
-      ticket_number: issue?.ticket_number,
-      legacy_ticket_number: issue?.legacy_ticket_number,
-      // Só o GET de um chamado traz: o outro lado do "Alterar sistema" e a solicitação de origem.
-      moved_to_issue: issue?.moved_to_issue,
-      moved_from_issue: issue?.moved_from_issue,
-      solicitacao: issue?.solicitacao,
-      // Quem está vendo o detalhe acabou de abrir o chamado (ver markAsRead).
-      is_unread: false,
-    };
+    const issuePayload = buildIssueDoDetalhe(issue);
 
     this.rootIssueDetailStore.rootIssueStore.issues.addIssue([issuePayload]);
     this.fetchingIssueDetails = undefined;
