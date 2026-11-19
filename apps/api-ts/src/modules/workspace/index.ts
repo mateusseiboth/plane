@@ -1,13 +1,13 @@
 import prisma from "@db";
-import {revokeUserSessions} from "@utils/session";
-import {AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit} from "@utils/audit";
-import {authPlugin} from "@middleware/auth";
-import {readChatConfig} from "@utils/chat-config";
-import {serializarCiclos} from "@modules/cycle";
-import {applyIssueFilters, normalizeFilters, restringirAoGrupo} from "@utils/filters";
-import {resolverOrdenacao} from "@utils/issue-order";
-import {paginate} from "@utils/pagination";
-import {seedWorkflowRoles} from "@utils/permissions";
+import { revokeUserSessions } from "@utils/session";
+import { AUDIT_ACTIONS, AUDIT_ENTITIES, auditDiff, recordAudit } from "@utils/audit";
+import { authPlugin } from "@middleware/auth";
+import { readChatConfig } from "@utils/chat-config";
+import { serializarCiclos } from "@modules/cycle";
+import { applyIssueFilters, normalizeFilters, restringirAoGrupo } from "@utils/filters";
+import { resolverOrdenacao } from "@utils/issue-order";
+import { paginate } from "@utils/pagination";
+import { seedWorkflowRoles } from "@utils/permissions";
 import {
   MEMBRO_NAO_ENCONTRADO,
   findMembroDoEspaco,
@@ -15,28 +15,35 @@ import {
   serializeMembroDoEspaco,
   updateFuncaoDoMembro,
 } from "@modules/workspace/membro-do-espaco.service";
-import {nextSequenceId} from "@utils/sequence";
-import {whereNaoLidoPor, withNaoLido} from "@utils/chamado-nao-lido";
-import {invalidateStorageCache, type S3Config} from "@utils/storage";
-import {findChamados, findPaginasDaPessoa, type ChamadoEncontrado, ensureSearchIndexes} from "@utils/search";
-import {ISSUE_INCLUDE, serializeDraftIssue, serializeIssue, serializeState, serializeLabel, vencimento} from "@utils/serialize";
-import {buildDraftData} from "@modules/workspace/rascunho";
+import { nextSequenceId } from "@utils/sequence";
+import { whereNaoLidoPor, withNaoLido } from "@utils/chamado-nao-lido";
+import { invalidateStorageCache, type S3Config } from "@utils/storage";
+import { findChamados, findPaginasDaPessoa, type ChamadoEncontrado, ensureSearchIndexes } from "@utils/search";
+import {
+  ISSUE_INCLUDE,
+  serializeDraftIssue,
+  serializeIssue,
+  serializeState,
+  serializeLabel,
+  vencimento,
+} from "@utils/serialize";
+import { buildDraftData } from "@modules/workspace/rascunho";
 import {
   applyPreferenciasDaBarra,
   isPreferenciaRecebida,
   readPreferenciasDaBarra,
 } from "@modules/workspace/preferencias-da-barra";
-import {ATIVIDADE_INCLUDE, serializeTrilha, withoutMarcadorInterno} from "@utils/trilha";
-import {dataLocal} from "@utils/prazo";
-import {buildFiltroDaSituacao, readSituacao} from "@utils/situacao-da-solicitacao";
-import {findMemberProjectIds, getWorkspaceOrFail, requireWorkspaceMember} from "@utils/workspace";
-import {randomBytes, randomUUID} from "crypto";
+import { ATIVIDADE_INCLUDE, serializeTrilha, withoutMarcadorInterno } from "@utils/trilha";
+import { dataLocal } from "@utils/prazo";
+import { buildFiltroDaSituacao, readSituacao } from "@utils/situacao-da-solicitacao";
+import { findMemberProjectIds, getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
+import { randomBytes, randomUUID } from "crypto";
 import Elysia from "elysia";
-import {EProjectAction, requireWorkspaceAction} from "@utils/permission-checks";
-import {syncParticipacaoEmTodoSistema} from "@modules/project/participacao-em-todo-sistema.service";
-import {formatNumeroDoChamado} from "@utils/numero-do-chamado";
-import {listUrgentes} from "@modules/urgentes/urgentes.service";
-import {findSetoresDosChamados} from "@modules/urgentes/setor-do-chamado.service";
+import { EProjectAction, requireWorkspaceAction } from "@utils/permission-checks";
+import { syncParticipacaoEmTodoSistema } from "@modules/project/participacao-em-todo-sistema.service";
+import { formatNumeroDoChamado } from "@utils/numero-do-chamado";
+import { listUrgentes } from "@modules/urgentes/urgentes.service";
+import { findSetoresDosChamados } from "@modules/urgentes/setor-do-chamado.service";
 
 type QuickLinkRecord = {
   id: string;
@@ -129,7 +136,7 @@ function mergePrintSettings(value: unknown, body: unknown): PrintSettingsRecord 
 function serializePrintSettings(workspaceSlug: string, value: unknown): PrintSettingsRecord {
   const settings = readPrintSettings(value);
   if (!settings.logo_asset) return settings;
-  return {...settings, logo_url: `/api/assets/v2/workspaces/${workspaceSlug}/${settings.logo_asset}/`};
+  return { ...settings, logo_url: `/api/assets/v2/workspaces/${workspaceSlug}/${settings.logo_asset}/` };
 }
 
 function normalizeQuickLinkUrl(url: string) {
@@ -146,31 +153,31 @@ function getStoredQuickLinks(displayFilters: unknown): QuickLinkRecord[] {
 
 async function getWorkspaceQuickLinks(workspaceId: string, userId: string) {
   const props = await prisma.workspaceUserProperties.findUnique({
-    where: {workspaceId_userId: {workspaceId, userId}},
-    select: {displayFilters: true},
+    where: { workspaceId_userId: { workspaceId, userId } },
+    select: { displayFilters: true },
   });
   return getStoredQuickLinks(props?.displayFilters);
 }
 
 async function saveWorkspaceQuickLinks(workspaceId: string, userId: string, quickLinks: QuickLinkRecord[]) {
   const props = await prisma.workspaceUserProperties.findUnique({
-    where: {workspaceId_userId: {workspaceId, userId}},
-    select: {displayFilters: true, filters: true, displayProperties: true},
+    where: { workspaceId_userId: { workspaceId, userId } },
+    select: { displayFilters: true, filters: true, displayProperties: true },
   });
   const existingDisplayFilters = (props?.displayFilters as Record<string, unknown> | null | undefined) ?? {};
   const existingFilters = (props?.filters as Record<string, unknown> | null | undefined) ?? {};
   const existingDisplayProperties = (props?.displayProperties as Record<string, unknown> | null | undefined) ?? {};
 
   await prisma.workspaceUserProperties.upsert({
-    where: {workspaceId_userId: {workspaceId, userId}},
+    where: { workspaceId_userId: { workspaceId, userId } },
     update: {
-      displayFilters: {...existingDisplayFilters, [QUICK_LINKS_STORAGE_KEY]: quickLinks},
+      displayFilters: { ...existingDisplayFilters, [QUICK_LINKS_STORAGE_KEY]: quickLinks },
     },
     create: {
       workspaceId,
       userId,
       filters: existingFilters,
-      displayFilters: {...existingDisplayFilters, [QUICK_LINKS_STORAGE_KEY]: quickLinks},
+      displayFilters: { ...existingDisplayFilters, [QUICK_LINKS_STORAGE_KEY]: quickLinks },
       displayProperties: existingDisplayProperties,
     },
   });
@@ -228,12 +235,24 @@ function serializeRecentProject(project: any) {
 async function workspaceDto(ws: any, memberRole?: number) {
   const adminMember = await prisma.workspaceMember.findFirst({
     // permissao-estrutural: dono exibido no cabeçalho do espaço, não checagem de acesso.
-    where: {workspaceId: ws.id, role: {gte: 20}, deletedAt: null},
-    include: {member: {select: {id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true}}},
+    where: { workspaceId: ws.id, role: { gte: 20 }, deletedAt: null },
+    include: {
+      member: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          displayName: true,
+          avatar: true,
+          avatarUrl: true,
+        },
+      },
+    },
   });
   const [totalMembers, totalProjects] = await Promise.all([
-    prisma.workspaceMember.count({where: {workspaceId: ws.id, isActive: true, deletedAt: null}}),
-    prisma.project.count({where: {workspaceId: ws.id, deletedAt: null}}),
+    prisma.workspaceMember.count({ where: { workspaceId: ws.id, isActive: true, deletedAt: null } }),
+    prisma.project.count({ where: { workspaceId: ws.id, deletedAt: null } }),
   ]);
   const owner = adminMember?.member;
   return {
@@ -285,59 +304,59 @@ function serializeSticky(s: any) {
   };
 }
 
-export const workspaceModule = new Elysia({prefix: "/workspaces"})
+export const workspaceModule = new Elysia({ prefix: "/workspaces" })
   .use(authPlugin)
 
   // ── Slug availability (GET /workspaces/workspace-slug-check/ is the fallback;
   //    the canonical path /workspace-slug-check/ is added directly in index.ts) ──
 
-  .get("/workspace-slug-check/", async ({query, set}) => {
+  .get("/workspace-slug-check/", async ({ query, set }) => {
     const slug = (query.slug as string | undefined)?.toLowerCase();
     if (!slug) {
       set.status = 400;
-      return {error: "slug é obrigatório."};
+      return { error: "slug é obrigatório." };
     }
     const RESTRICTED = ["admin", "api", "auth", "plane", "god-mode", "spaces", "home", "login", "signup", "settings"];
-    const taken = RESTRICTED.includes(slug) || (await prisma.workspace.findFirst({where: {slug}})) !== null;
-    return {status: !taken};
+    const taken = RESTRICTED.includes(slug) || (await prisma.workspace.findFirst({ where: { slug } })) !== null;
+    return { status: !taken };
   })
 
   // ── List user workspaces ───────────────────────────────────────────────────
 
-  .get("/", async ({user}) => {
+  .get("/", async ({ user }) => {
     const memberships = await prisma.workspaceMember.findMany({
-      where: {memberId: user.id, isActive: true, deletedAt: null},
-      include: {workspace: true},
-      orderBy: {createdAt: "desc"},
+      where: { memberId: user.id, isActive: true, deletedAt: null },
+      include: { workspace: true },
+      orderBy: { createdAt: "desc" },
     });
     return Promise.all(memberships.map((m) => workspaceDto(m.workspace, m.role)));
   })
 
   // ── Create workspace ───────────────────────────────────────────────────────
 
-  .post("/", async ({body, user, set}) => {
+  .post("/", async ({ body, user, set }) => {
     const b = body as any;
     if (!b.name) {
       set.status = 400;
-      return {detail: "O nome é obrigatório."};
+      return { detail: "O nome é obrigatório." };
     }
     if (!b.slug) {
       set.status = 400;
-      return {detail: "O slug é obrigatório."};
+      return { detail: "O slug é obrigatório." };
     }
 
-    const exists = await prisma.workspace.findFirst({where: {slug: b.slug, deletedAt: null}});
+    const exists = await prisma.workspace.findFirst({ where: { slug: b.slug, deletedAt: null } });
     if (exists) {
       set.status = 409;
-      return {detail: "Já existe um workspace com este slug."};
+      return { detail: "Já existe um workspace com este slug." };
     }
 
     const ws = await prisma.$transaction(async (tx) => {
       const w = await tx.workspace.create({
-        data: {name: b.name, slug: b.slug, orgSize: b.org_size ?? null, timezone: b.timezone ?? "UTC"},
+        data: { name: b.name, slug: b.slug, orgSize: b.org_size ?? null, timezone: b.timezone ?? "UTC" },
       });
       await tx.workspaceMember.create({
-        data: {workspaceId: w.id, memberId: user.id, role: 20, isActive: true},
+        data: { workspaceId: w.id, memberId: user.id, role: 20, isActive: true },
       });
       // O espaço nasce com as funções gravadas: sem elas a tela de Funções abre
       // vazia e as regras de etapa caem nos padrões em memória.
@@ -350,53 +369,54 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Get / Update / Delete workspace ───────────────────────────────────────
 
-  .get("/:slug/", async ({params: {slug}, user}) => {
+  .get("/:slug/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     const m = await requireWorkspaceMember(ws.id, user.id);
     return workspaceDto(ws, m.role);
   })
 
-  .patch("/:slug/", async ({params: {slug}, body, user, set}) => {
+  .patch("/:slug/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const m = await requireWorkspaceMember(ws.id, user.id);    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
+    const m = await requireWorkspaceMember(ws.id, user.id);
+    await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const b = body as any;
     const data: any = {};
     if (b.name !== undefined) data.name = b.name;
     if (b.org_size !== undefined) data.orgSize = b.org_size;
     if (b.timezone !== undefined) data.timezone = b.timezone;
     if (b.logo !== undefined) data.logo = b.logo;
-    const updated = await prisma.workspace.update({where: {id: ws.id}, data});
+    const updated = await prisma.workspace.update({ where: { id: ws.id }, data });
     return workspaceDto(updated, m.role);
   })
 
   // ── Delete workspace ──────────────────────────────────────────────────────
 
-  .delete("/:slug/", async ({params: {slug}, user, set}) => {
+  .delete("/:slug/", async ({ params: { slug }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
-    await prisma.workspace.update({where: {id: ws.id}, data: {deletedAt: new Date()}});
+    await prisma.workspace.update({ where: { id: ws.id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
   })
 
   // ── Project identifier availability (frontend calls /project-identifiers) ──
 
-  .get("/:slug/project-identifiers", async ({params: {slug}, query}) => {
+  .get("/:slug/project-identifiers", async ({ params: { slug }, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     const identifier = (query.name as string | undefined)?.toUpperCase();
-    if (!identifier) return {status: false};
-    const taken = await prisma.project.findFirst({where: {workspaceId: ws.id, identifier, deletedAt: null}});
-    return {status: !taken};
+    if (!identifier) return { status: false };
+    const taken = await prisma.project.findFirst({ where: { workspaceId: ws.id, identifier, deletedAt: null } });
+    return { status: !taken };
   })
 
   // ── Invitations ───────────────────────────────────────────────────────────
 
-  .get("/:slug/invitations/", async ({params: {slug}, user}) => {
+  .get("/:slug/invitations/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const invites = await prisma.workspaceMemberInvite.findMany({
-      where: {workspaceId: ws.id, accepted: false},
-      orderBy: {createdAt: "desc"},
+      where: { workspaceId: ws.id, accepted: false },
+      orderBy: { createdAt: "desc" },
     });
     return invites.map((i) => ({
       id: i.id,
@@ -407,17 +427,17 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       message: "",
       responded_at: null,
       invite_link: `${process.env.APP_BASE_URL ?? "http://localhost"}/invitations/${i.token}/`,
-      workspace: {id: ws.id, name: ws.name, slug: ws.slug, logo_url: ws.logoUrl ?? null},
+      workspace: { id: ws.id, name: ws.name, slug: ws.slug, logo_url: ws.logoUrl ?? null },
       created_at: i.createdAt.toISOString(),
       updated_at: i.updatedAt.toISOString(),
     }));
   })
 
-  .post("/:slug/invitations/", async ({params: {slug}, body, user, set}) => {
+  .post("/:slug/invitations/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
 
-    const emails: Array<{email: string; role: number}> = (body as any).emails ?? [];
+    const emails: Array<{ email: string; role: number }> = (body as any).emails ?? [];
     const invites = await prisma.workspaceMemberInvite.createMany({
       data: emails.map((e) => ({
         workspaceId: ws.id,
@@ -427,32 +447,32 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       })),
     });
     set.status = 201;
-    return {invited: invites.count};
+    return { invited: invites.count };
   })
 
-  .delete("/:slug/invitations/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .delete("/:slug/invitations/:pk/", async ({ params: { slug, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
-    await prisma.workspaceMemberInvite.deleteMany({where: {id: pk, workspaceId: ws.id}});
+    await prisma.workspaceMemberInvite.deleteMany({ where: { id: pk, workspaceId: ws.id } });
     set.status = 204;
     return null;
   })
 
   // ── Stickies ──────────────────────────────────────────────────────────────
 
-  .get("/:slug/stickies/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/stickies/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const where = {workspaceId: ws.id, ownerId: user.id, deletedAt: null};
+    const where = { workspaceId: ws.id, ownerId: user.id, deletedAt: null };
     return paginate({
-      query: (skip, take) => prisma.sticky.findMany({where, skip, take, orderBy: {sortOrder: "asc"}}),
-      count: () => prisma.sticky.count({where}),
+      query: (skip, take) => prisma.sticky.findMany({ where, skip, take, orderBy: { sortOrder: "asc" } }),
+      count: () => prisma.sticky.count({ where }),
       cursor: query.cursor as string | undefined,
       transform: (items) => items.map(serializeSticky),
     });
   })
 
-  .post("/:slug/stickies/", async ({params: {slug}, body, user, set}) => {
+  .post("/:slug/stickies/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -463,14 +483,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         title: b.name ?? b.title ?? "",
         description: b.description_html ?? (typeof b.description === "string" ? b.description : null),
         color: b.background_color ?? b.color ?? "#ffffff",
-        ...(b.sort_order !== undefined ? {sortOrder: b.sort_order} : {}),
+        ...(b.sort_order !== undefined ? { sortOrder: b.sort_order } : {}),
       },
     });
     set.status = 201;
     return serializeSticky(sticky);
   })
 
-  .patch("/:slug/stickies/:sticky_id/", async ({params: {slug, sticky_id}, body, user}) => {
+  .patch("/:slug/stickies/:sticky_id/", async ({ params: { slug, sticky_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -482,32 +502,32 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     if (b.background_color !== undefined) data.color = b.background_color;
     if (b.color !== undefined) data.color = b.color;
     if (b.sort_order !== undefined) data.sortOrder = b.sort_order;
-    const updated = await prisma.sticky.update({where: {id: sticky_id}, data});
+    const updated = await prisma.sticky.update({ where: { id: sticky_id }, data });
     return serializeSticky(updated);
   })
 
-  .delete("/:slug/stickies/:sticky_id/", async ({params: {slug, sticky_id}, user, set}) => {
+  .delete("/:slug/stickies/:sticky_id/", async ({ params: { slug, sticky_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    await prisma.sticky.update({where: {id: sticky_id}, data: {deletedAt: new Date()}});
+    await prisma.sticky.update({ where: { id: sticky_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
   })
 
   // ── User Favorites ────────────────────────────────────────────────────────
 
-  .get("/:slug/favorites/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/favorites/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const where = {workspaceId: ws.id, userId: user.id, deletedAt: null};
+    const where = { workspaceId: ws.id, userId: user.id, deletedAt: null };
     return paginate({
-      query: (skip, take) => prisma.userFavorite.findMany({where, skip, take, orderBy: {sequence: "asc"}}),
-      count: () => prisma.userFavorite.count({where}),
+      query: (skip, take) => prisma.userFavorite.findMany({ where, skip, take, orderBy: { sequence: "asc" } }),
+      count: () => prisma.userFavorite.count({ where }),
       cursor: query.cursor as string | undefined,
     });
   })
 
-  .post("/:slug/favorites/", async ({params: {slug}, body, user, set}) => {
+  .post("/:slug/favorites/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -525,29 +545,29 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return fav;
   })
 
-  .delete("/:slug/favorites/:favorite_id/", async ({params: {slug, favorite_id}, user, set}) => {
+  .delete("/:slug/favorites/:favorite_id/", async ({ params: { slug, favorite_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    await prisma.userFavorite.update({where: {id: favorite_id}, data: {deletedAt: new Date()}});
+    await prisma.userFavorite.update({ where: { id: favorite_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
   })
 
   // ── Recent Visits ─────────────────────────────────────────────────────────
 
-  .get("/:slug/recent-visits/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/recent-visits/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const entityName = query.entity_name as string | undefined;
     const where = {
       workspaceId: ws.id,
       userId: user.id,
-      entityType: entityName ? entityName : {in: ["issue", "page", "project"]},
+      entityType: entityName ? entityName : { in: ["issue", "page", "project"] },
     };
 
     const recentVisits = (await prisma.userRecentVisit.findMany({
       where,
-      orderBy: {visitedAt: "desc"},
+      orderBy: { visitedAt: "desc" },
       take: 20,
     })) as RecentVisitRecord[];
 
@@ -564,28 +584,28 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const [issues, pages, projects] = await Promise.all([
       issueIds.length
         ? prisma.issue.findMany({
-            where: {id: {in: issueIds}, workspaceId: ws.id, deletedAt: null},
+            where: { id: { in: issueIds }, workspaceId: ws.id, deletedAt: null },
             include: {
-              state: {select: {id: true, name: true, color: true, group: true}},
-              assignees: {where: {deletedAt: null}, select: {assigneeId: true}},
-              issueType: {select: {id: true, isEpic: true}},
-              project: {select: {id: true, identifier: true}},
+              state: { select: { id: true, name: true, color: true, group: true } },
+              assignees: { where: { deletedAt: null }, select: { assigneeId: true } },
+              issueType: { select: { id: true, isEpic: true } },
+              project: { select: { id: true, identifier: true } },
             },
           })
         : [],
       pageIds.length
         ? prisma.page.findMany({
-            where: {id: {in: pageIds}, workspaceId: ws.id, deletedAt: null},
+            where: { id: { in: pageIds }, workspaceId: ws.id, deletedAt: null },
             include: {
-              ownedBy: {select: {id: true}},
-              projects: {include: {project: {select: {id: true, identifier: true}}}},
+              ownedBy: { select: { id: true } },
+              projects: { include: { project: { select: { id: true, identifier: true } } } },
             },
           })
         : [],
       projectIds.length
         ? prisma.project.findMany({
-            where: {id: {in: projectIds}, workspaceId: ws.id, deletedAt: null},
-            include: {members: {where: {deletedAt: null}, select: {memberId: true}}},
+            where: { id: { in: projectIds }, workspaceId: ws.id, deletedAt: null },
+            include: { members: { where: { deletedAt: null }, select: { memberId: true } } },
           })
         : [],
     ]);
@@ -642,14 +662,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return activities;
   })
 
-  .post("/:slug/recent-visits/", async ({params: {slug}, body, user, set}) => {
+  .post("/:slug/recent-visits/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
     const visit = await prisma.userRecentVisit
       .upsert({
-        where: {id: "00000000-0000-0000-0000-000000000000"}, // fake - will never match
-        update: {visitedAt: new Date()},
+        where: { id: "00000000-0000-0000-0000-000000000000" }, // fake - will never match
+        update: { visitedAt: new Date() },
         create: {
           workspaceId: ws.id,
           userId: user.id,
@@ -659,8 +679,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       })
       .catch(async () =>
         prisma.userRecentVisit.create({
-          data: {workspaceId: ws.id, userId: user.id, entityType: b.entity_type, entityId: b.entity_id},
-        }),
+          data: { workspaceId: ws.id, userId: user.id, entityType: b.entity_type, entityId: b.entity_id },
+        })
       );
     set.status = 201;
     return visit;
@@ -673,21 +693,22 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // — título e número legado, nada mais —, e por isso "ALMOXA-954" não achava o
   // chamado que a outra rota devolvia em primeiro lugar.
 
-  .get("/:slug/search/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/search/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     // A interface mostra o número legado com "#" na frente ("#500-2026"), e é
     // assim que a pessoa copia e cola. A coluna guarda o valor puro.
     const q = (((query as any).search ?? (query as any).query ?? "") as string).trim().replace(/^#/, "");
-    if (!q) return {results: {issue: [], project: [], page: [], cycle: [], module: [], workspace: [], issue_view: []}};
+    if (!q)
+      return { results: { issue: [], project: [], page: [], cycle: [], module: [], workspace: [], issue_view: [] } };
     const [chamados, projects, paginas] = await Promise.all([
       findChamados(ws.id, q, 10),
       prisma.project.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
-        select: {id: true, name: true, identifier: true},
+        where: { workspaceId: ws.id, deletedAt: null, name: { contains: q, mode: "insensitive" } },
+        select: { id: true, name: true, identifier: true },
         take: 5,
       }),
-      findPaginasDaPessoa({workspaceId: ws.id, userId: user.id, termo: q, limite: 5}),
+      findPaginasDaPessoa({ workspaceId: ws.id, userId: user.id, termo: q, limite: 5 }),
     ]);
     return {
       results: {
@@ -704,7 +725,12 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           is_intake: c.state_group === "triage",
           type_id: null,
         })),
-        project: projects.map((p: any) => ({id: p.id, name: p.name, identifier: p.identifier, workspace__slug: ws.slug})),
+        project: projects.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          identifier: p.identifier,
+          workspace__slug: ws.slug,
+        })),
         // Página sem sistema (`project_ids` vazio) é da wiki: a paleta abre /wiki/.
         page: paginas.map((p) => ({
           id: p.id,
@@ -723,7 +749,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Global search (full-text, fuzzy, error-tolerant) ──────────────────────
 
-  .get("/:slug/global-search/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/global-search/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     // The web client sends `?q=`; older callers used `?query=`. Accept both.
@@ -731,7 +757,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // Leading "#" is UI decoration for legacy ticket numbers ("#500-2026") —
     // the column stores the bare value, so strip it before matching.
     const q = qRaw.replace(/^#/, "");
-    if (!q) return {results: {issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: []}};
+    if (!q) return { results: { issues: [], intakes: [], projects: [], pages: [], cycles: [], modules: [] } };
 
     // Hard cap so "show everything" stays bounded; the client controls the page size.
     const limit = Math.min(Math.max(Number(query.limit) || 100, 1), 250);
@@ -739,24 +765,25 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const [issueRows, projects, pages, cycles, modules] = await Promise.all([
       findChamados(ws.id, q, limit),
       prisma.project.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
-        select: {id: true, name: true, identifier: true},
+        where: { workspaceId: ws.id, deletedAt: null, name: { contains: q, mode: "insensitive" } },
+        select: { id: true, name: true, identifier: true },
         take: 5,
       }),
-      findPaginasDaPessoa({workspaceId: ws.id, userId: user.id, termo: q, limite: 5}),
+      findPaginasDaPessoa({ workspaceId: ws.id, userId: user.id, termo: q, limite: 5 }),
       prisma.cycle.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
-        select: {id: true, name: true, projectId: true},
+        where: { workspaceId: ws.id, deletedAt: null, name: { contains: q, mode: "insensitive" } },
+        select: { id: true, name: true, projectId: true },
         take: 5,
       }),
       prisma.module.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, name: {contains: q, mode: "insensitive"}},
-        select: {id: true, name: true, projectId: true},
+        where: { workspaceId: ws.id, deletedAt: null, name: { contains: q, mode: "insensitive" } },
+        select: { id: true, name: true, projectId: true },
         take: 5,
       }),
     ]);
 
-    const toProject = (r: ChamadoEncontrado) => (r.project_id ? {id: r.project_id, identifier: r.project_identifier, name: r.project_name} : null);
+    const toProject = (r: ChamadoEncontrado) =>
+      r.project_id ? { id: r.project_id, identifier: r.project_identifier, name: r.project_name } : null;
 
     const intakes = issueRows.filter((r) => r.state_group === "triage");
     const workItems = issueRows.filter((r) => r.state_group !== "triage");
@@ -771,7 +798,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           legacy_ticket_number: r.legacy_ticket_number ?? null,
           ticket_number: r.ticket_number ?? null,
           priority: r.priority,
-          state: r.state_name ? {name: r.state_name, group: r.state_group} : null,
+          state: r.state_name ? { name: r.state_name, group: r.state_group } : null,
           project: toProject(r),
         })),
         intakes: intakes.map((r) => ({
@@ -783,10 +810,10 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           ticket_number: r.ticket_number ?? null,
           project: toProject(r),
         })),
-        projects: projects.map((p: any) => ({...p, type: "project"})),
-        pages: pages.map((p) => ({id: p.id, name: p.name, project_ids: p.project_ids, type: "page"})),
-        cycles: cycles.map((c: any) => ({...c, type: "cycle"})),
-        modules: modules.map((m: any) => ({...m, type: "module"})),
+        projects: projects.map((p: any) => ({ ...p, type: "project" })),
+        pages: pages.map((p) => ({ id: p.id, name: p.name, project_ids: p.project_ids, type: "page" })),
+        cycles: cycles.map((c: any) => ({ ...c, type: "cycle" })),
+        modules: modules.map((m: any) => ({ ...m, type: "module" })),
       },
     };
   })
@@ -794,7 +821,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // ── Search index maintenance ──────────────────────────────────────────────
   // Idempotently (re)creates the FTS extensions, the pt_unaccent config and the
   // GIN indexes, then refreshes planner statistics. Requires workspace admin.
-  .post("/:slug/search/reindex/", async ({params: {slug}, user}) => {
+  .post("/:slug/search/reindex/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const result = await ensureSearchIndexes(true);
@@ -803,60 +830,60 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Workspace slug check ──────────────────────────────────────────────────────
 
-  .get("/workspace-slug-check/", async ({query, set}) => {
+  .get("/workspace-slug-check/", async ({ query, set }) => {
     const slug = (query.slug as string | undefined)?.toLowerCase();
     if (!slug) {
       set.status = 400;
-      return {error: "slug é obrigatório."};
+      return { error: "slug é obrigatório." };
     }
     const RESTRICTED = ["admin", "api", "auth", "plane", "god-mode", "spaces", "home", "login", "signup", "settings"];
-    const taken = RESTRICTED.includes(slug) || (await prisma.workspace.findFirst({where: {slug}})) !== null;
-    return {status: !taken};
+    const taken = RESTRICTED.includes(slug) || (await prisma.workspace.findFirst({ where: { slug } })) !== null;
+    return { status: !taken };
   })
 
   // ── Invitations: specific invite management ────────────────────────────────
 
-  .get("/:slug/invitations/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .get("/:slug/invitations/:pk/", async ({ params: { slug, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const invite = await prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
+    const invite = await prisma.workspaceMemberInvite.findFirst({ where: { id: pk, workspaceId: ws.id } });
     if (!invite) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return { detail: "Não encontrado." };
     }
     return invite;
   })
 
-  .patch("/:slug/invitations/:pk/", async ({params: {slug, pk}, body, user, set}) => {
+  .patch("/:slug/invitations/:pk/", async ({ params: { slug, pk }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_INVITE);
     const b = body as any;
     const data: any = {};
     if (b.role !== undefined) data.role = b.role;
-    await prisma.workspaceMemberInvite.updateMany({where: {id: pk, workspaceId: ws.id}, data});
-    return prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
+    await prisma.workspaceMemberInvite.updateMany({ where: { id: pk, workspaceId: ws.id }, data });
+    return prisma.workspaceMemberInvite.findFirst({ where: { id: pk, workspaceId: ws.id } });
   })
 
-  .post("/:slug/invitations/:pk/join/", async ({params: {slug, pk}, user, set, headers}) => {
+  .post("/:slug/invitations/:pk/join/", async ({ params: { slug, pk }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
-    const invite = await prisma.workspaceMemberInvite.findFirst({where: {id: pk, workspaceId: ws.id}});
+    const invite = await prisma.workspaceMemberInvite.findFirst({ where: { id: pk, workspaceId: ws.id } });
     if (!invite) {
       set.status = 400;
-      return {detail: "Convite inválido."};
+      return { detail: "Convite inválido." };
     }
     if (invite.email !== user.email) {
       set.status = 400;
-      return {detail: "O convite não é para este e-mail."};
+      return { detail: "O convite não é para este e-mail." };
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.workspaceMemberInvite.update({where: {id: invite.id}, data: {accepted: true}});
+      await tx.workspaceMemberInvite.update({ where: { id: invite.id }, data: { accepted: true } });
       const existing = await tx.workspaceMember.findFirst({
-        where: {workspaceId: ws.id, memberId: user.id, deletedAt: null},
+        where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
       });
       if (!existing) {
         await tx.workspaceMember.create({
-          data: {workspaceId: ws.id, memberId: user.id, role: invite.role, isActive: true},
+          data: { workspaceId: ws.id, memberId: user.id, role: invite.role, isActive: true },
         });
       }
     });
@@ -868,22 +895,32 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       action: AUDIT_ACTIONS.CREATE,
       actor: user,
       headers,
-      metadata: {role: invite.role, por_convite: true},
+      metadata: { role: invite.role, por_convite: true },
     });
-    return {detail: "Você entrou no workspace."};
+    return { detail: "Você entrou no workspace." };
   })
 
   // ── Members: specific member management ────────────────────────────────────
 
-  .get("/:slug/members/", async ({params: {slug}, user}) => {
+  .get("/:slug/members/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const members = await prisma.workspaceMember.findMany({
-      where: {workspaceId: ws.id, isActive: true, deletedAt: null},
+      where: { workspaceId: ws.id, isActive: true, deletedAt: null },
       include: {
-        member: {select: {id: true, email: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true}},
+        member: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            displayName: true,
+            avatar: true,
+            avatarUrl: true,
+          },
+        },
       },
-      orderBy: {createdAt: "asc"},
+      orderBy: { createdAt: "asc" },
     });
     return members.map((m) => ({
       id: m.id,
@@ -904,31 +941,34 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   })
 
   // `:pk` é o id do usuário. Ver membro-do-espaco.service.ts.
-  .get("/:slug/members/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .get("/:slug/members/:pk/", async ({ params: { slug, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const m = await findMembroDoEspaco(ws.id, pk);
     if (!m) {
       set.status = 404;
-      return {detail: MEMBRO_NAO_ENCONTRADO};
+      return { detail: MEMBRO_NAO_ENCONTRADO };
     }
     return serializeMembroDoEspaco(m);
   })
 
-  .patch("/:slug/members/:pk/", async ({params: {slug, pk}, body, user, set, headers}) => {
+  .patch("/:slug/members/:pk/", async ({ params: { slug, pk }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     const antes = await findMembroDoEspaco(ws.id, pk);
     if (!antes) {
       set.status = 404;
-      return {detail: MEMBRO_NAO_ENCONTRADO};
+      return { detail: MEMBRO_NAO_ENCONTRADO };
     }
-    const b = (body ?? {}) as {role?: unknown};
+    const b = (body ?? {}) as { role?: unknown };
     if (b.role === undefined) return serializeMembroDoEspaco(antes);
     const role = parseInt(String(b.role), 10);
     if (!Number.isInteger(role)) {
       set.status = 400;
-      return {detail: "Escolha uma função válida.", errors: [{path: "role", message: "Escolha uma função válida."}]};
+      return {
+        detail: "Escolha uma função válida.",
+        errors: [{ path: "role", message: "Escolha uma função válida." }],
+      };
     }
     if (antes.role !== role) {
       recordAudit({
@@ -938,21 +978,28 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         action: AUDIT_ACTIONS.PERMISSION_CHANGE,
         actor: user,
         headers,
-        changes: auditDiff(antes, {role}, ["role"]),
+        changes: auditDiff(antes, { role }, ["role"]),
       });
     }
     return serializeMembroDoEspaco((await updateFuncaoDoMembro(ws.id, pk, role))!);
   })
 
-  .delete("/:slug/members/:pk/", async ({params: {slug, pk}, user, set, headers}) => {
+  .delete("/:slug/members/:pk/", async ({ params: { slug, pk }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
-    const {count} = await removeMembroDoEspaco(ws.id, pk);
+    const { count } = await removeMembroDoEspaco(ws.id, pk);
     if (!count) {
       set.status = 404;
-      return {detail: MEMBRO_NAO_ENCONTRADO};
+      return { detail: MEMBRO_NAO_ENCONTRADO };
     }
-    recordAudit({workspaceId: ws.id, entity: AUDIT_ENTITIES.MEMBER, entityId: pk, action: AUDIT_ACTIONS.DELETE, actor: user, headers});
+    recordAudit({
+      workspaceId: ws.id,
+      entity: AUDIT_ENTITIES.MEMBER,
+      entityId: pk,
+      action: AUDIT_ACTIONS.DELETE,
+      actor: user,
+      headers,
+    });
     set.status = 204;
     return null;
   })
@@ -960,32 +1007,32 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // Admin-only: reset another member's password to a known value. Clears
   // isPasswordAutoset so the seeder won't overwrite it on the next restart, and
   // echoes the password back so the admin can hand it to the user.
-  .post("/:slug/members/:pk/reset-password/", async ({params: {slug, pk}, body, user, set, headers}) => {
+  .post("/:slug/members/:pk/reset-password/", async ({ params: { slug, pk }, body, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_MEMBERS);
     const target = await prisma.workspaceMember.findFirst({
-      where: {workspaceId: ws.id, memberId: pk, deletedAt: null},
-      select: {member: {select: {id: true, isInstanceAdmin: true, frozenAt: true}}},
+      where: { workspaceId: ws.id, memberId: pk, deletedAt: null },
+      select: { member: { select: { id: true, isInstanceAdmin: true, frozenAt: true } } },
     });
     if (!target?.member) {
       set.status = 404;
-      return {detail: "Membro não encontrado."};
+      return { detail: "Membro não encontrado." };
     }
     // A workspace admin must not reset an instance admin's password (only the
     // instance admin themselves can change it, via account settings).
     if (target.member.isInstanceAdmin && target.member.id !== user.id) {
       set.status = 403;
-      return {detail: "Não é possível redefinir a senha de um administrador da instância."};
+      return { detail: "Não é possível redefinir a senha de um administrador da instância." };
     }
     const b = (body as any) ?? {};
     const newPassword = typeof b.password === "string" && b.password.trim().length > 0 ? b.password : "teste";
     if (newPassword.length < 4) {
       set.status = 400;
-      return {detail: "A senha precisa ter ao menos 4 caracteres."};
+      return { detail: "A senha precisa ter ao menos 4 caracteres." };
     }
-    const hash = await Bun.password.hash(newPassword, {algorithm: "bcrypt", cost: 12});
+    const hash = await Bun.password.hash(newPassword, { algorithm: "bcrypt", cost: 12 });
     // Senha nova derruba as sessões abertas; usuário congelado continua congelado.
-    await revokeUserSessions(pk, {password: hash, isPasswordAutoset: false, isActive: !target.member.frozenAt});
+    await revokeUserSessions(pk, { password: hash, isPasswordAutoset: false, isActive: !target.member.frozenAt });
     // A senha nunca entra na trilha: só o fato e quem fez.
     recordAudit({
       workspaceId: ws.id,
@@ -994,16 +1041,16 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       action: AUDIT_ACTIONS.PASSWORD_CHANGE,
       actor: user,
       headers,
-      metadata: {por_admin: true},
+      metadata: { por_admin: true },
     });
-    return {detail: "Senha redefinida com sucesso.", password: newPassword};
+    return { detail: "Senha redefinida com sucesso.", password: newPassword };
   })
 
-  .post("/:slug/members/leave/", async ({params: {slug}, user, set, headers}) => {
+  .post("/:slug/members/leave/", async ({ params: { slug }, user, set, headers }) => {
     const ws = await getWorkspaceOrFail(slug);
     await prisma.workspaceMember.updateMany({
-      where: {workspaceId: ws.id, memberId: user.id},
-      data: {isActive: false, deletedAt: new Date()},
+      where: { workspaceId: ws.id, memberId: user.id },
+      data: { isActive: false, deletedAt: new Date() },
     });
     recordAudit({
       workspaceId: ws.id,
@@ -1012,7 +1059,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       action: AUDIT_ACTIONS.DELETE,
       actor: user,
       headers,
-      metadata: {saiu: true},
+      metadata: { saiu: true },
     });
     set.status = 204;
     return null;
@@ -1021,10 +1068,10 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // ── S3 storage configuration (instance-wide) ──────────────────────────────
   // Stored on the Instance row (configurations.s3). The secret key is never
   // returned — the GET only reports whether one is set.
-  .get("/:slug/storage-config/", async ({params: {slug}, user, set}) => {
+  .get("/:slug/storage-config/", async ({ params: { slug }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
-    const instance = await prisma.instance.findFirst({select: {configurations: true}});
+    const instance = await prisma.instance.findFirst({ select: { configurations: true } });
     const cfg = ((instance?.configurations as any)?.s3 ?? {}) as S3Config;
     const isConfigured = Boolean(cfg.endpoint && cfg.bucket && cfg.access_key && cfg.secret_key);
     return {
@@ -1038,14 +1085,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
   })
 
-  .patch("/:slug/storage-config/", async ({params: {slug}, body, user, set}) => {
+  .patch("/:slug/storage-config/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
     const b = (body as any) ?? {};
     const instance = await prisma.instance.findFirst();
     if (!instance) {
       set.status = 400;
-      return {detail: "Instância não configurada."};
+      return { detail: "Instância não configurada." };
     }
     const configurations = (instance.configurations as any) ?? {};
     const current = (configurations.s3 ?? {}) as S3Config;
@@ -1068,35 +1115,37 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
     if (provider === "s3" && (!next.endpoint || !next.bucket || !next.access_key || !next.secret_key)) {
       set.status = 400;
-      return {detail: "Para usar S3 informe endpoint, bucket, access key e secret key."};
+      return { detail: "Para usar S3 informe endpoint, bucket, access key e secret key." };
     }
 
     configurations.s3 = next;
-    await prisma.instance.update({where: {id: instance.id}, data: {configurations}});
+    await prisma.instance.update({ where: { id: instance.id }, data: { configurations } });
     invalidateStorageCache();
-    return {detail: "Configuração de armazenamento salva.", provider, is_configured: provider === "s3"};
+    return { detail: "Configuração de armazenamento salva.", provider, is_configured: provider === "s3" };
   })
 
   // ── Print settings (logo/cabeçalho/rodapé usados na impressão) ─────────────
   // Persisted in the shared WorkspaceSetting key/value table under
   // `print_settings`. Any member reads it (every screen renders the print
   // header); only workspace admins change it.
-  .get("/:slug/print-settings/", async ({params: {slug}, user}) => {
+  .get("/:slug/print-settings/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const setting = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY}});
+    const setting = await prisma.workspaceSetting.findFirst({ where: { workspaceId: ws.id, key: PRINT_SETTINGS_KEY } });
     return serializePrintSettings(slug, setting?.value);
   })
 
-  .patch("/:slug/print-settings/", async ({params: {slug}, body, user, set}) => {
+  .patch("/:slug/print-settings/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.WORKSPACE_SETTINGS);
-    const existing = await prisma.workspaceSetting.findFirst({where: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY}});
+    const existing = await prisma.workspaceSetting.findFirst({
+      where: { workspaceId: ws.id, key: PRINT_SETTINGS_KEY },
+    });
     const next = mergePrintSettings(existing?.value, body);
     await prisma.workspaceSetting.upsert({
-      where: {workspaceId_key: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY}},
-      create: {workspaceId: ws.id, key: PRINT_SETTINGS_KEY, value: next},
-      update: {value: next},
+      where: { workspaceId_key: { workspaceId: ws.id, key: PRINT_SETTINGS_KEY } },
+      create: { workspaceId: ws.id, key: PRINT_SETTINGS_KEY, value: next },
+      update: { value: next },
     });
     return serializePrintSettings(slug, next);
   })
@@ -1104,19 +1153,19 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // ── Chat plugin config (enable + plugin API/WS URL) ───────────────────────
   // Stored on Instance.configurations.chat. The chat plugin is shipped
   // installed-but-disabled; enabling it here points the UI at the chat backend.
-  .get("/:slug/chat-config/", async ({params: {slug}, user}) => {
+  .get("/:slug/chat-config/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     return readChatConfig();
   })
-  .patch("/:slug/chat-config/", async ({params: {slug}, body, user, set}) => {
+  .patch("/:slug/chat-config/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.CHAT_CONFIGURAR);
     const b = (body as any) ?? {};
     const instance = await prisma.instance.findFirst();
     if (!instance) {
       set.status = 400;
-      return {detail: "Instância não configurada."};
+      return { detail: "Instância não configurada." };
     }
     const configurations = (instance.configurations as any) ?? {};
     const current = (configurations.chat ?? {}) as any;
@@ -1125,18 +1174,18 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       api_url: b.api_url !== undefined ? String(b.api_url).trim() : (current.api_url ?? ""),
       ws_url: b.ws_url !== undefined ? String(b.ws_url).trim() : (current.ws_url ?? ""),
     };
-    await prisma.instance.update({where: {id: instance.id}, data: {configurations}});
-    return {detail: "Configuração do chat salva.", ...configurations.chat};
+    await prisma.instance.update({ where: { id: instance.id }, data: { configurations } });
+    return { detail: "Configuração do chat salva.", ...configurations.chat };
   })
 
-  .get("/:slug/workspace-members/me/", async ({params: {slug}, user, set}) => {
+  .get("/:slug/workspace-members/me/", async ({ params: { slug }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     const m = await prisma.workspaceMember.findFirst({
-      where: {workspaceId: ws.id, memberId: user.id, deletedAt: null},
+      where: { workspaceId: ws.id, memberId: user.id, deletedAt: null },
     });
     if (!m) {
       set.status = 404;
-      return {detail: "Você não é membro."};
+      return { detail: "Você não é membro." };
     }
     return {
       id: m.id,
@@ -1155,11 +1204,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
   })
 
-  .get("/:slug/project-members/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/project-members/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const projectId = query.project_id as string | undefined;
-    const where: any = {workspaceId: ws.id, isActive: true, deletedAt: null};
+    const where: any = { workspaceId: ws.id, isActive: true, deletedAt: null };
     if (projectId) where.projectId = projectId;
     return paginate({
       query: (skip, take) =>
@@ -1167,31 +1216,31 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           where,
           skip,
           take,
-          include: {member: {select: {id: true, email: true, displayName: true, avatar: true}}},
+          include: { member: { select: { id: true, email: true, displayName: true, avatar: true } } },
         }),
-      count: () => prisma.projectMember.count({where}),
+      count: () => prisma.projectMember.count({ where }),
       cursor: query.cursor as string | undefined,
     });
   })
 
   // ── Workspace labels / states ─────────────────────────────────────────────────
 
-  .get("/:slug/labels/", async ({params: {slug}, user}) => {
+  .get("/:slug/labels/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const labels = await prisma.label.findMany({
-      where: {workspaceId: ws.id, deletedAt: null},
-      orderBy: {name: "asc"},
+      where: { workspaceId: ws.id, deletedAt: null },
+      orderBy: { name: "asc" },
     });
     return labels.map(serializeLabel);
   })
 
-  .get("/:slug/states/", async ({params: {slug}, user}) => {
+  .get("/:slug/states/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const states = await prisma.state.findMany({
-      where: {workspaceId: ws.id, deletedAt: null},
-      orderBy: {sequence: "asc"},
+      where: { workspaceId: ws.id, deletedAt: null },
+      orderBy: { sequence: "asc" },
     });
     return states.map(serializeState);
   })
@@ -1199,24 +1248,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // ── Workspace-level label SLA config ─────────────────────────────────────────
   // Labels are project-scoped, but their SLA (deadline) is managed once at the
   // workspace level: labels are aggregated by name across all projects.
-  .get("/:slug/label-sla/", async ({params: {slug}, user}) => {
+  .get("/:slug/label-sla/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const labels = await prisma.label.findMany({
-      where: {workspaceId: ws.id, deletedAt: null},
-      select: {name: true, color: true, slaHours: true},
+      where: { workspaceId: ws.id, deletedAt: null },
+      select: { name: true, color: true, slaHours: true },
     });
-    const byName = new Map<string, {name: string; color: string; sla_hours: number | null; project_count: number}>();
+    const byName = new Map<string, { name: string; color: string; sla_hours: number | null; project_count: number }>();
     for (const l of labels) {
       const cur = byName.get(l.name);
       if (cur) cur.project_count++;
-      else byName.set(l.name, {name: l.name, color: l.color ?? "", sla_hours: l.slaHours ?? null, project_count: 1});
+      else byName.set(l.name, { name: l.name, color: l.color ?? "", sla_hours: l.slaHours ?? null, project_count: 1 });
     }
-    return {labels: [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))};
+    return { labels: [...byName.values()].sort((a, b) => a.name.localeCompare(b.name)) };
   })
 
   // Update SLA (and color) by label name across every project in the workspace.
-  .put("/:slug/label-sla/", async ({params: {slug}, body, user, set}) => {
+  .put("/:slug/label-sla/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceAction(ws.id, user.id, EProjectAction.LABEL_SLA);
     const rows: any[] = (body as any)?.labels ?? [];
@@ -1226,10 +1275,10 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       if (r.sla_hours === null || typeof r.sla_hours === "number") data.slaHours = r.sla_hours;
       if (typeof r.color === "string" && r.color) data.color = r.color;
       if (Object.keys(data).length) {
-        await prisma.label.updateMany({where: {workspaceId: ws.id, name: r.name, deletedAt: null}, data});
+        await prisma.label.updateMany({ where: { workspaceId: ws.id, name: r.name, deletedAt: null }, data });
       }
     }
-    return {ok: true};
+    return { ok: true };
   })
 
   // ── User issue properties (filters) ─────────────────────────────────────────
@@ -1244,21 +1293,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
    * As pessoas vêm dos membros do PROJETO quando `project_id` é informado —
    * mencionar quem não participa do sistema só geraria notificação inútil.
    */
-  .get("/:slug/entity-search/", async ({params: {slug}, query, user}) => {
+  .get("/:slug/entity-search/", async ({ params: { slug }, query, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
     const q = String((query as any).query ?? "").trim();
     const limite = Math.min(Number((query as any).count ?? 5) || 5, 25);
     const projectId = ((query as any).project_id as string | undefined) || undefined;
-    const tipos = String((query as any).query_type ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    const contem = q ? {contains: q, mode: "insensitive" as const} : undefined;
+    const tipos = String((query as any).query_type ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const contem = q ? { contains: q, mode: "insensitive" as const } : undefined;
 
     const projetosVisiveis = async (): Promise<string[]> =>
       (
         await prisma.projectMember.findMany({
-          where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
-          select: {projectId: true},
+          where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+          select: { projectId: true },
         })
       ).map((m) => m.projectId);
 
@@ -1269,10 +1321,10 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
             workspaceId: ws.id,
             isActive: true,
             deletedAt: null,
-            ...(projectId ? {projectId} : {}),
-            member: {isActive: true, ...(contem ? {OR: [{displayName: contem}, {email: contem}]} : {})},
+            ...(projectId ? { projectId } : {}),
+            member: { isActive: true, ...(contem ? { OR: [{ displayName: contem }, { email: contem }] } : {}) },
           },
-          include: {member: {select: {id: true, displayName: true, avatarUrl: true}}},
+          include: { member: { select: { id: true, displayName: true, avatarUrl: true } } },
           take: limite,
           distinct: ["memberId"],
         });
@@ -1285,13 +1337,20 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
       project: async () => {
         const projetos = await prisma.project.findMany({
-          where: {workspaceId: ws.id, deletedAt: null, id: {in: await projetosVisiveis()}, ...(contem ? {name: contem} : {})},
-          select: {id: true, name: true, identifier: true, emoji: true},
+          where: {
+            workspaceId: ws.id,
+            deletedAt: null,
+            id: { in: await projetosVisiveis() },
+            ...(contem ? { name: contem } : {}),
+          },
+          select: { id: true, name: true, identifier: true, emoji: true },
           take: limite,
         });
         return projetos.map((p) => ({
-          id: p.id, name: p.name, identifier: p.identifier,
-          logo_props: p.emoji ? {in_use: "emoji", emoji: {value: p.emoji}} : null,
+          id: p.id,
+          name: p.name,
+          identifier: p.identifier,
+          logo_props: p.emoji ? { in_use: "emoji", emoji: { value: p.emoji } } : null,
           workspace__slug: slug,
         }));
       },
@@ -1302,53 +1361,88 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
             workspaceId: ws.id,
             deletedAt: null,
             isDraft: false,
-            projectId: projectId ?? {in: await projetosVisiveis()},
-            ...(contem ? {name: contem} : {}),
+            projectId: projectId ?? { in: await projetosVisiveis() },
+            ...(contem ? { name: contem } : {}),
           },
           select: {
-            id: true, name: true, sequenceId: true, projectId: true, priority: true, stateId: true,
-            project: {select: {identifier: true}},
+            id: true,
+            name: true,
+            sequenceId: true,
+            projectId: true,
+            priority: true,
+            stateId: true,
+            project: { select: { identifier: true } },
           },
-          orderBy: {updatedAt: "desc"},
+          orderBy: { updatedAt: "desc" },
           take: limite,
         });
         return chamados.map((i) => ({
-          id: i.id, name: i.name, sequence_id: i.sequenceId, project_id: i.projectId,
-          project__identifier: i.project?.identifier ?? "", priority: i.priority, state_id: i.stateId, type_id: null,
+          id: i.id,
+          name: i.name,
+          sequence_id: i.sequenceId,
+          project_id: i.projectId,
+          project__identifier: i.project?.identifier ?? "",
+          priority: i.priority,
+          state_id: i.stateId,
+          type_id: null,
         }));
       },
 
       cycle: async () => {
         const ciclos = await prisma.cycle.findMany({
-          where: {workspaceId: ws.id, deletedAt: null, projectId: projectId ?? {in: await projetosVisiveis()}, ...(contem ? {name: contem} : {})},
-          select: {id: true, name: true, projectId: true, project: {select: {identifier: true}}},
+          where: {
+            workspaceId: ws.id,
+            deletedAt: null,
+            projectId: projectId ?? { in: await projetosVisiveis() },
+            ...(contem ? { name: contem } : {}),
+          },
+          select: { id: true, name: true, projectId: true, project: { select: { identifier: true } } },
           take: limite,
         });
         return ciclos.map((c) => ({
-          id: c.id, name: c.name, project_id: c.projectId, project__identifier: c.project?.identifier ?? "",
-          status: null, workspace__slug: slug,
+          id: c.id,
+          name: c.name,
+          project_id: c.projectId,
+          project__identifier: c.project?.identifier ?? "",
+          status: null,
+          workspace__slug: slug,
         }));
       },
 
       module: async () => {
         const modulos = await prisma.module.findMany({
-          where: {workspaceId: ws.id, deletedAt: null, projectId: projectId ?? {in: await projetosVisiveis()}, ...(contem ? {name: contem} : {})},
-          select: {id: true, name: true, projectId: true, status: true, project: {select: {identifier: true}}},
+          where: {
+            workspaceId: ws.id,
+            deletedAt: null,
+            projectId: projectId ?? { in: await projetosVisiveis() },
+            ...(contem ? { name: contem } : {}),
+          },
+          select: { id: true, name: true, projectId: true, status: true, project: { select: { identifier: true } } },
           take: limite,
         });
         return modulos.map((m) => ({
-          id: m.id, name: m.name, project_id: m.projectId, project__identifier: m.project?.identifier ?? "",
-          status: m.status, workspace__slug: slug,
+          id: m.id,
+          name: m.name,
+          project_id: m.projectId,
+          project__identifier: m.project?.identifier ?? "",
+          status: m.status,
+          workspace__slug: slug,
         }));
       },
 
       page: async () => {
         const paginas = await prisma.page.findMany({
-          where: {workspaceId: ws.id, deletedAt: null, ...(contem ? {name: contem} : {})},
-          select: {id: true, name: true},
+          where: { workspaceId: ws.id, deletedAt: null, ...(contem ? { name: contem } : {}) },
+          select: { id: true, name: true },
           take: limite,
         });
-        return paginas.map((p) => ({id: p.id, name: p.name, logo_props: null, projects__id: [], workspace__slug: slug}));
+        return paginas.map((p) => ({
+          id: p.id,
+          name: p.name,
+          logo_props: null,
+          projects__id: [],
+          workspace__slug: slug,
+        }));
       },
     };
 
@@ -1364,25 +1458,25 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return resposta;
   })
 
-  .get("/:slug/user-properties/", async ({params: {slug}, user}) => {
+  .get("/:slug/user-properties/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const props = await prisma.workspaceUserProperties.findUnique({
-      where: {workspaceId_userId: {workspaceId: ws.id, userId: user.id}},
+      where: { workspaceId_userId: { workspaceId: ws.id, userId: user.id } },
     });
-    return props ?? {filters: {}, display_filters: {}, display_properties: {}};
+    return props ?? { filters: {}, display_filters: {}, display_properties: {} };
   })
 
-  .patch("/:slug/user-properties/", async ({params: {slug}, body, user}) => {
+  .patch("/:slug/user-properties/", async ({ params: { slug }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
     return prisma.workspaceUserProperties.upsert({
-      where: {workspaceId_userId: {workspaceId: ws.id, userId: user.id}},
+      where: { workspaceId_userId: { workspaceId: ws.id, userId: user.id } },
       update: {
-        ...(b.filters !== undefined && {filters: b.filters}),
-        ...(b.display_filters !== undefined && {displayFilters: b.display_filters}),
-        ...(b.display_properties !== undefined && {displayProperties: b.display_properties}),
+        ...(b.filters !== undefined && { filters: b.filters }),
+        ...(b.display_filters !== undefined && { displayFilters: b.display_filters }),
+        ...(b.display_properties !== undefined && { displayProperties: b.display_properties }),
       },
       create: {
         workspaceId: ws.id,
@@ -1396,30 +1490,30 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Workspace modules / cycles ────────────────────────────────────────────────
 
-  .get("/:slug/modules/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/modules/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     return paginate({
       query: (skip, take) =>
         prisma.module.findMany({
-          where: {workspaceId: ws.id, deletedAt: null},
+          where: { workspaceId: ws.id, deletedAt: null },
           skip,
           take,
-          include: {project: {select: {id: true, name: true, identifier: true}}},
-          orderBy: {createdAt: "desc"},
+          include: { project: { select: { id: true, name: true, identifier: true } } },
+          orderBy: { createdAt: "desc" },
         }),
-      count: () => prisma.module.count({where: {workspaceId: ws.id, deletedAt: null}}),
+      count: () => prisma.module.count({ where: { workspaceId: ws.id, deletedAt: null } }),
       cursor: query.cursor as string | undefined,
     });
   })
 
-  .get("/:slug/cycles/", async ({params: {slug}, user}) => {
+  .get("/:slug/cycles/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const cycles = await prisma.cycle.findMany({
-      where: {workspaceId: ws.id, deletedAt: null},
-      include: {project: {select: {id: true, name: true, identifier: true}}},
-      orderBy: {createdAt: "desc"},
+      where: { workspaceId: ws.id, deletedAt: null },
+      include: { project: { select: { id: true, name: true, identifier: true } } },
+      orderBy: { createdAt: "desc" },
     });
     // Array puro em snake_case: `CycleService.getWorkspaceCycles` tipa o retorno
     // como `ICycle[]` e o store percorre a resposta direto (fetchWorkspaceCycles).
@@ -1429,7 +1523,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Favorites: patch / group ──────────────────────────────────────────────────
 
-  .patch("/:slug/favorites/:favorite_id/", async ({params: {slug, favorite_id}, body, user}) => {
+  .patch("/:slug/favorites/:favorite_id/", async ({ params: { slug, favorite_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -1437,34 +1531,34 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     if (b.name !== undefined) data.name = b.name;
     if (b.entity_type !== undefined) data.entityType = b.entity_type;
     if (b.sequence !== undefined) data.sequence = b.sequence;
-    return prisma.userFavorite.update({where: {id: favorite_id}, data});
+    return prisma.userFavorite.update({ where: { id: favorite_id }, data });
   })
 
-  .patch("/:slug/favorites/:favorite_id/group/", async ({params: {slug, favorite_id}, body, user}) => {
+  .patch("/:slug/favorites/:favorite_id/group/", async ({ params: { slug, favorite_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
     return prisma.userFavorite.update({
-      where: {id: favorite_id},
-      data: {...(b.parent !== undefined && {parentId: b.parent})},
+      where: { id: favorite_id },
+      data: { ...(b.parent !== undefined && { parentId: b.parent }) },
     });
   })
 
   // ── Draft issues ──────────────────────────────────────────────────────────────
 
-  .get("/:slug/draft-issues/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/draft-issues/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const where = {workspaceId: ws.id, createdById: user.id, deletedAt: null};
+    const where = { workspaceId: ws.id, createdById: user.id, deletedAt: null };
     return paginate({
-      query: (skip, take) => prisma.draftIssue.findMany({where, skip, take, orderBy: {createdAt: "desc"}}),
-      count: () => prisma.draftIssue.count({where}),
+      query: (skip, take) => prisma.draftIssue.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
+      count: () => prisma.draftIssue.count({ where }),
       cursor: query.cursor as string | undefined,
       transform: (items) => items.map(serializeDraftIssue),
     });
   })
 
-  .post("/:slug/draft-issues/", async ({params: {slug}, body, user, set}) => {
+  .post("/:slug/draft-issues/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -1483,44 +1577,46 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return serializeDraftIssue(draft);
   })
 
-  .get("/:slug/draft-issues/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .get("/:slug/draft-issues/:pk/", async ({ params: { slug, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const draft = await prisma.draftIssue.findFirst({where: {id: pk, workspaceId: ws.id, deletedAt: null}});
+    const draft = await prisma.draftIssue.findFirst({ where: { id: pk, workspaceId: ws.id, deletedAt: null } });
     if (!draft) {
       set.status = 404;
-      return {detail: "Não encontrado."};
+      return { detail: "Não encontrado." };
     }
     return serializeDraftIssue(draft);
   })
 
-  .patch("/:slug/draft-issues/:pk/", async ({params: {slug, pk}, body, user}) => {
+  .patch("/:slug/draft-issues/:pk/", async ({ params: { slug, pk }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    return serializeDraftIssue(await prisma.draftIssue.update({where: {id: pk}, data: buildDraftData(body as any)}));
+    return serializeDraftIssue(
+      await prisma.draftIssue.update({ where: { id: pk }, data: buildDraftData(body as any) })
+    );
   })
 
-  .delete("/:slug/draft-issues/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .delete("/:slug/draft-issues/:pk/", async ({ params: { slug, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    await prisma.draftIssue.update({where: {id: pk}, data: {deletedAt: new Date()}});
+    await prisma.draftIssue.update({ where: { id: pk }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
   })
 
-  .post("/:slug/draft-to-issue/:draft_id/", async ({params: {slug, draft_id}, user, set}) => {
+  .post("/:slug/draft-to-issue/:draft_id/", async ({ params: { slug, draft_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const draft = await prisma.draftIssue.findFirst({where: {id: draft_id, workspaceId: ws.id, deletedAt: null}});
+    const draft = await prisma.draftIssue.findFirst({ where: { id: draft_id, workspaceId: ws.id, deletedAt: null } });
     if (!draft) {
       set.status = 404;
-      return {detail: "Rascunho não encontrado."};
+      return { detail: "Rascunho não encontrado." };
     }
 
-    const project = await prisma.project.findFirst({where: {id: draft.projectId, deletedAt: null}});
+    const project = await prisma.project.findFirst({ where: { id: draft.projectId, deletedAt: null } });
     if (!project) {
       set.status = 400;
-      return {detail: "Projeto não encontrado."};
+      return { detail: "Projeto não encontrado." };
     }
 
     const issue = await prisma.$transaction(async (tx) => {
@@ -1541,7 +1637,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         },
         include: ISSUE_INCLUDE,
       });
-      await tx.draftIssue.update({where: {id: draft_id}, data: {deletedAt: new Date()}});
+      await tx.draftIssue.update({ where: { id: draft_id }, data: { deletedAt: new Date() } });
       return i;
     });
     set.status = 201;
@@ -1550,25 +1646,49 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── Dashboard (home widgets) ──────────────────────────────────────────────────
 
-  .get("/:slug/dashboard/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/dashboard/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
     const dashboardId = `${ws.id}-home`;
     const DEFAULT_WIDGETS = [
-      {id: `${dashboardId}-overview`, key: "overview_stats", is_visible: true, widget_filters: {}, filters: {}},
-      {id: `${dashboardId}-assigned`, key: "assigned_issues", is_visible: true, widget_filters: {duration: "this_week"}, filters: {}},
-      {id: `${dashboardId}-created`, key: "created_issues", is_visible: true, widget_filters: {duration: "this_week"}, filters: {}},
-      {id: `${dashboardId}-state`, key: "issues_by_state_groups", is_visible: true, widget_filters: {duration: "this_week"}, filters: {}},
-      {id: `${dashboardId}-priority`, key: "issues_by_priority", is_visible: true, widget_filters: {duration: "this_week"}, filters: {}},
-      {id: `${dashboardId}-activity`, key: "recent_activity", is_visible: true, widget_filters: {}, filters: {}},
-      {id: `${dashboardId}-projects`, key: "recent_projects", is_visible: true, widget_filters: {}, filters: {}},
-      {id: `${dashboardId}-collab`, key: "recent_collaborators", is_visible: true, widget_filters: {}, filters: {}},
+      { id: `${dashboardId}-overview`, key: "overview_stats", is_visible: true, widget_filters: {}, filters: {} },
+      {
+        id: `${dashboardId}-assigned`,
+        key: "assigned_issues",
+        is_visible: true,
+        widget_filters: { duration: "this_week" },
+        filters: {},
+      },
+      {
+        id: `${dashboardId}-created`,
+        key: "created_issues",
+        is_visible: true,
+        widget_filters: { duration: "this_week" },
+        filters: {},
+      },
+      {
+        id: `${dashboardId}-state`,
+        key: "issues_by_state_groups",
+        is_visible: true,
+        widget_filters: { duration: "this_week" },
+        filters: {},
+      },
+      {
+        id: `${dashboardId}-priority`,
+        key: "issues_by_priority",
+        is_visible: true,
+        widget_filters: { duration: "this_week" },
+        filters: {},
+      },
+      { id: `${dashboardId}-activity`, key: "recent_activity", is_visible: true, widget_filters: {}, filters: {} },
+      { id: `${dashboardId}-projects`, key: "recent_projects", is_visible: true, widget_filters: {}, filters: {} },
+      { id: `${dashboardId}-collab`, key: "recent_collaborators", is_visible: true, widget_filters: {}, filters: {} },
     ];
-    return {id: dashboardId, name: "Home", widgets: DEFAULT_WIDGETS};
+    return { id: dashboardId, name: "Home", widgets: DEFAULT_WIDGETS };
   })
 
-  .get("/:slug/dashboard/:dashboard_id/", async ({params: {slug, dashboard_id}, user, query}) => {
+  .get("/:slug/dashboard/:dashboard_id/", async ({ params: { slug, dashboard_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
@@ -1581,37 +1701,45 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     if (widgetKey === "overview_stats") {
       const userProjectIds = (
         await prisma.projectMember.findMany({
-          where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
-          select: {projectId: true},
+          where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+          select: { projectId: true },
         })
       ).map((m) => m.projectId);
       const [total, completed, pending, overdue] = await Promise.all([
-        prisma.issue.count({where: {workspaceId: ws.id, projectId: {in: userProjectIds}, deletedAt: null, isDraft: false}}),
         prisma.issue.count({
-          where: {workspaceId: ws.id, projectId: {in: userProjectIds}, deletedAt: null, isDraft: false, state: {group: "completed"}},
+          where: { workspaceId: ws.id, projectId: { in: userProjectIds }, deletedAt: null, isDraft: false },
         }),
         prisma.issue.count({
           where: {
             workspaceId: ws.id,
-            projectId: {in: userProjectIds},
+            projectId: { in: userProjectIds },
             deletedAt: null,
             isDraft: false,
-            state: {group: {in: ["backlog", "unstarted", "started"]}},
+            state: { group: "completed" },
           },
         }),
         prisma.issue.count({
           where: {
             workspaceId: ws.id,
-            projectId: {in: userProjectIds},
+            projectId: { in: userProjectIds },
             deletedAt: null,
             isDraft: false,
-            targetDate: {lt: now},
+            state: { group: { in: ["backlog", "unstarted", "started"] } },
+          },
+        }),
+        prisma.issue.count({
+          where: {
+            workspaceId: ws.id,
+            projectId: { in: userProjectIds },
+            deletedAt: null,
+            isDraft: false,
+            targetDate: { lt: now },
             completedAt: null,
-            state: {group: {notIn: ["completed", "cancelled"]}},
+            state: { group: { notIn: ["completed", "cancelled"] } },
           },
         }),
       ]);
-      return {total_issues: total, completed_issues: completed, pending_issues: pending, overdue_issues: overdue};
+      return { total_issues: total, completed_issues: completed, pending_issues: pending, overdue_issues: overdue };
     }
 
     // Assigned issues
@@ -1622,67 +1750,80 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           deletedAt: null,
           isDraft: false,
           completedAt: null,
-          assignees: {some: {assigneeId: user.id, deletedAt: null}},
+          assignees: { some: { assigneeId: user.id, deletedAt: null } },
         },
         include: {
-          state: {select: {name: true, group: true, color: true}},
-          assignees: {select: {assigneeId: true}},
-          labels: {select: {labelId: true}},
+          state: { select: { name: true, group: true, color: true } },
+          assignees: { select: { assigneeId: true } },
+          labels: { select: { labelId: true } },
         },
-        orderBy: {updatedAt: "desc"},
+        orderBy: { updatedAt: "desc" },
         take: 10,
       });
-      return {issues: issues.map(serializeIssue), total_count: issues.length, next_page_results: false};
+      return { issues: issues.map(serializeIssue), total_count: issues.length, next_page_results: false };
     }
 
     // Created issues
     if (widgetKey === "created_issues") {
       const issues = await prisma.issue.findMany({
-        where: {workspaceId: ws.id, deletedAt: null, isDraft: false, createdById: user.id},
+        where: { workspaceId: ws.id, deletedAt: null, isDraft: false, createdById: user.id },
         include: {
-          state: {select: {name: true, group: true, color: true}},
-          assignees: {select: {assigneeId: true}},
-          labels: {select: {labelId: true}},
+          state: { select: { name: true, group: true, color: true } },
+          assignees: { select: { assigneeId: true } },
+          labels: { select: { labelId: true } },
         },
-        orderBy: {updatedAt: "desc"},
+        orderBy: { updatedAt: "desc" },
         take: 10,
       });
-      return {issues: issues.map(serializeIssue), total_count: issues.length, next_page_results: false};
+      return { issues: issues.map(serializeIssue), total_count: issues.length, next_page_results: false };
     }
 
     // Issues by state groups
     if (widgetKey === "issues_by_state_groups") {
       const groups = await prisma.issue.groupBy({
         by: ["stateId"],
-        where: {workspaceId: ws.id, deletedAt: null, isDraft: false, assignees: {some: {assigneeId: user.id, deletedAt: null}}},
+        where: {
+          workspaceId: ws.id,
+          deletedAt: null,
+          isDraft: false,
+          assignees: { some: { assigneeId: user.id, deletedAt: null } },
+        },
         _count: true,
       });
       const stateIds = groups.map((g) => g.stateId).filter(Boolean) as string[];
-      const states = await prisma.state.findMany({where: {id: {in: stateIds}}, select: {id: true, group: true}});
+      const states = await prisma.state.findMany({
+        where: { id: { in: stateIds } },
+        select: { id: true, group: true },
+      });
       const stateGroupMap = Object.fromEntries(states.map((s) => [s.id, s.group]));
-      const groupCounts: Record<string, number> = {backlog: 0, unstarted: 0, started: 0, completed: 0, cancelled: 0};
+      const groupCounts: Record<string, number> = { backlog: 0, unstarted: 0, started: 0, completed: 0, cancelled: 0 };
       for (const g of groups) {
         const grp = g.stateId ? (stateGroupMap[g.stateId] ?? "backlog") : "backlog";
         groupCounts[grp] = (groupCounts[grp] ?? 0) + g._count;
       }
-      return {data: Object.entries(groupCounts).map(([state, count]) => ({state, count}))};
+      return { data: Object.entries(groupCounts).map(([state, count]) => ({ state, count })) };
     }
 
     // Issues by priority
     if (widgetKey === "issues_by_priority") {
       const groups = await prisma.issue.groupBy({
         by: ["priority"],
-        where: {workspaceId: ws.id, deletedAt: null, isDraft: false, assignees: {some: {assigneeId: user.id, deletedAt: null}}},
+        where: {
+          workspaceId: ws.id,
+          deletedAt: null,
+          isDraft: false,
+          assignees: { some: { assigneeId: user.id, deletedAt: null } },
+        },
         _count: true,
       });
-      return {data: groups.map((g) => ({priority: g.priority, count: g._count}))};
+      return { data: groups.map((g) => ({ priority: g.priority, count: g._count })) };
     }
 
     // Recent activity
     if (widgetKey === "recent_activity") {
       const activities = await prisma.issueActivity.findMany({
-        where: {workspaceId: ws.id, actorId: user.id},
-        orderBy: {createdAt: "desc"},
+        where: { workspaceId: ws.id, actorId: user.id },
+        orderBy: { createdAt: "desc" },
         take: 10,
       });
       return {
@@ -1704,9 +1845,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // Recent projects
     if (widgetKey === "recent_projects") {
       const members = await prisma.projectMember.findMany({
-        where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
-        include: {project: {select: {id: true, name: true, identifier: true, iconProp: true}}},
-        orderBy: {updatedAt: "desc"},
+        where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+        include: { project: { select: { id: true, name: true, identifier: true, iconProp: true } } },
+        orderBy: { updatedAt: "desc" },
         take: 5,
       });
       return {
@@ -1723,13 +1864,19 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     if (widgetKey === "recent_collaborators") {
       const userProjectIds = (
         await prisma.projectMember.findMany({
-          where: {workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null},
-          select: {projectId: true},
+          where: { workspaceId: ws.id, memberId: user.id, isActive: true, deletedAt: null },
+          select: { projectId: true },
         })
       ).map((m) => m.projectId);
       const coworkers = await prisma.projectMember.findMany({
-        where: {workspaceId: ws.id, projectId: {in: userProjectIds}, isActive: true, deletedAt: null, memberId: {not: user.id}},
-        include: {member: {select: {id: true, displayName: true, avatar: true, avatarUrl: true}}},
+        where: {
+          workspaceId: ws.id,
+          projectId: { in: userProjectIds },
+          isActive: true,
+          deletedAt: null,
+          memberId: { not: user.id },
+        },
+        include: { member: { select: { id: true, displayName: true, avatar: true, avatarUrl: true } } },
         distinct: ["memberId"],
         take: 8,
       });
@@ -1744,32 +1891,32 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       };
     }
 
-    return {data: []};
+    return { data: [] };
   })
 
   // ── Quick links ───────────────────────────────────────────────────────────────
 
-  .get("/:slug/quick-links/", async ({params: {slug}, user}) => {
+  .get("/:slug/quick-links/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const quickLinks = await getWorkspaceQuickLinks(ws.id, user.id);
     return quickLinks.map((link) => serializeQuickLink(ws.slug, link));
   })
 
-  .post("/:slug/quick-links/", async ({params: {slug}, body, user, set}) => {
+  .post("/:slug/quick-links/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
     if (!b.url) {
       set.status = 400;
-      return {error: "A URL é obrigatória."};
+      return { error: "A URL é obrigatória." };
     }
 
     const url = normalizeQuickLinkUrl(String(b.url));
     const quickLinks = await getWorkspaceQuickLinks(ws.id, user.id);
     if (quickLinks.some((link) => link.url === url)) {
       set.status = 400;
-      return {error: "Esta URL já existe para este workspace e proprietário"};
+      return { error: "Esta URL já existe para este workspace e proprietário" };
     }
 
     const newLink: QuickLinkRecord = {
@@ -1787,19 +1934,19 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return serializeQuickLink(ws.slug, newLink);
   })
 
-  .get("/:slug/quick-links/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .get("/:slug/quick-links/:pk/", async ({ params: { slug, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const quickLinks = await getWorkspaceQuickLinks(ws.id, user.id);
     const quickLink = quickLinks.find((link) => link.id === pk);
     if (!quickLink) {
       set.status = 404;
-      return {error: "Link rápido não encontrado."};
+      return { error: "Link rápido não encontrado." };
     }
     return serializeQuickLink(ws.slug, quickLink);
   })
 
-  .patch("/:slug/quick-links/:pk/", async ({params: {slug, pk}, body, user, set}) => {
+  .patch("/:slug/quick-links/:pk/", async ({ params: { slug, pk }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -1807,13 +1954,13 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const currentLink = quickLinks.find((link) => link.id === pk);
     if (!currentLink) {
       set.status = 404;
-      return {error: "Link rápido não encontrado."};
+      return { error: "Link rápido não encontrado." };
     }
 
     const nextUrl = b.url !== undefined ? normalizeQuickLinkUrl(String(b.url)) : currentLink.url;
     if (quickLinks.some((link) => link.id !== pk && link.url === nextUrl)) {
       set.status = 400;
-      return {error: "Esta URL já existe para este workspace e proprietário"};
+      return { error: "Esta URL já existe para este workspace e proprietário" };
     }
 
     const updatedLink: QuickLinkRecord = {
@@ -1828,14 +1975,14 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     return serializeQuickLink(ws.slug, updatedLink);
   })
 
-  .delete("/:slug/quick-links/:pk/", async ({params: {slug, pk}, user, set}) => {
+  .delete("/:slug/quick-links/:pk/", async ({ params: { slug, pk }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const quickLinks = await getWorkspaceQuickLinks(ws.id, user.id);
     const nextLinks = quickLinks.filter((link) => link.id !== pk);
     if (nextLinks.length === quickLinks.length) {
       set.status = 404;
-      return {error: "Link rápido não encontrado."};
+      return { error: "Link rápido não encontrado." };
     }
     await saveWorkspaceQuickLinks(ws.id, user.id, nextLinks);
     set.status = 204;
@@ -1846,34 +1993,34 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // Per-user sidebar navigation preferences (pinned items + order), persisted in
   // a WorkspaceSetting keyed by user. Map shape: { [key]: {key, is_pinned, sort_order} }.
-  .get("/:slug/sidebar-preferences/", async ({params: {slug}, user}) => {
+  .get("/:slug/sidebar-preferences/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     return readPreferenciasDaBarra(ws.id, user.id);
   })
 
   // Bulk: an array of {key, is_pinned, sort_order}. A missing field keeps the stored one.
-  .patch("/:slug/sidebar-preferences/", async ({params: {slug}, body, user}) => {
+  .patch("/:slug/sidebar-preferences/", async ({ params: { slug }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const recebidas = (Array.isArray(body) ? body : []).filter(isPreferenciaRecebida);
     return applyPreferenciasDaBarra(ws.id, user.id, recebidas);
   })
 
-  .patch("/:slug/sidebar-preferences/:key/", async ({params: {slug, key}, body, user}) => {
+  .patch("/:slug/sidebar-preferences/:key/", async ({ params: { slug, key }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const mapa = await applyPreferenciasDaBarra(ws.id, user.id, [{...(body as object), key}]);
+    const mapa = await applyPreferenciasDaBarra(ws.id, user.id, [{ ...(body as object), key }]);
     return mapa[key];
   })
 
   // ── User-favorites (alias for /favorites/ — Django uses this path) ───────────
 
-  .get("/:slug/user-favorites/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/user-favorites/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const where = {workspaceId: ws.id, userId: user.id, deletedAt: null};
-    const favs = await prisma.userFavorite.findMany({where, orderBy: {sequence: "asc"}});
+    const where = { workspaceId: ws.id, userId: user.id, deletedAt: null };
+    const favs = await prisma.userFavorite.findMany({ where, orderBy: { sequence: "asc" } });
     return favs.map((f) => ({
       id: f.id,
       workspace: ws.id,
@@ -1887,7 +2034,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     }));
   })
 
-  .post("/:slug/user-favorites/", async ({params: {slug}, body, user, set}) => {
+  .post("/:slug/user-favorites/", async ({ params: { slug }, body, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -1913,7 +2060,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     };
   })
 
-  .patch("/:slug/user-favorites/:fav_id/", async ({params: {slug, fav_id}, body, user}) => {
+  .patch("/:slug/user-favorites/:fav_id/", async ({ params: { slug, fav_id }, body, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const b = body as any;
@@ -1921,60 +2068,74 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     if (b.name !== undefined) data.name = b.name;
     if (b.sequence !== undefined) data.sequence = b.sequence;
     if (b.parent !== undefined) data.parentId = b.parent;
-    const fav = await prisma.userFavorite.update({where: {id: fav_id}, data});
-    return {id: fav.id, workspace: ws.id, entity_type: fav.entityType, name: fav.name, sequence: fav.sequence};
+    const fav = await prisma.userFavorite.update({ where: { id: fav_id }, data });
+    return { id: fav.id, workspace: ws.id, entity_type: fav.entityType, name: fav.name, sequence: fav.sequence };
   })
 
-  .delete("/:slug/user-favorites/:fav_id/", async ({params: {slug, fav_id}, user, set}) => {
+  .delete("/:slug/user-favorites/:fav_id/", async ({ params: { slug, fav_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    await prisma.userFavorite.update({where: {id: fav_id}, data: {deletedAt: new Date()}});
+    await prisma.userFavorite.update({ where: { id: fav_id }, data: { deletedAt: new Date() } });
     set.status = 204;
     return null;
   })
 
   // ── User profile page (profile + issue stats per user) ───────────────────────
 
-  .get("/:slug/user-profile/:user_id/", async ({params: {slug, user_id}, user}) => {
+  .get("/:slug/user-profile/:user_id/", async ({ params: { slug, user_id }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const targetUser = await prisma.user.findFirst({where: {id: user_id}});
-    if (!targetUser) return {project_data: [], user_data: null};
+    const targetUser = await prisma.user.findFirst({ where: { id: user_id } });
+    if (!targetUser) return { project_data: [], user_data: null };
 
     const projects = await prisma.project.findMany({
-      where: {workspaceId: ws.id, deletedAt: null, members: {some: {memberId: user.id, isActive: true, deletedAt: null}}},
-      select: {id: true},
+      where: {
+        workspaceId: ws.id,
+        deletedAt: null,
+        members: { some: { memberId: user.id, isActive: true, deletedAt: null } },
+      },
+      select: { id: true },
     });
     const projectIds = projects.map((p) => p.id);
 
     const projectData = await Promise.all(
       projectIds.map(async (pid) => {
         const [assigned, completed, created, pending] = await Promise.all([
-          prisma.issueAssignee.count({where: {workspaceId: ws.id, projectId: pid, assigneeId: user_id, deletedAt: null}}),
+          prisma.issueAssignee.count({
+            where: { workspaceId: ws.id, projectId: pid, assigneeId: user_id, deletedAt: null },
+          }),
           prisma.issue.count({
             where: {
               workspaceId: ws.id,
               projectId: pid,
               deletedAt: null,
               isDraft: false,
-              state: {group: "completed"},
-              assignees: {some: {assigneeId: user_id, deletedAt: null}},
+              state: { group: "completed" },
+              assignees: { some: { assigneeId: user_id, deletedAt: null } },
             },
           }),
-          prisma.issue.count({where: {workspaceId: ws.id, projectId: pid, deletedAt: null, isDraft: false, createdById: user_id}}),
+          prisma.issue.count({
+            where: { workspaceId: ws.id, projectId: pid, deletedAt: null, isDraft: false, createdById: user_id },
+          }),
           prisma.issue.count({
             where: {
               workspaceId: ws.id,
               projectId: pid,
               deletedAt: null,
               isDraft: false,
-              state: {group: {in: ["backlog", "unstarted", "started"]}},
-              assignees: {some: {assigneeId: user_id, deletedAt: null}},
+              state: { group: { in: ["backlog", "unstarted", "started"] } },
+              assignees: { some: { assigneeId: user_id, deletedAt: null } },
             },
           }),
         ]);
-        return {id: pid, assigned_issues: assigned, completed_issues: completed, created_issues: created, pending_issues: pending};
-      }),
+        return {
+          id: pid,
+          assigned_issues: assigned,
+          completed_issues: completed,
+          created_issues: created,
+          pending_issues: pending,
+        };
+      })
     );
 
     return {
@@ -1994,30 +2155,38 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── User stats ────────────────────────────────────────────────────────────────
 
-  .get("/:slug/user-stats/:user_id/", async ({params: {slug, user_id}, user, query}) => {
+  .get("/:slug/user-stats/:user_id/", async ({ params: { slug, user_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const where = {workspaceId: ws.id, deletedAt: null, isDraft: false, assignees: {some: {assigneeId: user_id, deletedAt: null}}};
+    const where = {
+      workspaceId: ws.id,
+      deletedAt: null,
+      isDraft: false,
+      assignees: { some: { assigneeId: user_id, deletedAt: null } },
+    };
 
     const [stateGroups, priorities, created, assigned, completed, pending, subscribed] = await Promise.all([
-      prisma.issue.groupBy({by: ["stateId"], where, _count: {id: true}}).then(async (rows) => {
+      prisma.issue.groupBy({ by: ["stateId"], where, _count: { id: true } }).then(async (rows) => {
         const stateIds = rows.map((r) => r.stateId).filter(Boolean) as string[];
-        const states = await prisma.state.findMany({where: {id: {in: stateIds}}, select: {id: true, group: true}});
+        const states = await prisma.state.findMany({
+          where: { id: { in: stateIds } },
+          select: { id: true, group: true },
+        });
         const groupMap: Record<string, number> = {};
         for (const r of rows) {
           const g = states.find((s) => s.id === r.stateId)?.group ?? "backlog";
           groupMap[g] = (groupMap[g] ?? 0) + r._count.id;
         }
-        return Object.entries(groupMap).map(([state_group, state_count]) => ({state_group, state_count}));
+        return Object.entries(groupMap).map(([state_group, state_count]) => ({ state_group, state_count }));
       }),
       prisma.issue
-        .groupBy({by: ["priority"], where, _count: {id: true}})
-        .then((rows) => rows.map((r) => ({priority: r.priority, priority_count: r._count.id}))),
-      prisma.issue.count({where: {workspaceId: ws.id, deletedAt: null, isDraft: false, createdById: user_id}}),
-      prisma.issueAssignee.count({where: {workspaceId: ws.id, assigneeId: user_id, deletedAt: null}}),
-      prisma.issue.count({where: {...where, state: {group: "completed"}}}),
-      prisma.issue.count({where: {...where, state: {group: {in: ["backlog", "unstarted", "started"]}}}}),
-      prisma.issueSubscriber.count({where: {workspaceId: ws.id, subscriberId: user_id}}),
+        .groupBy({ by: ["priority"], where, _count: { id: true } })
+        .then((rows) => rows.map((r) => ({ priority: r.priority, priority_count: r._count.id }))),
+      prisma.issue.count({ where: { workspaceId: ws.id, deletedAt: null, isDraft: false, createdById: user_id } }),
+      prisma.issueAssignee.count({ where: { workspaceId: ws.id, assigneeId: user_id, deletedAt: null } }),
+      prisma.issue.count({ where: { ...where, state: { group: "completed" } } }),
+      prisma.issue.count({ where: { ...where, state: { group: { in: ["backlog", "unstarted", "started"] } } } }),
+      prisma.issueSubscriber.count({ where: { workspaceId: ws.id, subscriberId: user_id } }),
     ]);
 
     return {
@@ -2035,18 +2204,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
 
   // ── User activity (paginated issue activities for a user) ─────────────────────
 
-  .get("/:slug/user-activity/:user_id/", async ({params: {slug, user_id}, user, query}) => {
+  .get("/:slug/user-activity/:user_id/", async ({ params: { slug, user_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const where = {workspaceId: ws.id, actorId: user_id, deletedAt: null, ...withoutMarcadorInterno};
+    const where = { workspaceId: ws.id, actorId: user_id, deletedAt: null, ...withoutMarcadorInterno };
     const perPage = query.per_page ? Number(query.per_page) : 10;
     const pagina = await paginate({
       query: (skip, take) =>
-        prisma.issueActivity.findMany({where, skip, take, orderBy: {createdAt: "desc"}, include: ATIVIDADE_INCLUDE}),
-      count: () => prisma.issueActivity.count({where}),
+        prisma.issueActivity.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { createdAt: "desc" },
+          include: ATIVIDADE_INCLUDE,
+        }),
+      count: () => prisma.issueActivity.count({ where }),
       cursor: query.cursor as string | undefined,
       perPage,
-      transform: (linhas) => serializeTrilha(linhas, {id: ws.id, name: ws.name, slug: ws.slug}),
+      transform: (linhas) => serializeTrilha(linhas, { id: ws.id, name: ws.name, slug: ws.slug }),
     });
     // A aba Atividade pagina por `total_pages`/`count` (IUserActivityResponse);
     // sem eles o botão "Carregar mais" nunca aparecia.
@@ -2061,7 +2236,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // ── User issues (for profile/my-issues board view) ────────────────────────────
   // Returns TIssuesResponse with paginated issues assigned to a specific user
 
-  .get("/:slug/user-issues/:user_id/", async ({params: {slug, user_id}, user, query}) => {
+  .get("/:slug/user-issues/:user_id/", async ({ params: { slug, user_id }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
@@ -2078,18 +2253,18 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       workspaceId: ws.id,
       deletedAt: null,
       isDraft: false,
-      assignees: {some: {assigneeId: user_id, deletedAt: null}},
+      assignees: { some: { assigneeId: user_id, deletedAt: null } },
     };
 
     const ISSUE_INCLUDE = {
-      state: {select: {id: true, name: true, color: true, group: true}},
-      assignees: {where: {deletedAt: null}, select: {assigneeId: true}},
-      labels: {where: {deletedAt: null}, select: {labelId: true}},
+      state: { select: { id: true, name: true, color: true, group: true } },
+      assignees: { where: { deletedAt: null }, select: { assigneeId: true } },
+      labels: { where: { deletedAt: null }, select: { labelId: true } },
     };
 
     // `order_by` chega no vocabulário do front (snake_case, Django) — a
     // tradução para o Prisma é a mesma das demais listagens.
-    const ordenacao = resolverOrdenacao(orderBy, {updatedAt: "desc"});
+    const ordenacao = resolverOrdenacao(orderBy, { updatedAt: "desc" });
 
     const [issues, totalCount] = await Promise.all([
       prisma.issue.findMany({
@@ -2099,7 +2274,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         include: ISSUE_INCLUDE,
         orderBy: ordenacao,
       }),
-      prisma.issue.count({where}),
+      prisma.issue.count({ where }),
     ]);
 
     const hasNext = issues.length > perPage;
@@ -2128,7 +2303,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         created_at: i.createdAt?.toISOString(),
         updated_at: i.updatedAt?.toISOString(),
         target_date: vencimento(i.targetDate),
-        completed_at: i.completedAt ? (i.completedAt instanceof Date ? i.completedAt.toISOString() : i.completedAt) : null,
+        completed_at: i.completedAt
+          ? i.completedAt instanceof Date
+            ? i.completedAt.toISOString()
+            : i.completedAt
+          : null,
         assignee_ids: i.assignees?.map((a: any) => a.assigneeId) ?? [],
         label_ids: i.labels?.map((l: any) => l.labelId) ?? [],
         state__color: i.state?.color ?? "",
@@ -2142,7 +2321,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
   // The frontend calls /issues/ or /issues-detail/ depending on expand params.
   // Scope is limited to projects where the current user is an active member.
 
-  .get("/:slug/issues/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/issues/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
@@ -2155,23 +2334,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       workspaceId: ws.id,
       deletedAt: null,
       isDraft: false,
-      projectId: {in: userProjectIds},
+      projectId: { in: userProjectIds },
     };
 
     if (query.entity_id) where.entityId = query.entity_id;
-    if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.type === "my_issues") where.assignees = { some: { assigneeId: user.id, deletedAt: null } };
     if (query.unread === "true") Object.assign(where, whereNaoLidoPor(user.id));
 
     // Parse the frontend `filters` JSON param (+ loose params) and apply it.
     const filters = normalizeFilters(query as Record<string, unknown>);
-    await applyIssueFilters(where, filters, {workspaceId: ws.id});
+    await applyIssueFilters(where, filters, { workspaceId: ws.id });
     // Project filter must stay within the user's accessible projects.
     if (query.project_id) where.projectId = query.project_id;
-    else if (filters.project?.length) where.projectId = {in: filters.project.filter((p) => userProjectIds.includes(p))};
+    else if (filters.project?.length)
+      where.projectId = { in: filters.project.filter((p) => userProjectIds.includes(p)) };
     // "me" alias for assignees
-    if (filters.assignees?.includes("me")) where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (filters.assignees?.includes("me")) where.assignees = { some: { assigneeId: user.id, deletedAt: null } };
 
-    const orderBy = resolverOrdenacao(query.order_by, {updatedAt: "desc"});
+    const orderBy = resolverOrdenacao(query.order_by, { updatedAt: "desc" });
 
     // ── Grouped response (kanban / grouped list / grouped layouts) ─────────────
     const groupBy = query.group_by as string | undefined;
@@ -2183,7 +2363,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     // na casinha de sábado. Ver @utils/prazo.
     if (groupBy === "target_date") {
       const calIssues = await prisma.issue.findMany({
-        where: {...where, targetDate: {not: null}},
+        where: { ...where, targetDate: { not: null } },
         include: ISSUE_INCLUDE,
         orderBy,
         take: 2000,
@@ -2224,9 +2404,9 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       let groupValues: (string | null)[] = [];
       if (groupBy === "state_id") {
         const states = await prisma.state.findMany({
-          where: {projectId: {in: accessibleProjectIds}, deletedAt: null},
-          select: {id: true},
-          orderBy: {sequence: "asc"},
+          where: { projectId: { in: accessibleProjectIds }, deletedAt: null },
+          select: { id: true },
+          orderBy: { sequence: "asc" },
         });
         groupValues = states.map((s) => s.id);
       } else if (groupBy === "priority") {
@@ -2239,25 +2419,28 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
         groupValues = [];
       }
 
-      const total_count = await prisma.issue.count({where});
+      const total_count = await prisma.issue.count({ where });
       const results: Record<string, any> = {};
       for (const gv of groupValues) {
-        const groupWhere: any = {...where};
+        const groupWhere: any = { ...where };
         if (groupBy === "state_id") groupWhere.stateId = restringirAoGrupo(where.stateId, gv);
         else if (groupBy === "priority") groupWhere.priority = restringirAoGrupo(where.priority, gv);
         else if (groupBy === "project_id") groupWhere.projectId = restringirAoGrupo(where.projectId, gv);
         else if (groupBy === "state__group") {
           const stateIds = await prisma.state.findMany({
-            where: {projectId: {in: accessibleProjectIds}, group: gv as string, deletedAt: null},
-            select: {id: true},
+            where: { projectId: { in: accessibleProjectIds }, group: gv as string, deletedAt: null },
+            select: { id: true },
           });
-          groupWhere.stateId = restringirAoGrupo(where.stateId, stateIds.map((s) => s.id));
+          groupWhere.stateId = restringirAoGrupo(
+            where.stateId,
+            stateIds.map((s) => s.id)
+          );
         }
         const [groupIssues, groupCount] = await Promise.all([
           prisma.issue
-            .findMany({where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage})
+            .findMany({ where: groupWhere, include: ISSUE_INCLUDE, orderBy, take: perPage })
             .then((chamados) => withNaoLido(user.id, chamados)),
-          prisma.issue.count({where: groupWhere}),
+          prisma.issue.count({ where: groupWhere }),
         ]);
         results[gv ?? "none"] = {
           results: groupIssues.map(serializeIssue),
@@ -2268,19 +2451,26 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           prev_page_results: false,
         };
       }
-      return {total_count, results, next_cursor: null, prev_cursor: null, next_page_results: false, prev_page_results: false};
+      return {
+        total_count,
+        results,
+        next_cursor: null,
+        prev_cursor: null,
+        next_page_results: false,
+        prev_page_results: false,
+      };
     }
 
     return paginate({
-      query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
-      count: () => prisma.issue.count({where}),
+      query: (skip, take) => prisma.issue.findMany({ where, skip, take, include: ISSUE_INCLUDE, orderBy }),
+      count: () => prisma.issue.count({ where }),
       cursor: query.cursor as string | undefined,
       transform: async (items) => (await withNaoLido(user.id, items)).map(serializeIssue),
     });
   })
 
   // Alias: frontend requests /issues-detail/ when it needs relation expansion
-  .get("/:slug/issues-detail/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/issues-detail/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
@@ -2292,37 +2482,38 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       workspaceId: ws.id,
       deletedAt: null,
       isDraft: false,
-      projectId: {in: userProjectIds},
+      projectId: { in: userProjectIds },
     };
 
-    if (query.type === "my_issues") where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    if (query.type === "my_issues") where.assignees = { some: { assigneeId: user.id, deletedAt: null } };
     if (query.unread === "true") Object.assign(where, whereNaoLidoPor(user.id));
 
     const filters = normalizeFilters(query as Record<string, unknown>);
-    await applyIssueFilters(where, filters, {workspaceId: ws.id});
+    await applyIssueFilters(where, filters, { workspaceId: ws.id });
     if (query.project_id) where.projectId = query.project_id;
-    else if (filters.project?.length) where.projectId = {in: filters.project.filter((p) => userProjectIds.includes(p))};
-    if (filters.assignees?.includes("me")) where.assignees = {some: {assigneeId: user.id, deletedAt: null}};
+    else if (filters.project?.length)
+      where.projectId = { in: filters.project.filter((p) => userProjectIds.includes(p)) };
+    if (filters.assignees?.includes("me")) where.assignees = { some: { assigneeId: user.id, deletedAt: null } };
 
-    const orderBy = resolverOrdenacao(query.order_by, {updatedAt: "desc"});
+    const orderBy = resolverOrdenacao(query.order_by, { updatedAt: "desc" });
 
     return paginate({
-      query: (skip, take) => prisma.issue.findMany({where, skip, take, include: ISSUE_INCLUDE, orderBy}),
-      count: () => prisma.issue.count({where}),
+      query: (skip, take) => prisma.issue.findMany({ where, skip, take, include: ISSUE_INCLUDE, orderBy }),
+      count: () => prisma.issue.count({ where }),
       cursor: query.cursor as string | undefined,
       transform: async (items) => (await withNaoLido(user.id, items)).map(serializeIssue),
     });
   })
 
   // ── Critical (urgent) issues — unresolved across all workspace projects ──────
-  .get("/:slug/urgent-issues/", async ({params: {slug}, user}) => {
+  .get("/:slug/urgent-issues/", async ({ params: { slug }, user }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     return listUrgentes(ws.id);
   })
 
   // ── Global intake: pending intakes across all projects ────────────────────
-  .get("/:slug/global-intake-issues/", async ({params: {slug}, user, query}) => {
+  .get("/:slug/global-intake-issues/", async ({ params: { slug }, user, query }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
 
@@ -2339,7 +2530,7 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
     const page = Number(cursor.split(":")[1] ?? 0);
     const skip = page * perPage;
 
-    const where = {workspaceId: ws.id, projectId: {in: userProjectIds}, deletedAt: null, ...filtroDaSituacao};
+    const where = { workspaceId: ws.id, projectId: { in: userProjectIds }, deletedAt: null, ...filtroDaSituacao };
 
     const [intakeIssues, total] = await Promise.all([
       prisma.intakeIssue.findMany({
@@ -2358,21 +2549,24 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
               ticketYear: true,
               createdAt: true,
               updatedAt: true,
-              state: {select: {group: true, name: true}},
-              entity: {select: {id: true, name: true}},
-              assignees: {where: {deletedAt: null}, select: {assigneeId: true}},
+              state: { select: { group: true, name: true } },
+              entity: { select: { id: true, name: true } },
+              assignees: { where: { deletedAt: null }, select: { assigneeId: true } },
             },
           },
         },
-        orderBy: {createdAt: "desc"},
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.intakeIssue.count({where}),
+      prisma.intakeIssue.count({ where }),
     ]);
 
     // Fetch project data separately
     const projectIds = [...new Set(intakeIssues.map((ii: any) => ii.projectId).filter(Boolean))];
     const projects = projectIds.length
-      ? await prisma.project.findMany({where: {id: {in: projectIds as string[]}}, select: {id: true, identifier: true, name: true}})
+      ? await prisma.project.findMany({
+          where: { id: { in: projectIds as string[] } },
+          select: { id: true, identifier: true, name: true },
+        })
       : [];
     const projectMap = Object.fromEntries(projects.map((p: any) => [p.id, p]));
     // Onde o pedido está e com quem: a dúvida de quem abriu (testes da nova intranet).
@@ -2380,7 +2574,11 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
       ws.id,
       intakeIssues
         .filter((ii: any) => ii.issue)
-        .map((ii: any) => ({id: ii.issue.id, state: ii.issue.state, assigneeIds: ii.issue.assignees.map((a: any) => a.assigneeId)})),
+        .map((ii: any) => ({
+          id: ii.issue.id,
+          state: ii.issue.state,
+          assigneeIds: ii.issue.assignees.map((a: any) => a.assigneeId),
+        }))
     );
 
     const hasNext = intakeIssues.length > perPage;
@@ -2399,8 +2597,8 @@ export const workspaceModule = new Elysia({prefix: "/workspaces"})
           situacao: readSituacao(ii.status ?? -2, ii.issue?.state?.group ?? null),
           source: ii.source ?? "IN_APP",
           created_at: ii.createdAt?.toISOString(),
-          project: proj ? {id: proj.id, identifier: proj.identifier, name: proj.name} : null,
-          entity: ii.issue?.entity ? {id: ii.issue.entity.id, name: ii.issue.entity.name} : null,
+          project: proj ? { id: proj.id, identifier: proj.identifier, name: proj.name } : null,
+          entity: ii.issue?.entity ? { id: ii.issue.entity.id, name: ii.issue.entity.name } : null,
           setor: ii.issue ? (setores.get(ii.issue.id) ?? null) : null,
           issue: ii.issue
             ? {

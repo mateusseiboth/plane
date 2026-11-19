@@ -19,7 +19,8 @@ export type ConfirmacaoDaSolicitacao = {
 };
 
 const AVISO_NORMAL = "Ela está na triagem do sistema.";
-const AVISO_CLIENTE_PARADO = "Cliente parado. O Setor de Qualidade foi comunicado sobre a situação, com prioridade urgente.";
+const AVISO_CLIENTE_PARADO =
+  "Cliente parado. O Setor de Qualidade foi comunicado sobre a situação, com prioridade urgente.";
 
 export const buildConfirmacaoDaSolicitacao = (
   aberta: SolicitacaoAberta,

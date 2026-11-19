@@ -39,11 +39,15 @@ const ABA_DA_TRIAGEM_DO_SISTEMA: Record<string, EInboxIssueCurrentTab> = {
 };
 
 class GlobalIntakeService extends APIService {
-  constructor() { super(API_BASE_URL); }
+  constructor() {
+    super(API_BASE_URL);
+  }
   list(slug: string, aba: string) {
     return this.get(`/api/workspaces/${slug}/global-intake-issues/`, {
-      params: {status: aba, per_page: 100, cursor: "100:0:0"},
-    }).then((r) => r?.data?.results ?? []).catch(() => []);
+      params: { status: aba, per_page: 100, cursor: "100:0:0" },
+    })
+      .then((r) => r?.data?.results ?? [])
+      .catch(() => []);
   }
 }
 
@@ -64,17 +68,13 @@ function GlobalIntakePage() {
   // A lista da barra lateral é longa (um item por sistema): sem busca, achar um
   // sistema pelo nome vira rolagem no olho.
   const [buscaProjeto, setBuscaProjeto] = useState("");
-  const todosProjetos = (joinedProjectIds ?? [])
-    .map((id) => getProjectById(id))
-    .filter((p) => !!p);
+  const todosProjetos = (joinedProjectIds ?? []).map((id) => getProjectById(id)).filter((p) => !!p);
   const termo = buscaProjeto.trim().toLowerCase();
   const intakeProjects = termo
     ? todosProjetos.filter((p) => `${p?.name ?? ""} ${p?.identifier ?? ""}`.toLowerCase().includes(termo))
     : todosProjetos;
 
-  const activeProject = selectedProjectId
-    ? intakeProjects.find((p) => p?.id === selectedProjectId)
-    : undefined;
+  const activeProject = selectedProjectId ? intakeProjects.find((p) => p?.id === selectedProjectId) : undefined;
 
   const rotulo = t(readRotuloDaTriagem(can));
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace.name} - ${rotulo}` : rotulo;
@@ -90,7 +90,8 @@ function GlobalIntakePage() {
     // Sem a função carregada a aba padrão ainda não é conhecida.
     if (activeProject || !workspaceSlug || isAcoesLoading) return;
     setLoadingAll(true);
-    globalIntakeService.list(workspaceSlug.toString(), statusFilter)
+    globalIntakeService
+      .list(workspaceSlug.toString(), statusFilter)
       .then(setAllIntakes)
       .finally(() => setLoadingAll(false));
   }, [workspaceSlug, activeProject, statusFilter, isAcoesLoading]);
@@ -119,7 +120,7 @@ function GlobalIntakePage() {
           <Link
             href={`/${workspaceSlug}/global-intake/`}
             className={cn(
-              "flex w-full items-center gap-2 px-4 py-2 text-left text-13 hover:bg-surface-2 transition-colors",
+              "flex w-full items-center gap-2 px-4 py-2 text-left text-13 transition-colors hover:bg-surface-2",
               !activeProject && "bg-surface-1-80 font-medium"
             )}
           >
@@ -127,7 +128,7 @@ function GlobalIntakePage() {
             <span>Todos os sistemas</span>
           </Link>
           {intakeProjects.length === 0 && (
-            <p className="px-4 py-3 text-xs text-secondary">
+            <p className="text-xs px-4 py-3 text-secondary">
               {termo ? `Nenhum sistema com "${buscaProjeto}".` : "Nenhum sistema encontrado."}
             </p>
           )}
@@ -139,7 +140,7 @@ function GlobalIntakePage() {
                 key={project.id}
                 href={`/${workspaceSlug}/global-intake/?projectId=${project.id}`}
                 className={cn(
-                  "flex w-full items-center gap-2 px-4 py-2 text-left text-13 hover:bg-surface-2 transition-colors",
+                  "flex w-full items-center gap-2 px-4 py-2 text-left text-13 transition-colors hover:bg-surface-2",
                   isActive && "bg-surface-1-80 font-medium"
                 )}
               >
@@ -184,7 +185,7 @@ function GlobalIntakePage() {
                   documentTitle="Solicitações"
                   auditEntity="intake"
                   auditEntityId={currentWorkspace?.id ?? ""}
-                  auditMetadata={{escopo: "listagem"}}
+                  auditMetadata={{ escopo: "listagem" }}
                 />
               </div>
             </div>
@@ -206,30 +207,40 @@ function GlobalIntakePage() {
                   <p className="text-sm">Nenhuma solicitação com status "{readAba(statusFilter)?.rotulo}".</p>
                 </div>
               )}
-              {!loadingAll && allIntakes.map((intake: any) => {
-                const linha = buildLinhaDaSolicitacao(intake);
-                return (
-                <Link
-                  key={intake.id}
-                  href={`/${workspaceSlug}/global-intake/?projectId=${intake.project?.id}&inboxIssueId=${intake.issue?.id}&currentTab=${readAbaDaTriagemDoSistema(intake.status)}`}
-                  className="flex items-center gap-3 border-b border-subtle px-6 py-3 hover:bg-surface-2 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-10 font-medium", readAbaDaSolicitacao(intake)?.cor ?? "bg-surface-2 text-secondary")}>
-                        {readAbaDaSolicitacao(intake)?.rotulo ?? "?"}
-                      </span>
-                      {linha.numero && <span className="shrink-0 font-mono text-11 font-semibold text-primary">{linha.numero}</span>}
-                      {linha.noSistema && <span className="shrink-0 text-11 text-tertiary">{linha.noSistema}</span>}
-                      {linha.entidade && <span className="truncate text-11 text-secondary">{linha.entidade}</span>}
-                    </div>
-                    <p className="mt-1 truncate text-13">{intake.issue?.name ?? "Sem título"}</p>
-                    {linha.ondeEsta && <p className="mt-0.5 text-11 text-tertiary">{linha.ondeEsta}</p>}
-                  </div>
-                  <span className="shrink-0 text-11 text-tertiary">{calculateTimeAgo(intake.created_at)}</span>
-                </Link>
-                );
-              })}
+              {!loadingAll &&
+                allIntakes.map((intake: any) => {
+                  const linha = buildLinhaDaSolicitacao(intake);
+                  return (
+                    <Link
+                      key={intake.id}
+                      href={`/${workspaceSlug}/global-intake/?projectId=${intake.project?.id}&inboxIssueId=${intake.issue?.id}&currentTab=${readAbaDaTriagemDoSistema(intake.status)}`}
+                      className="flex items-center gap-3 border-b border-subtle px-6 py-3 transition-colors hover:bg-surface-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={cn(
+                              "shrink-0 rounded px-1.5 py-0.5 text-10 font-medium",
+                              readAbaDaSolicitacao(intake)?.cor ?? "bg-surface-2 text-secondary"
+                            )}
+                          >
+                            {readAbaDaSolicitacao(intake)?.rotulo ?? "?"}
+                          </span>
+                          {linha.numero && (
+                            <span className="font-mono shrink-0 text-11 font-semibold text-primary">
+                              {linha.numero}
+                            </span>
+                          )}
+                          {linha.noSistema && <span className="shrink-0 text-11 text-tertiary">{linha.noSistema}</span>}
+                          {linha.entidade && <span className="truncate text-11 text-secondary">{linha.entidade}</span>}
+                        </div>
+                        <p className="mt-1 truncate text-13">{intake.issue?.name ?? "Sem título"}</p>
+                        {linha.ondeEsta && <p className="mt-0.5 text-11 text-tertiary">{linha.ondeEsta}</p>}
+                      </div>
+                      <span className="shrink-0 text-11 text-tertiary">{calculateTimeAgo(intake.created_at)}</span>
+                    </Link>
+                  );
+                })}
             </div>
           </div>
         )}

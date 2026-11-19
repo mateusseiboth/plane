@@ -33,7 +33,15 @@ describe("formatNumeroDoChamado", () => {
 
 describe("buildNumerosDaSolicitacao", () => {
   it("junta o número anual, o do sistema e o nome do sistema", () => {
-    const issue = { id: "c1", name: "Guia", projectId: "p1", stateId: "s1", sequenceId: 7, ticketSequence: 12, ticketYear: 2026 };
+    const issue = {
+      id: "c1",
+      name: "Guia",
+      projectId: "p1",
+      stateId: "s1",
+      sequenceId: 7,
+      ticketSequence: 12,
+      ticketYear: 2026,
+    };
     expect(buildNumerosDaSolicitacao(issue, { identifier: "RECUR1", name: "Recursos Humanos" })).toEqual({
       id: "c1",
       name: "Guia",

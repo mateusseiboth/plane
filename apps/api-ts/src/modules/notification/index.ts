@@ -4,7 +4,6 @@ import prisma from "@db";
 import { paginate } from "@utils/pagination";
 import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
 
-
 /**
  * Serializa a notificação no contrato que o frontend consome.
  *
@@ -15,7 +14,7 @@ import { getWorkspaceOrFail, requireWorkspaceMember } from "@utils/workspace";
  */
 function serializeNotification(n: any, chamado?: any) {
   const autor = n.actor;
-  const conteudo = (n.data ?? {}) as {type?: string; from?: string; to?: string; urgente?: boolean};
+  const conteudo = (n.data ?? {}) as { type?: string; from?: string; to?: string; urgente?: boolean };
   return {
     id: n.id,
     title: n.title,
@@ -107,7 +106,17 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
           take,
           orderBy: { createdAt: "desc" },
           include: {
-            actor: { select: { id: true, firstName: true, lastName: true, displayName: true, avatar: true, avatarUrl: true, email: true } },
+            actor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                displayName: true,
+                avatar: true,
+                avatarUrl: true,
+                email: true,
+              },
+            },
           },
         }),
       count: () => prisma.notification.count({ where }),
@@ -118,8 +127,14 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
         const ids = [...new Set(items.map((n: any) => n.issueId).filter(Boolean))] as string[];
         const chamados = ids.length
           ? await prisma.issue.findMany({
-              where: {id: {in: ids}},
-              select: {id: true, name: true, sequenceId: true, project: {select: {identifier: true, name: true}}, state: {select: {name: true, group: true}}},
+              where: { id: { in: ids } },
+              select: {
+                id: true,
+                name: true,
+                sequenceId: true,
+                project: { select: { identifier: true, name: true } },
+                state: { select: { name: true, group: true } },
+              },
             })
           : [];
         const porId = new Map(chamados.map((c) => [c.id, c]));
@@ -161,11 +176,14 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
   .post("/:notification_id/read/", async ({ params: { slug, notification_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const {count} = await prisma.notification.updateMany({
+    const { count } = await prisma.notification.updateMany({
       where: { id: notification_id, receiverId: user.id },
       data: { isRead: true, readAt: new Date() },
     });
-    if (!count) { set.status = 404; return { detail: "Notificação não encontrada." }; }
+    if (!count) {
+      set.status = 404;
+      return { detail: "Notificação não encontrada." };
+    }
     return prisma.notification.findUnique({ where: { id: notification_id } });
   })
 
@@ -183,11 +201,14 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
   .post("/:notification_id/archive/", async ({ params: { slug, notification_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const {count} = await prisma.notification.updateMany({
+    const { count } = await prisma.notification.updateMany({
       where: { id: notification_id, receiverId: user.id },
       data: { isArchived: true, archivedAt: new Date() },
     });
-    if (!count) { set.status = 404; return { detail: "Notificação não encontrada." }; }
+    if (!count) {
+      set.status = 404;
+      return { detail: "Notificação não encontrada." };
+    }
     return prisma.notification.findUnique({ where: { id: notification_id } });
   })
 
@@ -205,8 +226,13 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
   .get("/:notification_id/", async ({ params: { slug, notification_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    const notif = await prisma.notification.findFirst({ where: { id: notification_id, receiverId: user.id, workspaceId: ws.id } });
-    if (!notif) { set.status = 404; return { detail: "Notificação não encontrada." }; }
+    const notif = await prisma.notification.findFirst({
+      where: { id: notification_id, receiverId: user.id, workspaceId: ws.id },
+    });
+    if (!notif) {
+      set.status = 404;
+      return { detail: "Notificação não encontrada." };
+    }
     return notif;
   })
 
@@ -224,12 +250,21 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
     const notif = await prisma.notification.findFirst({ where: { id: notification_id, receiverId: user.id } });
-    if (!notif) { set.status = 404; return { detail: "Notificação não encontrada." }; }
+    if (!notif) {
+      set.status = 404;
+      return { detail: "Notificação não encontrada." };
+    }
 
     const b = body as any;
     const data: any = {};
-    if (b.is_read !== undefined) { data.isRead = b.is_read; if (b.is_read) data.readAt = new Date(); }
-    if (b.is_archived !== undefined) { data.isArchived = b.is_archived; if (b.is_archived) data.archivedAt = new Date(); }
+    if (b.is_read !== undefined) {
+      data.isRead = b.is_read;
+      if (b.is_read) data.readAt = new Date();
+    }
+    if (b.is_archived !== undefined) {
+      data.isArchived = b.is_archived;
+      if (b.is_archived) data.archivedAt = new Date();
+    }
 
     return prisma.notification.update({ where: { id: notification_id }, data });
   })
@@ -237,7 +272,10 @@ export const notificationModule = new Elysia({ prefix: "/workspaces/:slug/users/
   .delete("/:notification_id/", async ({ params: { slug, notification_id }, user, set }) => {
     const ws = await getWorkspaceOrFail(slug);
     await requireWorkspaceMember(ws.id, user.id);
-    await prisma.notification.updateMany({ where: { id: notification_id, receiverId: user.id }, data: { isArchived: true, archivedAt: new Date() } });
+    await prisma.notification.updateMany({
+      where: { id: notification_id, receiverId: user.id },
+      data: { isArchived: true, archivedAt: new Date() },
+    });
     set.status = 204;
     return null;
   });

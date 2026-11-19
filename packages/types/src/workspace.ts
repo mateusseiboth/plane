@@ -4,13 +4,13 @@
  * See the LICENSE file for details.
  */
 
-import type {TPaginationInfo} from "./common";
-import type {ICycle} from "./cycle";
-import type {TUserPermissions} from "./enums";
-import type {TLoginMediums} from "./instance";
-import type {TProjectMembership} from "./project";
-import type {IUser, IUserLite} from "./users";
-import type {IWorkspaceViewProps} from "./view-props";
+import type { TPaginationInfo } from "./common";
+import type { ICycle } from "./cycle";
+import type { TUserPermissions } from "./enums";
+import type { TLoginMediums } from "./instance";
+import type { TProjectMembership } from "./project";
+import type { IUser, IUserLite } from "./users";
+import type { IWorkspaceViewProps } from "./view-props";
 
 export enum EUserWorkspaceRoles {
   ADMIN = 20,
@@ -64,7 +64,7 @@ export interface IWorkspaceMemberInvitation {
 }
 
 export interface IWorkspaceBulkInviteFormData {
-  emails: {email: string; role: TUserPermissions}[];
+  emails: { email: string; role: TUserPermissions }[];
 }
 
 export type Properties = {

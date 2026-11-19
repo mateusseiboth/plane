@@ -22,7 +22,7 @@
  * isso, aplicar o mesmo conjunto duas vezes dá exatamente o mesmo resultado e
  * remover funciona sempre.
  */
-import type {Prisma} from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import prisma from "@db";
 
 /** Aceita tanto o cliente global quanto o de dentro de uma transação. */
@@ -47,7 +47,7 @@ type EstrategiaDeVinculo = {
   tabela: (cliente: ClienteDeVinculos) => TabelaDeVinculos;
 };
 
-type LinhaDeVinculo = {id: string; alvoId: string; deletedAt: Date | null};
+type LinhaDeVinculo = { id: string; alvoId: string; deletedAt: Date | null };
 
 const ESTRATEGIAS = {
   etiqueta: {
@@ -81,7 +81,7 @@ function linhaPrincipal(linhas: LinhaDeVinculo[]): LinhaDeVinculo {
   const viva = linhas.find((l) => l.deletedAt === null);
   if (viva) return viva;
   return linhas.reduce((maisNova, atual) =>
-    (atual.deletedAt?.getTime() ?? 0) > (maisNova.deletedAt?.getTime() ?? 0) ? atual : maisNova,
+    (atual.deletedAt?.getTime() ?? 0) > (maisNova.deletedAt?.getTime() ?? 0) ? atual : maisNova
   );
 }
 
@@ -93,7 +93,7 @@ type Plano = {
 };
 
 function planejar(existentes: LinhaDeVinculo[], desejados: Set<string>): Plano {
-  const plano: Plano = {criar: [], restaurar: [], carimbar: [], descartar: []};
+  const plano: Plano = { criar: [], restaurar: [], carimbar: [], descartar: [] };
   const grupos = agruparPorAlvo(existentes);
 
   for (const [alvoId, linhas] of grupos) {
@@ -116,18 +116,20 @@ function planejar(existentes: LinhaDeVinculo[], desejados: Set<string>): Plano {
 
 async function executar(
   estrategia: EstrategiaDeVinculo,
-  {issueId, workspaceId, projectId}: EscopoDoVinculo,
+  { issueId, workspaceId, projectId }: EscopoDoVinculo,
   plano: Plano,
-  tabela: TabelaDeVinculos,
+  tabela: TabelaDeVinculos
 ) {
   // Os resíduos saem primeiro: é o que garante que o carimbo abaixo não
   // esbarre em outra linha do mesmo alvo já carimbada.
-  if (plano.descartar.length) await tabela.deleteMany({where: {id: {in: plano.descartar}}});
-  if (plano.restaurar.length) await tabela.updateMany({where: {id: {in: plano.restaurar}}, data: {deletedAt: null}});
-  if (plano.carimbar.length) await tabela.updateMany({where: {id: {in: plano.carimbar}}, data: {deletedAt: new Date()}});
+  if (plano.descartar.length) await tabela.deleteMany({ where: { id: { in: plano.descartar } } });
+  if (plano.restaurar.length)
+    await tabela.updateMany({ where: { id: { in: plano.restaurar } }, data: { deletedAt: null } });
+  if (plano.carimbar.length)
+    await tabela.updateMany({ where: { id: { in: plano.carimbar } }, data: { deletedAt: new Date() } });
   if (plano.criar.length) {
     await tabela.createMany({
-      data: plano.criar.map((alvoId) => ({issueId, [estrategia.campo]: alvoId, workspaceId, projectId})),
+      data: plano.criar.map((alvoId) => ({ issueId, [estrategia.campo]: alvoId, workspaceId, projectId })),
     });
   }
 }
@@ -136,22 +138,37 @@ async function sincronizar(
   estrategia: EstrategiaDeVinculo,
   escopo: EscopoDoVinculo,
   alvos: string[],
-  cliente: ClienteDeVinculos,
+  cliente: ClienteDeVinculos
 ) {
   const tabela = estrategia.tabela(cliente);
-  const linhas = await tabela.findMany({where: {issueId: escopo.issueId}, select: {id: true, deletedAt: true, [estrategia.campo]: true}});
-  const existentes: LinhaDeVinculo[] = linhas.map((l) => ({id: l.id, alvoId: l[estrategia.campo], deletedAt: l.deletedAt}));
+  const linhas = await tabela.findMany({
+    where: { issueId: escopo.issueId },
+    select: { id: true, deletedAt: true, [estrategia.campo]: true },
+  });
+  const existentes: LinhaDeVinculo[] = linhas.map((l) => ({
+    id: l.id,
+    alvoId: l[estrategia.campo],
+    deletedAt: l.deletedAt,
+  }));
 
   await executar(estrategia, escopo, planejar(existentes, new Set(alvos)), tabela);
 }
 
 /** Deixa o chamado exatamente com estas etiquetas. Repetir a chamada não muda nada. */
-export function sincronizarEtiquetas(escopo: EscopoDoVinculo, etiquetas: string[], cliente: ClienteDeVinculos = prisma) {
+export function sincronizarEtiquetas(
+  escopo: EscopoDoVinculo,
+  etiquetas: string[],
+  cliente: ClienteDeVinculos = prisma
+) {
   return sincronizar(ESTRATEGIAS.etiqueta, escopo, etiquetas, cliente);
 }
 
 /** Deixa o chamado exatamente com estes responsáveis. Repetir a chamada não muda nada. */
-export function sincronizarResponsaveis(escopo: EscopoDoVinculo, responsaveis: string[], cliente: ClienteDeVinculos = prisma) {
+export function sincronizarResponsaveis(
+  escopo: EscopoDoVinculo,
+  responsaveis: string[],
+  cliente: ClienteDeVinculos = prisma
+) {
   return sincronizar(ESTRATEGIAS.responsavel, escopo, responsaveis, cliente);
 }
 
@@ -164,11 +181,11 @@ export function sincronizarResponsaveis(escopo: EscopoDoVinculo, responsaveis: s
 export async function addResponsavel(
   escopo: EscopoDoVinculo,
   responsavelId: string,
-  cliente: ClienteDeVinculos = prisma,
+  cliente: ClienteDeVinculos = prisma
 ) {
   const vivos = await cliente.issueAssignee.findMany({
-    where: {issueId: escopo.issueId, deletedAt: null},
-    select: {assigneeId: true},
+    where: { issueId: escopo.issueId, deletedAt: null },
+    select: { assigneeId: true },
   });
   const atuais = vivos.map((v) => v.assigneeId);
   if (atuais.includes(responsavelId)) return;

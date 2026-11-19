@@ -42,10 +42,7 @@ type SolicitacaoCriada = ComNumero & {
  * anual que o atendimento passa ao cliente, o do sistema (`label`) e o NOME do
  * sistema, porque a sigla gerada na importação ("RECUR1") não diz qual é.
  */
-export const buildNumerosDaSolicitacao = (
-  issue: SolicitacaoCriada,
-  projeto: { identifier: string; name: string }
-) => ({
+export const buildNumerosDaSolicitacao = (issue: SolicitacaoCriada, projeto: { identifier: string; name: string }) => ({
   id: issue.id,
   name: issue.name,
   project_id: issue.projectId,

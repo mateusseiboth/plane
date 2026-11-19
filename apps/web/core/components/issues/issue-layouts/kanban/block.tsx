@@ -134,8 +134,8 @@ const KanbanIssueDetailsBlock = observer(function KanbanIssueDetailsBlock(props:
 
       {/* Entity badge — always show when set */}
       {(issue as any).entity && (issue as any).entity.name && (
-        <div className="flex items-center gap-1 mt-1">
-          <div className="inline-flex items-center gap-1 rounded-full border border-subtle bg-surface-2 px-1.5 py-0.5 text-caption-2xs-medium text-secondary-text max-w-[140px]">
+        <div className="mt-1 flex items-center gap-1">
+          <div className="text-caption-2xs-medium text-secondary-text inline-flex max-w-[140px] items-center gap-1 rounded-full border border-subtle bg-surface-2 px-1.5 py-0.5">
             <Building2 className="h-2.5 w-2.5 shrink-0" />
             <span className="truncate">{(issue as any).entity.name}</span>
           </div>
