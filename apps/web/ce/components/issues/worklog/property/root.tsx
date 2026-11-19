@@ -153,7 +153,7 @@ export function IssueWorklogProperty({ workspaceSlug, projectId, issueId, disabl
                     placeholder="O que foi feito..." />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="neutral-secondary" size="sm" onClick={() => setLogForm(false)}>Cancelar</Button>
+                  <Button variant="secondary" size="sm" onClick={() => setLogForm(false)}>Cancelar</Button>
                   <Button variant="primary" size="sm" onClick={handleAdd} loading={saving}>Salvar</Button>
                 </div>
               </div>

@@ -143,11 +143,7 @@ function GlobalIntakePage() {
                   isActive && "bg-surface-1-80 font-medium"
                 )}
               >
-                {project.emoji ? (
-                  <span className="text-base leading-none">{String.fromCodePoint(parseInt(project.emoji, 10))}</span>
-                ) : (
-                  <Intake className="size-3.5 text-secondary" />
-                )}
+                <Intake className="size-3.5 text-secondary" />
                 <span className="truncate">{project.name}</span>
               </Link>
             );
