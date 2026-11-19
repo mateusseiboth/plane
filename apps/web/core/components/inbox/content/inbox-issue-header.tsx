@@ -44,6 +44,8 @@ import type { IInboxIssueStore } from "@/store/inbox/inbox-issue.store";
 import { InboxIssueStatus } from "../inbox-issue-status";
 import { DeclineIssueModal } from "@/components/inbox/modals/decline-issue-modal";
 import { NaoAtendidoModal } from "@/components/inbox/modals/nao-atendido-modal";
+import { EncerrarNoAtendimentoModal } from "@/components/inbox/modals/encerrar-no-atendimento-modal";
+import { isDecisaoNoAtendimento } from "@/components/inbox/content/decisao-no-atendimento";
 import { isConfirmacaoDoAtendimento } from "@/components/inbox/content/confirmacao-do-atendimento";
 import { DeleteInboxIssueModal } from "../modals/delete-issue-modal";
 import { SelectDuplicateInboxIssueModal } from "../modals/select-duplicate";
@@ -78,6 +80,7 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
   const [acceptIssueModal, setAcceptIssueModal] = useState(false);
   const [declineIssueModal, setDeclineIssueModal] = useState(false);
   const [naoAtendidoModal, setNaoAtendidoModal] = useState(false);
+  const [encerrarModal, setEncerrarModal] = useState(false);
   const [deleteIssueModal, setDeleteIssueModal] = useState(false);
   // store
   const { currentTab, deleteInboxIssue, filteredInboxIssueIds } = useProjectInbox();
@@ -174,6 +177,30 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
         message: error?.detail || "Não foi possível marcar como atendido.",
       });
     }
+  };
+
+  // No atendimento (portal, ouvidoria): o Atendimento encaminha ou encerra.
+  const canDecidirNoAtendimento = isDecisaoNoAtendimento({ status: inboxIssue?.status, can });
+  const handleEncaminhar = async () => {
+    try {
+      await inboxIssue?.sendParaATriagem();
+      setToast({ type: TOAST_TYPE.SUCCESS, title: "Encaminhada para a triagem", message: "A Qualidade foi avisada." });
+    } catch (err: unknown) {
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Não foi possível encaminhar",
+        message: (err as { detail?: string })?.detail ?? "Tente de novo.",
+      });
+    }
+  };
+  const handleEncerrar = async (respostaHtml: string) => {
+    await inboxIssue?.closeNoAtendimento(respostaHtml);
+    setEncerrarModal(false);
+    setToast({
+      type: TOAST_TYPE.SUCCESS,
+      title: "Encerrada no atendimento",
+      message: "Quem pediu recebeu a resposta.",
+    });
   };
 
   // "Não atendido": o chamado volta para a triagem com o motivo. A recusa do
@@ -310,6 +337,12 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
           onClose={() => setDeclineIssueModal(false)}
           onSubmit={handleInboxIssueDecline}
         />
+        <EncerrarNoAtendimentoModal
+          data={inboxIssue?.issue || {}}
+          isOpen={encerrarModal}
+          onClose={() => setEncerrarModal(false)}
+          onSubmit={handleEncerrar}
+        />
         <NaoAtendidoModal
           data={inboxIssue?.issue || {}}
           isOpen={naoAtendidoModal}
@@ -403,6 +436,17 @@ export const InboxIssueActionsHeader = observer(function InboxIssueActionsHeader
                 <CloseCircleFilledIcon className="size-4 shrink-0 text-danger-secondary" />
                 {t("inbox_issue.actions.decline")}
               </Button>
+            )}
+
+            {canDecidirNoAtendimento && (
+              <div className="flex items-center gap-2">
+                <Button variant="primary" size="lg" onClick={() => void handleEncaminhar()}>
+                  Encaminhar para a triagem
+                </Button>
+                <Button variant="secondary" size="lg" onClick={() => setEncerrarModal(true)}>
+                  Encerrar no atendimento
+                </Button>
+              </div>
             )}
 
             {canConfirmarAtendimento && (

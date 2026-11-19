@@ -11,6 +11,8 @@
 export type AbaDaTriagemGlobal = { chave: string; rotulo: string; cor: string };
 
 export const ABAS_DA_TRIAGEM_GLOBAL: readonly AbaDaTriagemGlobal[] = [
+  // Portal e ouvidoria nascem com o Atendimento, antes da triagem (status -3).
+  { chave: "-3", rotulo: "No atendimento", cor: "bg-layer-1 text-primary" },
   { chave: "-2", rotulo: "Pendente", cor: "bg-yellow-100 text-yellow-800" },
   { chave: "-1", rotulo: "Recusado", cor: "bg-red-100 text-red-800" },
   { chave: "0", rotulo: "Adiado", cor: "bg-gray-100 text-gray-700" },

@@ -15,6 +15,12 @@
  * concluiu: exige `motivo` e devolve o chamado para a triagem. Regras em
  * ./atendimento-da-solicitacao.rules, efeitos em ./nao-atendido.service.
  *
+ * `POST .../inbox-issues/:issue_id/encaminhar/` e `.../encerrar-no-atendimento/`
+ *
+ * A solicitação no atendimento (status -3, portal e ouvidoria): encaminhar
+ * leva para a triagem da Qualidade; encerrar exige `resposta_html`, que vai
+ * para quem pediu. Regras em ./no-atendimento.rules.
+ *
  * `GET /workspaces/:slug/global-intake-issues/resumo/` e
  * `POST /workspaces/:slug/global-intake-issues/:issue_id/visto/`
  *
@@ -38,6 +44,38 @@ import {
   readMotivoDoNaoAtendido,
 } from "@modules/solicitacao/atendimento-da-solicitacao.rules";
 import { saveNaoAtendido } from "@modules/solicitacao/nao-atendido.service";
+import {
+  MENSAGEM_FORA_DO_ATENDIMENTO,
+  MENSAGEM_SEM_PERMISSAO as SEM_PERMISSAO_NO_ATENDIMENTO,
+  STATUS_NO_ATENDIMENTO,
+  isQuemDecideNoAtendimento,
+  readRespostaDoEncerramento,
+} from "@modules/solicitacao/no-atendimento.rules";
+import { closeNoAtendimento, sendParaATriagem } from "@modules/solicitacao/no-atendimento.service";
+
+/**
+ * A solicitação que está no atendimento, já conferindo quem decide. `null`
+ * quando a rota já respondeu (404, 403 ou 400).
+ */
+const findDecisaoNoAtendimento = async (
+  { slug, project_id, issue_id }: { slug: string; project_id: string; issue_id: string },
+  user: { id: string },
+  set: { status?: number | string }
+) => {
+  const ws = await getWorkspaceOrFail(slug);
+  const { member } = await getProjectOrFail(ws.id, project_id, user.id);
+  const solicitacao = await prisma.intakeIssue.findFirst({
+    where: { issueId: issue_id, projectId: project_id, deletedAt: null },
+    select: { status: true },
+  });
+  if (!solicitacao) return { erro: { status: 404, detail: "Solicitação não encontrada." } } as const;
+  if (!isQuemDecideNoAtendimento(await resolveMemberRole(ws.id, member as any)))
+    return { erro: { status: 403, detail: SEM_PERMISSAO_NO_ATENDIMENTO } } as const;
+  if (solicitacao.status !== STATUS_NO_ATENDIMENTO)
+    return { erro: { status: 400, detail: MENSAGEM_FORA_DO_ATENDIMENTO } } as const;
+  void set;
+  return { decisao: { workspaceId: ws.id, projectId: project_id, issueId: issue_id, autor: user } } as const;
+};
 
 export const solicitacaoModule = new Elysia({ prefix: "/workspaces/:slug" })
   .use(authPlugin)
@@ -87,6 +125,28 @@ export const solicitacaoModule = new Elysia({ prefix: "/workspaces/:slug" })
       const motivo = readMotivoDoNaoAtendido((body ?? {}) as { motivo?: unknown });
       await saveNaoAtendido({ workspaceId: ws.id, projectId: project_id, issueId: issue_id, actorId: user.id, motivo });
       return { id: issue_id, status: -2 };
+    }
+  )
+  .post("/projects/:project_id/inbox-issues/:issue_id/encaminhar/", async ({ params, user, set }) => {
+    const achado = await findDecisaoNoAtendimento(params, user, set);
+    if ("erro" in achado) {
+      set.status = achado.erro.status;
+      return { detail: achado.erro.detail };
+    }
+    await sendParaATriagem(achado.decisao);
+    return { id: params.issue_id, status: -2 };
+  })
+  .post(
+    "/projects/:project_id/inbox-issues/:issue_id/encerrar-no-atendimento/",
+    async ({ params, body, user, set, headers }) => {
+      const achado = await findDecisaoNoAtendimento(params, user, set);
+      if ("erro" in achado) {
+        set.status = achado.erro.status;
+        return { detail: achado.erro.detail };
+      }
+      const resposta = readRespostaDoEncerramento((body ?? {}) as { resposta_html?: unknown });
+      await closeNoAtendimento({ ...achado.decisao, autor: user as any, resposta, headers });
+      return { id: params.issue_id, status: 3 };
     }
   )
   .post("/global-intake-issues/:issue_id/visto/", async ({ params: { slug, issue_id }, user }) => {

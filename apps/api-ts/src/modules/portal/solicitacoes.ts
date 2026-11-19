@@ -15,7 +15,8 @@
 import prisma from "@db";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES, recordAudit } from "@utils/audit";
 import { buildInicioDaSolicitacao, findOrCreateIntake, findTriageState } from "@utils/intake";
-import { notifyQualityOfIntake } from "@utils/notifications";
+import { notifyAtendimentoDeNovaSolicitacao } from "@utils/notifications";
+import { STATUS_NO_ATENDIMENTO } from "@modules/solicitacao/no-atendimento.rules";
 import { publishRealtime } from "@utils/realtime";
 import { nextSequenceId } from "@utils/sequence";
 import type { ContaDoPortal } from "@modules/portal/conta";
@@ -126,7 +127,8 @@ export async function abrirSolicitacao(
         issueId: chamado.id,
         workspaceId: sistema.workspaceId,
         projectId: sistema.id,
-        status: -2,
+        // Nasce com o Atendimento, que encaminha para a triagem ou encerra ali.
+        status: STATUS_NO_ATENDIMENTO,
         source: ORIGEM,
       },
     });
@@ -135,13 +137,12 @@ export async function abrirSolicitacao(
   });
 
   const chamado = pedido.issue;
-  await notifyQualityOfIntake({
+  await notifyAtendimentoDeNovaSolicitacao({
     workspaceId: sistema.workspaceId,
     projectId: sistema.id,
     issueId: chamado.id,
     actorId: null,
     issueName: chamado.name,
-    priority: chamado.priority,
   });
   publishRealtime(sistema.workspaceId, {
     entity: "intake",

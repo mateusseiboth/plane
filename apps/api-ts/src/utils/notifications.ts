@@ -73,6 +73,47 @@ export async function notifyQualityOfNaoAtendido(opts: {
   });
 }
 
+/**
+ * Pedido que nasceu com o Atendimento (portal, ouvidoria): quem é do setor
+ * Atendimento no projeto fica sabendo. A Qualidade só é avisada quando o
+ * Atendimento encaminhar para a triagem.
+ */
+export async function notifyAtendimentoDeNovaSolicitacao(opts: {
+  workspaceId: string;
+  projectId: string;
+  issueId: string;
+  actorId: string | null;
+  issueName: string;
+}): Promise<void> {
+  const receivers = (await findSetorDoProjeto(opts.projectId, "atendimento")).filter((id) => id !== opts.actorId);
+  if (!receivers.length) return;
+  avisarSino(opts.workspaceId, receivers);
+  await prisma.notification.createMany({
+    data: receivers.map((receiverId) => ({
+      workspaceId: opts.workspaceId,
+      projectId: opts.projectId,
+      issueId: opts.issueId,
+      receiverId,
+      actorId: opts.actorId,
+      title: "Nova solicitação no atendimento",
+      message: opts.issueName,
+      entity: "intake",
+      entityId: opts.issueId,
+      data: { type: "intake_in_service" },
+      triggered: "intake",
+    })),
+  });
+}
+
+/** Quem é de um setor no projeto, pela chave da função (permissao-estrutural: escolhe QUEM é avisado). */
+async function findSetorDoProjeto(projectId: string, chave: string): Promise<string[]> {
+  const members = await prisma.projectMember.findMany({
+    where: { projectId, isActive: true, deletedAt: null, workflowRole: { key: chave } },
+    select: { memberId: true },
+  });
+  return members.map((m) => m.memberId);
+}
+
 /** Quem é do setor Qualidade no projeto: nível 8 legado ou função de chave "qualidade". */
 async function findQualidadeDoProjeto(projectId: string): Promise<string[]> {
   const members = await prisma.projectMember.findMany({

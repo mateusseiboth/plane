@@ -37,6 +37,7 @@ import prisma from "@db";
 
 /** Espelha `EInboxIssueStatus` de `@plane/types` — o backend não importa o pacote do front. */
 const SITUACAO = {
+  noAtendimento: -3,
   pendente: -2,
   recusada: -1,
   adiada: 0,
@@ -60,7 +61,7 @@ const LIMITE_DO_RESUMO = 500;
 const DECIDIDAS_A_MAO: readonly number[] = [SITUACAO.recusada, SITUACAO.duplicada];
 
 /** Situações que ainda esperam o trabalho terminar. */
-const EM_ANDAMENTO: readonly number[] = [SITUACAO.pendente, SITUACAO.adiada, SITUACAO.aceita];
+const EM_ANDAMENTO: readonly number[] = [SITUACAO.noAtendimento, SITUACAO.pendente, SITUACAO.adiada, SITUACAO.aceita];
 
 /** Para onde a solicitação vai, dado o grupo em que o chamado entrou. */
 const DESTINO: Record<string, (atual: number) => number | null> = {
