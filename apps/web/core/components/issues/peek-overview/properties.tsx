@@ -87,21 +87,6 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
       <h6 className="text-body-xs-medium">{t("common.properties")}</h6>
       <div className={`mt-3 w-full space-y-3 ${disabled ? "opacity-60" : ""}`}>
         <SidebarPropertyListItem
-          icon={StatePropertyIcon}
-          label={t("common.state")}
-        >
-          <IssueStateField
-            workspaceSlug={workspaceSlug}
-            projectId={projectId}
-            issueId={issueId}
-            value={issue?.state_id}
-            issueOperations={issueOperations}
-            disabled={disabled}
-            buttonClassName={`text-body-xs-medium ${issue?.state_id ? "" : "text-placeholder"}`}
-          />
-        </SidebarPropertyListItem>
-
-        <SidebarPropertyListItem
           icon={MembersPropertyIcon}
           label={t("common.assignees")}
         >
@@ -303,6 +288,22 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
             projectId={projectId}
             issueId={issueId}
             disabled={disabled}
+          />
+        </SidebarPropertyListItem>
+
+        {/* Etapa por último, logo acima da atividade: quem comenta lembra de mover. */}
+        <SidebarPropertyListItem
+          icon={StatePropertyIcon}
+          label={t("common.state")}
+        >
+          <IssueStateField
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            issueId={issueId}
+            value={issue?.state_id}
+            issueOperations={issueOperations}
+            disabled={disabled}
+            buttonClassName={`text-body-xs-medium ${issue?.state_id ? "" : "text-placeholder"}`}
           />
         </SidebarPropertyListItem>
 
