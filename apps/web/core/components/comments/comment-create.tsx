@@ -4,7 +4,8 @@
  * See the LICENSE file for details.
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Loader } from "lucide-react";
 import { observer } from "mobx-react";
 import { useForm, Controller } from "react-hook-form";
 // plane imports
@@ -15,6 +16,11 @@ import { cn, isCommentEmpty } from "@plane/utils";
 // components
 import { LiteTextEditor } from "@/components/editor/lite-text";
 import { AiImproveButton } from "@/components/editor/ai-improve-button";
+import {
+  BotaoComentarEMovimentar,
+  type TMovimentacaoDoComentario,
+} from "@/components/comments/movimentacao/botao-comentar-e-movimentar";
+import { sendComentarioEMovimentacao } from "@/components/comments/movimentacao/comentar-e-movimentar";
 import { IndicadorDeConsulta, ItensFaltantes, PainelDeAnalise, textoDoEditor } from "@/components/ia";
 // helpers
 import { colarTrechoNoEditor } from "@/helpers/colar-trecho.helper";
@@ -28,6 +34,8 @@ import { useTextoFantasmaEditor } from "@/hooks/use-texto-fantasma-editor";
 import { useTipoDeRequisito } from "@/hooks/use-tipo-de-requisito";
 // services
 import { FileService } from "@/services/file.service";
+// store
+import { comentariosEmProcessamento } from "@/store/issue/issue-details/comentarios-em-processamento";
 
 type TCommentCreate = {
   entityId: string;
@@ -36,6 +44,8 @@ type TCommentCreate = {
   showToolbarInitially?: boolean;
   projectId?: string;
   onSubmitCallback?: (elementId: string) => void;
+  /** Liga o "Comentar e movimentar" (só no chamado, fora da triagem). */
+  movimentacao?: TMovimentacaoDoComentario;
 };
 
 // services
@@ -49,6 +59,7 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
     showToolbarInitially = false,
     projectId,
     onSubmitCallback,
+    movimentacao,
   } = props;
   // states
   const [uploadedAssetIds, setUploadedAssetIds] = useState<string[]>([]);
@@ -107,12 +118,22 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
     contexto: contextoDoChamado,
   });
 
-  const onSubmit = async (formData: Partial<TIssueComment>) => {
+  const clearEditor = () => {
+    reset({ comment_html: "<p></p>" });
+    editorRef.current?.clearEditor();
+    analise.descartar();
+  };
+
+  /** `true` = o comentário foi gravado. Falha ou painel da IA mantêm o texto no editor. */
+  const saveComentario = async (formData: Partial<TIssueComment>): Promise<boolean> => {
     // `false` = o painel apareceu; o próximo envio segue (ou, no modo `exigir`,
     // reanalisa depois da correção). Falha ou resposta vazia nunca seguram.
-    if (!(await analise.liberarSalvamento())) return;
+    comentariosEmProcessamento.start(entityId);
     try {
+      if (!(await analise.liberarSalvamento())) return false;
       const comment = await activityOperations.createComment(formData);
+      // Gravou: limpa já, senão uma falha nos anexos deixaria o texto para reenviar em dobro.
+      clearEditor();
       if (comment?.id) onSubmitCallback?.(comment.id);
       if (uploadedAssetIds.length > 0) {
         if (projectId) {
@@ -126,16 +147,35 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
         }
         setUploadedAssetIds([]);
       }
+      return true;
     } catch (error) {
       console.error(error);
+      return false;
     } finally {
-      reset({
-        comment_html: "<p></p>",
-      });
-      editorRef.current?.clearEditor();
-      analise.descartar();
+      comentariosEmProcessamento.end(entityId);
     }
   };
+
+  const onSubmit = async (formData: Partial<TIssueComment>) => {
+    await saveComentario(formData);
+  };
+
+  const onComentarEMovimentar = (stateId: string) =>
+    handleSubmit(async (formData) => {
+      if (!movimentacao) return;
+      await sendComentarioEMovimentacao(
+        { comentar: () => saveComentario(formData), mover: movimentacao.mover },
+        stateId
+      );
+    })();
+
+  // Fechar a aba no meio do envio perde o comentário: o navegador pergunta antes.
+  useEffect(() => {
+    if (!isSubmitting) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isSubmitting]);
 
   return (
     <div
@@ -197,6 +237,15 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
                 displayConfig={{
                   fontSize: "small-font",
                 }}
+                submitActions={
+                  movimentacao && (
+                    <BotaoComentarEMovimentar
+                      movimentacao={movimentacao}
+                      disabled={isEmpty || isSubmitting}
+                      onEscolherEtapa={(stateId) => void onComentarEMovimentar(stateId)}
+                    />
+                  )
+                }
               />
             )}
           />
@@ -214,6 +263,12 @@ export const CommentCreate = observer(function CommentCreate(props: TCommentCrea
           rotuloColar="Colar no comentário"
           className="mx-2 mt-2"
         />
+      )}
+      {isSubmitting && (
+        <p role="status" className="mx-2 mt-2 flex items-center gap-2 text-body-xs-medium text-accent-primary">
+          <Loader className="size-4 shrink-0 animate-spin" />
+          Processando o comentário. Aguarde antes de fechar.
+        </p>
       )}
       <div className="flex items-center justify-end gap-2 px-2 pb-2">
         <IndicadorDeConsulta consultando={consultando} className="mt-1" />

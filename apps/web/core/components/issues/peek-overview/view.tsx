@@ -11,11 +11,13 @@ import { createPortal } from "react-dom";
 import type { EditorRefApi } from "@plane/editor";
 import type { TNameDescriptionLoader } from "@plane/types";
 import { EIssueServiceType } from "@plane/types";
+import { AlertModalCore } from "@plane/ui";
 import { cn } from "@plane/utils";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import useKeypress from "@/hooks/use-keypress";
 import usePeekOverviewOutsideClickDetector from "@/hooks/use-peek-overview-outside-click";
+import { comentariosEmProcessamento } from "@/store/issue/issue-details/comentarios-em-processamento";
 // local imports
 import type { TIssueOperations } from "../issue-detail";
 import { IssueActivity } from "../issue-detail/issue-activity";
@@ -60,6 +62,7 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
   const [isArchiveIssueModalOpen, setIsArchiveIssueModalOpen] = useState(false);
   const [isDuplicateIssueModalOpen, setIsDuplicateIssueModalOpen] = useState(false);
   const [isEditIssueModalOpen, setIsEditIssueModalOpen] = useState(false);
+  const [isAvisoDeComentarioOpen, setIsAvisoDeComentarioOpen] = useState(false);
   // ref
   const issuePeekOverviewRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorRefApi>(null);
@@ -77,13 +80,26 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
     if (embedIssue && embedRemoveCurrentNotification) embedRemoveCurrentNotification();
   };
 
+  // Fechar no meio do envio do comentário perde o texto: avisa e deixa a pessoa esperar.
+  const closePeek = () => {
+    if (comentariosEmProcessamento.isProcessando(issueId)) {
+      setIsAvisoDeComentarioOpen(true);
+      return;
+    }
+    removeRoutePeekId();
+  };
+
   const toggleDeleteIssueModal = (value: boolean) => setIsDeleteIssueModalOpen(value);
   const toggleArchiveIssueModal = (value: boolean) => setIsArchiveIssueModalOpen(value);
   const toggleDuplicateIssueModal = (value: boolean) => setIsDuplicateIssueModalOpen(value);
   const toggleEditIssueModal = (value: boolean) => setIsEditIssueModalOpen(value);
 
   const isAnyLocalModalOpen =
-    isDeleteIssueModalOpen || isArchiveIssueModalOpen || isDuplicateIssueModalOpen || isEditIssueModalOpen;
+    isDeleteIssueModalOpen ||
+    isArchiveIssueModalOpen ||
+    isDuplicateIssueModalOpen ||
+    isEditIssueModalOpen ||
+    isAvisoDeComentarioOpen;
 
   usePeekOverviewOutsideClickDetector(
     issuePeekOverviewRef,
@@ -91,7 +107,7 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
       const isAnyDropbarOpen = editorRef.current?.isAnyDropbarOpen();
       if (!embedIssue) {
         if (!isAnyModalOpen && !isAnyEpicModalOpen && !isAnyLocalModalOpen && !isAnyDropbarOpen) {
-          removeRoutePeekId();
+          closePeek();
         }
       }
     },
@@ -103,8 +119,14 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
     const editorImageFullScreenModalElement = document.querySelector(".editor-image-full-screen-modal");
     const dropdownElement = document.activeElement?.tagName === "INPUT";
     const isAnyDropbarOpen = editorRef.current?.isAnyDropbarOpen();
-    if (!isAnyModalOpen && !dropdownElement && !isAnyDropbarOpen && !editorImageFullScreenModalElement) {
-      removeRoutePeekId();
+    if (
+      !isAnyModalOpen &&
+      !isAvisoDeComentarioOpen &&
+      !dropdownElement &&
+      !isAnyDropbarOpen &&
+      !editorImageFullScreenModalElement
+    ) {
+      closePeek();
       const issueElement = document.getElementById(`issue-${issueId}`);
       if (issueElement) issueElement?.focus();
     }
@@ -135,6 +157,20 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
 
   const content = (
     <div className="w-full text-body-sm-regular">
+      <AlertModalCore
+        isOpen={isAvisoDeComentarioOpen}
+        variant="primary"
+        title="Comentário em processamento"
+        content="O comentário ainda não foi salvo. Aguarde para não perder o que foi escrito."
+        secondaryButtonText="Aguardar"
+        primaryButtonText={{ default: "Fechar assim mesmo", loading: "Fechando" }}
+        isSubmitting={false}
+        handleClose={() => setIsAvisoDeComentarioOpen(false)}
+        handleSubmit={() => {
+          setIsAvisoDeComentarioOpen(false);
+          removeRoutePeekId();
+        }}
+      />
       {issueId && (
         <div
           ref={issuePeekOverviewRef}
@@ -157,7 +193,7 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
               <IssuePeekOverviewHeader
                 peekMode={peekMode}
                 setPeekMode={(value) => setPeekMode(value)}
-                removeRoutePeekId={removeRoutePeekId}
+                removeRoutePeekId={closePeek}
                 toggleDeleteIssueModal={toggleDeleteIssueModal}
                 toggleArchiveIssueModal={toggleArchiveIssueModal}
                 toggleDuplicateIssueModal={toggleDuplicateIssueModal}
@@ -210,6 +246,7 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
                       projectId={projectId}
                       issueId={issueId}
                       disabled={is_archived}
+                      issueOperations={disabled ? undefined : issueOperations}
                     />
                   </div>
                 ) : (
@@ -243,6 +280,7 @@ export const IssueView = observer(function IssueView(props: IIssueView) {
                           projectId={projectId}
                           issueId={issueId}
                           disabled={is_archived}
+                          issueOperations={disabled ? undefined : issueOperations}
                         />
                       </div>
                     </div>

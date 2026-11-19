@@ -264,7 +264,13 @@ export const IssueMainContent = observer(function IssueMainContent(props: Props)
         className="px-6 pb-2"
       />
 
-      <IssueActivity workspaceSlug={workspaceSlug} projectId={projectId} issueId={issueId} disabled={isArchived} />
+      <IssueActivity
+        workspaceSlug={workspaceSlug}
+        projectId={projectId}
+        issueId={issueId}
+        disabled={isArchived}
+        issueOperations={isEditable ? issueOperations : undefined}
+      />
     </>
   );
 });

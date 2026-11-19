@@ -4,7 +4,6 @@
  * See the LICENSE file for details.
  */
 
-import { useMemo } from "react";
 import uniq from "lodash-es/uniq";
 import { observer } from "mobx-react";
 // plane package imports
@@ -17,6 +16,7 @@ import { useTranslation } from "@plane/i18n";
 import type { TFileSignedURLResponse, TIssueComment } from "@plane/types";
 // components
 import { CommentCreate } from "@/components/comments/comment-create";
+import type { TIssueOperations } from "@/components/issues/issue-detail/root";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useProject } from "@/hooks/store/use-project";
@@ -36,6 +36,8 @@ type TIssueActivity = {
   issueId: string;
   disabled?: boolean;
   isIntakeIssue?: boolean;
+  /** Com ele, a caixa de comentário ganha o "Comentar e movimentar". */
+  issueOperations?: TIssueOperations;
 };
 
 export type TActivityOperations = {
@@ -46,7 +48,7 @@ export type TActivityOperations = {
 };
 
 export const IssueActivity = observer(function IssueActivity(props: TIssueActivity) {
-  const { workspaceSlug, projectId, issueId, disabled = false, isIntakeIssue = false } = props;
+  const { workspaceSlug, projectId, issueId, disabled = false, isIntakeIssue = false, issueOperations } = props;
   // i18n
   const { t } = useTranslation();
   // hooks
@@ -93,17 +95,24 @@ export const IssueActivity = observer(function IssueActivity(props: TIssueActivi
   const activityOperations = useWorkItemCommentOperations(workspaceSlug, projectId, issueId);
 
   const project = getProjectById(projectId);
-  const renderCommentCreationBox = useMemo(
-    () => (
-      <CommentCreate
-        workspaceSlug={workspaceSlug}
-        entityId={issueId}
-        activityOperations={activityOperations}
-        showToolbarInitially
-        projectId={projectId}
-      />
-    ),
-    [workspaceSlug, issueId, activityOperations, projectId]
+  // Na triagem a etapa muda pela decisão (aceitar, recusar), não pelo comentário.
+  const movimentacao =
+    issueOperations && !isIntakeIssue
+      ? {
+          projectId,
+          stateId: issue?.state_id,
+          mover: (stateId: string) => issueOperations.update(workspaceSlug, projectId, issueId, { state_id: stateId }),
+        }
+      : undefined;
+  const renderCommentCreationBox = (
+    <CommentCreate
+      workspaceSlug={workspaceSlug}
+      entityId={issueId}
+      activityOperations={activityOperations}
+      showToolbarInitially
+      projectId={projectId}
+      movimentacao={movimentacao}
+    />
   );
   if (!project) return <></>;
 

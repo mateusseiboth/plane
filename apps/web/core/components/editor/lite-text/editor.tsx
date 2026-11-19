@@ -45,6 +45,7 @@ type LiteTextEditorWrapperProps = MakeOptional<
   parentClassName?: string;
   editorClassName?: string;
   submitButtonText?: string;
+  submitActions?: React.ReactNode;
 } & (
     | {
         editable: false;
@@ -81,6 +82,7 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
     editorClassName = "",
     showPlaceholderOnEmpty = true,
     submitButtonText = "common.comment",
+    submitActions,
     ...rest
   } = props;
   // states
@@ -217,6 +219,7 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
             editorRef={editorRef}
             showSubmitButton={showSubmitButton}
             submitButtonText={submitButtonText}
+            submitActions={submitActions}
           />
         </div>
       )}
